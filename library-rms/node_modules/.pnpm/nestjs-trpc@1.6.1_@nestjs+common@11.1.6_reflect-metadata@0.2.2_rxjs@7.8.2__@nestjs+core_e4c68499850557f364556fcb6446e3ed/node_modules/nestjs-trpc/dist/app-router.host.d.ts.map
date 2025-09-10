@@ -1,0 +1,1 @@
+{"version":3,"file":"app-router.host.d.ts","sourceRoot":"","sources":["../lib/app-router.host.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,SAAS,EAAE,MAAM,cAAc,CAAC;AAEzC,qBACa,aAAa;IACxB,OAAO,CAAC,UAAU,CAAwB;IAE1C,IAAI,SAAS,CAAC,SAAS,EAAE,SAAS,EAEjC;IAED,IAAI,SAAS,IAAI,SAAS,CAQzB;CACF"}
