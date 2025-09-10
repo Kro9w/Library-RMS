@@ -1,22 +1,38 @@
-# Use Node.js LTS
+# 1. Base image
+FROM node:20-alpine AS builder
+
+# 2. Set working directory
+WORKDIR /app
+
+# 3. Copy only package files first (for better caching)
+COPY ../../package.json ../../pnpm-lock.yaml ./
+COPY ../../pnpm-workspace.yaml ./
+COPY ./package.json ./apps/api/
+
+# 4. Install pnpm
+RUN npm install -g pnpm
+
+# 5. Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# 6. Copy source code
+COPY . .
+
+# 7. Build the NestJS app
+RUN pnpm --filter api build
+
+# ------------------
+# Runtime image
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy dependencies manifests
-COPY package.json pnpm-lock.yaml ./
-COPY prisma ./prisma
+# Copy built files & node_modules from builder
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/api/dist ./dist
 
-# Install pnpm and dependencies
-RUN npm install -g pnpm && pnpm install
+# Prisma Client (make sure schema is copied in migrations)
+COPY --from=builder /app/apps/api/prisma ./prisma
 
-# Copy app source
-COPY . .
-
-# Generate Prisma client
-RUN npx prisma generate
-
-# Expose NestJS port
-EXPOSE 3000
-
-CMD ["pnpm", "start:dev"]
+# Start command
+CMD ["node", "dist/main.js"]

@@ -1,38 +1,35 @@
 version: "3.9"
 services:
-  db:
-    image: postgres:15
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: libraryrms
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
   api:
     build: ./apps/api
+    container_name: library_api
+    ports:
+      - "4000:4000"
+    env_file:
+      - ./.env
     depends_on:
       - db
-    environment:
-      DATABASE_URL: postgres://postgres:postgres@db:5432/libraryrms?schema=public
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./apps/api:/app
-      - /app/node_modules
 
   web:
     build: ./apps/web
+    container_name: library_web
+    ports:
+      - "3000:80"
     depends_on:
       - api
+
+  db:
+    image: postgres:15
+    container_name: library_db
+    restart: always
     ports:
-      - "5173:5173"
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: jaylorddecano
+      POSTGRES_DB: libraryrms
     volumes:
-      - ./apps/web:/app
-      - /app/node_modules
+      - postgres_data:/var/lib/postgresql/data
 
 volumes:
   postgres_data:
