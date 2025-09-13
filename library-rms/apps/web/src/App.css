@@ -40,3 +40,21 @@
 .read-the-docs {
   color: #888;
 }
+
+/* This is the margin when the navbar is COLLAPSED */
+.main-content.collapsed {
+  margin-left: 80px; /* This must match your collapsed navbar width */
+  width: calc(100% - 80px);
+}
+
+/* This is the margin when the navbar is EXPANDED */
+.main-content.expanded {
+  margin-left: 250px; /* This must match your expanded navbar width */
+  width: calc(100% - 250px);
+}
+
+/* This adds the smooth animation for a better user experience */
+.main-content {
+  padding: 1.5rem;
+  transition: margin-left 0.3s ease, width 0.3s ease;
+}

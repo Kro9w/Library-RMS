@@ -12,7 +12,9 @@
     "@trpc/server": "^11.5.0",
     "docx": "^9.5.1",
     "nestjs-trpc": "1.4.0",
-    "zod": "^4.1.5"
+    "zod": "^4.1.5",
+    "react-pdf": "^9.0.0",
+    "pdfjs-dist": "^4.2.67"
   },
   "devDependencies": {
     "concurrently": "^8.2.0",
