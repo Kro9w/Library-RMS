@@ -1,0 +1,108 @@
+/* This file styles the sidebar itself.
+  It works together with the styles in src/index.css.
+*/
+
+.sidebar {
+  /* This is the key fix: it takes the navbar out of the normal document flow */
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh; /* Makes the sidebar full-height */
+  z-index: 1000; /* Ensures the sidebar stays on top of other content */
+  transition: width 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto; /* Allows scrolling if content is too long */
+  overflow-x: hidden;
+}
+
+.sidebar .nav-link {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  white-space: nowrap; /* Prevents text from wrapping */
+}
+
+.sidebar .nav-link .bi {
+  font-size: 1.25rem;
+  margin-right: 1rem;
+}
+
+/* Styles for when the navbar is COLLAPSED */
+.sidebar.collapsed {
+  width: 80px;
+}
+
+.sidebar.collapsed .link-text,
+.sidebar.collapsed .user-info {
+  display: none; /* Hide the text when collapsed */
+}
+
+.sidebar.collapsed .nav-link {
+  justify-content: center;
+}
+
+.sidebar.collapsed .nav-link .bi {
+  margin-right: 0;
+}
+
+.sidebar.collapsed .user-profile .UserButton {
+  margin: 0 auto;
+}
+
+/* Styles for when the navbar is EXPANDED */
+.sidebar.expanded {
+  width: 250px;
+}
+
+.main-content {
+  width: 100%;
+  transition: margin 0.3s ease;
+}
+
+.main-content.collapsed {
+  margin-left: 80px; /* Adjust based on collapsed width */
+}
+
+.main-content.expanded {
+  margin-left: 250px; /* Adjust based on collapsed width */
+}
+
+.sidebar-footer {
+  margin-top: auto; /* Pushes the footer to the bottom */
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0 0.5rem;
+}
+
+.user-info {
+  margin-left: 0.75rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-weight: bold;
+}
+
+.user-email {
+  font-size: 0.8rem;
+  color: #adb5bd;
+}
+
+.collapse-btn {
+  width: 100%;
+}
+
