@@ -1,16 +1,20 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { trpc } from "../../api/src/trpc/trpc";
+import { trpc } from "../trpc";
 
+// Define a clear type for the document object
+// This should match the data returned by your tRPC `getDocuments` procedure
 type Document = {
   id: string;
   title: string;
   type: string;
   createdAt: string | Date;
+  // Add any other fields your getDocuments query returns, like tags
+  tags: string[];
 };
 
+// Ensure this function uses a named export to match the import in App.tsx
 export function Documents() {
-  // 2. Fetch documents from the database using the tRPC query hook
   const {
     data: documents,
     isLoading,
@@ -19,10 +23,8 @@ export function Documents() {
   } = trpc.getDocuments.useQuery();
   const trpcCtx = trpc.useContext();
 
-  // 3. Add the tRPC mutation hook for deleting documents
   const deleteDoc = trpc.deleteDocument.useMutation({
     onSuccess: () => {
-      // When a deletion is successful, refetch the document list
       trpcCtx.getDocuments.invalidate();
     },
   });
@@ -30,10 +32,8 @@ export function Documents() {
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Filter documents based on the search term
   const filteredDocuments = useMemo(() => {
     if (!documents) return [];
-    // Explicitly type the 'doc' parameter to fix the error
     return documents.filter((doc: Document) =>
       doc.title.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -41,8 +41,6 @@ export function Documents() {
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      // Use the live data instead of mock data
-      // Explicitly type the 'd' parameter to fix the error
       setSelectedDocs(filteredDocuments.map((d: Document) => d.id));
     } else {
       setSelectedDocs([]);
@@ -55,7 +53,6 @@ export function Documents() {
     );
   };
 
-  // 4. Implement the batch delete functionality
   const handleBatchDelete = async () => {
     if (
       window.confirm(
@@ -65,18 +62,15 @@ export function Documents() {
       for (const docId of selectedDocs) {
         await deleteDoc.mutateAsync(docId);
       }
-      setSelectedDocs([]); // Clear selection after deleting
+      setSelectedDocs([]);
     }
   };
 
-  // 5. Add loading and error states for a better user experience
   if (isLoading) {
     return (
-      <div className="container mt-4">
-        <div className="d-flex justify-content-center">
-          <div className="spinner-border" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
+      <div className="container mt-4 text-center">
+        <div className="spinner-border" role="status">
+          <span className="visually-hidden">Loading...</span>
         </div>
       </div>
     );
@@ -85,7 +79,7 @@ export function Documents() {
   if (isError) {
     return (
       <div className="container mt-4 alert alert-danger">
-        Error: {error.message}
+        Error loading documents: {error.message}
       </div>
     );
   }
@@ -99,7 +93,6 @@ export function Documents() {
         </Link>
       </div>
 
-      {/* Search and Filter Bar */}
       <div className="row mb-3">
         <div className="col-md-9">
           <input
@@ -120,7 +113,6 @@ export function Documents() {
         </div>
       </div>
 
-      {/* Batch Actions */}
       {selectedDocs.length > 0 && (
         <div className="mb-3">
           <button
@@ -128,19 +120,13 @@ export function Documents() {
             onClick={handleBatchDelete}
             disabled={deleteDoc.isPending}
           >
-            {deleteDoc.isPending ? (
-              "Deleting..."
-            ) : (
-              <>
-                <i className="bi bi-trash me-2"></i>Delete Selected (
-                {selectedDocs.length})
-              </>
-            )}
+            {deleteDoc.isPending
+              ? "Deleting..."
+              : `Delete Selected (${selectedDocs.length})`}
           </button>
         </div>
       )}
 
-      {/* Document Table */}
       <table className="table table-hover align-middle">
         <thead>
           <tr>
@@ -149,10 +135,6 @@ export function Documents() {
                 type="checkbox"
                 className="form-check-input"
                 onChange={handleSelectAll}
-                checked={
-                  filteredDocuments.length > 0 &&
-                  selectedDocs.length === filteredDocuments.length
-                }
               />
             </th>
             <th>Title</th>
@@ -163,7 +145,6 @@ export function Documents() {
         </thead>
         <tbody>
           {filteredDocuments.length > 0 ? (
-            // Explicitly type the 'doc' parameter here as well
             filteredDocuments.map((doc: Document) => (
               <tr key={doc.id}>
                 <td>
@@ -180,7 +161,6 @@ export function Documents() {
                 <td>
                   <span className="badge bg-secondary">{doc.type}</span>
                 </td>
-                {/* 6. Format the date from the database */}
                 <td>{new Date(doc.createdAt).toLocaleDateString()}</td>
                 <td>
                   <Link

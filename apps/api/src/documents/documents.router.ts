@@ -1,33 +1,75 @@
-import { trpc } from '../trpc/trpc';
-import { DocumentsService } from './documents.service';
-import { z } from 'zod'; // Zod is great for input validation
+import { initTRPC } from '@trpc/server';
+import { z } from 'zod';
+import type { Context } from '../trpc/trpc.context';
+// 1. Use a 'require' statement to bypass the ES module import issue.
+const { Document, Packer, Paragraph } = require("docx");
+import { Buffer } from "buffer";
 
-// This is a dependency injection solution for services in tRPC
-// You would configure this in your trpc.context.ts
-// For now, we'll instantiate the service directly for simplicity.
-// In a real app, you'd get this from the context.
-// const documentsService = new DocumentsService(new PrismaService());
+// 1. Initialize tRPC directly in the main router file.
+const t = initTRPC.context<Context>().create();
 
-export const documentsRouter = trpc.router({
-  getDocuments: trpc.procedure
-    .query(() => {
-      // This is where you would call your DocumentsService
-      // return documentsService.findAll();
-      console.log('Fetching all documents');
-      return [{ id: '1', title: 'Mock Document', type: 'memorandum', content: '', tags: [], createdAt: new Date(), updatedAt: new Date() }];
+// Helper function
+function bufferToArrayBuffer(buffer: Buffer): ArrayBuffer {
+  const copy = Buffer.from(buffer);
+  return copy.buffer.slice(copy.byteOffset, copy.byteOffset + copy.byteLength);
+}
+
+// 2. Define all your procedures in a single appRouter.
+export const appRouter = t.router({
+  // Document Procedures
+  getDocuments: t.procedure.query(({ ctx }) => ctx.prisma.document.findMany()),
+
+  getDocument: t.procedure.input(z.string()).query(({ ctx, input }) =>
+    ctx.prisma.document.findUnique({ where: { id: input } })
+  ),
+
+  createDocument: t.procedure
+    .input(
+      z.object({
+        title: z.string(),
+        type: z.enum(['memorandum','office_order','communication_letter']),
+        content: z.string(),
+        tags: z.array(z.string()).optional(),
+      })
+    )
+    .mutation(({ ctx, input }) => ctx.prisma.document.create({ data: input })),
+
+  deleteDocument: t.procedure.input(z.string()).mutation(({ ctx, input }) =>
+    ctx.prisma.document.delete({ where: { id: input } })
+  ),
+  
+  // Other Procedures
+  hello: t.procedure.query(() => 'Hello from tRPC!'),
+
+  exportDocument: t.procedure
+    .input(
+      z.object({
+        title: z.string(),
+        type: z.string(),
+        content: z.string(),
+      })
+    )
+    .mutation(async ({ input: docData }) => {
+      const doc = new Document({
+        sections: [
+          {
+            properties: {},
+            children: [
+              new Paragraph({ text: docData.title, heading: 'heading1' }),
+              new Paragraph({ text: docData.type }),
+              new Paragraph({ text: docData.content }),
+            ],
+          },
+        ],
+      });
+
+      const buffer = await Packer.toBuffer(doc);
+      return buffer.toString('base64');
     }),
 
-  createDocument: trpc.procedure
-    .input(z.object({
-      title: z.string(),
-      type: z.string(),
-      content: z.string(),
-      tags: z.array(z.string()),
-    }))
-    .mutation(({ input }) => {
-      // This is where you would call your DocumentsService
-      // return documentsService.create(input);
-      console.log('Creating document with title:', input.title);
-      return { ...input, id: '2', createdAt: new Date(), updatedAt: new Date() };
-    }),
+  // ... (add any other procedures you have here)
 });
+
+// 3. Export the AppRouter type for the frontend.
+export type AppRouter = typeof appRouter;
+

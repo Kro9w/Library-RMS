@@ -1,6 +1,10 @@
 import * as path from 'path';
 import * as dotenv from 'dotenv';
-dotenv.config({ path: path.resolve(__dirname, '../../../../../.env') });
+
+// The corrected path goes up three levels from the 'dist' folder to the project root
+// and looks for a file named '.env'.
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+
 console.log('DATABASE_URL:', process.env.DATABASE_URL);
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is not defined in environment variables!');
@@ -16,8 +20,8 @@ async function bootstrap() {
   app.enableCors({ origin: ['http://localhost:5173'], credentials: true });
 
   // Mount tRPC manually
-const expressApp = app.getHttpAdapter().getInstance();
-expressApp.use('/trpc', trpcExpress.createExpressMiddleware({ router: appRouter, createContext }));
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.use('/trpc', trpcExpress.createExpressMiddleware({ router: appRouter, createContext }));
 
   await app.listen(3000);
   console.log('Backend running on http://localhost:3000');

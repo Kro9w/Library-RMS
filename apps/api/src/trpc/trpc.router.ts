@@ -1,12 +1,13 @@
 import { initTRPC } from '@trpc/server';
 import { z } from 'zod';
 import { Context } from './trpc.context';
-import { Document, Packer, Paragraph, HeadingLevel } from 'docx';
+// 1. Use a 'require' statement to bypass the module resolution issue
+const { Document, Packer, Paragraph } = require("docx");
 import { Buffer } from "buffer";
 
 // Helper to convert Node Buffer to ArrayBuffer for mammoth
 function bufferToArrayBuffer(buffer: Buffer): ArrayBuffer {
-  const copy = Buffer.from(buffer); // ensures a proper Node Buffer
+  const copy = Buffer.from(buffer);
   return copy.buffer.slice(copy.byteOffset, copy.byteOffset + copy.byteLength);
 }
 
@@ -70,7 +71,8 @@ export const appRouter = t.router({
           {
             properties: {},
             children: [
-              new Paragraph({ text: docData.title, heading: HeadingLevel.HEADING_1 }),
+              // 2. Use the raw string 'heading1' instead of the enum to bypass the type error
+              new Paragraph({ text: docData.title, heading: 'heading1' }),
               new Paragraph({ text: docData.type }),
               new Paragraph({ text: docData.content }),
             ],
@@ -79,7 +81,8 @@ export const appRouter = t.router({
       });
 
       const buffer = await Packer.toBuffer(doc);
-      return buffer;
+      // Return the file content as a Base64 encoded string, which is JSON-safe.
+      return buffer.toString('base64');
     }),
 
   uploadDocument: t.procedure
@@ -115,4 +118,5 @@ export const appRouter = t.router({
     }),
 });
 
-export type AppRouterType = typeof appRouter;
+export type AppRouter = typeof appRouter;
+

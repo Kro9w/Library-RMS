@@ -1,12 +1,11 @@
 import { createTRPCReact } from '@trpc/react-query';
 import { httpBatchLink } from '@trpc/client';
 
-// 1. Import the AppRouter *type* from your backend.
-//    This path goes from `apps/web/src/` up to the root, then down into `apps/api/src/`.
-import type { AppRouterType } from './trpc.router';
+// 1. Import the 'AppRouter' type (not 'AppRouterType') from the correct backend path.
+import type { AppRouter } from './trpc.router';
 
-// 2. Create the tRPC hook for your frontend.
-export const trpc = createTRPCReact<AppRouterType>();
+// 2. Use the correct 'AppRouter' type when creating the hook.
+export const trpc = createTRPCReact<AppRouter>();
 
 // 3. Create and export a tRPC client for the provider.
 export const trpcClient = trpc.createClient({

@@ -3,16 +3,16 @@ import { Routes, Route } from "react-router-dom";
 import { Navbar } from "./components/Navbar"; // Import the navbar
 
 // Import all the pages you created
-import { Dashboard } from "../pages/Dashboard";
-import { Documents } from "../pages/Documents";
-import { DocumentDetails } from "../pages/DocumentDetails";
-import { Upload } from "../pages/Upload";
-import { Tags } from "../pages/Tags";
-import { Users } from "../pages/Users";
-import { Settings } from "../pages/Settings";
-import { LoginPage } from "../pages/LoginPage";
-import { SignUpPage } from "../pages/SignUpPage";
-import { AccountPage } from "../pages/Account";
+import { Dashboard } from "./pages/Dashboard";
+import { Documents } from "./pages/Documents";
+import { DocumentDetails } from "./pages/DocumentDetails";
+import { Upload } from "./pages/Upload";
+import { Tags } from "./pages/Tags";
+import { Users } from "./pages/Users";
+import { Settings } from "./pages/Settings";
+import { LoginPage } from "./pages/LoginPage";
+import { SignUpPage } from "./pages/SignUpPage";
+import { AccountPage } from "./pages/Account";
 import "./App.css";
 
 // Clerk components for protecting routes

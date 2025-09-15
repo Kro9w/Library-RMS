@@ -18,6 +18,8 @@
     "@trpc/client": "^11.5.1",
     "@trpc/react-query": "^11.5.1",
     "bootstrap": "^5.3.8",
+    "docx-preview": "^0.3.6",
+    "mammoth": "^1.10.0",
     "react": "^19.1.1",
     "react-doc-viewer": "^0.1.14",
     "react-dom": "^19.1.1",
