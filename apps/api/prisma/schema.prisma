@@ -8,11 +8,18 @@ generator client {
 }
 
 model Document {
-  id        String   @id @default(cuid())
-  title     String
-  type      String   // memorandum | office_order | communication_letter
-  content   String   // JSON or serialized blocks
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  tags      String[]
-} 
+  id         String   @id @default(cuid())
+  title      String
+  type       String // memorandum | office_order | communication_letter
+  content    String // JSON or serialized blocks
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  tags       String[]
+  userID     String   @default("legacy_user")
+  uploadedBy String   @default("legacy_upload")
+}
+
+model Tag {
+  id   String @id @default(cuid())
+  name String @unique
+}

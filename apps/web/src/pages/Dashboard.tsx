@@ -1,17 +1,45 @@
-import { Link } from "react-router-dom"; // Assuming you use React Router
+import React from "react";
+import { Link } from "react-router-dom";
+import { trpc } from "../trpc";
+
+// 1. Define an explicit type for the recent file object.
+//    Making 'uploadedBy' optional resolves the type error.
+type RecentFile = {
+  id: string;
+  title: string;
+  uploadedBy?: string;
+};
 
 export function Dashboard() {
-  const quickStats = {
-    totalDocuments: 125,
-    recentUploads: 8,
-    activeUsers: 3,
+  // Fetch the dashboard stats from the backend
+  const { data, isLoading, isError, error } = trpc.getDashboardStats.useQuery();
+
+  if (isLoading) {
+    return (
+      <div className="container mt-4 text-center">
+        <div className="spinner-border" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="container mt-4 alert alert-danger">
+        Error loading dashboard data: {error.message}
+      </div>
+    );
+  }
+
+  // Use default values to prevent errors if data is temporarily unavailable
+  const stats = data || {
+    totalDocuments: 0,
+    recentUploadsCount: 0,
+    totalUsers: 0,
   };
 
-  const recentFiles = [
-    { id: "doc1", title: "Q3 Financial Report.pdf", user: "Alice" },
-    { id: "doc2", title: "Project Phoenix Plan.docx", user: "Bob" },
-    { id: "doc3", title: "HR Policy Update.pdf", user: "Alice" },
-  ];
+  const recentFiles = data?.recentFiles || [];
 
   return (
     <div className="container mt-4">
@@ -35,7 +63,7 @@ export function Dashboard() {
               <h5 className="card-title">
                 <i className="bi bi-file-earmark-text me-2"></i>Total Documents
               </h5>
-              <p className="card-text fs-2">{quickStats.totalDocuments}</p>
+              <p className="card-text fs-2">{stats.totalDocuments}</p>
             </div>
           </div>
         </div>
@@ -45,7 +73,7 @@ export function Dashboard() {
               <h5 className="card-title">
                 <i className="bi bi-clock-history me-2"></i>Recent Uploads (24h)
               </h5>
-              <p className="card-text fs-2">{quickStats.recentUploads}</p>
+              <p className="card-text fs-2">{stats.recentUploadsCount}</p>
             </div>
           </div>
         </div>
@@ -53,9 +81,9 @@ export function Dashboard() {
           <div className="card text-bg-success mb-3">
             <div className="card-body">
               <h5 className="card-title">
-                <i className="bi bi-people me-2"></i>Active Users
+                <i className="bi bi-people me-2"></i>Total Users
               </h5>
-              <p className="card-text fs-2">{quickStats.activeUsers}</p>
+              <p className="card-text fs-2">{stats.totalUsers}</p>
             </div>
           </div>
         </div>
@@ -67,12 +95,17 @@ export function Dashboard() {
           <i className="bi bi-list-check me-2"></i>Recent Uploads
         </h3>
         <ul className="list-group">
-          {recentFiles.map((file) => (
-            <li key={file.id} className="list-group-item">
-              <Link to={`/documents/${file.id}`}>{file.title}</Link> uploaded by{" "}
-              {file.user}
-            </li>
-          ))}
+          {recentFiles.length > 0 ? (
+            // 2. This mapping will now work without type errors
+            recentFiles.map((file: RecentFile) => (
+              <li key={file.id} className="list-group-item">
+                <Link to={`/documents/${file.id}`}>{file.title}</Link>
+                {file.uploadedBy ? ` uploaded by ${file.uploadedBy}` : ""}
+              </li>
+            ))
+          ) : (
+            <li className="list-group-item text-muted">No recent uploads.</li>
+          )}
         </ul>
       </div>
     </div>

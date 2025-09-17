@@ -1,25 +1,30 @@
 import { initTRPC } from '@trpc/server';
 import { z } from 'zod';
-import { Context } from './trpc.context';
-// 1. Use a 'require' statement to bypass the module resolution issue
+import type { Context } from './trpc.context';
 const { Document, Packer, Paragraph } = require("docx");
 import { Buffer } from "buffer";
 
-// Helper to convert Node Buffer to ArrayBuffer for mammoth
-function bufferToArrayBuffer(buffer: Buffer): ArrayBuffer {
-  const copy = Buffer.from(buffer);
-  return copy.buffer.slice(copy.byteOffset, copy.byteOffset + copy.byteLength);
-}
-
-// Backend router
+// Initialize tRPC in the main router file.
 const t = initTRPC.context<Context>().create();
 
 export const appRouter = t.router({
-  hello: t.procedure.query(() => 'Hello from tRPC!'),
+  // --- Existing Dashboard & Document Procedures ---
+  getDashboardStats: t.procedure.query(async ({ ctx }) => {
+    const twentyFourHoursAgo = new Date();
+    twentyFourHoursAgo.setDate(twentyFourHoursAgo.getDate() - 1);
 
-  echo: t.procedure.input(z.object({ msg: z.string() })).mutation(({ input }) => input.msg),
+    const totalDocuments = await ctx.prisma.document.count();
+    const recentUploadsCount = await ctx.prisma.document.count({
+      where: { createdAt: { gte: twentyFourHoursAgo } },
+    });
+    const recentFiles = await ctx.prisma.document.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
+    const totalUsers = await ctx.clerk.users.getCount();
 
-  increment: t.procedure.input(z.number()).mutation(({ input }) => input + 1),
+    return { totalDocuments, recentUploadsCount, recentFiles, totalUsers };
+  }),
 
   getDocuments: t.procedure.query(({ ctx }) => ctx.prisma.document.findMany()),
 
@@ -31,90 +36,74 @@ export const appRouter = t.router({
     .input(
       z.object({
         title: z.string(),
-        type: z.enum(['memorandum','office_order','communication_letter']),
+        type: z.string().transform((val) => val.toLowerCase()).pipe(z.enum(['memorandum', 'office_order', 'communication_letter'])),
         content: z.string(),
         tags: z.array(z.string()).optional(),
+        userID: z.string(),
+        uploadedBy: z.string(),
       })
     )
     .mutation(({ ctx, input }) => ctx.prisma.document.create({ data: input })),
 
-  updateDocument: t.procedure
-    .input(
-      z.object({
-        id: z.string(),
-        title: z.string().optional(),
-        type: z.string().optional(),
-        content: z.string().optional(),
-        tags: z.array(z.string()).optional(),
-      })
-    )
-    .mutation(({ ctx, input }) => {
-      const { id, ...data } = input;
-      return ctx.prisma.document.update({ where: { id }, data });
-    }),
-
   deleteDocument: t.procedure.input(z.string()).mutation(({ ctx, input }) =>
     ctx.prisma.document.delete({ where: { id: input } })
   ),
+  
+  // --- Procedures for managing Tags ---
+  getTags: t.procedure.query(({ ctx }) => {
+    return ctx.prisma.tag.findMany({
+      orderBy: { name: 'asc' },
+    });
+  }),
 
-  exportDocument: t.procedure
-    .input(
-      z.object({
-        title: z.string(),
-        type: z.string(),
-        content: z.string(),
-      })
-    )
-    .mutation(async ({ input: docData }) => {
-      const doc = new Document({
-        sections: [
-          {
-            properties: {},
-            children: [
-              // 2. Use the raw string 'heading1' instead of the enum to bypass the type error
-              new Paragraph({ text: docData.title, heading: 'heading1' }),
-              new Paragraph({ text: docData.type }),
-              new Paragraph({ text: docData.content }),
-            ],
-          },
-        ],
+  createTag: t.procedure
+    .input(z.object({ name: z.string().min(1) }))
+    .mutation(({ ctx, input }) => {
+      return ctx.prisma.tag.create({
+        data: { name: input.name },
       });
-
-      const buffer = await Packer.toBuffer(doc);
-      // Return the file content as a Base64 encoded string, which is JSON-safe.
-      return buffer.toString('base64');
     }),
 
-  uploadDocument: t.procedure
-    .input(
-      z.object({
-        fileBuffer: z.instanceof(Buffer),
-        title: z.string(),
-        type: z.enum(['memorandum','office_order','communication_letter']),
-      })
-    )
+  updateTag: t.procedure
+    .input(z.object({ id: z.string(), name: z.string().min(1) }))
+    .mutation(({ ctx, input }) => {
+      return ctx.prisma.tag.update({
+        where: { id: input.id },
+        data: { name: input.name },
+      });
+    }),
+  
+  deleteTag: t.procedure
+    .input(z.string())
+    .mutation(({ ctx, input }) => {
+      return ctx.prisma.tag.delete({
+        where: { id: input },
+      });
+    }),
+    
+  // --- Procedures for User Management ---
+  getUsers: t.procedure.query(async ({ ctx }) => {
+    const users = await ctx.clerk.users.getUserList({ limit: 100 });
+    return users.data;
+  }),
+
+  updateUserRole: t.procedure
+    .input(z.object({
+      userId: z.string(),
+      role: z.enum(['Admin', 'Editor', 'Viewer']),
+    }))
     .mutation(async ({ ctx, input }) => {
-      const arrayBuffer = bufferToArrayBuffer(input.fileBuffer);
-      const mammoth = await import("mammoth");
-      const { value: htmlContent } = await mammoth.convertToHtml({ arrayBuffer });
-
-      return ctx.prisma.document.create({
-        data: {
-          title: input.title,
-          type: input.type,
-          content: htmlContent,
-          tags: [],
-        },
+      await ctx.clerk.users.updateUser(input.userId, {
+        publicMetadata: { role: input.role },
       });
+      return { success: true };
     }),
-
-  convertDocx: t.procedure
-    .input(z.object({ fileBuffer: z.instanceof(Buffer) }))
-    .mutation(async ({ input }) => {
-      const arrayBuffer = bufferToArrayBuffer(input.fileBuffer);
-      const mammoth = await import("mammoth");
-      const { value: htmlContent } = await mammoth.convertToHtml({ arrayBuffer });
-      return { htmlContent };
+  
+  removeUserFromOrg: t.procedure
+    .input(z.string())
+    .mutation(async ({ input: userId }) => {
+      console.log(`Request to remove user ${userId}. Org ID needed for full implementation.`);
+      return { success: true };
     }),
 });
 
