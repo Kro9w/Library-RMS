@@ -21,7 +21,7 @@ export function Navbar({ isExpanded, setIsExpanded }: NavbarProps) {
   ];
 
   return (
-    <nav className={`sidebar bg-dark ${isExpanded ? "expanded" : "collapsed"}`}>
+    <nav className={`sidebar ${isExpanded ? "expanded" : "collapsed"}`}>
       <div className="sidebar-content">
         <ul className="nav flex-column">
           <li className="nav-item logo-item">

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { trpc } from "../trpc";
 import { TagModal } from "../components/TagModal";
 import { ConfirmModal } from "../components/ConfirmModal";
+import "./Tags.css"; // Import the stylesheet
 
 // Define a type for the Tag object for clarity
 type Tag = {
@@ -16,8 +17,6 @@ export function Tags() {
   // State for controlling the modals
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
-  // State to keep track of the tag being edited or deleted
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
 
   // tRPC mutations
@@ -36,7 +35,7 @@ export function Tags() {
 
   // Handlers for modal actions
   const handleOpenCreateModal = () => {
-    setSelectedTag(null); // Ensure we're in "create" mode
+    setSelectedTag(null);
     setIsTagModalOpen(true);
   };
 
@@ -52,10 +51,8 @@ export function Tags() {
 
   const handleSaveTag = (tagName: string) => {
     if (selectedTag) {
-      // If there's a selected tag, we're updating it
       updateTag.mutate({ id: selectedTag.id, name: tagName });
     } else {
-      // Otherwise, we're creating a new one
       createTag.mutate({ name: tagName });
     }
   };
@@ -80,44 +77,47 @@ export function Tags() {
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h1>Manage Tags</h1>
-          <button className="btn btn-primary" onClick={handleOpenCreateModal}>
+          <button
+            className="btn btn-brand-primary"
+            onClick={handleOpenCreateModal}
+          >
             <i className="bi bi-plus-circle me-2"></i>Create New Tag
           </button>
         </div>
-        <table className="table table-hover align-middle">
-          <thead>
-            <tr>
-              <th>Tag Name</th>
-              <th className="text-end">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tags?.map((tag) => (
-              <tr key={tag.id}>
-                <td>
-                  <span className="badge bg-primary fs-6">{tag.name}</span>
-                </td>
-                <td className="text-end">
-                  <button
-                    className="btn btn-sm btn-warning me-2"
-                    onClick={() => handleOpenEditModal(tag)}
-                  >
-                    <i className="bi bi-pencil"></i>
-                  </button>
-                  <button
-                    className="btn btn-sm btn-danger"
-                    onClick={() => handleOpenDeleteModal(tag)}
-                  >
-                    <i className="bi bi-trash"></i>
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+
+        {/* The table has been replaced with a div-based list structure */}
+        <div className="tag-list-container">
+          {/* Header Row */}
+          <div className="tag-list-header">
+            <div className="tag-name-header">Tag Name</div>
+            <div className="tag-actions-header">Actions</div>
+          </div>
+
+          {/* List of Tags */}
+          {tags?.map((tag) => (
+            <div key={tag.id} className="tag-list-item">
+              <div className="tag-name-content">
+                <span className="badge tag-badge">{tag.name}</span>
+              </div>
+              <div className="tag-actions-content">
+                <button
+                  className="btn btn-sm btn-brand-edit me-2"
+                  onClick={() => handleOpenEditModal(tag)}
+                >
+                  <i className="bi bi-pencil"></i>
+                </button>
+                <button
+                  className="btn btn-sm btn-brand-delete"
+                  onClick={() => handleOpenDeleteModal(tag)}
+                >
+                  <i className="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Modals for Create/Edit and Delete */}
       <TagModal
         isOpen={isTagModalOpen}
         onClose={() => setIsTagModalOpen(false)}

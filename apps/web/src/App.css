@@ -1,7 +1,3 @@
-/* This file styles the sidebar itself.
-  It works together with the styles in src/index.css.
-*/
-
 .sidebar {
   /* This is the key fix: it takes the navbar out of the normal document flow */
   position: fixed;

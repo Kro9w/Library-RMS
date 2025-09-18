@@ -4,26 +4,68 @@ import type { Context } from './trpc.context';
 const { Document, Packer, Paragraph } = require("docx");
 import { Buffer } from "buffer";
 
-// Initialize tRPC in the main router file.
 const t = initTRPC.context<Context>().create();
 
 export const appRouter = t.router({
-  // --- Existing Dashboard & Document Procedures ---
   getDashboardStats: t.procedure.query(async ({ ctx }) => {
     const twentyFourHoursAgo = new Date();
     twentyFourHoursAgo.setDate(twentyFourHoursAgo.getDate() - 1);
 
-    const totalDocuments = await ctx.prisma.document.count();
-    const recentUploadsCount = await ctx.prisma.document.count({
-      where: { createdAt: { gte: twentyFourHoursAgo } },
-    });
-    const recentFiles = await ctx.prisma.document.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-    });
-    const totalUsers = await ctx.clerk.users.getCount();
+    // Fetch all required data concurrently
+    const [
+      totalDocuments,
+      recentUploadsCount,
+      recentFiles,
+      totalUsers,
+      docsByTypeRaw,
+      allDocumentTags,
+    ] = await Promise.all([
+      ctx.prisma.document.count(),
+      ctx.prisma.document.count({
+        where: { createdAt: { gte: twentyFourHoursAgo } },
+      }),
+      ctx.prisma.document.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+      ctx.clerk.users.getCount(),
+      ctx.prisma.document.groupBy({
+        by: ['type'],
+        _count: { _all: true },
+      }),
+      ctx.prisma.document.findMany({
+        select: { tags: true },
+      }),
+    ]);
 
-    return { totalDocuments, recentUploadsCount, recentFiles, totalUsers };
+    // Format docsByType
+    const docsByType = docsByTypeRaw.map((item: any) => ({
+      type: item.type,
+      count: item._count._all,
+    }));
+
+    // Compute topTags
+    const tagCountMap: Record<string, number> = {};
+    for (const doc of allDocumentTags) {
+      if (Array.isArray(doc.tags)) {
+        for (const tag of doc.tags) {
+          tagCountMap[tag] = (tagCountMap[tag] || 0) + 1;
+        }
+      }
+    }
+    const topTags = Object.entries(tagCountMap)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([tag, count]) => ({ tag, count }));
+
+    return {
+      totalDocuments,
+      recentUploadsCount,
+      recentFiles,
+      totalUsers,
+      docsByType,
+      topTags,
+    };
   }),
 
   getDocuments: t.procedure.query(({ ctx }) => ctx.prisma.document.findMany()),

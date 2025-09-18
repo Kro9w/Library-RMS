@@ -1,0 +1,59 @@
+.stat-card {
+  color: var(--light-text);
+  border: none;
+  border-radius: 0.5rem;
+}
+
+.card.stat-card-primary {
+  background-color: white;
+  border-radius: 1rem;
+  border: none;
+}
+
+.card.stat-card.card-title {
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+.card.stat-card-primary .card-body {
+  color:var(--primary);
+}
+
+.list-group-item {
+  background-color: #fff; 
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+.recent-uploads-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  margin-bottom: 1rem;
+}
+
+.recent-uploads-item a {
+  font-weight: 500;
+  color: var(--primary);
+}
+
+.dashboard-lower-section {
+  display: flex;
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+.recent-uploads-container {
+  flex: 2;
+}
+
+.side-stats-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: 100%;
+}

@@ -1,0 +1,70 @@
+/*
+  This file styles the Tags page specifically.
+  It should be imported into Tags.tsx.
+*/
+
+/* Style for the colored tag badges */
+.tag-badge {
+  background-color: var(--primary);
+  color: var(--light-text);
+  font-size: 0.9rem;
+  padding: 0.5em 0.75em;
+  border-radius: 0.5rem;
+}
+
+/* Brand-specific classes for the action buttons */
+.btn-brand-edit {
+  background-color: var(--accent);
+  color: var(--light-text);
+  border: none;
+}
+.btn-brand-edit:hover {
+  opacity: 0.9;
+}
+
+.btn-brand-delete {
+  background-color: var(--primary);
+  color: var(--light-text);
+  border: none;
+}
+.btn-brand-delete:hover {
+  opacity: 0.9;
+}
+
+/* --- Styles for the list layout --- */
+
+/* Header row styling */
+.tag-list-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+  color: var(--text);
+  opacity: 0.7;
+}
+
+/* Styling for each individual tag item */
+.tag-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 1rem; /* The rounded corners you requested */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  margin-bottom: 1rem; /* This creates the gap between items */
+}
+
+/* Alignment for the content within each row */
+.tag-name-header,
+.tag-name-content {
+  flex-grow: 1;
+}
+
+.tag-actions-header,
+.tag-actions-content {
+  text-align: end;
+  flex-shrink: 0;
+}
+

@@ -1,4 +1,3 @@
-/* Main sidebar container */
 .sidebar {
   position: fixed;
   top: 0;
@@ -8,104 +7,108 @@
   transition: width 0.3s ease;
   display: flex;
   flex-direction: column;
-}
-
-.sidebar.collapsed {
-  width: 80px;
-}
-
-.sidebar.expanded {
-  width: 250px;
+  background: var(--primary);
+  color: var(--light-text);
 }
 
 .sidebar-content {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
   height: 100%;
-  padding: 1rem 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-/* Hide text when collapsed */
-.sidebar.collapsed .link-text,
-.sidebar.collapsed .user-info {
-  display: none;
-}
-
-/* Individual navigation links */
-.nav-link {
+.sidebar .nav-link {
   display: flex;
   align-items: center;
   padding: 0.75rem 1.5rem;
-  white-space: nowrap; /* Prevent text from wrapping */
+  white-space: nowrap; /* Prevents text from wrapping */
+  color: var(--light-text);
+  opacity: 0.8;
+  transition: opacity 0.2s, background-color 0.2s;
 }
 
-.nav-link i {
-  font-size: 1.5rem;
-  width: 2rem; /* Keep icons aligned */
-  text-align: center;
+.sidebar .nav-link:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.1);
 }
 
-.sidebar.expanded .nav-link i {
+/* Style for the currently active page link */
+.sidebar .nav-link.active {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.2);
+  font-weight: bold;
+}
+
+.sidebar .nav-link .bi {
+  font-size: 1.25rem;
   margin-right: 1rem;
 }
 
-/* Active link styling (like the blue highlight in your screenshot) */
-.nav-link.active {
-  background-color: #0d6efd; /* Bootstrap primary blue */
-  border-radius: 0.5rem;
-  margin: 0.25rem 0.5rem;
-  padding: 0.75rem 1rem; /* Adjust padding for active state */
+/* Styles for when the navbar is COLLAPSED */
+.sidebar.collapsed {
+  width: 80px;
 }
 
-.sidebar.expanded .nav-link.active {
-  padding-left: 1.5rem;
+.sidebar.collapsed .link-text,
+.sidebar.collapsed .user-info,
+.sidebar.collapsed .logo-item .link-text {
+  display: none; /* Hide the text when collapsed */
 }
 
-
-/* Logo styling */
-.logo-item {
-  margin-bottom: 1rem;
+.sidebar.collapsed .nav-link {
+  justify-content: center;
 }
 
-/* Footer (user profile and collapse button) */
+.sidebar.collapsed .nav-link .bi {
+  margin-right: 0;
+}
+
+.sidebar.collapsed .logo-item .nav-link {
+  justify-content: center;
+}
+
+.sidebar.collapsed .logo-item .bi {
+  margin-right: 0 !important;
+}
+
+/* Styles for when the navbar is EXPANDED */
+.sidebar.expanded {
+  width: 250px;
+}
+
 .sidebar-footer {
-  padding: 0 0.5rem;
+  margin-top: auto; /* Pushes the footer to the bottom */
+  padding: 1rem;
+  border-top: 1px solid var(--accent); /* Brand's accent orange */
 }
 
 .user-profile {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 0.75rem 1rem;
-  margin-bottom: 0.5rem;
-}
-
-.user-profile .cl-userButtonBox {
-  flex-shrink: 0;
-}
-
-.sidebar.expanded .user-profile .cl-userButtonBox {
-    margin-right: 1rem;
+  margin-bottom: 1rem;
+  padding: 0 0.5rem;
 }
 
 .user-info {
+  margin-left: 0.75rem;
   display: flex;
   flex-direction: column;
-  line-height: 1.2;
 }
+
 .user-name {
   font-weight: bold;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
+
 .user-email {
   font-size: 0.8rem;
-  color: #adb5bd; /* Bootstrap muted text color */
+  opacity: 0.7;
 }
 
 .collapse-btn {
   width: 100%;
+  background: none;
+  border: none;
 }
+
