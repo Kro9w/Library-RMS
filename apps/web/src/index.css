@@ -83,3 +83,28 @@ button, .btn {
   margin-left: 250px;
 }
 
+body[data-bs-theme="dark"] {
+  background-color: #181a1b;
+  color: #f1f1f1;
+}
+
+/* Settings page and all cards */
+body[data-bs-theme="dark"] .card {
+  background-color: #23272b !important;
+  color: #f1f1f1 !important;
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  border: 1px solid #22262a;
+}
+
+body[data-bs-theme="dark"] .card-header {
+  background-color: #22262a !important;
+  color: #aad8ff !important;
+  border-bottom: 1px solid #22262a;
+}
+
+body[data-bs-theme="dark"] .card-body {
+  background-color: transparent !important;
+  color: #f1f1f1 !important;
+}
+
