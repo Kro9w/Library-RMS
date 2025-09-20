@@ -57,3 +57,31 @@
   gap: 1.5rem;
   height: 100%;
 }
+
+body[data-bs-theme="dark"] .recent-uploads-item {
+  background-color: #23272b;
+  color: #f1f1f1;
+  border-radius: 1rem; /* Retain rounded corners */
+}
+
+body[data-bs-theme="dark"] .recent-uploads-item a {
+  color: #aad8ff;
+}
+
+body[data-bs-theme="dark"] .stat-card,
+body[data-bs-theme="dark"] .card.stat-card-primary {
+  background-color: #23272b;
+  color: #f1f1f1;
+  border-radius: 1rem; /* Retain rounded corners */
+}
+
+body[data-bs-theme="dark"] .card.stat-card-primary .card-body {
+  color: #aad8ff;
+}
+
+body[data-bs-theme="dark"] .card,
+body[data-bs-theme="dark"] .stat-card,
+body[data-bs-theme="dark"] .card.stat-card-primary,
+body[data-bs-theme="dark"] .recent-uploads-item {
+  border-radius: 1rem !important;
+}

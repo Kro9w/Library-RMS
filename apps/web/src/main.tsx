@@ -7,6 +7,7 @@ import App from "./App";
 import { trpc, trpcClient } from "./trpc"; // 👇 (Cleaned up this import path)
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./index.css";
+import { ThemeProvider } from "./Theme";
 
 const pk = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 if (!pk) throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY in .env");
@@ -19,7 +20,9 @@ createRoot(document.getElementById("root")!).render(
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
-            <App />
+            <ThemeProvider>
+              <App />
+            </ThemeProvider>
           </BrowserRouter>
         </QueryClientProvider>
       </trpc.Provider>
