@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Routes, Route } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Routes, Route, useLocation, useParams } from "react-router-dom";
 import { Navbar } from "./components/Navbar"; // Import the navbar
 
 // Import all the pages you created
@@ -19,8 +19,45 @@ import "./App.css";
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/clerk-react";
 
 export default function App() {
-  // The state for the navbar's visibility is now managed here
   const [isNavbarExpanded, setIsNavbarExpanded] = useState(false);
+  const location = useLocation();
+  const params = useParams();
+
+  // ✅ Dynamically update document.title when the route changes
+  useEffect(() => {
+    const titles: Record<string, string> = {
+      "/": "Dashboard",
+      "/dashboard": "Dashboard",
+      "/documents": "Documents",
+      "/upload": "Upload Document",
+      "/tags": "Tags",
+      "/users": "Users",
+      "/settings": "Settings",
+      "/account": "My Account",
+      "/login": "Login",
+      "/signup": "Sign Up",
+    };
+
+    let path = location.pathname;
+    let title = titles[path];
+
+    if (!title && path.startsWith("/documents/")) {
+      title = `Document Details: ${params.documentId ?? ""}`;
+    }
+
+    if (!title) {
+      title =
+        path === "/"
+          ? "Dashboard"
+          : path
+              .replace("/", "")
+              .split("/")
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(" - ");
+    }
+
+    document.title = `${title} | Folio RMS`;
+  }, [location, params]);
 
   return (
     <div className="d-flex">

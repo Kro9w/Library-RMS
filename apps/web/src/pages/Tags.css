@@ -44,6 +44,11 @@
   opacity: 0.7;
 }
 
+body[data-bs-theme="dark"] .tag-list-header {
+  color: #f1f1f1;
+  opacity: 0.85;
+}
+
 /* Styling for each individual tag item */
 .tag-list-item {
   display: flex;
@@ -56,6 +61,11 @@
   margin-bottom: 1rem; /* This creates the gap between items */
 }
 
+body[data-bs-theme="dark"] .tag-list-item {
+  background-color: #23272b;
+  color: #f1f1f1;
+}
+
 /* Alignment for the content within each row */
 .tag-name-header,
 .tag-name-content {
@@ -66,5 +76,10 @@
 .tag-actions-content {
   text-align: end;
   flex-shrink: 0;
+}
+
+body[data-bs-theme="dark"] .tag-badge {
+  background-color: #343a40;
+  color: #aad8ff;
 }
 

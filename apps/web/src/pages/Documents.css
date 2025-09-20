@@ -43,3 +43,17 @@
   font-size: 0.85em;
   font-weight: 600;
 }
+
+body[data-bs-theme="dark"] .document-item {
+  background-color: #23272b;
+  color: #f1f1f1;
+}
+
+body[data-bs-theme="dark"] .document-item a {
+  color: #aad8ff;
+}
+
+body[data-bs-theme="dark"] .doc-type-badge {
+  background-color: #343a40;
+  color: #aad8ff;
+}

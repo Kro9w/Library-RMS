@@ -1,18 +1,19 @@
 // /pages/Settings.tsx
 import { useState, useEffect } from "react";
+import { useTheme } from "../Theme";
 
 export function Settings() {
-  const [theme, setTheme] = useState("light");
+  const { theme, toggleTheme } = useTheme();
   const [dbStatus, setDbStatus] = useState<"checked" | "unchecked" | "error">(
     "unchecked"
   );
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-bs-theme", theme);
+    document.body.setAttribute("data-bs-theme", theme);
   }, [theme]);
 
   const handleThemeToggle = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+    toggleTheme();
   };
 
   const checkDbHealth = () => {
