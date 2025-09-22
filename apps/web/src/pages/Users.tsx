@@ -13,14 +13,22 @@ type ClerkUser = {
   };
 };
 
-// ✅ Props interface with adjustable width
 interface UsersProps {
-  cardWidth?: string; // e.g. "280px", "300px", "100%"
+  cardWidth?: string;
 }
 
 export function Users({ cardWidth = "280px" }: UsersProps) {
-  const { data: users, isLoading, isError, error } = trpc.getUsers.useQuery();
+  // 1. Rename the destructured 'data' to 'usersResult' to reflect the object structure.
+  const {
+    data: usersResult,
+    isLoading,
+    isError,
+    error,
+  } = trpc.getUsers.useQuery();
   const trpcCtx = trpc.useContext();
+
+  // 2. Extract the actual array of users from the 'data' property of the result.
+  const users = usersResult?.data;
 
   const [userToDelete, setUserToDelete] = useState<ClerkUser | null>(null);
 
@@ -35,7 +43,10 @@ export function Users({ cardWidth = "280px" }: UsersProps) {
     onError: (err) => alert(`Failed to remove user: ${err.message}`),
   });
 
-  const handleRoleChange = (userId: string, role: "Admin" | "Editor" | "Viewer") => {
+  const handleRoleChange = (
+    userId: string,
+    role: "Admin" | "Editor" | "Viewer"
+  ) => {
     updateUserRole.mutate({ userId, role });
   };
 
@@ -44,7 +55,8 @@ export function Users({ cardWidth = "280px" }: UsersProps) {
   };
 
   const getPrimaryEmail = (user: ClerkUser) =>
-    user.emailAddresses.find((e) => e.id === user.primaryEmailAddressId)?.emailAddress || "N/A";
+    user.emailAddresses.find((e) => e.id === user.primaryEmailAddressId)
+      ?.emailAddress || "N/A";
 
   if (isLoading) return <div className="container mt-4">Loading users...</div>;
   if (isError)
@@ -59,23 +71,22 @@ export function Users({ cardWidth = "280px" }: UsersProps) {
       <Protect role="org:admin">
         <div className="container mt-4">
           <h1 className="mb-4">User Management</h1>
-
-          {/* ✅ Removed gutter and added custom spacing */}
           <div className="row g-0">
+            {/* 3. The conditional check and map function now correctly use the 'users' array. */}
             {users && users.length > 0 ? (
               users.map((user: ClerkUser) => (
                 <div
                   className="col-12 col-sm-6 col-md-4 d-flex justify-content-center"
                   key={user.id}
-                  style={{ padding: "4px" }} // ✅ Minimal spacing between cards
+                  style={{ padding: "4px" }}
                 >
                   <div
                     className="card shadow-sm border-0 p-3 h-100"
                     style={{
-                      width: cardWidth, // ✅ Dynamic width from prop
+                      width: cardWidth,
                       minHeight: "320px",
                       borderRadius: "1rem",
-                      margin: "0", // ✅ No extra margin between cards
+                      margin: "0",
                     }}
                   >
                     <div className="d-flex flex-column align-items-center h-100">
@@ -95,14 +106,21 @@ export function Users({ cardWidth = "280px" }: UsersProps) {
                           border: "3px solid #fff",
                         }}
                       />
-                      <h6 className="fw-bold text-center">{getPrimaryEmail(user)}</h6>
+                      <h6 className="fw-bold text-center">
+                        {getPrimaryEmail(user)}
+                      </h6>
                       <small className="text-muted mb-2">Role</small>
 
                       <select
                         className="form-select form-select-sm mb-3"
-                        value={(user.publicMetadata?.role as string) ?? "Viewer"}
+                        value={
+                          (user.publicMetadata?.role as string) ?? "Viewer"
+                        }
                         onChange={(e) =>
-                          handleRoleChange(user.id, e.target.value as "Admin" | "Editor" | "Viewer")
+                          handleRoleChange(
+                            user.id,
+                            e.target.value as "Admin" | "Editor" | "Viewer"
+                          )
                         }
                       >
                         <option value="Admin">Admin</option>

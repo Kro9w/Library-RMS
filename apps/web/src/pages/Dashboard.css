@@ -58,6 +58,11 @@
   height: 100%;
 }
 
+.card.mini-stat-card {
+  border-radius: 1rem;
+  border: none;
+}
+
 body[data-bs-theme="dark"] .recent-uploads-item {
   background-color: #23272b;
   color: #f1f1f1;

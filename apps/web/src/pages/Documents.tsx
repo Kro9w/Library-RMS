@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { trpc } from "../trpc";
-import "./Documents.css"; // Import the stylesheet from your Canvas
+import "./Documents.css";
 
 type Document = {
   id: string;

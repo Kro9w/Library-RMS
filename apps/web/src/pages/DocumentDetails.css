@@ -14,10 +14,10 @@
 }
 
 /* This is the slide-out panel for the metadata */
-.details-panel {
+.details-pane {
   position: fixed;
   top: 0;
-  right: -420px; /* Start completely off-screen. Width is 400px + padding */
+  right: -420px;
   width: 400px;
   height: 100vh;
   background-color: white;
@@ -28,11 +28,10 @@
   border-left: 1px solid #dee2e6;
 }
 
-.details-panel.visible {
-  right: 0; /* Slide into view */
+.details-pane.visible {
+  right: 0;
 }
 
-/* This is the updated style for the taller rectangular notch */
 .details-trigger-tab {
   position: fixed;
   top: 50%;
@@ -41,15 +40,14 @@
   background-color: #0d6efd;
   color: white;
   padding: 1rem 0.5rem;
-  /* Soft corners on the left side for a rectangular look */
   border-top-left-radius: 8px;
   border-bottom-left-radius: 8px;
   z-index: 1040;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;   /* A bit wider for better proportions */
-  height: 200px; /* Taller, as requested */
+  width: 30px;
+  height: 200px;
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
 }
 

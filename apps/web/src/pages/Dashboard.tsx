@@ -122,15 +122,13 @@ export function Dashboard() {
         {/* Right Column: Two new functional cards */}
         <div className="col-lg-4">
           <h5>
-            <i className="bi bi-graph-up-arrow me-2"></i>Recent Uploads
+            <i className="bi bi-graph-up-arrow me-2"></i>Analytics
           </h5>
           {/* Documents by Type Card */}
-          <div className="card stat-card stat-card-primary mb-3">
+          <div className="card mini-stat-card mb-3">
             <div className="card-body d-flex flex-column align-items-center">
               <h5 className="card-title">Documents by Type</h5>
               {stats.docsByType.length > 0 ? (
-                // The problematic ResponsiveContainer has been removed.
-                // We now set a fixed width and height on the PieChart itself.
                 <PieChart width={300} height={200}>
                   <Pie
                     data={stats.docsByType}
@@ -149,7 +147,9 @@ export function Dashboard() {
                       />
                     ))}
                   </Pie>
-                  <Legend />
+                  <Legend
+                    formatter={(value, entry: any) => entry.payload.name}
+                  />
                 </PieChart>
               ) : (
                 <p className="card-text text-muted">
@@ -159,17 +159,19 @@ export function Dashboard() {
             </div>
           </div>
           {/* Most Used Tags Card */}
-          <div className="card stat-card stat-card-primary mb-3">
+          <div className="card mini-stat-card">
             <div className="card-body">
               <h5 className="card-title">Most Used Tags</h5>
               {stats.topTags.length > 0 ? (
                 <ol className="list-group list-group-numbered">
                   {stats.topTags.map((tag) => (
                     <li
-                      key={tag.tag}
+                      // This now correctly uses 'tag.name'
+                      key={tag.name}
                       className="list-group-item d-flex justify-content-between align-items-start"
                     >
-                      <div className="ms-2 me-auto">{tag.tag}</div>
+                      {/* This now correctly uses 'tag.name' */}
+                      <div className="ms-2 me-auto">{tag.name}</div>
                       <span className="badge bg-primary rounded-pill">
                         {tag.count}
                       </span>
@@ -181,8 +183,6 @@ export function Dashboard() {
                   No tags have been used yet.
                 </p>
               )}
-
-              
             </div>
           </div>
         </div>

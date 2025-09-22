@@ -7,7 +7,7 @@ export function SignUpPage() {
       className="d-flex justify-content-center align-items-center"
       style={{ minHeight: "80vh" }}
     >
-      <SignUp />
+      <SignUp afterSignUpUrl="/join-organization" />
     </div>
   );
 }

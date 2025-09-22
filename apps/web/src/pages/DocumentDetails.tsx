@@ -175,7 +175,7 @@ export function DocumentDetails() {
 
           {/* Slide-out Details Panel */}
           <div
-            className={`details-panel ${isDetailsVisible ? "visible" : ""}`}
+            className={`details-pane ${isDetailsVisible ? "visible" : ""}`}
             onMouseLeave={() => setIsDetailsVisible(false)}
           >
             <div className="card h-100">

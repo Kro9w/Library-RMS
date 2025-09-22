@@ -1,21 +1,24 @@
 import { PrismaClient } from '@prisma/client';
-// 1. The problematic 'Clerk' type import is no longer needed and has been removed.
-// import type { Clerk } from '@clerk/backend';
-import { clerkClient } from '@clerk/clerk-sdk-node';
+import { createClerkClient } from '@clerk/backend';
+import type { AuthObject, ClerkClient as ClerkClientType } from '@clerk/backend';
+import type { Request } from 'express';
 
-// 2. The Context interface now uses 'typeof' to get the exact type
-//    of the 'clerkClient' object. This is the correct and safe way to do this.
+const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+
 export interface Context {
   prisma: PrismaClient;
-  clerk: typeof clerkClient;
+  auth: AuthObject;
+  clerk: ClerkClientType;
 }
 
 const prisma = new PrismaClient();
 
-// The return type annotation now correctly matches the interface.
-export function createContext(): Context {
+export function createContext({ req }: { req: Request }): Context {
+  const auth = req.auth; 
+  
   return {
     prisma,
+    auth,
     clerk: clerkClient,
   };
 }

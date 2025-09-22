@@ -1,17 +1,21 @@
-import { initTRPC } from '@trpc/server';
+import { initTRPC, TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import type { Context } from './trpc.context';
-const { Document, Packer, Paragraph } = require("docx");
-import { Buffer } from "buffer";
+import type { SessionAuthObject } from '@clerk/backend';
 
 const t = initTRPC.context<Context>().create();
 
+function isSignedIn(auth: Context['auth']): auth is SessionAuthObject {
+  return !!(auth as any).userId;
+}
+
 export const appRouter = t.router({
+  // Dashboard stats procedure
   getDashboardStats: t.procedure.query(async ({ ctx }) => {
+
     const twentyFourHoursAgo = new Date();
     twentyFourHoursAgo.setDate(twentyFourHoursAgo.getDate() - 1);
 
-    // Fetch all required data concurrently
     const [
       totalDocuments,
       recentUploadsCount,
@@ -27,6 +31,11 @@ export const appRouter = t.router({
       ctx.prisma.document.findMany({
         orderBy: { createdAt: 'desc' },
         take: 5,
+        select: {
+          id: true,
+          title: true,
+          uploadedBy: true,
+        },
       }),
       ctx.clerk.users.getCount(),
       ctx.prisma.document.groupBy({
@@ -38,13 +47,11 @@ export const appRouter = t.router({
       }),
     ]);
 
-    // Format docsByType
-    const docsByType = docsByTypeRaw.map((item: any) => ({
-      type: item.type,
-      count: item._count._all,
+    const docsByType = docsByTypeRaw.map(item => ({
+      name: item.type.replace('_', ' '),
+      value: item._count._all,
     }));
 
-    // Compute topTags
     const tagCountMap: Record<string, number> = {};
     for (const doc of allDocumentTags) {
       if (Array.isArray(doc.tags)) {
@@ -56,7 +63,7 @@ export const appRouter = t.router({
     const topTags = Object.entries(tagCountMap)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5)
-      .map(([tag, count]) => ({ tag, count }));
+      .map(([name, count]) => ({ name, count }));
 
     return {
       totalDocuments,
@@ -68,6 +75,7 @@ export const appRouter = t.router({
     };
   }),
 
+  // Basic document procedures
   getDocuments: t.procedure.query(({ ctx }) => ctx.prisma.document.findMany()),
 
   getDocument: t.procedure.input(z.string()).query(({ ctx, input }) =>
@@ -87,65 +95,75 @@ export const appRouter = t.router({
     )
     .mutation(({ ctx, input }) => ctx.prisma.document.create({ data: input })),
 
-  deleteDocument: t.procedure.input(z.string()).mutation(({ ctx, input }) =>
-    ctx.prisma.document.delete({ where: { id: input } })
-  ),
-  
-  // --- Procedures for managing Tags ---
-  getTags: t.procedure.query(({ ctx }) => {
-    return ctx.prisma.tag.findMany({
-      orderBy: { name: 'asc' },
-    });
-  }),
+  deleteDocument: t.procedure.input(z.string()).mutation(({ ctx, input }) => ctx.prisma.document.delete({ where: { id: input } })),
+
+  // Tag management procedures
+  getTags: t.procedure.query(({ ctx }) => ctx.prisma.tag.findMany({ orderBy: { name: 'asc' } })),
 
   createTag: t.procedure
     .input(z.object({ name: z.string().min(1) }))
-    .mutation(({ ctx, input }) => {
-      return ctx.prisma.tag.create({
-        data: { name: input.name },
-      });
-    }),
+    .mutation(({ ctx, input }) => ctx.prisma.tag.create({ data: { name: input.name } })),
 
   updateTag: t.procedure
     .input(z.object({ id: z.string(), name: z.string().min(1) }))
-    .mutation(({ ctx, input }) => {
-      return ctx.prisma.tag.update({
-        where: { id: input.id },
-        data: { name: input.name },
-      });
-    }),
-  
+    .mutation(({ ctx, input }) => ctx.prisma.tag.update({ where: { id: input.id }, data: { name: input.name } })),
+
   deleteTag: t.procedure
     .input(z.string())
-    .mutation(({ ctx, input }) => {
-      return ctx.prisma.tag.delete({
-        where: { id: input },
-      });
-    }),
-    
-  // --- Procedures for User Management ---
-  getUsers: t.procedure.query(async ({ ctx }) => {
-    const users = await ctx.clerk.users.getUserList({ limit: 100 });
-    return users.data;
-  }),
+    .mutation(({ ctx, input }) => ctx.prisma.tag.delete({ where: { id: input } })),
+
+  // User and organization management procedures
+  getUsers: t.procedure.query(async ({ ctx }) => ctx.clerk.users.getUserList({ limit: 100 })),
 
   updateUserRole: t.procedure
-    .input(z.object({
-      userId: z.string(),
-      role: z.enum(['Admin', 'Editor', 'Viewer']),
-    }))
+    .input(z.object({ userId: z.string(), role: z.enum(['Admin', 'Editor', 'Viewer']) }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.clerk.users.updateUser(input.userId, {
-        publicMetadata: { role: input.role },
-      });
+      await ctx.clerk.users.updateUser(input.userId, { publicMetadata: { role: input.role } });
       return { success: true };
     }),
-  
+
   removeUserFromOrg: t.procedure
     .input(z.string())
     .mutation(async ({ input: userId }) => {
       console.log(`Request to remove user ${userId}. Org ID needed for full implementation.`);
       return { success: true };
+    }),
+
+  getOrganizations: t.procedure.query(async ({ ctx }) => {
+    if (!isSignedIn(ctx.auth)) {
+      throw new TRPCError({ code: 'UNAUTHORIZED', message: 'You must be signed in to view organizations.' });
+    }
+    const orgs = await ctx.clerk.organizations.getOrganizationList({ limit: 100 });
+    return orgs.data;
+  }),
+
+  requestToJoinOrganization: t.procedure
+    .input(z.object({ organizationId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!isSignedIn(ctx.auth)) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'User must be signed in.' });
+      }
+      if (!ctx.auth.userId) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Authenticated user is missing a user ID.' });
+      }
+      await ctx.clerk.organizations.createOrganizationMembership({
+        organizationId: input.organizationId,
+        userId: ctx.auth.userId,
+        role: 'basic_member', 
+      });
+      return { success: true };
+    }),
+    
+  getDocumentsByUserId: t.procedure
+    .input(z.string())
+    .query(({ ctx, input: userId }) => {
+      if (!isSignedIn(ctx.auth)) {
+        throw new TRPCError({ code: 'UNAUTHORIZED' });
+      }
+      return ctx.prisma.document.findMany({
+        where: { userID: userId },
+        select: { id: true, title: true },
+      });
     }),
 });
 

@@ -1,14 +1,24 @@
-.sidebar {
+.sidebar-wrapper {
   position: fixed;
   top: 0;
   left: 0;
   height: 100vh;
+  padding: 0.5rem;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-float {
+  height: 100%;
   z-index: 1000;
   transition: width 0.3s ease;
   display: flex;
   flex-direction: column;
   background: var(--primary);
   color: var(--light-text);
+  border-radius: 0.7rem;
 }
 
 .sidebar-content {
@@ -19,69 +29,76 @@
   overflow-x: hidden;
 }
 
-.sidebar .nav-link {
+.sidebar-float .nav-link {
   display: flex;
   align-items: center;
   padding: 0.75rem 1.5rem;
-  white-space: nowrap; /* Prevents text from wrapping */
+  white-space: nowrap;
   color: var(--light-text);
   opacity: 0.8;
-  transition: opacity 0.2s, background-color 0.2s;
+  /* Add padding to the transition to make it smooth */
+  transition: opacity 0.2s, background-color 0.2s, padding 0.3s ease;
 }
 
-.sidebar .nav-link:hover {
+.sidebar-float .nav-link:hover {
   opacity: 1;
   background-color: rgba(0, 0, 0, 0.1);
 }
 
-/* Style for the currently active page link */
-.sidebar .nav-link.active {
+.sidebar-float .nav-link.active {
   opacity: 1;
   background-color: rgba(0, 0, 0, 0.2);
   font-weight: bold;
 }
 
-.sidebar .nav-link .bi {
+.sidebar-float .nav-link .bi {
   font-size: 1.25rem;
   margin-right: 1rem;
+  transition: margin-right 0.3s ease;
 }
 
-/* Styles for when the navbar is COLLAPSED */
-.sidebar.collapsed {
+.sidebar-float.collapsed {
   width: 80px;
 }
 
-.sidebar.collapsed .link-text,
-.sidebar.collapsed .user-info,
-.sidebar.collapsed .logo-item .link-text {
-  display: none; /* Hide the text when collapsed */
+.sidebar-float.collapsed .link-text,
+.sidebar-float.collapsed .user-info,
+.sidebar-float.collapsed .logo-item .link-text {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
 }
 
-.sidebar.collapsed .nav-link {
-  justify-content: center;
+.link-text {
+  transition: opacity 0.2s ease 0.1s, width 0.2s ease 0.1s;
 }
 
-.sidebar.collapsed .nav-link .bi {
+.sidebar-float.collapsed .nav-link {
+  padding-left: 1.8rem;
+  padding-right: 1.8rem;
+}
+
+.sidebar-float.collapsed .nav-link .bi {
   margin-right: 0;
 }
 
-.sidebar.collapsed .logo-item .nav-link {
+.sidebar-float.collapsed .logo-item .nav-link {
   justify-content: center;
 }
 
-.sidebar.collapsed .logo-item .bi {
+.sidebar-float.collapsed .logo-item .bi {
   margin-right: 0 !important;
 }
 
-/* Styles for when the navbar is EXPANDED */
-.sidebar.expanded {
+.sidebar-float.expanded {
   width: 250px;
 }
 
-.sidebar-footer {
-  margin-top: auto; /* Pushes the footer to the bottom */
+.sidebar-float-footer {
+  margin-top: auto;
   padding: 1rem;
-  border-top: 1px solid var(--accent); /* Brand's accent orange */
+  border-top: 1px solid var(--accent);
+  display: flex;
 }
 
 .user-profile {
@@ -101,7 +118,7 @@
   font-weight: bold;
 }
 
-.user-email {
+.user-emargl {
   font-size: 0.8rem;
   opacity: 0.7;
 }

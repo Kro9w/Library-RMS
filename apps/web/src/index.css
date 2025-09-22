@@ -68,21 +68,6 @@ button, .btn {
   background-color: #d88c3a; /* A slightly darker orange for hover */
 }
 
-/* Styles for the main content panel that adjusts to the sidebar */
-.main-content {
-  width: 100%;
-  padding: 1.5rem;
-  transition: margin-left 0.3s ease, width 0.3s ease;
-}
-
-.main-content.collapsed {
-  margin-left: 80px;
-}
-
-.main-content.expanded {
-  margin-left: 250px;
-}
-
 body[data-bs-theme="dark"] {
   background-color: #181a1b;
   color: #f1f1f1;
