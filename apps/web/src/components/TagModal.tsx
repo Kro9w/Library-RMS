@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-// We can reuse the same modal styling from the confirmation modal
-import "./ConfirmModal.css";
+// 1. This is the crucial step: Import the stylesheet from your Canvas
+import "./TagModal.css";
 
 interface TagModalProps {
   isOpen: boolean;
@@ -19,6 +19,8 @@ export function TagModal({
 }: TagModalProps) {
   const [tagName, setTagName] = useState("");
 
+  // When the modal opens, if we are editing an existing tag,
+  // pre-fill the input with its name. Otherwise, clear it.
   useEffect(() => {
     if (existingTag) {
       setTagName(existingTag.name);
@@ -27,6 +29,7 @@ export function TagModal({
     }
   }, [existingTag, isOpen]);
 
+  // If the modal isn't open, render nothing.
   if (!isOpen) {
     return null;
   }
@@ -39,14 +42,15 @@ export function TagModal({
   };
 
   return (
-    <div className="modal-overlay">
-      <form className="modal-content" onSubmit={handleSubmit}>
-        <div className="modal-header">
-          <h4 className="modal-title">
+    // 2. These class names now correctly match the styles in your Canvas
+    <div className="tag-modal-overlay">
+      <form className="tag-modal-content" onSubmit={handleSubmit}>
+        <div className="tag-modal-header">
+          <h4 className="tag-modal-title">
             {existingTag ? "Edit Tag" : "Create New Tag"}
           </h4>
         </div>
-        <div className="modal-body">
+        <div className="tag-modal-body">
           <input
             type="text"
             className="form-control"
@@ -57,7 +61,7 @@ export function TagModal({
             autoFocus
           />
         </div>
-        <div className="modal-footer">
+        <div className="tag-modal-footer">
           <button
             type="button"
             className="btn btn-secondary"

@@ -1,9 +1,40 @@
-/*
-  This file styles the Tags page specifically.
-  It should be imported into Tags.tsx.
-*/
+/* Grid container for the entire list */
+.tag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem; /* The gap between each tag item */
+}
 
-/* Style for the colored tag badges */
+/* Base styles for both header and item rows using CSS Grid */
+.tag-list-header,
+.tag-list-item {
+  display: grid;
+  /* Define 3 columns: name (flexible), count (fixed), actions (fixed) */
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  gap: 1rem;
+}
+
+/* Specific styling for the header row */
+.tag-list-header {
+  font-weight: 600;
+  color: var(--text);
+  opacity: 0.7;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Specific styling for each individual tag item */
+.tag-list-item {
+  background-color: white;
+  border-radius: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
 .tag-badge {
   background-color: var(--primary);
   color: var(--light-text);
@@ -12,7 +43,12 @@
   border-radius: 0.5rem;
 }
 
-/* Brand-specific classes for the action buttons */
+.tag-doc-count {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
 .btn-brand-edit {
   background-color: var(--accent);
   color: var(--light-text);
@@ -31,55 +67,21 @@
   opacity: 0.9;
 }
 
-/* --- Styles for the list layout --- */
-
-/* Header row styling */
-.tag-list-header {
-  display: flex;
-  justify-content: space-between;
-  padding: 0 1.5rem;
-  margin-bottom: 0.5rem;
-  font-weight: bold;
-  color: var(--text);
-  opacity: 0.7;
-}
-
+/* Dark mode styles */
 body[data-bs-theme="dark"] .tag-list-header {
   color: #f1f1f1;
-  opacity: 0.85;
-}
-
-/* Styling for each individual tag item */
-.tag-list-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background-color: white;
-  padding: 1rem 1.5rem;
-  border-radius: 1rem; /* The rounded corners you requested */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  margin-bottom: 1rem; /* This creates the gap between items */
+  border-bottom-color: rgba(255, 255, 255, 0.1);
 }
 
 body[data-bs-theme="dark"] .tag-list-item {
   background-color: #23272b;
+}
+
+body[data-bs-theme="dark"] .tag-doc-count {
   color: #f1f1f1;
-}
-
-/* Alignment for the content within each row */
-.tag-name-header,
-.tag-name-content {
-  flex-grow: 1;
-}
-
-.tag-actions-header,
-.tag-actions-content {
-  text-align: end;
-  flex-shrink: 0;
 }
 
 body[data-bs-theme="dark"] .tag-badge {
   background-color: #343a40;
   color: #aad8ff;
 }
-

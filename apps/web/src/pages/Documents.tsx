@@ -137,6 +137,7 @@ export function Documents() {
           <div>Title</div>
           <div>Type</div>
           <div>Date Uploaded</div>
+          <div>Status</div>
           <div className="text-end">Actions</div>
         </div>
 

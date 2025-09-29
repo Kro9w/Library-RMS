@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import { trpc } from "../trpc";
 import { TagModal } from "../components/TagModal";
 import { ConfirmModal } from "../components/ConfirmModal";
-import "./Tags.css"; // Import the stylesheet
+import "./Tags.css";
 
-// Define a type for the Tag object for clarity
+// Define a type for the Tag object to include the document count
 type Tag = {
   id: string;
   name: string;
+  documentCount?: number;
 };
 
 export function Tags() {
@@ -17,9 +18,11 @@ export function Tags() {
   // State for controlling the modals
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  // State to keep track of the tag being edited or deleted
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
 
-  // tRPC mutations
+  // tRPC mutations for CRUD operations
   const createTag = trpc.createTag.useMutation({
     onSuccess: () => trpcCtx.getTags.invalidate(),
     onSettled: () => setIsTagModalOpen(false),
@@ -33,9 +36,9 @@ export function Tags() {
     onSettled: () => setIsDeleteModalOpen(false),
   });
 
-  // Handlers for modal actions
+  // Handlers to open the correct modals
   const handleOpenCreateModal = () => {
-    setSelectedTag(null);
+    setSelectedTag(null); // Clear selected tag to ensure we're in "create" mode
     setIsTagModalOpen(true);
   };
 
@@ -49,10 +52,13 @@ export function Tags() {
     setIsDeleteModalOpen(true);
   };
 
+  // Handler passed to the TagModal to save changes
   const handleSaveTag = (tagName: string) => {
     if (selectedTag) {
+      // If a tag is selected, we are updating it
       updateTag.mutate({ id: selectedTag.id, name: tagName });
     } else {
+      // Otherwise, we are creating a new one
       createTag.mutate({ name: tagName });
     }
   };
@@ -85,21 +91,22 @@ export function Tags() {
           </button>
         </div>
 
-        {/* The table has been replaced with a div-based list structure */}
-        <div className="tag-list-container">
-          {/* Header Row */}
+        <div className="tag-list">
           <div className="tag-list-header">
-            <div className="tag-name-header">Tag Name</div>
-            <div className="tag-actions-header">Actions</div>
+            <div>Tag Name</div>
+            <div className="text-center">Documents</div>
+            <div className="text-end">Actions</div>
           </div>
 
-          {/* List of Tags */}
           {tags?.map((tag) => (
             <div key={tag.id} className="tag-list-item">
-              <div className="tag-name-content">
+              <div>
                 <span className="badge tag-badge">{tag.name}</span>
               </div>
-              <div className="tag-actions-content">
+              <div className="text-center">
+                <span className="tag-doc-count">{tag.documentCount}</span>
+              </div>
+              <div className="text-end">
                 <button
                   className="btn btn-sm btn-brand-edit me-2"
                   onClick={() => handleOpenEditModal(tag)}
@@ -128,7 +135,7 @@ export function Tags() {
       <ConfirmModal
         isOpen={isDeleteModalOpen}
         title="Confirm Deletion"
-        message={`Are you sure you want to delete the tag "${selectedTag?.name}"? This cannot be undone.`}
+        message={`Are you sure you want to delete the tag "${selectedTag?.name}"? It is currently used in ${selectedTag?.documentCount} document(s).`}
         onConfirm={handleConfirmDelete}
         onCancel={() => setIsDeleteModalOpen(false)}
         isConfirming={deleteTag.isPending}

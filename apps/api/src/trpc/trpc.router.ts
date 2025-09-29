@@ -2,6 +2,7 @@ import { initTRPC, TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import type { Context } from './trpc.context';
 import type { SessionAuthObject } from '@clerk/backend';
+import { clerkClient } from '@clerk/clerk-sdk-node';
 
 const t = initTRPC.context<Context>().create();
 
@@ -97,20 +98,59 @@ export const appRouter = t.router({
 
   deleteDocument: t.procedure.input(z.string()).mutation(({ ctx, input }) => ctx.prisma.document.delete({ where: { id: input } })),
 
-  // Tag management procedures
-  getTags: t.procedure.query(({ ctx }) => ctx.prisma.tag.findMany({ orderBy: { name: 'asc' } })),
+  // --- Procedures for managing Tags ---
+  getTags: t.procedure.query(async ({ ctx }) => {
+    // 1. Get all documents and select only their tags
+    const allDocsWithTags = await ctx.prisma.document.findMany({
+      select: { tags: true },
+    });
+
+    // 2. Create a map to count the occurrences of each tag
+    const tagCounts = new Map<string, number>();
+    allDocsWithTags.forEach(doc => {
+      doc.tags.forEach(tag => {
+        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+      });
+    });
+
+    // 3. Get all the defined tags from the Tag table
+    const allTags = await ctx.prisma.tag.findMany({
+      orderBy: { name: 'asc' },
+    });
+
+    // 4. Merge the counts into the tag objects
+    const tagsWithCounts = allTags.map(tag => ({
+      ...tag,
+      documentCount: tagCounts.get(tag.name) || 0,
+    }));
+
+    return tagsWithCounts;
+  }),
 
   createTag: t.procedure
     .input(z.object({ name: z.string().min(1) }))
-    .mutation(({ ctx, input }) => ctx.prisma.tag.create({ data: { name: input.name } })),
+    .mutation(({ ctx, input }) => {
+      return ctx.prisma.tag.create({
+        data: { name: input.name },
+      });
+    }),
 
   updateTag: t.procedure
     .input(z.object({ id: z.string(), name: z.string().min(1) }))
-    .mutation(({ ctx, input }) => ctx.prisma.tag.update({ where: { id: input.id }, data: { name: input.name } })),
-
+    .mutation(({ ctx, input }) => {
+      return ctx.prisma.tag.update({
+        where: { id: input.id },
+        data: { name: input.name },
+      });
+    }),
+  
   deleteTag: t.procedure
     .input(z.string())
-    .mutation(({ ctx, input }) => ctx.prisma.tag.delete({ where: { id: input } })),
+    .mutation(({ ctx, input }) => {
+      return ctx.prisma.tag.delete({
+        where: { id: input },
+      });
+    }),
 
   // User and organization management procedures
   getUsers: t.procedure.query(async ({ ctx }) => ctx.clerk.users.getUserList({ limit: 100 })),

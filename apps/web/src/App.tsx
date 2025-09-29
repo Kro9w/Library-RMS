@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  useNavigate,
+  useLocation,
+  useParams,
+} from "react-router-dom";
 import { Navbar } from "./components/Navbar";
 import { Dashboard } from "./pages/Dashboard";
 import { Documents } from "./pages/Documents";
@@ -11,7 +17,8 @@ import { Settings } from "./pages/Settings";
 import { LoginPage } from "./pages/LoginPage";
 import { SignUpPage } from "./pages/SignUpPage";
 import { AccountPage } from "./pages/Account";
-import { JoinOrganization } from "./pages/JoinOrganization"; // 1. Import the new page
+import { JoinOrganization } from "./pages/JoinOrganization";
+import { GraphView } from "./pages/GraphView";
 import "./App.css";
 
 import {
@@ -70,6 +77,7 @@ function AppRoutes() {
                 <Route path="/users" element={<Users />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/account" element={<AccountPage />} />
+                <Route path="/graph" element={<GraphView />} />
               </Routes>
             </SignedIn>
             <SignedOut>
@@ -84,6 +92,44 @@ function AppRoutes() {
 
 export default function App() {
   const [isNavbarExpanded, setIsNavbarExpanded] = useState(false);
+  const location = useLocation();
+  const params = useParams();
+
+  // ✅ Dynamically update document.title when the route changes
+  useEffect(() => {
+    const titles: Record<string, string> = {
+      "/": "Dashboard",
+      "/dashboard": "Dashboard",
+      "/documents": "Documents",
+      "/upload": "Upload Document",
+      "/tags": "Tags",
+      "/users": "Users",
+      "/settings": "Settings",
+      "/account": "My Account",
+      "/login": "Login",
+      "/signup": "Sign Up",
+    };
+
+    let path = location.pathname;
+    let title = titles[path];
+
+    if (!title && path.startsWith("/documents/")) {
+      title = `Document Details: ${params.documentId ?? ""}`;
+    }
+
+    if (!title) {
+      title =
+        path === "/"
+          ? "Dashboard"
+          : path
+              .replace("/", "")
+              .split("/")
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(" - ");
+    }
+
+    document.title = `${title} | Folio RMS`;
+  }, [location, params]);
 
   return (
     <div className="d-flex">
