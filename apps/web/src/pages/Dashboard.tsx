@@ -4,6 +4,7 @@ import { trpc } from "../trpc";
 import "./Dashboard.css";
 // Import the necessary components from the charting library
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
+import { useForm } from "react-hook-form";
 
 type RecentFile = {
   id: string;
@@ -16,6 +17,28 @@ const PIE_CHART_COLORS = ["#BA3B46", "#ED9B40", "#AAB8C2", "#E1E8ED"];
 
 export function Dashboard() {
   const { data, isLoading, isError, error } = trpc.getDashboardStats.useQuery();
+  const transferDocumentMutation = trpc.transferDocument.useMutation({
+    onSuccess: () => {
+      alert("Document transferred successfully!");
+    },
+    onError: (error) => {
+      alert(`Error transferring document: ${error.message}`);
+    },
+  });
+  const { register, handleSubmit, reset } = useForm<{
+    controlNumber: string;
+  }>();
+
+  const onSubmit = (formData: { controlNumber: string }) => {
+    // In a real application, you'd likely have a user selection dropdown
+    // to select the new owner.
+    transferDocumentMutation.mutate({
+      ...formData,
+      newOwnerId: "user_2aF9Q8R7j6K5P4T3s2E1aBcDeFg", // Example User ID
+      newOwnerName: "John Doe", // Example User Name
+    });
+    reset();
+  };
 
   if (isLoading) {
     return (
@@ -50,7 +73,18 @@ export function Dashboard() {
     <div className="container mt-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1>Dashboard</h1>
-        <div className="d-flex gap-2">
+        <div className="d-flex gap-2 align-items-center">
+          <form onSubmit={handleSubmit(onSubmit)} className="d-flex gap-2">
+            <input
+              {...register("controlNumber")}
+              type="text"
+              className="form-control"
+              placeholder="Scan or Enter Control Number"
+            />
+            <button type="submit" className="btn btn-outline-primary">
+              <i className="bi bi-arrow-right-circle"></i> Transfer
+            </button>
+          </form>
           <Link to="/upload" className="btn btn-brand-primary">
             <i className="bi bi-upload me-2"></i>Upload Document
           </Link>

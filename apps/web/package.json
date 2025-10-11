@@ -24,6 +24,7 @@
     "react": "^19.1.1",
     "react-doc-viewer": "^0.1.14",
     "react-dom": "^19.1.1",
+    "react-hook-form": "^7.65.0",
     "react-router-dom": "^7.9.1",
     "react-select": "^5.10.2",
     "recharts": "^3.2.1",
