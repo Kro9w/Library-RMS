@@ -1,31 +1,18 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router-dom"; // 👇 1. Import BrowserRouter
-import { ClerkProvider } from "@clerk/clerk-react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import App from "./App";
-import { trpc, trpcClient } from "./trpc"; // 👇 (Cleaned up this import path)
+import { BrowserRouter } from "react-router-dom";
+import AppWrapper from "./App"; // The default export from App.tsx is now AppWrapper
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./index.css";
-import { ThemeProvider } from "./Theme";
 
-const pk = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-if (!pk) throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY in .env");
+const root = createRoot(document.getElementById("root")!);
 
-const queryClient = new QueryClient();
-
-createRoot(document.getElementById("root")!).render(
+// The entry point is now much simpler. It only needs to provide the router context
+// and render the AppWrapper, which handles all other providers.
+root.render(
   <StrictMode>
-    <ClerkProvider publishableKey={pk}>
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
-            <ThemeProvider>
-              <App />
-            </ThemeProvider>
-          </BrowserRouter>
-        </QueryClientProvider>
-      </trpc.Provider>
-    </ClerkProvider>
+    <BrowserRouter>
+      <AppWrapper />
+    </BrowserRouter>
   </StrictMode>
 );
