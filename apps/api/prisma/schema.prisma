@@ -7,17 +7,35 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model User {
+  id               String     @id @default(cuid())
+  firstName        String?
+  lastName         String?
+  documentsOwned   Document[] @relation("OwnedDocuments")
+  documentsHeld    Document[] @relation("HeldDocuments")
+}
+
 model Document {
-  id         String   @id @default(cuid())
-  title      String
-  type       String // memorandum | office_order | communication_letter
-  content    String // JSON or serialized blocks
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  tags       String[]
-  userID     String   @default("legacy_user")
-  uploadedBy String   @default("legacy_upload")
-  controlNumber String   @unique @default(cuid())
+  id              String   @id @default(cuid())
+  title           String
+  type            String // memorandum | office_order | communication_letter
+  content         String // JSON or serialized blocks
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  tags            String[]
+  controlNumber   String   @unique @default(cuid())
+
+  // The original user who uploaded the document
+  userID          String  @default("legacy_user")
+  uploadedBy      String   // Combination of first and last name
+
+  // Tracks the original owner via relation to the User model
+  originalOwnerId String
+  originalOwner   User     @relation("OwnedDocuments", fields: [originalOwnerId], references: [id])
+
+  // Tracks the current holder of the document
+  heldById        String
+  heldBy          User     @relation("HeldDocuments", fields: [heldById], references: [id])
 }
 
 model Tag {

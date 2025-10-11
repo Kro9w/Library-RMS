@@ -1,4 +1,4 @@
-import { initTRPC } from '@trpc/server';
+import { initTRPC, TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import type { Context } from '../trpc/trpc.context';
 // 1. Use a 'require' statement to bypass the ES module import issue.
@@ -30,13 +30,51 @@ export const appRouter = t.router({
         type: z.enum(['memorandum','office_order','communication_letter']),
         content: z.string(),
         tags: z.array(z.string()).optional(),
+        userID: z.string(),
+        uploadedBy: z.string(),
       })
     )
-    .mutation(({ ctx, input }) => ctx.prisma.document.create({ data: input })),
+    .mutation(({ ctx, input }) => {
+      const { userID } = input;
+      return ctx.prisma.document.create({
+        data: {
+          ...input,
+          originalOwnerId: userID,
+          heldById: userID,
+        },
+      });
+    }),
 
   deleteDocument: t.procedure.input(z.string()).mutation(({ ctx, input }) =>
     ctx.prisma.document.delete({ where: { id: input } })
   ),
+
+  transferOwnership: t.procedure
+    .input(
+      z.object({
+        controlNumber: z.string(),
+        newOwnerId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { controlNumber, newOwnerId } = input;
+
+      const document = await ctx.prisma.document.findUnique({
+        where: { controlNumber },
+      });
+
+      if (!document) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Document with this control number not found.',
+        });
+      }
+
+      return ctx.prisma.document.update({
+        where: { controlNumber: controlNumber },
+        data: { heldById: newOwnerId },
+      });
+    }),
   
   // Other Procedures
   hello: t.procedure.query(() => 'Hello from tRPC!'),
@@ -72,4 +110,3 @@ export const appRouter = t.router({
 
 // 3. Export the AppRouter type for the frontend.
 export type AppRouter = typeof appRouter;
-

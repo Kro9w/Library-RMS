@@ -7,7 +7,16 @@ export class DocumentsService {
   constructor(private prisma: PrismaService) {}
 
   // CREATE a new document
-  async create(data: { title: string; type: string; content: string; tags: string[] }): Promise<Document> {
+  async create(data: {
+    title: string;
+    type: string;
+    content: string;
+    tags: string[];
+    userID: string;
+    uploadedBy: string;
+    originalOwnerId: string;
+    heldById: string;
+  }): Promise<Document> {
     return this.prisma.document.create({
       data,
     });

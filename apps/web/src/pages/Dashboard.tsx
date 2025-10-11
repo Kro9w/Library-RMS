@@ -5,6 +5,7 @@ import "./Dashboard.css";
 // Import the necessary components from the charting library
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
 import { useForm } from "react-hook-form";
+import { useAuth } from "@clerk/clerk-react";
 
 type RecentFile = {
   id: string;
@@ -16,8 +17,9 @@ type RecentFile = {
 const PIE_CHART_COLORS = ["#BA3B46", "#ED9B40", "#AAB8C2", "#E1E8ED"];
 
 export function Dashboard() {
+  const { userId } = useAuth();
   const { data, isLoading, isError, error } = trpc.getDashboardStats.useQuery();
-  const transferDocumentMutation = trpc.transferDocument.useMutation({
+  const transferDocumentMutation = trpc.transferOwnership.useMutation({
     onSuccess: () => {
       alert("Document transferred successfully!");
     },
@@ -30,12 +32,15 @@ export function Dashboard() {
   }>();
 
   const onSubmit = (formData: { controlNumber: string }) => {
+    if (!userId) {
+      alert("You must be logged in to transfer documents.");
+      return;
+    }
     // In a real application, you'd likely have a user selection dropdown
     // to select the new owner.
     transferDocumentMutation.mutate({
       ...formData,
-      newOwnerId: "user_2aF9Q8R7j6K5P4T3s2E1aBcDeFg", // Example User ID
-      newOwnerName: "John Doe", // Example User Name
+      newOwnerId: userId,
     });
     reset();
   };
