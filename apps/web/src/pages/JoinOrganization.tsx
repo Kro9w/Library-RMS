@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { trpc } from "../trpc";
+// Corrected import path using the '@/' alias
+import { trpc } from "@/trpc";
 import { useUser } from "@clerk/clerk-react";
 
 export function JoinOrganization() {
@@ -71,7 +72,8 @@ export function JoinOrganization() {
           >
             <div>
               <h5 className="mb-1">{org.name}</h5>
-              <small className="text-muted">{org.membersCount} member(s)</small>
+              {/* Corrected property name from 'membersCount' to 'memberCount' */}
+              <small className="text-muted">{org.memberCount} member(s)</small>
             </div>
             <button
               className="btn btn-brand-primary"

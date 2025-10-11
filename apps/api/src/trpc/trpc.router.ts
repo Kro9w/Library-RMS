@@ -153,7 +153,19 @@ export const appRouter = t.router({
     }),
 
   // User and organization management procedures
-  getUsers: t.procedure.query(async ({ ctx }) => ctx.clerk.users.getUserList({ limit: 100 })),
+  getUsers: t.procedure.query(async ({ ctx }) => {
+    const userListResponse = await ctx.clerk.users.getUserList({ limit: 100 });
+
+    return userListResponse.data.map(user => ({
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.emailAddresses[0]?.emailAddress,
+      publicMetadata: user.publicMetadata,
+      createdAt: user.createdAt,
+      imageUrl: user.imageUrl, // <-- This line is the fix
+    }));
+  }),
 
   updateUserRole: t.procedure
     .input(z.object({ userId: z.string(), role: z.enum(['Admin', 'Editor', 'Viewer']) }))
@@ -174,7 +186,13 @@ export const appRouter = t.router({
       throw new TRPCError({ code: 'UNAUTHORIZED', message: 'You must be signed in to view organizations.' });
     }
     const orgs = await ctx.clerk.organizations.getOrganizationList({ limit: 100 });
-    return orgs.data;
+    return orgs.data.map(org => ({
+        id: org.id,
+        name: org.name,
+        slug: org.slug,
+        memberCount: org.membersCount,
+        createdAt: org.createdAt,
+      }));
   }),
 
   requestToJoinOrganization: t.procedure
@@ -196,16 +214,22 @@ export const appRouter = t.router({
     
   getDocumentsByUserId: t.procedure
     .input(z.string())
-    .query(({ ctx, input: userId }) => {
+    .query(async ({ ctx, input: userId }) => {
       if (!isSignedIn(ctx.auth)) {
         throw new TRPCError({ code: 'UNAUTHORIZED' });
       }
-      return ctx.prisma.document.findMany({
+
+      // --- Debugging Step ---
+      // This will print the incoming user ID and the query result to your backend terminal.
+      console.log(`Fetching documents for userID: ${userId}`);
+      const documents = await ctx.prisma.document.findMany({
         where: { userID: userId },
         select: { id: true, title: true },
       });
+      console.log(`Found ${documents.length} documents.`);
+
+      return documents;
     }),
 });
 
 export type AppRouter = typeof appRouter;
-

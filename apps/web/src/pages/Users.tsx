@@ -3,10 +3,13 @@ import { Protect } from "@clerk/clerk-react";
 import { trpc } from "../trpc";
 import { ConfirmModal } from "../components/ConfirmModal";
 
-type ClerkUser = {
+// 1. Updated User Type
+// This type now perfectly matches the simple object structure returned by our tRPC backend.
+type User = {
   id: string;
-  emailAddresses: { emailAddress: string; id: string }[];
-  primaryEmailAddressId: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | undefined;
   imageUrl?: string;
   publicMetadata: {
     role?: "Admin" | "Editor" | "Viewer";
@@ -18,19 +21,12 @@ interface UsersProps {
 }
 
 export function Users({ cardWidth = "280px" }: UsersProps) {
-  // 1. Rename the destructured 'data' to 'usersResult' to reflect the object structure.
-  const {
-    data: usersResult,
-    isLoading,
-    isError,
-    error,
-  } = trpc.getUsers.useQuery();
+  // 2. Simplified Data Fetching
+  // The 'data' from useQuery is now directly the array of users.
+  const { data: users, isLoading, isError, error } = trpc.getUsers.useQuery();
   const trpcCtx = trpc.useContext();
 
-  // 2. Extract the actual array of users from the 'data' property of the result.
-  const users = usersResult?.data;
-
-  const [userToDelete, setUserToDelete] = useState<ClerkUser | null>(null);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   const updateUserRole = trpc.updateUserRole.useMutation({
     onSuccess: () => trpcCtx.getUsers.invalidate(),
@@ -54,10 +50,6 @@ export function Users({ cardWidth = "280px" }: UsersProps) {
     if (userToDelete) removeUser.mutate(userToDelete.id);
   };
 
-  const getPrimaryEmail = (user: ClerkUser) =>
-    user.emailAddresses.find((e) => e.id === user.primaryEmailAddressId)
-      ?.emailAddress || "N/A";
-
   if (isLoading) return <div className="container mt-4">Loading users...</div>;
   if (isError)
     return (
@@ -72,9 +64,10 @@ export function Users({ cardWidth = "280px" }: UsersProps) {
         <div className="container mt-4">
           <h1 className="mb-4">User Management</h1>
           <div className="row g-0">
-            {/* 3. The conditional check and map function now correctly use the 'users' array. */}
+            {/* 3. Direct Mapping
+                We can now directly map over the 'users' array without checking for a nested 'data' property. */}
             {users && users.length > 0 ? (
-              users.map((user: ClerkUser) => (
+              users.map((user) => (
                 <div
                   className="col-12 col-sm-6 col-md-4 d-flex justify-content-center"
                   key={user.id}
@@ -94,10 +87,10 @@ export function Users({ cardWidth = "280px" }: UsersProps) {
                         src={
                           user.imageUrl ||
                           `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                            getPrimaryEmail(user)
+                            user.email || "User"
                           )}&background=ED9B40&color=fff`
                         }
-                        alt={getPrimaryEmail(user)}
+                        alt={user.email || "User Avatar"}
                         className="rounded-circle shadow-sm mb-3"
                         style={{
                           width: "72px",
@@ -107,7 +100,7 @@ export function Users({ cardWidth = "280px" }: UsersProps) {
                         }}
                       />
                       <h6 className="fw-bold text-center">
-                        {getPrimaryEmail(user)}
+                        {user.email || "No Email"}
                       </h6>
                       <small className="text-muted mb-2">Role</small>
 
@@ -149,7 +142,7 @@ export function Users({ cardWidth = "280px" }: UsersProps) {
         isOpen={!!userToDelete}
         title="Confirm Removal"
         message={`Are you sure you want to remove ${
-          userToDelete ? getPrimaryEmail(userToDelete) : "this user"
+          userToDelete?.email || "this user"
         } from the organization?`}
         onConfirm={handleConfirmDelete}
         onCancel={() => setUserToDelete(null)}

@@ -8,27 +8,19 @@ type Node = { id: string; name: string; type: "user" | "office" };
 type Link = { source: string; target: string };
 type GraphData = { nodes: Node[]; links: Link[] };
 type Document = { id: string; title: string };
-// This type should match the one in your Users.tsx for consistency
-type ClerkUser = {
+
+// This type now matches the simplified structure from our tRPC API
+type User = {
   id: string;
   firstName: string | null;
-  primaryEmailAddressId: string | null;
-  emailAddresses: { id: string; emailAddress: string }[];
+  email: string | undefined;
 };
 
 export function OwnershipGraph() {
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // 1. Correctly destructure the API response.
-  //    The list of users is inside the 'data' property of the returned object.
-  const {
-    data: usersResult,
-    isLoading,
-    isError,
-    error,
-  } = trpc.getUsers.useQuery();
-  // 2. Extract the actual array of users.
-  const users = usersResult?.data;
+  // Directly get the 'users' array from the useQuery hook
+  const { data: users, isLoading, isError, error } = trpc.getUsers.useQuery();
 
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [selectedUser, setSelectedUser] = useState<Node | null>(null);
@@ -39,24 +31,21 @@ export function OwnershipGraph() {
     });
 
   useEffect(() => {
-    // 3. The logic now correctly checks and maps over the 'users' array
     if (users && users.length > 0) {
       const nodes: Node[] = [{ id: "office", name: "LRC", type: "office" }];
 
-      // We apply the 'ClerkUser' type here for safety
-      users.forEach((user: ClerkUser) => {
+      // Use the new, simplified User type
+      users.forEach((user: User) => {
         nodes.push({
           id: user.id,
-          name:
-            user.firstName ||
-            user.emailAddresses.find((e) => e.id === user.primaryEmailAddressId)
-              ?.emailAddress ||
-            "User",
+          // Use the correct properties for the user's name
+          name: user.firstName || user.email || "User",
           type: "user",
         });
       });
 
-      const links: Link[] = users.map((user: ClerkUser) => ({
+      // Use the new, simplified User type here as well
+      const links: Link[] = users.map((user: User) => ({
         source: user.id,
         target: "office",
       }));
@@ -79,7 +68,7 @@ export function OwnershipGraph() {
   useEffect(() => {
     if (graphData && svgRef.current) {
       const { nodes, links } = graphData;
-      if (!svgRef.current.parentElement) return; // Guard against null parent
+      if (!svgRef.current.parentElement) return;
 
       const width = svgRef.current.parentElement.clientWidth;
       const height = svgRef.current.parentElement.clientHeight;
@@ -149,6 +138,7 @@ export function OwnershipGraph() {
         .text((d) => d.name)
         .attr("x", 22)
         .attr("y", 5);
+
       node.on("click", (event, d) => {
         event.stopPropagation();
         if (d.type === "user") {

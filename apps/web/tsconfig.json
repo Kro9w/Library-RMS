@@ -1,9 +1,5 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.node.json" }
-  ],
-    "compilerOptions": {
+  "compilerOptions": {
     "target": "ESNext",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "module": "ESNext",
@@ -24,11 +20,10 @@
     "noFallthroughCasesInSwitch": true,
 
     /* Path Aliases */
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    },
-    "typeRoots": ["./node_modules/@types", "../../node_modules/@types"]
+    }
   },
-  "include": ["src"],
+  "include": ["src"]
 }
+
