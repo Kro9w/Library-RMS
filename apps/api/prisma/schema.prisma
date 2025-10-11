@@ -17,6 +17,7 @@ model Document {
   tags       String[]
   userID     String   @default("legacy_user")
   uploadedBy String   @default("legacy_upload")
+  controlNumber String   @unique @default(cuid())
 }
 
 model Tag {
