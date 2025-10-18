@@ -1,6 +1,7 @@
-import React from "react";
-import { NavLink } from "react-router-dom";
+import React, { useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import { UserButton, useUser } from "@clerk/clerk-react";
+import { trpc } from "../trpc";
 import "./Navbar.css";
 
 interface NavbarProps {
@@ -10,6 +11,32 @@ interface NavbarProps {
 
 export function Navbar({ isExpanded, setIsExpanded }: NavbarProps) {
   const { user } = useUser();
+  const navigate = useNavigate();
+  const [isDropdownOpen, setDropdownOpen] = useState(false);
+
+  // --- Start of Notification Logic ---
+  const { data: notifications, refetch: refetchNotifications } =
+    trpc.getNotifications.useQuery(undefined, {
+      enabled: !!user,
+    });
+
+  const markAsRead = trpc.markNotificationsAsRead.useMutation({
+    onSuccess: () => {
+      refetchNotifications();
+    },
+  });
+
+  const handleNotificationClick = (notification: {
+    id: string;
+    documentId: string | null;
+  }) => {
+    markAsRead.mutate([notification.id]);
+    setDropdownOpen(false);
+    if (notification.documentId) {
+      navigate(`/documents/${notification.documentId}`);
+    }
+  };
+  // --- End of Notification Logic ---
 
   const navItems = [
     { to: "/", name: "Dashboard", icon: "bi-grid-1x2-fill" },
@@ -36,7 +63,6 @@ export function Navbar({ isExpanded, setIsExpanded }: NavbarProps) {
                 <span className="link-text">Folio</span>
               </span>
             </li>
-            {/* This part renders the actual navigation links */}
             {navItems.map((item) => (
               <li className="nav-item" key={item.name}>
                 <NavLink
@@ -49,6 +75,49 @@ export function Navbar({ isExpanded, setIsExpanded }: NavbarProps) {
                 </NavLink>
               </li>
             ))}
+
+            {/* --- Start of Notification UI --- */}
+            <li className="nav-item dropdown notification-item">
+              <a
+                className="nav-link text-white position-relative"
+                href="#"
+                role="button"
+                onClick={() => setDropdownOpen(!isDropdownOpen)}
+                title="Notifications"
+              >
+                <i className="bi bi-bell-fill"></i>
+                <span className="link-text">Notifications</span>
+                {notifications && notifications.length > 0 && (
+                  <span className="notification-badge badge rounded-pill bg-danger">
+                    {notifications.length}
+                  </span>
+                )}
+              </a>
+              {isDropdownOpen && (
+                <ul className="dropdown-menu dropdown-menu-dark show">
+                  {notifications && notifications.length > 0 ? (
+                    notifications.map((notif) => (
+                      <li key={notif.id}>
+                        <a
+                          className="dropdown-item"
+                          href="#"
+                          onClick={() => handleNotificationClick(notif)}
+                        >
+                          {notif.message}
+                        </a>
+                      </li>
+                    ))
+                  ) : (
+                    <li>
+                      <span className="dropdown-item-text">
+                        No new notifications
+                      </span>
+                    </li>
+                  )}
+                </ul>
+              )}
+            </li>
+            {/* --- End of Notification UI --- */}
           </ul>
 
           <div className="sidebar-footer">

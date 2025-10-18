@@ -16,26 +16,33 @@ model User {
 }
 
 model Document {
-  id              String   @id @default(cuid())
-  title           String
-  type            String // memorandum | office_order | communication_letter
-  content         String // JSON or serialized blocks
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  tags            String[]
-  controlNumber   String   @unique @default(cuid())
+  id               String    @id @default(cuid())
+  title            String
+  type             String // memorandum | office_order | communication_letter
+  content          String // JSON or serialized blocks
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  tags             String[]
+  controlNumber    String    @unique @default(cuid())
+  userID           String    @default("legacy_user")
+  uploadedBy       String // Combination of first and last name
+  originalOwnerId  String
+  originalOwner    User      @relation("OwnedDocuments", fields: [originalOwnerId], references: [id])
+  heldById         String
+  heldBy           User      @relation("HeldDocuments", fields: [heldById], references: [id])
+  inTransit        Boolean   @default(false)
+  intendedHolderId String?
+}
 
-  // The original user who uploaded the document
-  userID          String  @default("legacy_user")
-  uploadedBy      String   // Combination of first and last name
+model Notification {
+  id        String   @id @default(cuid())
+  message   String
+  documentId String?  // Optional link to a document
+  userId    String   // The user who receives the notification
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
 
-  // Tracks the original owner via relation to the User model
-  originalOwnerId String
-  originalOwner   User     @relation("OwnedDocuments", fields: [originalOwnerId], references: [id])
-
-  // Tracks the current holder of the document
-  heldById        String
-  heldBy          User     @relation("HeldDocuments", fields: [heldById], references: [id])
+  @@index([userId])
 }
 
 model Tag {

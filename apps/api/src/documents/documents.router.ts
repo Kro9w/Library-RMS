@@ -49,15 +49,15 @@ export const appRouter = t.router({
     ctx.prisma.document.delete({ where: { id: input } })
   ),
 
-  transferOwnership: t.procedure
+  sendDocument: t.procedure
     .input(
       z.object({
         controlNumber: z.string(),
-        newOwnerId: z.string(),
+        intendedHolderId: z.string(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { controlNumber, newOwnerId } = input;
+      const { controlNumber, intendedHolderId } = input;
 
       const document = await ctx.prisma.document.findUnique({
         where: { controlNumber },
@@ -70,9 +70,57 @@ export const appRouter = t.router({
         });
       }
 
+      if (document.inTransit) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Document is already in transit.',
+        });
+      }
+
       return ctx.prisma.document.update({
         where: { controlNumber: controlNumber },
-        data: { heldById: newOwnerId },
+        data: { inTransit: true, intendedHolderId: intendedHolderId },
+      });
+    }),
+
+  receiveDocument: t.procedure
+    .input(
+      z.object({
+        controlNumber: z.string(),
+        receiverId: z.string(), // This would be the current user's ID
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { controlNumber, receiverId } = input;
+
+      const document = await ctx.prisma.document.findUnique({
+        where: { controlNumber },
+      });
+
+      if (!document) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Document with this control number not found.',
+        });
+      }
+
+      if (!document.inTransit) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Document is not in transit.',
+        });
+      }
+      
+      if (document.intendedHolderId && document.intendedHolderId !== receiverId) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You are not the intended recipient of this document.',
+        });
+      }
+
+      return ctx.prisma.document.update({
+        where: { controlNumber: controlNumber },
+        data: { heldById: receiverId, inTransit: false, intendedHolderId: null },
       });
     }),
   

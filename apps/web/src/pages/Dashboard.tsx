@@ -19,14 +19,6 @@ const PIE_CHART_COLORS = ["#BA3B46", "#ED9B40", "#AAB8C2", "#E1E8ED"];
 export function Dashboard() {
   const { userId } = useAuth();
   const { data, isLoading, isError, error } = trpc.getDashboardStats.useQuery();
-  const transferDocumentMutation = trpc.transferOwnership.useMutation({
-    onSuccess: () => {
-      alert("Document transferred successfully!");
-    },
-    onError: (error) => {
-      alert(`Error transferring document: ${error.message}`);
-    },
-  });
   const { register, handleSubmit, reset } = useForm<{
     controlNumber: string;
   }>();
@@ -38,10 +30,6 @@ export function Dashboard() {
     }
     // In a real application, you'd likely have a user selection dropdown
     // to select the new owner.
-    transferDocumentMutation.mutate({
-      ...formData,
-      newOwnerId: userId,
-    });
     reset();
   };
 

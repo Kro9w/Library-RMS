@@ -1,7 +1,15 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { trpc } from "../trpc";
+import { useUser } from "@clerk/clerk-react";
 import "./Documents.css";
+
+type AppUser = {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | undefined;
+};
 
 type Document = {
   id: string;
@@ -9,25 +17,69 @@ type Document = {
   type: string;
   createdAt: string | Date;
   tags: string[];
+  inTransit: boolean;
+  heldById: string;
+  controlNumber: string;
+  intendedHolderId: string | null; // 1. Added this field to the type
 };
 
 export function Documents() {
-  const {
-    data: documents,
-    isLoading,
-    isError,
-    error,
-  } = trpc.getDocuments.useQuery();
+  const { user } = useUser();
+
+  const { data: documents, isLoading: isLoadingDocuments } =
+    trpc.getDocuments.useQuery();
+  const { data: appUsers, isLoading: isLoadingUsers } =
+    trpc.getUsers.useQuery();
   const trpcCtx = trpc.useContext();
 
   const deleteDoc = trpc.deleteDocument.useMutation({
-    onSuccess: () => {
+    onSuccess: () => trpcCtx.getDocuments.invalidate(),
+  });
+
+  const sendDoc = trpc.sendDocument.useMutation({
+    onSuccess: () => trpcCtx.getDocuments.invalidate(),
+  });
+
+  const receiveDoc = trpc.receiveDocument.useMutation({
+    onSuccess: (data) => {
+      // Check if the backend sent file content
+      if (data.success && data.fileContent) {
+        // 1. Decode the base64 string into binary data
+        const byteCharacters = atob(data.fileContent);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+
+        // 2. Create a "blob" (a file-like object)
+        const blob = new Blob([byteArray], {
+          type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        });
+
+        // 3. Create a temporary link element to trigger the download
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = data.fileName || "document.docx";
+        document.body.appendChild(link);
+        link.click(); // Programmatically click the link to start the download
+        document.body.removeChild(link); // Clean up the temporary link
+      }
+
+      // 4. Refresh the document list to show the status change
       trpcCtx.getDocuments.invalidate();
+    },
+    onError: (error) => {
+      // Optional: Add better error handling
+      alert(`Error receiving document: ${error.message}`);
     },
   });
 
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isSendModalOpen, setSendModalOpen] = useState(false);
+  const [docToSend, setDocToSend] = useState<Document | null>(null);
+  const [recipientId, setRecipientId] = useState("");
 
   const filteredDocuments = useMemo(() => {
     if (!documents) return [];
@@ -63,20 +115,45 @@ export function Documents() {
     }
   };
 
-  if (isLoading) {
+  const openSendModal = (doc: Document) => {
+    setDocToSend(doc);
+    setSendModalOpen(true);
+    setRecipientId("");
+  };
+
+  const handleSendDocument = async () => {
+    if (docToSend && recipientId) {
+      await sendDoc.mutateAsync({
+        controlNumber: docToSend.controlNumber,
+        intendedHolderId: recipientId,
+      });
+      setSendModalOpen(false);
+      setDocToSend(null);
+      setRecipientId("");
+    } else {
+      alert("Please select a recipient.");
+    }
+  };
+
+  const handleReceiveDocument = async (controlNumber: string) => {
+    if (!user) {
+      alert("You must be logged in to receive a document.");
+      return;
+    }
+    if (window.confirm("Are you sure you want to receive this document?")) {
+      await receiveDoc.mutateAsync({
+        controlNumber,
+        receiverId: user.id,
+      });
+    }
+  };
+
+  if (isLoadingDocuments || isLoadingUsers) {
     return (
       <div className="container mt-4 text-center">
         <div className="spinner-border" role="status">
           <span className="visually-hidden">Loading...</span>
         </div>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="container mt-4 alert alert-danger">
-        Error loading documents: {error.message}
       </div>
     );
   }
@@ -111,7 +188,7 @@ export function Documents() {
       </div>
 
       {selectedDocs.length > 0 && (
-        <div className="mb-3">
+        <div className="mb-3 d-flex gap-2">
           <button
             className="btn btn-brand-delete"
             onClick={handleBatchDelete}
@@ -124,7 +201,6 @@ export function Documents() {
         </div>
       )}
 
-      {/* The <table> has been replaced with the new div-based structure */}
       <div className="document-list">
         <div className="document-list-header">
           <div>
@@ -161,13 +237,37 @@ export function Documents() {
                 </span>
               </div>
               <div>{new Date(doc.createdAt).toLocaleDateString()}</div>
-              <div className="text-end">
+              <div>
+                {doc.inTransit ? (
+                  <span className="badge bg-warning text-dark">In Transit</span>
+                ) : (
+                  <span className="badge bg-success">Available</span>
+                )}
+              </div>
+              <div className="text-end d-flex gap-2 justify-content-end">
                 <Link
                   to={`/documents/${doc.id}`}
                   className="btn btn-sm btn-outline-secondary"
                 >
                   <i className="bi bi-eye"></i>
                 </Link>
+                {user && !doc.inTransit && doc.heldById === user.id && (
+                  <button
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={() => openSendModal(doc)}
+                  >
+                    <i className="bi bi-send"></i>
+                  </button>
+                )}
+                {/* 2. ADDED CHECK: This button now only shows if the current user is the intended recipient */}
+                {user && doc.inTransit && doc.intendedHolderId === user.id && (
+                  <button
+                    className="btn btn-sm btn-brand-primary"
+                    onClick={() => handleReceiveDocument(doc.controlNumber)}
+                  >
+                    Receive
+                  </button>
+                )}
               </div>
             </div>
           ))
@@ -177,6 +277,67 @@ export function Documents() {
           </div>
         )}
       </div>
+
+      {isSendModalOpen && (
+        <div className="modal show" style={{ display: "block" }}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Send Document</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setSendModalOpen(false)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <p>
+                  Sending: <strong>{docToSend?.title}</strong>
+                </p>
+                <div className="mb-3">
+                  <label htmlFor="recipientId" className="form-label">
+                    Recipient
+                  </label>
+                  <select
+                    id="recipientId"
+                    className="form-select"
+                    value={recipientId}
+                    onChange={(e) => setRecipientId(e.target.value)}
+                  >
+                    <option value="" disabled>
+                      Select a user...
+                    </option>
+                    {appUsers
+                      ?.filter((u: AppUser) => u.id !== user?.id)
+                      .map((u: AppUser) => (
+                        <option key={u.id} value={u.id}>
+                          {`${u.firstName} ${u.lastName}`.trim()}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setSendModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleSendDocument}
+                  disabled={sendDoc.isPending || !recipientId}
+                >
+                  {sendDoc.isPending ? "Sending..." : "Confirm Send"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
