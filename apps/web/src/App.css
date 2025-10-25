@@ -1,45 +1,19 @@
+/* apps/web/src/App.css */
+
 .main-content {
-  width: 100%;
-  transition: margin 0.3s ease;
+  /* Smooth transition for margin changes */
+  transition: margin-left 0.3s ease;
+  padding: 1rem 1.5rem;
 }
 
-.main-content.collapsed {
-  margin-left: 80px;
-}
-
+/* When sidebar is expanded */
 .main-content.expanded {
-  margin-left: 260px;
+  /* 250px (sidebar) + 1rem (wrapper padding) */
+  margin-left: 266px;
 }
 
-.sidebar-footer {
-  margin-top: auto;
-  padding: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+/* When sidebar is collapsed */
+.main-content.collapsed {
+  /* 80px (sidebar) + 1rem (wrapper padding) */
+  margin-left: 96px;
 }
-
-.user-profile {
-  display: flex;
-  align-items: center;
-  margin-bottom: 1rem;
-  padding: 0 0.5rem;
-}
-
-.user-info {
-  margin-left: 0.75rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.user-name {
-  font-weight: bold;
-}
-
-.user-email {
-  font-size: 0.8rem;
-  color: #adb5bd;
-}
-
-.collapse-btn {
-  width: 100%;
-}
-

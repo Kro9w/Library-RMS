@@ -1,150 +1,120 @@
-import React, { useState } from "react";
+// apps/web/src/components/Navbar.tsx
+import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { UserButton, useUser } from "@clerk/clerk-react";
-import { trpc } from "../trpc";
+import { useAuth } from "../context/AuthContext";
 import "./Navbar.css";
 
+// 1. ADDED: Props interface
 interface NavbarProps {
-  isExpanded: boolean;
-  setIsExpanded: (isExpanded: boolean) => void;
+  isCollapsed: boolean;
+  onToggle: () => void;
 }
 
-export function Navbar({ isExpanded, setIsExpanded }: NavbarProps) {
-  const { user } = useUser();
+export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
+  // 2. REMOVED: Internal 'isCollapsed' state
+  const { user, dbUser, signOut } = useAuth();
   const navigate = useNavigate();
-  const [isDropdownOpen, setDropdownOpen] = useState(false);
 
-  // --- Start of Notification Logic ---
-  const { data: notifications, refetch: refetchNotifications } =
-    trpc.getNotifications.useQuery(undefined, {
-      enabled: !!user,
-    });
-
-  const markAsRead = trpc.markNotificationsAsRead.useMutation({
-    onSuccess: () => {
-      refetchNotifications();
-    },
-  });
-
-  const handleNotificationClick = (notification: {
-    id: string;
-    documentId: string | null;
-  }) => {
-    markAsRead.mutate([notification.id]);
-    setDropdownOpen(false);
-    if (notification.documentId) {
-      navigate(`/documents/${notification.documentId}`);
-    }
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
   };
-  // --- End of Notification Logic ---
 
-  const navItems = [
-    { to: "/", name: "Dashboard", icon: "bi-grid-1x2-fill" },
-    { to: "/documents", name: "Documents", icon: "bi-file-earmark-text-fill" },
-    { to: "/graph", name: "Ownership Graph", icon: "bi-diagram-3-fill" },
-    { to: "/upload", name: "Upload", icon: "bi-upload" },
-    { to: "/tags", name: "Tags", icon: "bi-tags-fill" },
-    { to: "/settings", name: "Settings", icon: "bi-gear-fill" },
-    { to: "/users", name: "Users", icon: "bi-people-fill" },
-  ];
-
+  // 3. This component now uses the props
   return (
     <div className="sidebar-wrapper">
-      <nav className={`sidebar-float ${isExpanded ? "expanded" : "collapsed"}`}>
+      <nav
+        className={`sidebar-float ${isCollapsed ? "collapsed" : "expanded"}`}
+      >
         <div className="sidebar-content">
-          <ul className="nav flex-column">
-            <li className="nav-item logo-item">
-              <span className="nav-link text-white fs-4">
-                <img
-                  src="/foliotwo.svg"
-                  alt="Folio"
-                  style={{ height: "30px", marginRight: "10px" }}
-                />
-                <span className="link-text">Folio</span>
-              </span>
-            </li>
-            {navItems.map((item) => (
-              <li className="nav-item" key={item.name}>
-                <NavLink
-                  to={item.to}
-                  className="nav-link text-white"
-                  title={item.name}
-                >
-                  <i className={`bi ${item.icon}`}></i>
-                  <span className="link-text">{item.name}</span>
-                </NavLink>
-              </li>
-            ))}
+          <div className="logo-item">
+            <a href="/" className="nav-link">
+              <i className="bi bi-book"></i>
+              <span className="link-text">Folio</span>
+            </a>
+          </div>
 
-            {/* --- Start of Notification UI --- */}
-            <li className="nav-item dropdown notification-item">
-              <a
-                className="nav-link text-white position-relative"
-                href="#"
-                role="button"
-                onClick={() => setDropdownOpen(!isDropdownOpen)}
-                title="Notifications"
-              >
-                <i className="bi bi-bell-fill"></i>
-                <span className="link-text">Notifications</span>
-                {notifications && notifications.length > 0 && (
-                  <span className="notification-badge badge rounded-pill bg-danger">
-                    {notifications.length}
-                  </span>
-                )}
-              </a>
-              {isDropdownOpen && (
-                <ul className="dropdown-menu dropdown-menu-dark show">
-                  {notifications && notifications.length > 0 ? (
-                    notifications.map((notif) => (
-                      <li key={notif.id}>
-                        <a
-                          className="dropdown-item"
-                          href="#"
-                          onClick={() => handleNotificationClick(notif)}
-                        >
-                          {notif.message}
-                        </a>
-                      </li>
-                    ))
-                  ) : (
-                    <li>
-                      <span className="dropdown-item-text">
-                        No new notifications
-                      </span>
-                    </li>
-                  )}
-                </ul>
-              )}
-            </li>
-            {/* --- End of Notification UI --- */}
-          </ul>
+          <NavLink to="/" end className="nav-link">
+            <i className="bi bi-grid-fill"></i>
+            <span className="link-text">Dashboard</span>
+          </NavLink>
 
-          <div className="sidebar-footer">
+          <NavLink to="/documents" className="nav-link">
+            <i className="bi bi-file-earmark-text-fill"></i>
+            <span className="link-text">Documents</span>
+          </NavLink>
+
+          <NavLink to="/upload" className="nav-link">
+            <i className="bi bi-upload"></i>
+            <span className="link-text">Upload</span>
+          </NavLink>
+
+          <NavLink to="/tags" className="nav-link">
+            <i className="bi bi-tags-fill"></i>
+            <span className="link-text">Tags</span>
+          </NavLink>
+
+          <NavLink to="/graph" className="nav-link">
+            <i className="bi bi-share-fill"></i>
+            <span className="link-text">Graph</span>
+          </NavLink>
+
+          <NavLink to="/users" className="nav-link">
+            <i className="bi bi-people-fill"></i>
+            <span className="link-text">Users</span>
+          </NavLink>
+        </div>
+
+        <div className="sidebar-float-footer">
+          {user && dbUser && (
             <div className="user-profile">
-              <UserButton afterSignOutUrl="/login" />
-              <div className="link-text user-info">
-                <span className="user-name">{user?.fullName}</span>
-                <span className="user-email">
-                  {user?.primaryEmailAddress?.emailAddress}
-                </span>
+              <img
+                src={
+                  dbUser.imageUrl ||
+                  user.photoURL ||
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                    dbUser.name || dbUser.email
+                  )}`
+                }
+                alt="User"
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                }}
+              />
+              <div className="user-info">
+                <span className="user-name">{dbUser.name}</span>
+                <span className="user-email">{dbUser.email}</span>
               </div>
             </div>
+          )}
 
-            <button
-              className="nav-link text-white collapse-btn"
-              onClick={() => setIsExpanded(!isExpanded)}
-            >
-              <i
-                className={`bi ${
-                  isExpanded ? "bi-chevron-left" : "bi-chevron-right"
-                }`}
-              ></i>
-              <span className="link-text">
-                {isExpanded ? "Collapse" : "Expand"}
-              </span>
-            </button>
-          </div>
+          <NavLink to="/account" className="nav-link">
+            <i className="bi bi-person-circle"></i>
+            <span className="link-text">My Account</span>
+          </NavLink>
+
+          <button
+            className="nav-link"
+            onClick={handleSignOut}
+            style={{ width: "100%" }}
+          >
+            <i className="bi bi-box-arrow-left"></i>
+            <span className="link-text">Sign Out</span>
+          </button>
+
+          <hr style={{ borderColor: "var(--accent)", margin: "1rem 0" }} />
+
+          {/* 4. Use the 'onToggle' prop */}
+          <button className="collapse-btn" onClick={onToggle}>
+            <i
+              className={`bi ${
+                isCollapsed ? "bi-chevron-right" : "bi-chevron-left"
+              }`}
+            ></i>
+          </button>
         </div>
       </nav>
     </div>

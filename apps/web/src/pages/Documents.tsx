@@ -1,96 +1,65 @@
+// apps/web/src/pages/Documents.tsx
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { trpc } from "../trpc";
-import { useUser } from "@clerk/clerk-react";
+// 1. REPLACED: useUser from Clerk with useAuth from our context
+import { useAuth } from "../context/AuthContext";
 import "./Documents.css";
+// 2. ADDED: Import tRPC types
+import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
-type AppUser = {
-  id: string;
-  firstName: string | null;
-  lastName: string | null;
-  email: string | undefined;
-};
-
-type Document = {
-  id: string;
-  title: string;
-  type: string;
-  createdAt: string | Date;
-  tags: string[];
-  inTransit: boolean;
-  heldById: string;
-  controlNumber: string;
-  intendedHolderId: string | null; // 1. Added this field to the type
-};
+// 3. REPLACED: Old types with new inferred types
+type OrgDocument = AppRouterOutputs["documents"]["getDocuments"][0];
+type AppUser = AppRouterOutputs["documents"]["getAppUsers"][0];
 
 export function Documents() {
-  const { user } = useUser();
+  // 4. REPLACED: useUser with useAuth
+  const { dbUser } = useAuth();
 
+  // 5. FIXED: Use nested tRPC procedures
   const { data: documents, isLoading: isLoadingDocuments } =
-    trpc.getDocuments.useQuery();
+    trpc.documents.getDocuments.useQuery();
   const { data: appUsers, isLoading: isLoadingUsers } =
-    trpc.getUsers.useQuery();
+    trpc.documents.getAppUsers.useQuery();
   const trpcCtx = trpc.useContext();
 
-  const deleteDoc = trpc.deleteDocument.useMutation({
-    onSuccess: () => trpcCtx.getDocuments.invalidate(),
+  // 6. FIXED: Use nested tRPC procedure
+  const deleteDoc = trpc.documents.deleteDocument.useMutation({
+    onSuccess: () => trpcCtx.documents.getDocuments.invalidate(),
   });
 
-  const sendDoc = trpc.sendDocument.useMutation({
-    onSuccess: () => trpcCtx.getDocuments.invalidate(),
-  });
-
-  const receiveDoc = trpc.receiveDocument.useMutation({
-    onSuccess: (data) => {
-      // Check if the backend sent file content
-      if (data.success && data.fileContent) {
-        // 1. Decode the base64 string into binary data
-        const byteCharacters = atob(data.fileContent);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-
-        // 2. Create a "blob" (a file-like object)
-        const blob = new Blob([byteArray], {
-          type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        });
-
-        // 3. Create a temporary link element to trigger the download
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = data.fileName || "document.docx";
-        document.body.appendChild(link);
-        link.click(); // Programmatically click the link to start the download
-        document.body.removeChild(link); // Clean up the temporary link
-      }
-
-      // 4. Refresh the document list to show the status change
-      trpcCtx.getDocuments.invalidate();
+  // 7. FIXED: Use nested tRPC procedure
+  const sendDoc = trpc.documents.sendDocument.useMutation({
+    onSuccess: () => {
+      trpcCtx.documents.getDocuments.invalidate();
+      alert("Document sent as a notification!");
     },
     onError: (error) => {
-      // Optional: Add better error handling
-      alert(`Error receiving document: ${error.message}`);
+      alert(`Error sending document: ${error.message}`);
     },
   });
+
+  // 8. REMOVED: receiveDoc mutation, as this logic was removed from the new schema
+  // const receiveDoc = ...
 
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isSendModalOpen, setSendModalOpen] = useState(false);
-  const [docToSend, setDocToSend] = useState<Document | null>(null);
+  const [docToSend, setDocToSend] = useState<OrgDocument | null>(null);
   const [recipientId, setRecipientId] = useState("");
 
   const filteredDocuments = useMemo(() => {
     if (!documents) return [];
-    return documents.filter((doc: Document) =>
+    // 9. FIXED: 'any' type error
+    return documents.filter((doc: OrgDocument) =>
       doc.title.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [documents, searchTerm]);
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedDocs(filteredDocuments.map((d: Document) => d.id));
+      // 10. FIXED: 'any' type error
+      setSelectedDocs(filteredDocuments.map((d: OrgDocument) => d.id));
     } else {
       setSelectedDocs([]);
     }
@@ -115,7 +84,8 @@ export function Documents() {
     }
   };
 
-  const openSendModal = (doc: Document) => {
+  // 11. UPDATED: Function to use new OrgDocument type
+  const openSendModal = (doc: OrgDocument) => {
     setDocToSend(doc);
     setSendModalOpen(true);
     setRecipientId("");
@@ -124,8 +94,8 @@ export function Documents() {
   const handleSendDocument = async () => {
     if (docToSend && recipientId) {
       await sendDoc.mutateAsync({
-        controlNumber: docToSend.controlNumber,
-        intendedHolderId: recipientId,
+        documentId: docToSend.id,
+        intendedUserId: recipientId,
       });
       setSendModalOpen(false);
       setDocToSend(null);
@@ -135,18 +105,7 @@ export function Documents() {
     }
   };
 
-  const handleReceiveDocument = async (controlNumber: string) => {
-    if (!user) {
-      alert("You must be logged in to receive a document.");
-      return;
-    }
-    if (window.confirm("Are you sure you want to receive this document?")) {
-      await receiveDoc.mutateAsync({
-        controlNumber,
-        receiverId: user.id,
-      });
-    }
-  };
+  // 12. REMOVED: handleReceiveDocument logic
 
   if (isLoadingDocuments || isLoadingUsers) {
     return (
@@ -168,7 +127,7 @@ export function Documents() {
       </div>
 
       <div className="row mb-3">
-        <div className="col-md-9">
+        <div className="col-md-12">
           <input
             type="text"
             className="form-control"
@@ -177,14 +136,7 @@ export function Documents() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="col-md-3">
-          <select className="form-select">
-            <option>Filter by Type...</option>
-            <option value="memorandum">Memorandum</option>
-            <option value="office_order">Office Order</option>
-            <option value="communication_letter">Communication Letter</option>
-          </select>
-        </div>
+        {/* 13. REMOVED: Filter by Type dropdown (field doesn't exist) */}
       </div>
 
       {selectedDocs.length > 0 && (
@@ -192,6 +144,7 @@ export function Documents() {
           <button
             className="btn btn-brand-delete"
             onClick={handleBatchDelete}
+            // 14. FIXED: Use 'isPending' for mutations
             disabled={deleteDoc.isPending}
           >
             {deleteDoc.isPending
@@ -211,14 +164,15 @@ export function Documents() {
             />
           </div>
           <div>Title</div>
-          <div>Type</div>
+          {/* 15. UPDATED: Table columns to match new schema */}
+          <div>Uploaded By</div>
           <div>Date Uploaded</div>
-          <div>Status</div>
           <div className="text-end">Actions</div>
         </div>
 
         {filteredDocuments.length > 0 ? (
-          filteredDocuments.map((doc: Document) => (
+          // 16. FIXED: 'any' type error
+          filteredDocuments.map((doc: OrgDocument) => (
             <div key={doc.id} className="document-item">
               <div>
                 <input
@@ -231,19 +185,9 @@ export function Documents() {
               <div>
                 <Link to={`/documents/${doc.id}`}>{doc.title}</Link>
               </div>
-              <div>
-                <span className="doc-type-badge">
-                  {doc.type.replace("_", " ")}
-                </span>
-              </div>
+              {/* 17. UPDATED: Data fields */}
+              <div>{doc.uploadedBy.name || "N/A"}</div>
               <div>{new Date(doc.createdAt).toLocaleDateString()}</div>
-              <div>
-                {doc.inTransit ? (
-                  <span className="badge bg-warning text-dark">In Transit</span>
-                ) : (
-                  <span className="badge bg-success">Available</span>
-                )}
-              </div>
               <div className="text-end d-flex gap-2 justify-content-end">
                 <Link
                   to={`/documents/${doc.id}`}
@@ -251,7 +195,8 @@ export function Documents() {
                 >
                   <i className="bi bi-eye"></i>
                 </Link>
-                {user && !doc.inTransit && doc.heldById === user.id && (
+                {/* 18. UPDATED: Send logic */}
+                {dbUser && doc.uploadedById === dbUser.id && (
                   <button
                     className="btn btn-sm btn-outline-primary"
                     onClick={() => openSendModal(doc)}
@@ -259,15 +204,7 @@ export function Documents() {
                     <i className="bi bi-send"></i>
                   </button>
                 )}
-                {/* 2. ADDED CHECK: This button now only shows if the current user is the intended recipient */}
-                {user && doc.inTransit && doc.intendedHolderId === user.id && (
-                  <button
-                    className="btn btn-sm btn-brand-primary"
-                    onClick={() => handleReceiveDocument(doc.controlNumber)}
-                  >
-                    Receive
-                  </button>
-                )}
+                {/* 19. REMOVED: Receive button */}
               </div>
             </div>
           ))
@@ -307,11 +244,12 @@ export function Documents() {
                     <option value="" disabled>
                       Select a user...
                     </option>
+                    {/* 20. UPDATED: Modal user list */}
                     {appUsers
-                      ?.filter((u: AppUser) => u.id !== user?.id)
+                      ?.filter((u: AppUser) => u.id !== dbUser?.id)
                       .map((u: AppUser) => (
                         <option key={u.id} value={u.id}>
-                          {`${u.firstName} ${u.lastName}`.trim()}
+                          {u.name || u.email}
                         </option>
                       ))}
                   </select>
@@ -329,6 +267,7 @@ export function Documents() {
                   type="button"
                   className="btn btn-primary"
                   onClick={handleSendDocument}
+                  // 21. FIXED: Use 'isPending'
                   disabled={sendDoc.isPending || !recipientId}
                 >
                   {sendDoc.isPending ? "Sending..." : "Confirm Send"}

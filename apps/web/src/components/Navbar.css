@@ -1,3 +1,5 @@
+/* apps/web/src/components/Navbar.css */
+
 .sidebar-wrapper {
   position: fixed;
   top: 0;
@@ -99,6 +101,7 @@
   padding: 1rem;
   border-top: 1px solid var(--accent);
   display: flex;
+  flex-direction: column;
 }
 
 .user-profile {
@@ -118,7 +121,8 @@
   font-weight: bold;
 }
 
-.user-emargl {
+.user-email {
+  /* Renamed from .user-emargl for clarity */
   font-size: 0.8rem;
   opacity: 0.7;
 }
@@ -127,5 +131,14 @@
   width: 100%;
   background: none;
   border: none;
+  color: var(--light-text);
+  opacity: 0.8;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: opacity 0.2s, background-color 0.2s;
 }
 
+.collapse-btn:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.1);
+}

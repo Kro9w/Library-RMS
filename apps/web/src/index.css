@@ -1,8 +1,8 @@
 :root {
   /* Define your palette as CSS variables for easy reuse */
-  --primary: #BA3B46;
-  --accent: #ED9B40;
-  --background: #FFEEDB;
+  --primary: #ba3b46;
+  --accent: #ed9b40;
+  --background: #ffeedb;
   --text: #4a1e22;
   --light-text: #ffffff;
 }
@@ -40,7 +40,8 @@ h1 {
 }
 
 /* General button styling */
-button, .btn {
+button,
+.btn {
   border-radius: 8px;
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
@@ -78,7 +79,7 @@ body[data-bs-theme="dark"] .card {
   background-color: #23272b !important;
   color: #f1f1f1 !important;
   border-radius: 1rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   border: 1px solid #22262a;
 }
 
@@ -92,4 +93,3 @@ body[data-bs-theme="dark"] .card-body {
   background-color: transparent !important;
   color: #f1f1f1 !important;
 }
-

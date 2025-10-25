@@ -1,93 +1,150 @@
-import React, { useState } from "react";
-// Corrected import path using the '@/' alias
-import { trpc } from "@/trpc";
-import { useUser } from "@clerk/clerk-react";
+// apps/web/src/pages/JoinOrganization.tsx
+import {
+  Container,
+  Title,
+  Paper,
+  TextInput,
+  Button,
+  Text,
+  Alert,
+  Divider,
+  SimpleGrid,
+} from "@mantine/core";
+import { useForm } from "@mantine/form"; // This will work after pnpm add
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { IconAlertCircle } from "@tabler/icons-react";
+import { trpc } from "../trpc";
+import { TRPCClientError } from "@trpc/client";
 
-export function JoinOrganization() {
-  const {
-    data: organizations,
-    isLoading,
-    isError,
-    error,
-  } = trpc.getOrganizations.useQuery();
-  const { user } = useUser();
-  const [requestedOrg, setRequestedOrg] = useState<string | null>(null);
+export default function JoinOrganization() {
+  const { dbUser, refetchDbUser } = useAuth();
+  const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
 
-  const requestToJoin = trpc.requestToJoinOrganization.useMutation({
-    onSuccess: (data, variables) => {
-      setRequestedOrg(variables.organizationId);
-    },
-    onError: (err) => {
-      alert(`Error requesting to join: ${err.message}`);
+  const createOrgMutation = trpc.user.createOrganization.useMutation();
+  const joinOrgMutation = trpc.user.joinOrganization.useMutation();
+
+  const createForm = useForm({
+    initialValues: { name: "" },
+    validate: {
+      // 1. FIXED: Explicitly typed 'value' as string
+      name: (value: string) => (value.length < 2 ? "Name is too short" : null),
     },
   });
 
-  if (isLoading)
-    return <div className="container mt-4">Loading organizations...</div>;
-  if (isError)
-    return (
-      <div className="container mt-4 alert alert-danger">
-        Error: {error.message}
-      </div>
-    );
+  const joinForm = useForm({
+    initialValues: { name: "" },
+    validate: {
+      // 1. FIXED: Explicitly typed 'value' as string
+      name: (value: string) => (value.length < 2 ? "Name is too short" : null),
+    },
+  });
 
-  // If the user is already in an organization, show a message.
-  if (
-    user?.organizationMemberships &&
-    user.organizationMemberships.length > 0
-  ) {
-    return (
-      <div className="container mt-4 text-center">
-        <h2>You are already in an organization.</h2>
-        <p>Your request to join will be reviewed by an administrator.</p>
-      </div>
-    );
-  }
+  const handleCreate = async (values: typeof createForm.values) => {
+    setError(null);
+    try {
+      await createOrgMutation.mutateAsync({ name: values.name });
+      await refetchDbUser(); // Refetch user to get new org ID
+      navigate("/"); // Redirect to dashboard
+    } catch (err: any) {
+      if (err instanceof TRPCClientError) {
+        setError(err.message);
+      } else {
+        setError("Failed to create organization.");
+      }
+    }
+  };
 
-  // If the user has already made a request, show a pending message.
-  if (requestedOrg) {
-    const orgName =
-      organizations?.find((o) => o.id === requestedOrg)?.name ||
-      "the organization";
-    return (
-      <div className="container mt-4 text-center">
-        <h2>Request Sent</h2>
-        <p>Your request to join "{orgName}" has been sent for approval.</p>
-        <p>An administrator will review your request shortly.</p>
-      </div>
-    );
-  }
+  const handleJoin = async (values: typeof joinForm.values) => {
+    setError(null);
+    try {
+      await joinOrgMutation.mutateAsync({ organizationName: values.name });
+      await refetchDbUser(); // Refetch user to get new org ID
+      navigate("/"); // Redirect to dashboard
+    } catch (err: any) {
+      if (err instanceof TRPCClientError) {
+        setError(err.message);
+      } else {
+        setError("Failed to join organization.");
+      }
+    }
+  };
 
   return (
-    <div className="container mt-4">
-      <div className="text-center">
-        <h2>Join an Organization</h2>
-        <p className="lead text-muted">Select an office to request access.</p>
-      </div>
-      <div className="list-group mt-4">
-        {organizations?.map((org) => (
-          <div
-            key={org.id}
-            className="list-group-item d-flex justify-content-between align-items-center"
-          >
-            <div>
-              <h5 className="mb-1">{org.name}</h5>
-              {/* Corrected property name from 'membersCount' to 'memberCount' */}
-              <small className="text-muted">{org.memberCount} member(s)</small>
-            </div>
-            <button
-              className="btn btn-brand-primary"
-              onClick={() => requestToJoin.mutate({ organizationId: org.id })}
-              disabled={requestToJoin.isPending}
+    <Container size={800} my={40}>
+      <Title ta="center">Welcome, {dbUser?.name}!</Title>
+      <Text c="dimmed" size="sm" ta="center" mt={5}>
+        To continue, please create a new organization or join an existing one.
+      </Text>
+
+      {error && (
+        <Alert
+          icon={<IconAlertCircle size="1rem" />}
+          title="Error"
+          color="red"
+          withCloseButton
+          onClose={() => setError(null)}
+          mt="md"
+        >
+          {error}
+        </Alert>
+      )}
+
+      <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <form onSubmit={createForm.onSubmit(handleCreate)}>
+            <Title order={3}>Create Organization</Title>
+            <TextInput
+              label="Organization Name"
+              placeholder="My University Library"
+              required
+              mt="md"
+              {...createForm.getInputProps("name")}
+            />
+            <Button
+              type="submit"
+              fullWidth
+              mt="xl"
+              // 2. FIXED: Changed 'isLoading' to 'isPending'
+              loading={createOrgMutation.isPending}
             >
-              {requestToJoin.isPending &&
-              requestToJoin.variables?.organizationId === org.id
-                ? "Requesting..."
-                : "Request to Join"}
-            </button>
+              Create
+            </Button>
+          </form>
+
+          <div>
+            <Divider
+              my="xs"
+              label="OR"
+              labelPosition="center"
+              orientation="horizontal"
+            />
+
+            <form onSubmit={joinForm.onSubmit(handleJoin)}>
+              <Title order={3}>Join Organization</Title>
+              <TextInput
+                label="Organization Name"
+                placeholder="Existing Organization Name"
+                required
+                mt="md"
+                {...joinForm.getInputProps("name")}
+              />
+              <Button
+                type="submit"
+                fullWidth
+                mt="xl"
+                variant="default"
+                // 2. FIXED: Changed 'isLoading' to 'isPending'
+                loading={joinOrgMutation.isPending}
+              >
+                Join
+              </Button>
+            </form>
           </div>
-        ))}
-      </div>
-    </div>
+        </SimpleGrid>
+      </Paper>
+    </Container>
   );
 }

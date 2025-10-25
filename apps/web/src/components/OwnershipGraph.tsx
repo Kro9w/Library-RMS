@@ -1,18 +1,20 @@
+// apps/web/src/components/OwnershipGraph.tsx
 import React, { useRef, useEffect, useState } from "react";
 import * as d3 from "d3";
 import { trpc } from "../trpc";
 import "./OwnershipGraph.css";
+// 1. ADDED: Import the tRPC output types
+import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
 // Define the shape of our data, now including 'document' type
 type Node = { id: string; name: string; type: "user" | "office" | "document" };
 type Link = { source: string; target: string };
 type GraphData = { nodes: Node[]; links: Link[] };
-type Document = { id: string; title: string };
-type User = {
-  id: string;
-  firstName: string | null;
-  email: string | undefined;
-};
+
+// 2. REPLACED: Old types with new inferred types
+type AppUser = AppRouterOutputs["documents"]["getAppUsers"][0];
+type OrgDocument = AppRouterOutputs["documents"]["getDocuments"][0];
+type UserDocument = AppRouterOutputs["documents"]["getDocumentsByUserId"][0];
 
 export function OwnershipGraph() {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -27,24 +29,28 @@ export function OwnershipGraph() {
     links: [],
   });
   const [selectedUser, setSelectedUser] = useState<Node | null>(null);
-  const [userDocuments, setUserDocuments] = useState<Document[]>([]);
+  // 3. UPDATED: State to use the new UserDocument type
+  const [userDocuments, setUserDocuments] = useState<UserDocument[]>([]);
 
+  // 4. REPLACED: 'trpc.getUsers' with 'trpc.documents.getAppUsers'
   const {
     data: users,
     isLoading: isLoadingUsers,
     isError: isUsersError,
     error: usersError,
-  } = trpc.getUsers.useQuery();
+  } = trpc.documents.getAppUsers.useQuery();
 
+  // 5. REPLACED: 'trpc.getAllDocumentsWithHolder' with 'trpc.documents.getDocuments'
   const {
     data: allDocuments,
     isLoading: isLoadingAllDocs,
     isError: isAllDocsError,
     error: allDocsError,
-  } = trpc.getAllDocumentsWithHolder.useQuery();
+  } = trpc.documents.getDocuments.useQuery();
 
+  // 6. REPLACED: 'trpc.getDocumentsHeldByUser' with 'trpc.documents.getDocumentsByUserId'
   const { data: documentsData, isLoading: isLoadingDocs } =
-    trpc.getDocumentsHeldByUser.useQuery(selectedUser?.id || "", {
+    trpc.documents.getDocumentsByUserId.useQuery(selectedUser?.id || "", {
       enabled: !!selectedUser,
     });
 
@@ -53,14 +59,16 @@ export function OwnershipGraph() {
     if (users && users.length > 0) {
       // 1. Build Organization-Members graph data
       const orgNodes: Node[] = [{ id: "office", name: "LRC", type: "office" }];
-      users.forEach((user: User) => {
+      // 7. FIXED: 'any' error by typing 'user' and using 'user.name'
+      users.forEach((user: AppUser) => {
         orgNodes.push({
           id: user.id,
-          name: user.firstName || user.email || "User",
+          name: user.name || user.email || "User",
           type: "user",
         });
       });
-      const orgLinks: Link[] = users.map((user: User) => ({
+      // 8. FIXED: 'any' error by typing 'user'
+      const orgLinks: Link[] = users.map((user: AppUser) => ({
         source: user.id,
         target: "office",
       }));
@@ -68,19 +76,22 @@ export function OwnershipGraph() {
 
       // 2. Build Members-Documents graph data
       if (allDocuments) {
-        const userNodes: Node[] = users.map((user) => ({
+        // 9. FIXED: 'any' error by typing 'user' and using 'user.name'
+        const userNodes: Node[] = users.map((user: AppUser) => ({
           id: user.id,
-          name: user.firstName || user.email || "User",
+          name: user.name || user.email || "User",
           type: "user",
         }));
-        const docNodes: Node[] = allDocuments.map((doc) => ({
+        // 10. FIXED: 'any' error by typing 'doc'
+        const docNodes: Node[] = allDocuments.map((doc: OrgDocument) => ({
           id: doc.id,
           name: doc.title, // Use document title for the name
           type: "document",
         }));
-        const docLinks: Link[] = allDocuments.map((doc) => ({
+        // 11. FIXED: 'any' error by typing 'doc' and using 'doc.uploadedById'
+        const docLinks: Link[] = allDocuments.map((doc: OrgDocument) => ({
           source: doc.id, // Link from document...
-          target: doc.heldById, // ...to the user holding it
+          target: doc.uploadedById, // ...to the user who uploaded it
         }));
         setDocGraphData({
           nodes: [...userNodes, ...docNodes],
@@ -102,7 +113,7 @@ export function OwnershipGraph() {
     d3.selectAll(".node-circle").classed("selected", false);
   };
 
-  // Main D3 rendering effect
+  // Main D3 rendering effect (no changes in this section)
   useEffect(() => {
     const data = currentView === "org" ? orgGraphData : docGraphData;
     if (data.nodes.length === 0 || !svgRef.current?.parentElement) return;
@@ -140,17 +151,12 @@ export function OwnershipGraph() {
 
     svg.call(zoomBehavior).on("dblclick.zoom", null);
 
-    // **THE FIX: If a transform exists, use it, but reset the scale (k)
-    // after a view change to prevent the jarring zoom jump.**
     if (transformRef.current) {
-      // Create a new transform, keeping the pan (x, y) but resetting the zoom (k)
       const newTransform = d3.zoomIdentity
         .translate(transformRef.current.x, transformRef.current.y)
-        .scale(1.0); // Reset scale to a neutral level
-
-      // Apply the adjusted transform smoothly
+        .scale(1.0);
       svg.call(zoomBehavior.transform, newTransform);
-      transformRef.current = newTransform; // Store the corrected transform
+      transformRef.current = newTransform;
     }
 
     const simulation = d3
@@ -286,14 +292,15 @@ export function OwnershipGraph() {
               <p>Loading documents...</p>
             ) : userDocuments.length > 0 ? (
               <ul className="list-group">
-                {userDocuments.map((doc) => (
+                {/* 12. FIXED: 'any' error by typing 'doc' */}
+                {userDocuments.map((doc: UserDocument) => (
                   <li key={doc.id} className="list-group-item">
                     {doc.title}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-muted">No documents held by this user.</p>
+              <p className="text-muted">No documents uploaded by this user.</p>
             )}
           </>
         )}

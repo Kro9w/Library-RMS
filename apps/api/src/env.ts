@@ -1,10 +1,14 @@
-import * as path from 'path';
-import * as dotenv from 'dotenv';
+// apps/api/src/env.ts
+import { z } from 'zod';
+import { config } from 'dotenv';
 
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+config();
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL is not defined in environment variables!');
-}
+const envSchema = z.object({
+  DATABASE_URL: z.string().min(1),
+  FIREBASE_SERVICE_ACCOUNT_BASE64: z.string().min(1),
+  // CLERK_SECRET_KEY: z.string().min(1), // Removed
+  PORT: z.coerce.number().default(3000),
+});
 
-console.log('DATABASE_URL loaded:', process.env.DATABASE_URL);
+export const env = envSchema.parse(process.env);

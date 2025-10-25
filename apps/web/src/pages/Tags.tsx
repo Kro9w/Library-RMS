@@ -1,18 +1,23 @@
+// apps/web/src/pages/Tags.tsx
 import React, { useState } from "react";
 import { trpc } from "../trpc";
 import { TagModal } from "../components/TagModal";
 import { ConfirmModal } from "../components/ConfirmModal";
 import "./Tags.css";
+// 1. ADDED: Import tRPC types
+import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
-// Define a type for the Tag object to include the document count
-type Tag = {
-  id: string;
-  name: string;
-  documentCount?: number;
-};
+// 2. REPLACED: Old type with new inferred type
+type Tag = AppRouterOutputs["documents"]["getTags"][0];
 
 export function Tags() {
-  const { data: tags, isLoading, isError, error } = trpc.getTags.useQuery();
+  // 3. FIXED: Use nested tRPC procedure
+  const {
+    data: tags,
+    isLoading,
+    isError,
+    error,
+  } = trpc.documents.getTags.useQuery();
   const trpcCtx = trpc.useContext();
 
   // State for controlling the modals
@@ -22,17 +27,17 @@ export function Tags() {
   // State to keep track of the tag being edited or deleted
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
 
-  // tRPC mutations for CRUD operations
-  const createTag = trpc.createTag.useMutation({
-    onSuccess: () => trpcCtx.getTags.invalidate(),
+  // 4. FIXED: Use nested tRPC procedures
+  const createTag = trpc.documents.createTag.useMutation({
+    onSuccess: () => trpcCtx.documents.getTags.invalidate(),
     onSettled: () => setIsTagModalOpen(false),
   });
-  const updateTag = trpc.updateTag.useMutation({
-    onSuccess: () => trpcCtx.getTags.invalidate(),
+  const updateTag = trpc.documents.updateTag.useMutation({
+    onSuccess: () => trpcCtx.documents.getTags.invalidate(),
     onSettled: () => setIsTagModalOpen(false),
   });
-  const deleteTag = trpc.deleteTag.useMutation({
-    onSuccess: () => trpcCtx.getTags.invalidate(),
+  const deleteTag = trpc.documents.deleteTag.useMutation({
+    onSuccess: () => trpcCtx.documents.getTags.invalidate(),
     onSettled: () => setIsDeleteModalOpen(false),
   });
 
@@ -98,12 +103,14 @@ export function Tags() {
             <div className="text-end">Actions</div>
           </div>
 
+          {/* 5. FIXED: 'any' type error is resolved by 'Tag' type */}
           {tags?.map((tag) => (
             <div key={tag.id} className="tag-list-item">
               <div>
                 <span className="badge tag-badge">{tag.name}</span>
               </div>
               <div className="text-center">
+                {/* This will now work thanks to the backend fix */}
                 <span className="tag-doc-count">{tag.documentCount}</span>
               </div>
               <div className="text-end">

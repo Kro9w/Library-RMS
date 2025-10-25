@@ -1,51 +1,86 @@
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
 }
 
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 model User {
-  id               String     @id @default(cuid())
-  firstName        String?
-  lastName         String?
-  documentsOwned   Document[] @relation("OwnedDocuments")
-  documentsHeld    Document[] @relation("HeldDocuments")
+  id           String        @id @default(cuid())
+  firebaseUid  String        @unique // Replaced clerkId
+  email        String        @unique
+  name         String?
+  imageUrl     String?
+  organizationId String? // This is the key for onboarding
+  organization Organization?   @relation(fields: [organizationId], references: [id])
+  documents    Document[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  Notification Notification[]
+}
+
+model Organization {
+  id        String     @id @default(cuid())
+  name      String
+  // Removed clerkId
+  users     User[]
+  documents Document[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
 model Document {
-  id               String    @id @default(cuid())
-  title            String
-  type             String // memorandum | office_order | communication_letter
-  content          String // JSON or serialized blocks
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  tags             String[]
-  controlNumber    String    @unique @default(cuid())
-  userID           String    @default("legacy_user")
-  uploadedBy       String // Combination of first and last name
-  originalOwnerId  String
-  originalOwner    User      @relation("OwnedDocuments", fields: [originalOwnerId], references: [id])
-  heldById         String
-  heldBy           User      @relation("HeldDocuments", fields: [heldById], references: [id])
-  inTransit        Boolean   @default(false)
-  intendedHolderId String?
-}
-
-model Notification {
-  id        String   @id @default(cuid())
-  message   String
-  documentId String?  // Optional link to a document
-  userId    String   // The user who receives the notification
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  @@index([userId])
+  id             String        @id @default(cuid())
+  title          String
+  content        String?
+  fileUrl        String
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  uploadedById   String
+  uploadedBy     User          @relation(fields: [uploadedById], references: [id])
+  tags           DocumentTag[]
+  owners         Owner[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  Notification   Notification[]
 }
 
 model Tag {
-  id   String @id @default(cuid())
-  name String @unique
+  id        String        @id @default(cuid())
+  name      String
+  documents DocumentTag[]
+}
+
+model DocumentTag {
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  tagId      String
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, tagId])
+}
+
+model Owner {
+  id         String   @id @default(cuid())
+  name       String
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  ownedFrom  DateTime
+  ownedTo    DateTime?
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id])
+  message     String
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
 }

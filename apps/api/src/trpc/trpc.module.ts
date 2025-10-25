@@ -1,8 +1,12 @@
+// apps/api/src/trpc/trpc.module.ts
 import { Module } from '@nestjs/common';
-import { TRPCModule } from 'nestjs-trpc';
+import { TrpcRouter } from './trpc.router';
+import { DocumentsModule } from '../documents/documents.module';
+import { UserModule } from '../user/user.module'; // Added
 
 @Module({
-  imports: [TRPCModule],
-  providers: [], // router instance doesn't need to be provided
+  imports: [DocumentsModule, UserModule], // Added UserModule
+  providers: [TrpcRouter],
+  exports: [TrpcRouter],
 })
-export class AppTrpcModule {}
+export class TrpcModule {}

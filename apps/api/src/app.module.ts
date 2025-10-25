@@ -1,21 +1,20 @@
-// import { Module } from '@nestjs/common';
-// import { DocumentsModule } from './documents/documents.module';
-
-// @Module({
-//   imports: [DocumentsModule]
-// })
-// export class AppModule {}
-
+// apps/api/src/app.module.ts
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { PrismaService } from './prisma/prisma.service'; // 👈 Import PrismaService
-import { DocumentsModule } from './documents/documents.module'; // 👈 Nest CLI should have added this
+import { TrpcModule } from './trpc/trpc.module';
+// import { DocumentsModule } from './documents/documents.module'; // <-- REMOVE THIS LINE
+import { PrismaModule } from './prisma/prisma.module';
+import { FirebaseAdminModule } from './firebase/firebase-admin.module';
 
 @Module({
-  imports: [DocumentsModule],
+  imports: [
+    TrpcModule,
+    // DocumentsModule, // <-- Make sure this is removed
+    PrismaModule,
+    FirebaseAdminModule,
+  ],
   controllers: [AppController],
-  providers: [AppService, PrismaService], // 👈 Add PrismaService here
-  exports: [PrismaService], // 👈 Export it to make it available everywhere
+  providers: [AppService],
 })
 export class AppModule {}

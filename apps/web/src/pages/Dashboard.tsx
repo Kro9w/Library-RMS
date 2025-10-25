@@ -1,3 +1,4 @@
+// apps/web/src/pages/Dashboard.tsx
 import React from "react";
 import { Link } from "react-router-dom";
 import { trpc } from "../trpc";
@@ -5,26 +6,30 @@ import "./Dashboard.css";
 // Import the necessary components from the charting library
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
 import { useForm } from "react-hook-form";
-import { useAuth } from "@clerk/clerk-react";
+// 1. REPLACED: Swapped Clerk auth for our new AuthContext
+import { useAuth } from "../context/AuthContext";
 
-type RecentFile = {
-  id: string;
-  title: string;
-  uploadedBy?: string;
-};
+// 2. REMOVED: This type is obsolete and caused the error
+// type RecentFile = {
+//   id: string;
+//   title: string;
+//   uploadedBy?: string;
+// };
 
 // Define colors for the pie chart slices, using your brand palette
 const PIE_CHART_COLORS = ["#BA3B46", "#ED9B40", "#AAB8C2", "#E1E8ED"];
 
 export function Dashboard() {
-  const { userId } = useAuth();
+  // 3. UPDATED: Use dbUser from our new context
+  const { dbUser } = useAuth();
   const { data, isLoading, isError, error } = trpc.getDashboardStats.useQuery();
   const { register, handleSubmit, reset } = useForm<{
     controlNumber: string;
   }>();
 
   const onSubmit = (formData: { controlNumber: string }) => {
-    if (!userId) {
+    // 4. UPDATED: Check for dbUser instead of userId
+    if (!dbUser) {
       alert("You must be logged in to transfer documents.");
       return;
     }
@@ -130,7 +135,9 @@ export function Dashboard() {
           </h5>
           <div className="recent-uploads-list">
             {recentFiles.length > 0 ? (
-              recentFiles.map((file: RecentFile) => (
+              // 5. FIXED: Removed the ': RecentFile' type annotation
+              //    to let TypeScript infer the correct type
+              recentFiles.map((file) => (
                 <div key={file.id} className="recent-uploads-item">
                   <Link to={`/documents/${file.id}`}>{file.title}</Link>
                   <span className="text-muted">
@@ -195,7 +202,7 @@ export function Dashboard() {
                     <li
                       // This now correctly uses 'tag.name'
                       key={tag.name}
-                      className="list-group-item d-flex justify-content-between align-items-start"
+                      className="list-group-item d-.flex justify-content-between align-items-start"
                     >
                       {/* This now correctly uses 'tag.name' */}
                       <div className="ms-2 me-auto">{tag.name}</div>

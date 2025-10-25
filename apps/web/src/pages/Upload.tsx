@@ -1,29 +1,45 @@
+// apps/web/src/pages/Upload.tsx
 import React, { useState } from "react";
 import { trpc } from "../trpc";
-import { useUser } from "@clerk/clerk-react";
+import { useAuth } from "../context/AuthContext";
 import { UploadDetailsModal } from "../components/UploadDetailsModal";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from "../firebase";
+// 1. FIXED: Correctly import AppRouterInputs
+import type {
+  AppRouter,
+  AppRouterOutputs,
+  AppRouterInputs,
+} from "../../../api/src/trpc/trpc.router";
+import { TRPCClientErrorLike } from "@trpc/client";
 
-type DocumentType = "memorandum" | "office_order" | "communication_letter";
+// 2. UPDATED: This type now matches the modal's state
 type FileDetails = {
-  docType: DocumentType;
-  tags: string[];
+  tags: { id: string; name: string }[];
 };
+type AvailableTag = AppRouterOutputs["documents"]["getTags"][0];
+
+// 3. This type will now be found correctly
+type CreateDocInput = AppRouterInputs["documents"]["createDocument"];
 
 export function Upload() {
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  const { user } = useUser();
+  const { dbUser } = useAuth();
   const trpcCtx = trpc.useContext();
 
-  const { data: availableTags } = trpc.getTags.useQuery();
+  const { data: availableTags } = trpc.documents.getTags.useQuery();
 
-  const createDoc = trpc.createDocument.useMutation({
+  const createDoc = trpc.documents.createDocument.useMutation({
     onSuccess: () => {
-      trpcCtx.getDocuments.invalidate();
+      trpcCtx.documents.getDocuments.invalidate();
     },
-    onError: (error, variables) => {
+    onError: (
+      error: TRPCClientErrorLike<AppRouter>,
+      variables: CreateDocInput
+    ) => {
       alert(`Upload failed for ${variables.title}: ${error.message}`);
     },
   });
@@ -53,32 +69,32 @@ export function Upload() {
     }
   };
 
+  // 4. This function's signature now matches the modal's prop type
   const handleUploadAll = async (fileDetailsMap: Map<File, FileDetails>) => {
-    if (!user) {
-      // It's better to reject the promise so the modal knows the upload failed
+    if (!dbUser || !dbUser.organizationId) {
       return Promise.reject(
-        new Error("You must be signed in to upload documents.")
+        new Error(
+          "You must be signed in and in an organization to upload documents."
+        )
       );
     }
 
     const uploadPromises = Array.from(fileDetailsMap.entries()).map(
       async ([file, details]) => {
         try {
-          const arrayBuffer = await file.arrayBuffer();
-          const content = JSON.stringify(
-            Array.from(new Uint8Array(arrayBuffer))
+          const storageRef = ref(
+            storage,
+            `documents/${dbUser.organizationId}/${Date.now()}-${file.name}`
           );
+          const snapshot = await uploadBytes(storageRef, file);
+          const downloadURL = await getDownloadURL(snapshot.ref);
 
           return createDoc.mutateAsync({
             title: file.name,
-            type: details.docType,
-            content,
-            tags: details.tags,
-            userID: user.id,
-            uploadedBy:
-              user.fullName ||
-              user.primaryEmailAddress?.emailAddress ||
-              "Unknown User",
+            content: "", // Add text extraction or a summary here later
+            fileUrl: downloadURL,
+            // 5. UPDATED: This now matches the 'details' object
+            tags: details.tags.map((tag) => ({ id: tag.id })),
           });
         } catch (err) {
           console.error("Failed to process and upload file:", file.name, err);
@@ -87,14 +103,12 @@ export function Upload() {
       }
     );
 
-    // Await the uploads, but do not clear the files here.
     await Promise.all(uploadPromises);
   };
 
-  // This new function will handle closing the modal and clearing the files.
   const handleCloseModal = () => {
     setIsUploadModalOpen(false);
-    setStagedFiles([]); // Clear the files only after the modal is closed.
+    setStagedFiles([]);
   };
 
   return (
@@ -131,11 +145,12 @@ export function Upload() {
 
       <UploadDetailsModal
         isOpen={isUploadModalOpen}
-        onClose={handleCloseModal} // Use the new handler
+        onClose={handleCloseModal}
         files={stagedFiles}
         onUploadAll={handleUploadAll}
         isUploading={createDoc.isPending}
-        availableTags={availableTags || []}
+        // 6. This prop passing is now type-safe
+        availableTags={(availableTags as AvailableTag[]) || []}
       />
     </>
   );

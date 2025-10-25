@@ -1,184 +1,145 @@
-import React, { useState, useEffect } from "react";
+// apps/web/srcV/App.tsx
+import React, { useState } from "react";
 import {
-  Routes,
-  Route,
-  useNavigate,
-  useLocation,
+  createBrowserRouter,
   Navigate,
-  useParams,
+  Outlet,
+  useLocation,
 } from "react-router-dom";
-import {
-  ClerkProvider,
-  SignedIn,
-  SignedOut,
-  useAuth,
-  useUser,
-} from "@clerk/clerk-react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { httpBatchLink } from "@trpc/client";
+import { LoadingOverlay } from "@mantine/core";
+import { Navbar } from "./components/Navbar";
+import { Dashboard } from "./pages/Dashboard";
+import { Documents } from "./pages/Documents";
+import { DocumentDetails } from "./pages/DocumentDetails";
+import { GraphView } from "./pages/GraphView";
+import { Settings } from "./pages/Settings";
+import { Tags } from "./pages/Tags";
+import { Upload } from "./pages/Upload";
+import { Users } from "./pages/Users";
+import { Account } from "./pages/Account";
+import LoginPage from "./pages/LoginPage";
+import SignUpPage from "./pages/SignUpPage";
+import JoinOrganization from "./pages/JoinOrganization";
+import { useAuth } from "./context/AuthContext";
+import "./App.css";
 
-import { trpc } from "@/trpc";
-import { Navbar } from "@/components/Navbar";
-import { Dashboard } from "@/pages/Dashboard";
-import { Documents } from "@/pages/Documents";
-import { Upload } from "@/pages/Upload";
-import { Users } from "@/pages/Users";
-import { Tags } from "@/pages/Tags";
-import { Settings } from "@/pages/Settings";
-import { AccountPage } from "@/pages/Account";
-import { LoginPage } from "@/pages/LoginPage";
-import { SignUpPage } from "@/pages/SignUpPage";
-import { DocumentDetails } from "@/pages/DocumentDetails";
-import { GraphView } from "@/pages/GraphView";
-import { JoinOrganization } from "@/pages/JoinOrganization";
-import { ThemeProvider } from "@/Theme";
-import "@/App.css";
+// 1. --- ENTIRE 'AppLayout' FUNCTION REMOVED ---
+// The router now uses 'MainContent' directly,
+// so this function is no longer needed and caused the error.
 
-const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+/**
+ * This is the main layout component.
+ * It manages the sidebar state and renders the pages.
+ */
+function MainContent() {
+  const { dbUser } = useAuth();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-// Component to handle the main application layout and routing
-function AppLayout() {
-  const { user, isLoaded } = useUser();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const params = useParams();
-  const [isNavbarExpanded, setIsNavbarExpanded] = useState(false);
-
-  // Effect to redirect users without an organization
-  useEffect(() => {
-    if (
-      isLoaded &&
-      user &&
-      user.organizationMemberships.length === 0 &&
-      location.pathname !== "/join-organization" &&
-      location.pathname !== "/login" &&
-      location.pathname !== "/signup"
-    ) {
-      navigate("/join-organization");
-    }
-  }, [isLoaded, user, navigate, location.pathname]);
-
-  // Effect to update the document title based on the route
-  useEffect(() => {
-    const titles: Record<string, string> = {
-      "/": "Dashboard",
-      "/documents": "Documents",
-      "/upload": "Upload Document",
-      "/tags": "Tags",
-      "/users": "Users",
-      "/settings": "Settings",
-      "/account": "My Account",
-      "/graph": "Ownership Graph",
-      "/join-organization": "Join Organization",
-      "/login": "Login",
-      "/signup": "Sign Up",
-    };
-    let path = location.pathname;
-    let title = titles[path];
-
-    if (!title && path.startsWith("/documents/")) {
-      title = `Document: ${params.documentId ?? "Details"}`;
-    }
-
-    document.title = `${title || "Folio"} | Folio RMS`;
-  }, [location, params]);
-
-  if (!isLoaded) {
-    return <div className="loading-container">Loading Application...</div>;
+  // This is the core onboarding logic
+  if (!dbUser?.organizationId) {
+    // If user is authenticated but has no org, redirect to onboarding
+    return <Navigate to="/join-organization" replace />;
   }
 
   return (
-    <div className="d-flex">
-      <SignedIn>
-        <Navbar
-          isExpanded={isNavbarExpanded}
-          setIsExpanded={setIsNavbarExpanded}
-        />
-      </SignedIn>
+    <>
+      {/* We pass the state and the setter to the Navbar */}
+      <Navbar
+        isCollapsed={isSidebarCollapsed}
+        onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+      />
+      {/* We apply the class to the main content area */}
       <main
         className={`main-content ${
-          isNavbarExpanded ? "expanded" : "collapsed"
+          isSidebarCollapsed ? "collapsed" : "expanded"
         }`}
       >
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignUpPage />} />
-          <Route
-            path="/*"
-            element={
-              <>
-                <SignedIn>
-                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/documents" element={<Documents />} />
-                    <Route
-                      path="/documents/:documentId"
-                      element={<DocumentDetails />}
-                    />
-                    <Route path="/upload" element={<Upload />} />
-                    <Route path="/tags" element={<Tags />} />
-                    <Route path="/users" element={<Users />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/account" element={<AccountPage />} />
-                    <Route path="/graph" element={<GraphView />} />
-                    <Route
-                      path="/join-organization"
-                      element={<JoinOrganization />}
-                    />
-                  </Routes>
-                </SignedIn>
-                <SignedOut>
-                  <Navigate to="/login" />
-                </SignedOut>
-              </>
-            }
-          />
-        </Routes>
+        <Outlet />
       </main>
-    </div>
+    </>
   );
 }
 
-// This component creates the authenticated tRPC client using Clerk's `useAuth` hook.
-function App() {
-  const { getToken } = useAuth();
-  const [queryClient] = useState(() => new QueryClient());
-  const [trpcClient] = useState(() =>
-    trpc.createClient({
-      links: [
-        httpBatchLink({
-          url: "http://localhost:3000/trpc",
-          async headers() {
-            const token = await getToken();
-            return {
-              Authorization: token ? `Bearer ${token}` : "",
-            };
-          },
-        }),
-      ],
-    })
-  );
+/**
+ * A layout for public pages (Login, Signup).
+ * If the user is already logged in, it redirects them.
+ */
+function PublicLayout() {
+  const { user, dbUser } = useAuth();
 
-  return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        <AppLayout />
-      </QueryClientProvider>
-    </trpc.Provider>
-  );
-}
-
-// This is the new root component. It wraps the app with providers that do NOT need access to the router.
-export default function AppWrapper() {
-  if (!clerkPubKey) {
-    throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY in .env");
+  if (user && dbUser?.organizationId) {
+    return <Navigate to="/" replace />;
   }
 
-  return (
-    <ThemeProvider>
-      <ClerkProvider publishableKey={clerkPubKey}>
-        <App />
-      </ClerkProvider>
-    </ThemeProvider>
-  );
+  if (user && !dbUser?.organizationId) {
+    return <Navigate to="/join-organization" replace />;
+  }
+
+  return <Outlet />;
+}
+
+/**
+ * A component to protect routes.
+ * It checks for an authenticated user.
+ */
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <LoadingOverlay visible c="blue" />;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+}
+
+// Define the router
+export const router = createBrowserRouter([
+  {
+    // Protected routes (require login AND onboarding)
+    path: "/",
+    element: (
+      <ProtectedRoute>
+        <MainContent />
+      </ProtectedRoute>
+    ),
+    children: [
+      { path: "/", element: <Dashboard /> },
+      { path: "/documents", element: <Documents /> },
+      { path: "/documents/:id", element: <DocumentDetails /> },
+      { path: "/graph", element: <GraphView /> },
+      { path: "/settings", element: <Settings /> },
+      { path: "/tags", element: <Tags /> },
+      { path: "/upload", element: <Upload /> },
+      { path: "/users", element: <Users /> },
+      { path: "/account", element: <Account /> },
+    ],
+  },
+  {
+    // Onboarding route (requires login, but NOT onboarding)
+    path: "/join-organization",
+    element: (
+      <ProtectedRoute>
+        <JoinOrganization />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    // Public routes (login/signup)
+    path: "/",
+    element: <PublicLayout />,
+    children: [
+      { path: "/login", element: <LoginPage /> },
+      { path: "/signup", element: <SignUpPage /> },
+    ],
+  },
+]);
+
+// This component is no longer used, but main.tsx imports it.
+export function App() {
+  return <div>This component is not used.</div>;
 }

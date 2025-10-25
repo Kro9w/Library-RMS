@@ -4,17 +4,18 @@ import { trpc } from "../trpc";
 import { renderAsync } from "docx-preview";
 import "./DocumentDetails.css";
 import { ConfirmModal } from "../components/ConfirmModal";
+// 1. ADDED: Import the error type
+import { TRPCClientErrorLike } from "@trpc/client";
+import { AppRouter } from "../../../api/src/trpc/trpc.router";
 
 export function DocumentDetails() {
-  const { documentId } = useParams();
+  const { documentId } = useParams(); // This is a string | undefined
   const navigate = useNavigate();
 
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const docxContainerRef = useRef<HTMLDivElement>(null);
 
   const [isDetailsVisible, setIsDetailsVisible] = useState(false);
-
-  // 1. State to manage the visibility of the delete confirmation modal
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const {
@@ -22,20 +23,22 @@ export function DocumentDetails() {
     isLoading,
     isError,
     error,
-  } = trpc.getDocument.useQuery(documentId!, {
+  } = trpc.documents.getDocument.useQuery(documentId!, { // 2. FIXED: Use the nested procedure 'trpc.documents.getDocument'
     enabled: !!documentId,
   });
 
   const trpcCtx = trpc.useContext();
-  const deleteDoc = trpc.deleteDocument.useMutation({
+  // 3. FIXED: Use the nested procedure 'trpc.documents.deleteDocument'
+  const deleteDoc = trpc.documents.deleteDocument.useMutation({
     onSuccess: () => {
-      trpcCtx.getDocuments.invalidate();
+      // 4. FIXED: Invalidate the correct procedure
+      trpcCtx.documents.getDocuments.invalidate();
       navigate("/documents");
     },
-    onError: (error) => {
+    // 5. FIXED: Correctly typed the 'error' parameter
+    onError: (error: TRPCClientErrorLike<AppRouter>) => {
       alert(`Failed to delete document: ${error.message}`);
     },
-    // Close the modal whether the deletion succeeds or fails
     onSettled: () => {
       setIsDeleteModalOpen(false);
     },
@@ -47,45 +50,48 @@ export function DocumentDetails() {
       return;
     }
 
-    let url: string | null = null;
-    const processDocument = async () => {
-      try {
-        const parsedContent = JSON.parse(document.content);
-        if (Array.isArray(parsedContent)) {
-          const uint8Array = new Uint8Array(parsedContent);
+    // The 'content' field is just a string in the new schema.
+    // The docx-preview logic you have is based on the old schema
+    // where 'content' was a JSON string of a Uint8Array.
+    // This logic will likely fail.
+    // For now, we'll just display the raw text content.
+    if (docxContainerRef.current) {
+      docxContainerRef.current.innerText = document.content;
+    }
 
-          if (document.title.toLowerCase().endsWith(".pdf")) {
-            const blob = new Blob([uint8Array], { type: "application/pdf" });
-            url = URL.createObjectURL(blob);
-            setPdfPreviewUrl(url);
-          } else if (docxContainerRef.current) {
-            docxContainerRef.current.innerHTML = "";
-            await renderAsync(uint8Array.buffer, docxContainerRef.current);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to process document content:", err);
-        if (docxContainerRef.current) {
-          docxContainerRef.current.innerText = "Error rendering document.";
-        }
+    // If you store file bytes as a string, you need to adjust
+    // the logic here. For example, if it's base64:
+    /*
+    try {
+      const byteString = atob(document.content);
+      const uint8Array = new Uint8Array(byteString.length);
+      for (let i = 0; i < byteString.length; i++) {
+        uint8Array[i] = byteString.charCodeAt(i);
       }
-    };
-
-    processDocument();
-
-    return () => {
-      if (url) {
-        URL.revokeObjectURL(url);
+      
+      if (document.fileUrl.toLowerCase().endsWith(".pdf")) {
+        const blob = new Blob([uint8Array], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        setPdfPreviewUrl(url);
+        
+        return () => { URL.revokeObjectURL(url); };
+      } else if (docxContainerRef.current) {
+        docxContainerRef.current.innerHTML = "";
+        renderAsync(uint8Array.buffer, docxContainerRef.current);
       }
-    };
+    } catch (err) {
+      console.error("Failed to process document content:", err);
+      if (docxContainerRef.current) {
+        docxContainerRef.current.innerText = "Error rendering document.";
+      }
+    }
+    */
   }, [document]);
 
-  // 2. This function is now called when the user clicks the main delete button
   const handleDeleteClick = () => {
-    setIsDeleteModalOpen(true); // This opens the modal
+    setIsDeleteModalOpen(true);
   };
 
-  // 3. This function is passed to the modal and is called when the user confirms
   const handleConfirmDelete = () => {
     if (document) {
       deleteDoc.mutate(document.id);
@@ -93,27 +99,17 @@ export function DocumentDetails() {
   };
 
   const handleDownload = () => {
-    if (document && document.content) {
-      try {
-        const parsedContent = JSON.parse(document.content);
-        const uint8Array = new Uint8Array(parsedContent);
-        const mimeType = document.title.toLowerCase().endsWith(".pdf")
-          ? "application/pdf"
-          : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-        const blob = new Blob([uint8Array], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-
-        const a = window.document.createElement("a");
-        a.href = url;
-        a.download = document.title;
-        window.document.body.appendChild(a);
-        a.click();
-        window.document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } catch (err) {
-        console.error("Failed to prepare file for download:", err);
-        alert("Could not prepare file for download.");
-      }
+    // This also assumes 'content' is bytes.
+    // A better approach is to download from 'document.fileUrl'
+    if (document?.fileUrl) {
+      const a = window.document.createElement("a");
+      a.href = document.fileUrl; // Use the direct URL
+      a.download = document.title;
+      window.document.body.appendChild(a);
+      a.click();
+      window.document.body.removeChild(a);
+    } else {
+      alert("No file URL available for download.");
     }
   };
 
@@ -127,7 +123,6 @@ export function DocumentDetails() {
   if (!document) return <p className="container mt-4">Document not found.</p>;
 
   return (
-    // Use a React Fragment to render the page and the modal side-by-side
     <>
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
@@ -142,25 +137,21 @@ export function DocumentDetails() {
         <div className="details-page-container">
           {/* Main Preview Area */}
           <div className="preview-container">
-            {document.title.toLowerCase().endsWith(".pdf") ? (
-              pdfPreviewUrl ? (
-                <iframe
-                  src={pdfPreviewUrl}
-                  title={document.title}
-                  width="100%"
-                  height="100%"
-                  style={{ border: "none" }}
-                />
-              ) : (
-                <p className="text-muted text-center pt-5">
-                  Generating PDF preview...
-                </p>
-              )
+            {/* 6. SIMPLIFIED: Preview logic based on fileUrl */}
+            {document.fileUrl.toLowerCase().endsWith(".pdf") ? (
+              <iframe
+                src={document.fileUrl} // Use fileUrl directly
+                title={document.title}
+                width="100%"
+                height="100%"
+                style={{ border: "none" }}
+              />
             ) : (
+              // docx-preview must be done on the client side
+              // This just shows the text content for now
               <div ref={docxContainerRef} style={{ padding: "1rem" }}>
-                <p className="text-muted text-center pt-5">
-                  Generating DOCX preview...
-                </p>
+                <p>Preview for DOCX is not fully implemented.</p>
+                <p>Content: {document.content}</p>
               </div>
             )}
           </div>
@@ -184,20 +175,25 @@ export function DocumentDetails() {
               </div>
               <div className="card-body">
                 <ul className="list-group list-group-flush">
-                  <li className="list-group-item">
-                    <strong>Type:</strong> {document.type}
-                  </li>
+                  {/* 7. REMOVED: 'document.type' no longer exists */}
                   <li className="list-group-item">
                     <strong>Uploaded:</strong>{" "}
                     {new Date(document.createdAt).toLocaleString()}
                   </li>
                   <li className="list-group-item">
                     <strong>Tags:</strong>{" "}
-                    {document.tags.map((tag) => (
-                      <span key={tag} className="badge bg-primary me-1">
-                        {tag}
+                    {/* 8. FIXED: Mapped new tag structure */}
+                    {document.tags.map((docTag) => (
+                      <span
+                        key={docTag.tag.id}
+                        className="badge bg-primary me-1"
+                      >
+                        {docTag.tag.name}
                       </span>
                     ))}
+                    {document.tags.length === 0 && (
+                      <span className="text-muted">No tags</span>
+                    )}
                   </li>
                 </ul>
               </div>
@@ -205,7 +201,6 @@ export function DocumentDetails() {
                 <button className="btn btn-success" onClick={handleDownload}>
                   <i className="bi bi-download me-2"></i>Download
                 </button>
-                {/* 4. The Delete button now opens the modal */}
                 <button className="btn btn-danger" onClick={handleDeleteClick}>
                   <i className="bi bi-trash me-2"></i>Delete
                 </button>
@@ -215,14 +210,13 @@ export function DocumentDetails() {
         </div>
       </div>
 
-      {/* 5. The modal is rendered here and controlled by state */}
       <ConfirmModal
         isOpen={isDeleteModalOpen}
         title="Confirm Deletion"
         message={`Are you sure you want to permanently delete "${document.title}"? This action cannot be undone.`}
         onConfirm={handleConfirmDelete}
         onCancel={() => setIsDeleteModalOpen(false)}
-        isConfirming={deleteDoc.isPending}
+        isConfirming={deleteDoc.isPending} // This is correct
       />
     </>
   );
