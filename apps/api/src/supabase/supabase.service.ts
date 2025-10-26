@@ -4,7 +4,7 @@ import { env } from '../env';
 
 @Injectable()
 export class SupabaseService implements OnModuleInit {
-  private supabaseAdmin: SupabaseClient;
+  private supabaseAdmin!: SupabaseClient;
 
   onModuleInit() {
     this.supabaseAdmin = createClient(
