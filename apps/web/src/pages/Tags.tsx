@@ -8,6 +8,7 @@ import "./Tags.css";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
 // 2. REPLACED: Old type with new inferred type
+// This type now includes the '_count' property
 type Tag = AppRouterOutputs["documents"]["getTags"][0];
 
 export function Tags() {
@@ -18,7 +19,7 @@ export function Tags() {
     isError,
     error,
   } = trpc.documents.getTags.useQuery();
-  const trpcCtx = trpc.useContext();
+  const trpcCtx = trpc.useUtils();
 
   // State for controlling the modals
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
@@ -103,15 +104,15 @@ export function Tags() {
             <div className="text-end">Actions</div>
           </div>
 
-          {/* 5. FIXED: 'any' type error is resolved by 'Tag' type */}
-          {tags?.map((tag) => (
+          {/* 5. FIX: Add explicit type annotation (tag: Tag) */}
+          {tags?.map((tag: Tag) => (
             <div key={tag.id} className="tag-list-item">
               <div>
                 <span className="badge tag-badge">{tag.name}</span>
               </div>
               <div className="text-center">
                 {/* This will now work thanks to the backend fix */}
-                <span className="tag-doc-count">{tag.documentCount}</span>
+                <span className="tag-doc-count">{tag._count.documents}</span>
               </div>
               <div className="text-end">
                 <button
@@ -139,14 +140,18 @@ export function Tags() {
         isSaving={createTag.isPending || updateTag.isPending}
         existingTag={selectedTag}
       />
+      {/* 6. FIX: Updated props for ConfirmModal */}
       <ConfirmModal
-        isOpen={isDeleteModalOpen}
+        show={isDeleteModalOpen}
         title="Confirm Deletion"
-        message={`Are you sure you want to delete the tag "${selectedTag?.name}"? It is currently used in ${selectedTag?.documentCount} document(s).`}
         onConfirm={handleConfirmDelete}
-        onCancel={() => setIsDeleteModalOpen(false)}
+        onClose={() => setIsDeleteModalOpen(false)}
         isConfirming={deleteTag.isPending}
-      />
+      >
+        {/* 7. FIX: Pass message as children */}
+        Are you sure you want to delete the tag "{selectedTag?.name}"? It is
+        currently used in {selectedTag?._count.documents || 0} document(s).
+      </ConfirmModal>
     </>
   );
 }

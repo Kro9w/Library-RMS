@@ -1,80 +1,165 @@
+/* apps/web/src/components/OwnershipGraph.css */
+
+/* Use root variables */
+:root {
+  --primary: #ba3b46;
+  --accent: #ed9b40;
+  --background: #ffeedb;
+  --text: #4a1e22;
+  --light-text: #ffffff;
+}
+
 .graph-container {
-  position: relative;
+  display: flex;
+  height: 75vh;
   width: 100%;
-  height: calc(100vh - 120px); /* Fill available space */
+  border: 1px solid rgba(var(--text), 0.2);
+  border-radius: 8px;
   overflow: hidden;
+  position: relative;
 }
 
 .graph-canvas-wrapper {
+  flex-grow: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+svg {
+  background-color: var(--background); /* Ensure background is set */
   width: 100%;
   height: 100%;
-  background-color: #f8f9fa; /* Light background for the canvas */
-  border-radius: 0.5rem;
+  cursor: auto; /* Default cursor for the canvas */
 }
 
-.graph-canvas-wrapper svg {
-  cursor: grab;
+/* Cursor style for when panning/zooming */
+svg.grabbing {
+  cursor: grabbing !important;
 }
 
-.graph-canvas-wrapper svg.grabbing {
-  cursor: grabbing;
-}
+/* --- D3 Node Styles --- */
 
-.links line {
-  stroke: #999;
-  stroke-opacity: 0.6;
-}
-
-.nodes .node-circle {
-  stroke: #fff;
+/* Base cursor for nodes (grab for dragging) */
+/* Applied to the circle inside the group */
+.node-circle {
+  stroke: var(--light-text);
   stroke-width: 1.5px;
-  cursor: pointer;
-  transition: transform 0.2s ease;
+  cursor: grab; /* Default grab cursor for dragging */
+  transition: fill 0.2s ease-in-out, stroke 0.2s ease-in-out;
 }
 
-.nodes .node-circle.user {
+/* Cursor for clickable nodes (pointer) */
+/* Applied to the <g> element containing the circle and text */
+.clickable-node {
+  cursor: pointer !important; /* Use pointer for clickable nodes */
+}
+/* Ensure the circle within a clickable node doesn't override the pointer */
+.clickable-node .node-circle {
+  cursor: pointer !important;
+}
+
+.node-circle.selected {
+  stroke: var(--accent);
+  stroke-width: 3px;
+}
+
+.node-circle.organization {
   fill: var(--primary);
 }
 
-.nodes .node-circle.office {
+.node-circle.user {
   fill: var(--accent);
 }
 
-.nodes .node-circle:hover, .nodes .node-circle.selected {
-  transform: scale(1.2);
-  stroke: var(--accent);
+.node-circle.document {
+  fill: var(--text);
 }
 
-.nodes text {
-  font-size: 12px;
-  pointer-events: none; /* Make text unclickable */
-  text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
+.node-label {
+  fill: var(--text);
+  font-size: 10px;
+  font-weight: 500;
+  pointer-events: none;
+  text-anchor: start;
 }
 
+/* --- D3 Link Styles --- */
+.links line {
+  stroke: var(--text);
+  stroke-opacity: 0.4;
+  stroke-width: 1.5px;
+}
+
+/* --- Details Panel --- */
 .details-panel {
-  position: absolute;
-  top: 0;
-  right: -320px; /* Start off-screen */
   width: 300px;
-  height: 100%;
-  background-color: white;
-  box-shadow: -4px 0 15px rgba(0,0,0,0.1);
+  background-color: var(--background);
+  border-left: 1px solid rgba(var(--text), 0.2);
   padding: 1.5rem;
-  transition: right 0.3s ease-in-out;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.05);
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out;
+  flex-shrink: 0;
   overflow-y: auto;
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 10;
+  color: var(--text);
 }
 
 .details-panel.visible {
-  right: 0;
+  transform: translateX(0);
+}
+
+.details-panel h4 {
+  margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+  color: var(--primary);
 }
 
 .details-panel .btn-close {
-  /* Use a more visible, brand-aligned color for the 'X' icon */
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23BA3B46'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414z'/%3e%3c/svg%3e");
-  opacity: 0.7;
-  transition: opacity 0.2s ease;
+  font-size: 0.8rem;
+  margin-left: 1rem;
 }
 
-.details-panel .btn-close:hover {
+.details-panel .list-group-item {
+  font-size: 0.9rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgba(var(--text), 0.1);
+  background-color: transparent;
+  color: var(--text);
+}
+.details-panel .list-group-item:last-child {
+  border-bottom: none;
+}
+
+/* Status messages */
+.graph-status-message {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: var(--text);
+  opacity: 0.7;
+  font-size: 1.1rem;
+}
+
+.graph-status-message.error {
+  color: var(--primary);
   opacity: 1;
+}
+
+/* D3 Back Button Group - Add classes for styling */
+.back-button-group rect {
+  fill: var(--text);
+}
+.back-button-group text {
+  fill: var(--light-text);
+  font-size: 12px;
+  font-family: sans-serif;
+  pointer-events: none;
+  text-anchor: start;
 }

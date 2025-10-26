@@ -6,12 +6,9 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as trpcExpress from '@trpc/server/adapters/express';
-// 1. FIXED: Import the TrpcRouter CLASS and AppRouter TYPE
 import { TrpcRouter, AppRouter } from './trpc/trpc.router';
-// 2. FIXED: Import our NestJS-aware context factory
-import { trpcContextFactory } from './trpc/trpc.context';
-// 3. REMOVED: Clerk import
-// import { ClerkExpressWithAuth } from '@clerk/clerk-sdk-node';
+// FIX: Import the class 'TrpcContextFactory' (uppercase T)
+import { TrpcContextFactory } from './trpc/trpc.context';
 import { INestApplication } from '@nestjs/common';
 
 async function bootstrap() {
@@ -20,20 +17,20 @@ async function bootstrap() {
   });
   app.enableCors({ origin: ['http://localhost:5173'], credentials: true });
 
-  // 4. REMOVED: Clerk middleware
-  // app.use(ClerkExpressWithAuth());
-
-  // 5. FIXED: Mount tRPC by getting the router and context from the Nest app
+  // Mount tRPC by getting the router and context from the Nest app
   const trpcRouter = app.get(TrpcRouter);
   const router = trpcRouter.appRouter;
-  const createContext = trpcContextFactory(app);
+
+  // Get the factory instance from Nest and bind its 'createContext' method
+  const contextFactory = app.get(TrpcContextFactory);
+  const createContext = contextFactory.createContext.bind(contextFactory);
 
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.use(
     '/trpc',
     trpcExpress.createExpressMiddleware({
       router: router as AppRouter, // Use the router instance
-      createContext, // Use the context factory
+      createContext, // Use the bound context factory method
     }),
   );
 

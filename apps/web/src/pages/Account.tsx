@@ -1,60 +1,53 @@
-// apps/web/src/pages/Account.tsx
-// import { UserProfile } from '@clerk/clerk-react'; // Removed
-import { Container, Title, Paper, Text, Button } from "@mantine/core";
-import { useAuth } from "../context/AuthContext";
-import { auth } from "../firebase";
-import { sendPasswordResetEmail } from "firebase/auth";
-import { useState } from "react";
+import React from "react";
+// import { useAuth } from '../context/AuthContext'; // Remove this
+import { useUser } from "@supabase/auth-helpers-react"; // Add this
+import { trpc } from "../trpc"; // Add this
+import { Navigate } from "react-router-dom";
 
-export function Account() {
-  const { user, dbUser } = useAuth();
-  const [resetSent, setResetSent] = useState(false);
+const Account: React.FC = () => {
+  // const { user }_ = useAuth(); // Remove this
+  const authUser = useUser(); // This is the Supabase auth user
 
-  const handlePasswordReset = () => {
-    if (user?.email) {
-      sendPasswordResetEmail(auth, user.email)
-        .then(() => {
-          setResetSent(true);
-        })
-        .catch((error) => {
-          console.error("Error sending password reset:", error);
-          alert("Failed to send password reset email.");
-        });
-    }
-  };
+  // Get the user profile from *your* database
+  // FIX: Removed the stray '_' from the end of this line
+  const { data: dbUser, isLoading } = trpc.user.getMe.useQuery();
 
-  if (!user || !dbUser) {
-    return null;
+  if (isLoading) {
+    return <div>Loading account details...</div>;
+  }
+
+  // authUser is from Supabase, dbUser is from your public.User table
+  if (!authUser || !dbUser) {
+    return <Navigate to="/login" replace />;
   }
 
   return (
-    <Container size="sm" mt="lg">
-      <Title order={1} mb="lg">
-        My Account
-      </Title>
-      {/* <UserProfile path="/account" routing="path" /> */}
-
-      {/* Added replacement for UserProfile */}
-      <Paper shadow="sm" p="lg" withBorder>
-        <Text>
-          <strong>Name:</strong> {dbUser.name}
-        </Text>
-        <Text mt="sm">
-          <strong>Email:</strong> {dbUser.email}
-        </Text>
-        <Text mt="sm">
-          <strong>Organization:</strong> {dbUser.organization?.name || "N/A"}
-        </Text>
-        <Text mt="sm">
-          <strong>Firebase UID:</strong> {user.uid}
-        </Text>
-
-        <Button mt="xl" onClick={handlePasswordReset} disabled={resetSent}>
-          {resetSent
-            ? "Password Reset Email Sent"
-            : "Send Password Reset Email"}
-        </Button>
-      </Paper>
-    </Container>
+    <div className="account-container">
+      <h2>My Account</h2>
+      <div className="account-details">
+        <p>
+          <strong>Display Name:</strong>
+          {/* Use 'name' to match the schema */}
+          {dbUser.name || "Not set"}
+        </p>
+        <p>
+          <strong>Email:</strong>
+          {dbUser.email}
+        </p>
+        <p>
+          <strong>Role:</strong>
+          {dbUser.role}
+        </p>
+        <p>
+          <strong>Organization:</strong>
+          {dbUser.organization?.name || "Not part of an organization"}
+        </p>
+        {/* TODO: Add logic to update user details.
+            This would call supabase.auth.updateUser() AND
+            a tRPC mutation to update your public.User table. */}
+      </div>
+    </div>
   );
-}
+};
+
+export default Account;

@@ -1,107 +1,86 @@
-// apps/web/src/pages/LoginPage.tsx
-import {
-  Container,
-  Title,
-  Paper,
-  TextInput,
-  PasswordInput,
-  Button,
-  Text,
-  Anchor,
-  Alert,
-  Center,
-} from "@mantine/core";
-import { useForm } from "@mantine/form";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { IconAlertCircle } from "@tabler/icons-react";
+import { supabase } from "../supabase";
+import { trpc } from "../trpc";
 
-export default function LoginPage() {
-  const { signIn } = useAuth();
-  const navigate = useNavigate();
+const LoginPage: React.FC = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate(); // Keep navigate import
+  const syncUser = trpc.user.syncUser.useMutation();
 
-  const form = useForm({
-    initialValues: {
-      email: "",
-      password: "",
-    },
-    validate: {
-      email: (value) => (/^\S+@\S+$/.test(value) ? null : "Invalid email"),
-      password: (value) =>
-        value.length < 6 ? "Password must be at least 6 characters" : null,
-    },
-  });
-
-  const handleSubmit = async (values: typeof form.values) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
     setError(null);
+
     try {
-      await signIn(values.email, values.password);
-      // On success, the AuthProvider and router logic will handle redirection
-      navigate("/");
-    } catch (err: any) {
-      if (err.code === "auth/invalid-credential") {
-        setError("Invalid email or password.");
-      } else {
-        setError("An unexpected error occurred. Please try again.");
+      // 1. Sign in with Supabase
+      const { data, error: authError } = await supabase.auth.signInWithPassword(
+        {
+          email,
+          password,
+        }
+      );
+
+      if (authError) {
+        throw authError;
       }
-      console.error(err);
-      setLoading(false);
+
+      if (data.user) {
+        // 2. Sync user with our backend
+        // Wait for syncUser to complete
+        await syncUser.mutateAsync({
+          email: data.user.email!,
+          name: data.user.user_metadata?.display_name,
+        });
+
+        // 3. Removed navigation. App.tsx will handle the redirect.
+        // navigate('/');
+      } else {
+        // Handle case where signIn succeeds but user is null
+        throw new Error("Login successful but no user data received.");
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to log in");
+      setLoading(false); // Ensure loading is stopped on error
     }
+    // No finally block needed here as loading should only stop on error or completion
+    // The component will unmount/rerender on successful login/sync/redirect by App.tsx
   };
 
   return (
-    <Container size={420} my={40}>
-      <Center>
-        <img
-          src="/folio.svg"
-          alt="Folio"
-          style={{ width: 100, marginBottom: 20 }}
+    <div className="login-container">
+      <h2>Login</h2>
+      <form onSubmit={handleSubmit}>
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          disabled={loading} // Disable inputs while loading
         />
-      </Center>
-      <Title ta="center">Welcome back!</Title>
-      <Text c="dimmed" size="sm" ta="center" mt={5}>
-        Do not have an account yet?{" "}
-        <Anchor size="sm" component={Link} to="/signup">
-          Create account
-        </Anchor>
-      </Text>
-
-      <Paper withBorder shadow="md" p={30} mt={30} radius="md">
-        <form onSubmit={form.onSubmit(handleSubmit)}>
-          {error && (
-            <Alert
-              icon={<IconAlertCircle size="1rem" />}
-              title="Login Failed"
-              color="red"
-              withCloseButton
-              onClose={() => setError(null)}
-              mb="md"
-            >
-              {error}
-            </Alert>
-          )}
-          <TextInput
-            label="Email"
-            placeholder="you@email.com"
-            required
-            {...form.getInputProps("email")}
-          />
-          <PasswordInput
-            label="Password"
-            placeholder="Your password"
-            required
-            mt="md"
-            {...form.getInputProps("password")}
-          />
-          <Button type="submit" fullWidth mt="xl" loading={loading}>
-            Sign in
-          </Button>
-        </form>
-      </Paper>
-    </Container>
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          disabled={loading} // Disable inputs while loading
+        />
+        <button type="submit" disabled={loading}>
+          {loading ? "Logging in..." : "Login"}
+        </button>
+        {error && <p className="error">{error}</p>}
+      </form>
+      <p>
+        Don't have an account? <Link to="/signup">Sign Up</Link>
+      </p>
+    </div>
   );
-}
+};
+
+export default LoginPage;

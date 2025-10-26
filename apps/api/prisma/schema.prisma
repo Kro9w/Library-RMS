@@ -11,76 +11,79 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  firebaseUid  String        @unique // Replaced clerkId
-  email        String        @unique
-  name         String?
-  imageUrl     String?
-  organizationId String? // This is the key for onboarding
-  organization Organization?   @relation(fields: [organizationId], references: [id])
-  documents    Document[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  Notification Notification[]
+  id             String         @id // Supabase Auth User ID
+  email          String         @unique
+  name           String? // Your router query uses 'name', not 'displayName'
+  role           Role           @default(USER)
+  organization   Organization?  @relation(fields: [organizationId], references: [id])
+  organizationId String?
+  documents      Document[]     @relation("uploadedBy") // Matches relation name 'uploadedBy' in Document
+  DocumentAccess DocumentAccess[]
 }
 
 model Organization {
   id        String     @id @default(cuid())
   name      String
-  // Removed clerkId
   users     User[]
-  documents Document[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  documents Document[] // Add this relation
 }
 
 model Document {
-  id             String        @id @default(cuid())
+  id             String   @id @default(cuid())
   title          String
-  content        String?
-  fileUrl        String
-  organizationId String
-  organization   Organization  @relation(fields: [organizationId], references: [id])
+  content        String
+  s3Key          String   @unique
+  s3Bucket       String
+  
+  // Your router queries 'uploadedBy', so we use that relation name
+  uploadedBy     User     @relation("uploadedBy", fields: [uploadedById], references: [id])
   uploadedById   String
-  uploadedBy     User          @relation(fields: [uploadedById], references: [id])
+
+  // Your router queries 'organizationId', so we add this relation
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  
+  access         DocumentAccess[]
+  
+  // Your router queries 'tags: { include: { tag: true } }'
+  // This requires an explicit join table model
   tags           DocumentTag[]
-  owners         Owner[]
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  Notification   Notification[]
+}
+
+model DocumentAccess {
+  id         String   @id @default(cuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  document   Document @relation(fields: [documentId], references: [id])
+  documentId String
+  accessType String // e.g., "READ", "WRITE"
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model Tag {
   id        String        @id @default(cuid())
-  name      String
-  documents DocumentTag[]
+  name      String        @unique
+  documents DocumentTag[] // Relation to the join table
 }
 
+// Explicit join table for Document <-> Tag
+// This is required for your 'include: { tag: true }' query
 model DocumentTag {
-  documentId String
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  tagId      String
-  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([documentId, tagId])
-}
-
-model Owner {
   id         String   @id @default(cuid())
-  name       String
+  document   Document @relation(fields: [documentId], references: [id])
   documentId String
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  ownedFrom  DateTime
-  ownedTo    DateTime?
+  tag        Tag      @relation(fields: [tagId], references: [id])
+  tagId      String
+
+  @@unique([documentId, tagId])
 }
 
-model Notification {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  documentId  String
-  document    Document @relation(fields: [documentId], references: [id])
-  message     String
-  read        Boolean  @default(false)
-  createdAt   DateTime @default(now())
+enum Role {
+  USER
+  ADMIN
+  OWNER
 }

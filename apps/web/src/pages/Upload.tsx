@@ -1,157 +1,99 @@
-// apps/web/src/pages/Upload.tsx
 import React, { useState } from "react";
+import { useDropzone } from "react-dropzone";
+import { supabase } from "../supabase";
+import { useUser } from "@supabase/auth-helpers-react";
 import { trpc } from "../trpc";
-import { useAuth } from "../context/AuthContext";
-import { UploadDetailsModal } from "../components/UploadDetailsModal";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from "../firebase";
-// 1. FIXED: Correctly import AppRouterInputs
-import type {
-  AppRouter,
-  AppRouterOutputs,
-  AppRouterInputs,
-} from "../../../api/src/trpc/trpc.router";
-import { TRPCClientErrorLike } from "@trpc/client";
+import { v4 as uuidv4 } from "uuid";
 
-// 2. UPDATED: This type now matches the modal's state
-type FileDetails = {
-  tags: { id: string; name: string }[];
-};
-type AvailableTag = AppRouterOutputs["documents"]["getTags"][0];
+const Upload: React.FC = () => {
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const user = useUser();
+  const createDocMutation = trpc.documents.createDocumentRecord.useMutation();
+  // 1. FIX: Get the bucket name from environment variables
+  const bucketName = import.meta.env.VITE_SUPABASE_BUCKET_NAME || "documents"; // Use env var, fallback to 'documents'
 
-// 3. This type will now be found correctly
-type CreateDocInput = AppRouterInputs["documents"]["createDocument"];
-
-export function Upload() {
-  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-
-  const { dbUser } = useAuth();
-  const trpcCtx = trpc.useContext();
-
-  const { data: availableTags } = trpc.documents.getTags.useQuery();
-
-  const createDoc = trpc.documents.createDocument.useMutation({
-    onSuccess: () => {
-      trpcCtx.documents.getDocuments.invalidate();
+  const { getRootProps, getInputProps } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      setFiles(acceptedFiles);
     },
-    onError: (
-      error: TRPCClientErrorLike<AppRouter>,
-      variables: CreateDocInput
-    ) => {
-      alert(`Upload failed for ${variables.title}: ${error.message}`);
+    accept: {
+      "application/pdf": [".pdf"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        [".docx"],
     },
   });
 
-  const handleFilesSelected = (selectedFiles: File[]) => {
-    setStagedFiles((prev) => {
-      const newFiles = selectedFiles.filter(
-        (sf) => !prev.some((pf) => pf.name === sf.name)
+  const handleUpload = async () => {
+    if (files.length === 0 || !user) return;
+    // 2. FIX: Check if bucketName is actually set
+    if (!bucketName) {
+      setError(
+        "Supabase bucket name is not configured in environment variables."
       );
-      return [...prev, ...newFiles];
-    });
-    setIsUploadModalOpen(true);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      handleFilesSelected(Array.from(e.target.files));
-      e.target.value = "";
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files) {
-      handleFilesSelected(Array.from(e.dataTransfer.files));
-    }
-  };
-
-  // 4. This function's signature now matches the modal's prop type
-  const handleUploadAll = async (fileDetailsMap: Map<File, FileDetails>) => {
-    if (!dbUser || !dbUser.organizationId) {
-      return Promise.reject(
-        new Error(
-          "You must be signed in and in an organization to upload documents."
-        )
-      );
+      return;
     }
 
-    const uploadPromises = Array.from(fileDetailsMap.entries()).map(
-      async ([file, details]) => {
-        try {
-          const storageRef = ref(
-            storage,
-            `documents/${dbUser.organizationId}/${Date.now()}-${file.name}`
-          );
-          const snapshot = await uploadBytes(storageRef, file);
-          const downloadURL = await getDownloadURL(snapshot.ref);
+    setUploading(true);
+    setError(null);
 
-          return createDoc.mutateAsync({
-            title: file.name,
-            content: "", // Add text extraction or a summary here later
-            fileUrl: downloadURL,
-            // 5. UPDATED: This now matches the 'details' object
-            tags: details.tags.map((tag) => ({ id: tag.id })),
-          });
-        } catch (err) {
-          console.error("Failed to process and upload file:", file.name, err);
-          return Promise.reject(err);
-        }
+    const file = files[0];
+    const fileExtension = file.name.split(".").pop();
+    const storageKey = `${user.id}/${uuidv4()}.${fileExtension}`;
+
+    try {
+      // 3. FIX: Use the bucketName variable from env/fallback
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(bucketName) // Use the correct variable here
+        .upload(storageKey, file);
+
+      if (uploadError) {
+        throw uploadError; // Supabase errors are often detailed enough
       }
-    );
 
-    await Promise.all(uploadPromises);
-  };
+      // 4. FIX: Use the bucketName variable from env/fallback
+      await createDocMutation.mutateAsync({
+        title: file.name,
+        storageKey: uploadData.path,
+        storageBucket: bucketName, // Use the correct variable here
+      });
 
-  const handleCloseModal = () => {
-    setIsUploadModalOpen(false);
-    setStagedFiles([]);
+      setFiles([]);
+      alert("Upload successful!");
+      // TODO: Invalidate queries to refetch document list (e.g., utils.documents.getAll.invalidate())
+    } catch (err: any) {
+      console.error(err);
+      // Display Supabase error directly if available
+      setError(err.message || "An error occurred during upload.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
-    <>
-      <div className="container mt-4">
-        <h1>Upload Documents</h1>
-        <p>Select files to begin the upload process.</p>
-        <div
-          className={`p-5 border-2 border-dashed rounded text-center ${
-            isDragging ? "border-primary bg-light" : "border-secondary"
-          }`}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setIsDragging(true);
-          }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={handleDrop}
-        >
-          <i className="bi bi-cloud-arrow-up fs-1"></i>
-          <p>Drag & drop files here, or</p>
-          <label htmlFor="file-upload" className="btn btn-primary">
-            Browse Files
-          </label>
-          <input
-            id="file-upload"
-            type="file"
-            multiple
-            accept=".docx,.pdf"
-            className="d-none"
-            onChange={handleFileChange}
-          />
-        </div>
+    <div className="upload-container">
+      <h2>Upload Documents</h2>
+      <div {...getRootProps({ className: "dropzone" })}>
+        <input {...getInputProps()} />
+        <p>Drag 'n' drop PDF or DOCX files here, or click to select</p>
       </div>
-
-      <UploadDetailsModal
-        isOpen={isUploadModalOpen}
-        onClose={handleCloseModal}
-        files={stagedFiles}
-        onUploadAll={handleUploadAll}
-        isUploading={createDoc.isPending}
-        // 6. This prop passing is now type-safe
-        availableTags={(availableTags as AvailableTag[]) || []}
-      />
-    </>
+      <aside>
+        <h4>Files</h4>
+        <ul>
+          {files.map((file) => (
+            <li key={file.name}>
+              {file.name} - {file.size} bytes
+            </li>
+          ))}
+        </ul>
+      </aside>
+      <button onClick={handleUpload} disabled={uploading || files.length === 0}>
+        {uploading ? "Uploading..." : "Upload"}
+      </button>
+      {error && <p className="error">{error}</p>}
+    </div>
   );
-}
+};
+
+export default Upload;

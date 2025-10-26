@@ -1,12 +1,15 @@
-// apps/api/src/trpc/trpc.module.ts
 import { Module } from '@nestjs/common';
 import { TrpcRouter } from './trpc.router';
+import { TrpcContextFactory } from './trpc.context';
 import { DocumentsModule } from '../documents/documents.module';
-import { UserModule } from '../user/user.module'; // Added
+import { UserModule } from '../user/user.module';
+import { PrismaModule } from '../prisma/prisma.module'; // 1. Add this import
+import { SupabaseModule } from '../supabase/supabase.module'; // 2. Add this import
 
 @Module({
-  imports: [DocumentsModule, UserModule], // Added UserModule
-  providers: [TrpcRouter],
-  exports: [TrpcRouter],
+  // 3. Add PrismaModule and SupabaseModule here
+  imports: [DocumentsModule, UserModule, PrismaModule, SupabaseModule],
+  providers: [TrpcRouter, TrpcContextFactory],
+  exports: [TrpcRouter, TrpcContextFactory],
 })
 export class TrpcModule {}

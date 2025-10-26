@@ -1,10 +1,9 @@
 // apps/api/src/trpc/trpc.router.ts
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
-import { authedProcedure, publicProcedure, router } from './trpc';
+import { protectedProcedure, publicProcedure, router } from './trpc';
 import { DocumentsRouter } from '../documents/documents.router';
 import { UserRouter } from '../user/user.router';
-// 1. ADD 'inferRouterInputs'
 import type { inferRouterOutputs, inferRouterInputs } from '@trpc/server';
 
 @Injectable()
@@ -16,18 +15,18 @@ export class TrpcRouter {
 
   get appRouter() {
     return router({
-      // ... (greeting, getDashboardStats, etc.) ...
       greeting: publicProcedure
         .input(z.object({ name: z.string() }))
         .query(({ input }) => {
           return `Hello, ${input.name}!`;
         }),
 
-      getDashboardStats: authedProcedure.query(async ({ ctx }) => {
+      getDashboardStats: protectedProcedure.query(async ({ ctx }) => {
         const twentyFourHoursAgo = new Date();
         twentyFourHoursAgo.setDate(twentyFourHoursAgo.getDate() - 1);
         const orgId = ctx.dbUser.organizationId as string;
 
+        // This query will now work because the schema is correct
         const [
           totalDocuments,
           recentUploadsCount,
@@ -49,12 +48,14 @@ export class TrpcRouter {
             select: {
               id: true,
               title: true,
+              // Switched back to 'uploadedBy' and 'name'
               uploadedBy: { select: { name: true } },
             },
           }),
           ctx.prisma.user.count({ where: { organizationId: orgId } }),
           ctx.prisma.document.findMany({
             where: { organizationId: orgId },
+            // This 'tags' query will now work
             select: { tags: { include: { tag: true } } },
           }),
         ]);
@@ -76,21 +77,21 @@ export class TrpcRouter {
           recentUploadsCount,
           recentFiles: recentFiles.map((f) => ({
             ...f,
+            // Switched back to 'uploadedBy' and 'name'
             uploadedBy: f.uploadedBy.name,
           })),
           totalUsers,
-          docsByType: [], // Your schema no longer has a 'type' field
+          docsByType: [],
           topTags,
         };
       }),
 
-      documents: this.documentsRouter.router,
-      user: this.userRouter.router,
+      documents: this.documentsRouter.createRouter(),
+      user: this.userRouter.createRouter(),
     });
   }
 }
 
 export type AppRouter = TrpcRouter['appRouter'];
 export type AppRouterOutputs = inferRouterOutputs<AppRouter>;
-// 2. ADD THIS EXPORT
 export type AppRouterInputs = inferRouterInputs<AppRouter>;

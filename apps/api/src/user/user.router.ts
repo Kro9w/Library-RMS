@@ -1,146 +1,174 @@
-// apps/api/src/user/user.router.ts
-import {
-  router,
-  onboardingProcedure,
-  authedProcedure,
-  userProcedure, // <-- 1. IMPORT THE NEW PROCEDURE
-} from '../trpc/trpc';
 import { z } from 'zod';
-import { TRPCError } from '@trpc/server';
+// 1. FIX: Import 'supabaseAuthedProcedure'
+import {
+  protectedProcedure,
+  publicProcedure,
+  router,
+  supabaseAuthedProcedure,
+} from '../trpc/trpc';
+import { PrismaService } from '../prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
+import { TRPCError } from '@trpc/server';
+import { Role } from '@prisma/client';
 
 @Injectable()
 export class UserRouter {
-  router = router({
-    /**
-     * Get the current user's DB record.
-     * This correctly uses onboardingProcedure.
-     */
-    getMe: onboardingProcedure.query(async ({ ctx }) => {
-      if (!ctx.firebaseUser) {
-        throw new TRPCError({ code: 'UNAUTHORIZED' });
-      }
-      const dbUser = await ctx.prisma.user.findUnique({
-        where: { firebaseUid: ctx.firebaseUser.uid },
-        include: { organization: true },
-      });
+  constructor(private readonly prisma: PrismaService) {}
 
-      return dbUser;
-    }),
+  createRouter() {
+    return router({
+      /**
+       * Creates a user in our public.User table after
+       * a successful Supabase signup or login.
+       * Ensures the auth user exists in our DB.
+       */
+      // 2. FIX: Use 'supabaseAuthedProcedure' instead of 'protectedProcedure'
+      syncUser: supabaseAuthedProcedure
+        .meta({
+          openapi: {
+            method: 'POST',
+            path: '/user.sync',
+            tags: ['user'],
+            summary: 'Sync Supabase auth user with local DB',
+          },
+        })
+        .input(
+          z.object({
+            email: z.string().email(),
+            name: z.string().optional(),
+          }),
+        )
+        .output(z.any())
+        .mutation(async ({ ctx, input }) => {
+          const { user: authUser } = ctx; // from Supabase JWT
 
-    /**
-     * Creates the user record in our database.
-     * This correctly uses onboardingProcedure.
-     */
-    create: onboardingProcedure
-      .input(
-        z.object({
-          name: z.string().min(1),
-          email: z.string().email(),
+          // 3. FIX: We CANNOT use ctx.dbUser here. We must query.
+          const user = await this.prisma.user.findUnique({
+            where: { id: authUser.id },
+          });
+
+          if (user) {
+            // User already exists, just return it
+            return user;
+          }
+
+          // New user, create them in our DB
+          const newUser = await this.prisma.user.create({
+            data: {
+              id: authUser.id, // Use the ID from Supabase Auth
+              email: input.email,
+              name: input.name,
+              // role is USER by default
+            },
+          });
+          return newUser;
         }),
-      )
-      .mutation(async ({ ctx, input }) => {
-        const { firebaseUser } = ctx;
 
-        // Check if user already exists
-        const existingUser = await ctx.prisma.user.findFirst({
-          where: {
-            OR: [
-              { firebaseUid: firebaseUser.uid },
-              { email: input.email },
-            ],
+      // All other procedures can remain protected
+      getMe: protectedProcedure
+        .meta({
+          openapi: {
+            method: 'GET',
+            path: '/user.getMe',
+            tags: ['user'],
+            summary: 'Get current user details',
           },
-        });
-
-        if (existingUser) {
-          throw new TRPCError({
-            code: 'CONFLICT',
-            message: 'User already exists.',
+        })
+        .input(z.void())
+        .output(z.any())
+        .query(async ({ ctx }) => {
+          // The 'dbUser' from context doesn't have relations included
+          // We must re-fetch to include the organization
+          const userWithOrg = await ctx.prisma.user.findUnique({
+            where: { id: ctx.dbUser.id },
+            include: { organization: true },
           });
-        }
 
-        const user = await ctx.prisma.user.create({
-          data: {
-            firebaseUid: firebaseUser.uid,
-            email: input.email,
-            name: input.name,
-            imageUrl: firebaseUser.picture,
-          },
-        });
-
-        return user;
-      }),
-
-    /**
-     * Creates a new organization and links the current user to it.
-     */
-    createOrganization: userProcedure // <-- 2. CHANGED TO userProcedure
-      .input(
-        z.object({
-          name: z.string().min(2),
+          if (!userWithOrg) {
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'User not found.',
+            });
+          }
+          return userWithOrg;
         }),
-      )
-      .mutation(async ({ ctx, input }) => {
-        // User must not already be in an organization
-        if (ctx.dbUser.organizationId) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: 'User is already in an organization.',
+
+      createOrganization: protectedProcedure
+        .meta({
+          openapi: {
+            method: 'POST',
+            path: '/user.createOrganization',
+            tags: ['user', 'organization'],
+            summary: 'Create a new organization',
+          },
+        })
+        .input(z.object({ orgName: z.string().min(1) }))
+        .output(z.any())
+        .mutation(async ({ ctx, input }) => {
+          if (ctx.dbUser.organizationId) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'User already belongs to an organization.',
+            });
+          }
+
+          const newOrg = await this.prisma.organization.create({
+            data: {
+              name: input.orgName,
+              users: {
+                connect: { id: ctx.dbUser.id },
+              },
+            },
           });
-        }
 
-        const organization = await ctx.prisma.organization.create({
-          data: {
-            name: input.name,
-          },
-        });
+          await this.prisma.user.update({
+            where: { id: ctx.dbUser.id },
+            data: { role: Role.OWNER, organizationId: newOrg.id },
+          });
 
-        const updatedUser = await ctx.prisma.user.update({
-          where: { id: ctx.dbUser.id },
-          data: {
-            organizationId: organization.id,
-          },
-        });
-
-        return { user: updatedUser, organization };
-      }),
-
-    /**
-     * Joins an existing organization.
-     */
-    joinOrganization: userProcedure // <-- 3. CHANGED TO userProcedure
-      .input(
-        z.object({
-          organizationName: z.string().min(2),
+          return newOrg;
         }),
-      )
-      .mutation(async ({ ctx, input }) => {
-        if (ctx.dbUser.organizationId) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: 'User is already in an organization.',
-          });
-        }
 
-        const organization = await ctx.prisma.organization.findFirst({
-          where: { name: input.organizationName },
-        });
-
-        if (!organization) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'Organization not found.',
-          });
-        }
-
-        const updatedUser = await ctx.prisma.user.update({
-          where: { id: ctx.dbUser.id },
-          data: {
-            organizationId: organization.id,
+      joinOrganization: protectedProcedure
+        .meta({
+          openapi: {
+            method: 'POST',
+            path: '/user.joinOrganization',
+            tags: ['user', 'organization'],
+            summary: 'Join an organization by ID',
           },
-        });
+        })
+        .input(z.object({ orgId: z.string().min(1) }))
+        .output(z.any())
+        .mutation(async ({ ctx, input }) => {
+          if (ctx.dbUser.organizationId) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'User already belongs to an organization.',
+            });
+          }
 
-        return { user: updatedUser, organization };
-      }),
-  });
+          const org = await this.prisma.organization.findUnique({
+            where: { id: input.orgId },
+          });
+
+          if (!org) {
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Organization not found.',
+            });
+          }
+
+          await this.prisma.user.update({
+            where: { id: ctx.dbUser.id },
+            data: {
+              organizationId: org.id,
+              role: Role.USER,
+            },
+          });
+
+          return org;
+        }),
+    });
+  }
 }

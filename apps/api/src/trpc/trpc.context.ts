@@ -1,73 +1,63 @@
-// apps/api/src/trpc/trpc.context.ts
-import { INestApplication } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { Request, Response } from 'express';
+import { SupabaseService } from '../supabase/supabase.service';
+import { SupabaseUser } from '../types/express';
 import { PrismaService } from '../prisma/prisma.service';
-// import { getAuth } from '@clerk/clerk-sdk-node'; // Removed
-import { FirebaseAdminService } from '../firebase/firebase-admin.service'; // Added
-import { User } from '@prisma/client'; // Added
-import * as trpcExpress from '@trpc/server/adapters/express';
-import { DecodedIdToken } from 'firebase-admin/auth'; // Added
+import { PrismaClient } from '@prisma/client';
 
-interface CreateContextOptions {
-  req: trpcExpress.CreateExpressContextOptions['req'];
-  res: trpcExpress.CreateExpressContextOptions['res'];
-  prisma: PrismaService;
-  firebaseAdmin: FirebaseAdminService; // Added
-}
-
-// Added new context interface
 export interface TrpcContext {
-  req: trpcExpress.CreateExpressContextOptions['req'];
-  res: trpcExpress.CreateExpressContextOptions['res'];
-  prisma: PrismaService;
-  firebaseUser: DecodedIdToken | null; // Firebase user from token
-  dbUser: User | null; // User from our database
+  req: Request;
+  res: Response;
+  user: SupabaseUser | null;
+  prisma: PrismaClient;
 }
 
-export async function createContext(
-  opts: CreateContextOptions,
-): Promise<TrpcContext> {
-  const { req, res, prisma, firebaseAdmin } = opts;
+@Injectable()
+export class TrpcContextFactory {
+  private readonly logger = new Logger(TrpcContextFactory.name);
 
-  let firebaseUser: DecodedIdToken | null = null;
-  let dbUser: User | null = null;
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly prisma: PrismaService,
+  ) {}
 
-  const authHeader = req.headers.authorization;
+  async createContext(opts: {
+    req: Request;
+    res: Response;
+  }): Promise<TrpcContext> {
+    const { req, res } = opts;
+    let user: SupabaseUser | null = null;
+    const authHeader = req.headers.authorization;
 
-  if (authHeader) {
-    const token = authHeader.split('Bearer ')[1];
-    if (token) {
-      try {
-        firebaseUser = await firebaseAdmin.auth.verifyIdToken(token);
-        if (firebaseUser) {
-          // Find the user in our database
-          dbUser = await prisma.user.findUnique({
-            where: { firebaseUid: firebaseUser.uid },
-          });
+    if (authHeader) {
+      const token = authHeader.split('Bearer ')[1];
+      if (token) {
+        try {
+          const { data, error } = await this.supabase
+            .getAdminClient()
+            .auth.getUser(token);
+
+          if (error) {
+            this.logger.warn('Invalid JWT:', error.message);
+          } else if (data.user) {
+            user = {
+              id: data.user.id,
+              email: data.user.email!,
+              role: data.user.role!,
+            };
+            req.user = user;
+          }
+        } catch (error) {
+          this.logger.error('Error validating token:', error);
         }
-      } catch (error) {
-        // Token is invalid or expired
-        console.warn('Invalid auth token:', (error as Error).message);
       }
     }
+
+    return {
+      req,
+      res,
+      user,
+      prisma: this.prisma,
+    };
   }
-
-  return {
-    req,
-    res,
-    prisma,
-    firebaseUser,
-    dbUser,
-  };
-}
-
-export function trpcContextFactory(app: INestApplication) {
-  const prismaService = app.get(PrismaService);
-  const firebaseAdminService = app.get(FirebaseAdminService); // Added
-  return (opts: trpcExpress.CreateExpressContextOptions) => {
-    return createContext({
-      ...opts,
-      prisma: prismaService,
-      firebaseAdmin: firebaseAdminService, // Pass service to context
-    });
-  };
 }

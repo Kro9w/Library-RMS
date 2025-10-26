@@ -6,30 +6,26 @@ import "./Dashboard.css";
 // Import the necessary components from the charting library
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
 import { useForm } from "react-hook-form";
-// 1. REPLACED: Swapped Clerk auth for our new AuthContext
-import { useAuth } from "../context/AuthContext";
+// 1. FIX: Replace 'useAuth' with 'useUser' from Supabase
+import { useUser } from "@supabase/auth-helpers-react";
 
-// 2. REMOVED: This type is obsolete and caused the error
-// type RecentFile = {
-//   id: string;
-//   title: string;
-//   uploadedBy?: string;
-// };
+// 2. REMOVED: Obsolete type
 
 // Define colors for the pie chart slices, using your brand palette
 const PIE_CHART_COLORS = ["#BA3B46", "#ED9B40", "#AAB8C2", "#E1E8ED"];
 
 export function Dashboard() {
-  // 3. UPDATED: Use dbUser from our new context
-  const { dbUser } = useAuth();
+  // 3. FIX: Get the auth user from Supabase
+  const user = useUser();
   const { data, isLoading, isError, error } = trpc.getDashboardStats.useQuery();
+  // FIX: Removed the stray '_' from the end of this line
   const { register, handleSubmit, reset } = useForm<{
     controlNumber: string;
   }>();
 
   const onSubmit = (formData: { controlNumber: string }) => {
-    // 4. UPDATED: Check for dbUser instead of userId
-    if (!dbUser) {
+    // 4. FIX: Check for the Supabase user
+    if (!user) {
       alert("You must be logged in to transfer documents.");
       return;
     }
@@ -135,8 +131,7 @@ export function Dashboard() {
           </h5>
           <div className="recent-uploads-list">
             {recentFiles.length > 0 ? (
-              // 5. FIXED: Removed the ': RecentFile' type annotation
-              //    to let TypeScript infer the correct type
+              // 5. FIXED: Removed the type annotation
               recentFiles.map((file) => (
                 <div key={file.id} className="recent-uploads-item">
                   <Link to={`/documents/${file.id}`}>{file.title}</Link>
@@ -200,11 +195,9 @@ export function Dashboard() {
                 <ol className="list-group list-group-numbered">
                   {stats.topTags.map((tag) => (
                     <li
-                      // This now correctly uses 'tag.name'
                       key={tag.name}
                       className="list-group-item d-.flex justify-content-between align-items-start"
                     >
-                      {/* This now correctly uses 'tag.name' */}
                       <div className="ms-2 me-auto">{tag.name}</div>
                       <span className="badge bg-primary rounded-pill">
                         {tag.count}
