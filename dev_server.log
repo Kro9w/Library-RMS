@@ -1,16 +1,3 @@
 
 > library-rms-monorepo@1.0.0 dev:web /app
 > pnpm --filter web dev
-
-
-> web@0.0.0 dev /app/apps/web
-> vite
-
-Port 5173 is in use, trying another one...
-Port 5174 is in use, trying another one...
-Port 5175 is in use, trying another one...
-
-  VITE v7.1.9  ready in 651 ms
-
-  ➜  Local:   http://localhost:5176/
-  ➜  Network: use --host to expose
