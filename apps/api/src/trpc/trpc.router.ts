@@ -14,6 +14,20 @@ export class TrpcRouter {
   ) {}
 
   get appRouter() {
+    // --- 1. FIX: HELPER FUNCTION MOVED HERE ---
+    // It must be defined *inside* get appRouter,
+    // but *before* the router object itself.
+    const formatFileType = (fileType: string | null | undefined): string => {
+      if (!fileType) return "Other";
+      if (fileType.includes("pdf")) return "PDF";
+      if (fileType.includes("word")) return "DOCX";
+      if (fileType.includes("excel") || fileType.includes("spreadsheet"))
+        return "XLSX";
+      if (fileType.includes("image")) return "Image";
+      if (fileType.includes("text")) return "Text";
+      return "Other";
+    };
+
     return router({
       greeting: publicProcedure
         .input(z.object({ name: z.string() }))
@@ -21,18 +35,28 @@ export class TrpcRouter {
           return `Hello, ${input.name}!`;
         }),
 
+      // This is the new, corrected getDashboardStats procedure
       getDashboardStats: protectedProcedure.query(async ({ ctx }) => {
         const twentyFourHoursAgo = new Date();
         twentyFourHoursAgo.setDate(twentyFourHoursAgo.getDate() - 1);
         const orgId = ctx.dbUser.organizationId as string;
 
-        // This query will now work because the schema is correct
+        // NEW QUERY for pie chart
+        const docsByTypeQuery = ctx.prisma.document.groupBy({
+          by: ["fileType"],
+          _count: {
+            fileType: true,
+          },
+          where: { organizationId: orgId },
+        });
+
         const [
           totalDocuments,
           recentUploadsCount,
           recentFiles,
           totalUsers,
           allDocumentTags,
+          docsByTypeRaw, // Result of our new query
         ] = await Promise.all([
           ctx.prisma.document.count({ where: { organizationId: orgId } }),
           ctx.prisma.document.count({
@@ -43,23 +67,30 @@ export class TrpcRouter {
           }),
           ctx.prisma.document.findMany({
             where: { organizationId: orgId },
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: "desc" },
             take: 5,
             select: {
               id: true,
               title: true,
-              // Switched back to 'uploadedBy' and 'name'
               uploadedBy: { select: { name: true } },
             },
           }),
           ctx.prisma.user.count({ where: { organizationId: orgId } }),
           ctx.prisma.document.findMany({
             where: { organizationId: orgId },
-            // This 'tags' query will now work
             select: { tags: { include: { tag: true } } },
           }),
+          docsByTypeQuery, // Run the query
         ]);
 
+        // TRANSFORM THE DATA for the pie chart
+        // This will now work because formatFileType is in scope
+        const docsByType = docsByTypeRaw.map((group) => ({
+          name: formatFileType(group.fileType),
+          value: group._count.fileType,
+        }));
+
+        // This is your existing tag logic (unchanged)
         const tagCountMap: Record<string, number> = {};
         for (const doc of allDocumentTags) {
           for (const docTag of doc.tags) {
@@ -72,16 +103,16 @@ export class TrpcRouter {
           .slice(0, 5)
           .map(([name, count]) => ({ name, count }));
 
+        // RETURN THE REAL DATA
         return {
           totalDocuments,
           recentUploadsCount,
           recentFiles: recentFiles.map((f) => ({
             ...f,
-            // Switched back to 'uploadedBy' and 'name'
             uploadedBy: f.uploadedBy.name,
           })),
           totalUsers,
-          docsByType: [],
+          docsByType: docsByType, // <-- Now contains real data
           topTags,
         };
       }),
@@ -93,5 +124,8 @@ export class TrpcRouter {
 }
 
 export type AppRouter = TrpcRouter['appRouter'];
+
+// --- 2. FIX: CORRECTED THE TYPO ---
+// Changed 'AppArrayRouter' back to 'AppRouter'
 export type AppRouterOutputs = inferRouterOutputs<AppRouter>;
 export type AppRouterInputs = inferRouterInputs<AppRouter>;
