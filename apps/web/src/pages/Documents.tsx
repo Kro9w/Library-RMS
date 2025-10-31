@@ -1,14 +1,15 @@
+// apps/web/src/components/Documents.tsx
+
 import React, { useState } from "react";
 import { trpc } from "../trpc";
 import { Link } from "react-router-dom";
-// 1. FIX: Use a named import for ConfirmModal
 import { ConfirmModal } from "../components/ConfirmModal";
 import "./Documents.css";
 
-// 2. FIX: Import the correct tRPC output type
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
-// 3. FIX: Use the correct type from the 'getAll' procedure
+// This 'Document' type will now AUTOMATICALLY include 'createdAt'
+// because tRPC's inferRouterOutputs detected our router change.
 type Document = AppRouterOutputs["documents"]["getAll"][0];
 
 const Documents: React.FC = () => {
@@ -18,23 +19,19 @@ const Documents: React.FC = () => {
 
   const utils = trpc.useUtils();
 
-  // 4. FIX: Call 'getAll' instead of 'getDocuments'
   const { data: documents, isLoading } = trpc.documents.getAll.useQuery();
 
-  // 5. FIX: Call 'deleteDocument'
   const deleteMutation = trpc.documents.deleteDocument.useMutation({
     onSuccess: () => {
-      utils.documents.getAll.invalidate(); // Invalidate the 'getAll' query
+      utils.documents.getAll.invalidate();
     },
   });
 
-  // 6. FIX: Call 'transferDocument'
   const sendMutation = trpc.documents.transferDocument.useMutation({
     onSuccess: () => {
       utils.documents.getAll.invalidate();
       alert("Document transferred!");
     },
-    // 7. FIX: Added proper typing to 'error'
     onError: (error: any) => {
       alert(`Error: ${error.message}`);
     },
@@ -66,10 +63,18 @@ const Documents: React.FC = () => {
     }
   };
 
-  // 8. FIX: Add explicit type 'doc: Document' to fix 'any' error
   const filteredDocuments = documents?.filter((doc: Document) =>
     doc.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Helper function to format file size (you can use this later)
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
   return (
     <div className="documents-container">
@@ -82,36 +87,75 @@ const Documents: React.FC = () => {
         className="search-bar"
       />
       {isLoading && <div>Loading documents...</div>}
-      <ul className="document-list">
-        {/* 9. FIX: Add explicit type 'doc: Document' to fix 'any' error */}
-        {filteredDocuments?.map((doc: Document) => (
-          <li key={doc.id} className="document-item">
-            <Link to={`/documents/${doc.id}`}>{doc.title}</Link>
-            <span className="document-owner">
-              Uploaded by: {doc.uploadedBy?.name || "Unknown"}
-            </span>
-            <div className="document-actions">
-              <button onClick={() => handleSend(doc)} className="btn-send">
-                Transfer
-              </button>
-              <button
-                onClick={() => handleDeleteClick(doc)}
-                className="btn-delete"
-              >
-                Delete
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+
+      {/* --- MODIFICATION --- */}
+      {/* Added a wrapper and the 6-column header from your CSS */}
+      <div className="document-list-wrapper">
+        <div className="document-list-header">
+          <span>Type</span>
+          <span>Title</span>
+          <span>Owner</span>
+          <span>Date</span>
+          <span>File Size</span>
+          <span>Actions</span>
+        </div>
+
+        <ul className="document-list">
+          {filteredDocuments?.map((doc: Document) => (
+            <li key={doc.id} className="document-item">
+              {/* Col 1: Type (Placeholder) */}
+              <span className="doc-type-badge">
+                {/* @ts-ignore - 'fileType' is not in your schema yet */}
+                {doc.fileType || "DOC"}
+              </span>
+
+              {/* Col 2: Title (Exists) */}
+              <Link to={`/documents/${doc.id}`}>{doc.title}</Link>
+
+              {/* Col 3: Owner (Exists) */}
+              <span className="document-owner">
+                {doc.uploadedBy?.name || "Unknown"}
+              </span>
+
+              {/* Col 4: Date (Newly Added) */}
+              <span className="document-date">
+                {new Date(doc.createdAt).toLocaleDateString()}
+              </span>
+
+
+              {/* Col 5: File Size (Placeholder) */}
+              <span className="document-size">
+                {/* @ts-ignore - 'fileSize' is not in your schema yet */}
+                {/* Use the helper: formatFileSize(doc.fileSize) || "N/A" */}
+                {/* @ts-ignore */}
+                {doc.fileSize || "N/A"}
+              </span>
+
+              {/* Col 6: Actions (Exists) */}
+              <div className="document-actions">
+                <button onClick={() => handleSend(doc)} className="btn-send">
+                  Transfer
+                </button>
+                <button
+                  onClick={() => handleDeleteClick(doc)}
+                  className="btn-delete"
+                >
+                  Delete
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+      {/* --- END MODIFICATION --- */}
+
       <ConfirmModal
         show={showConfirm}
         onClose={() => setShowConfirm(false)}
         onConfirm={confirmDelete}
         title="Confirm Delete"
       >
-        Are you sure you want to delete the document "{selectedDoc?.title || ""}
-        "?
+        Are you sure you want to delete the document "{selectedDoc?.title || ""}"?
       </ConfirmModal>
     </div>
   );

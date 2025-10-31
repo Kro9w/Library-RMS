@@ -38,8 +38,12 @@
   white-space: nowrap;
   color: var(--light-text);
   opacity: 0.8;
-  /* Add padding to the transition to make it smooth */
   transition: opacity 0.2s, background-color 0.2s, padding 0.3s ease;
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
 }
 
 .sidebar-float .nav-link:hover {
@@ -53,11 +57,17 @@
   font-weight: bold;
 }
 
+a.nav-link {
+  text-decoration: none;
+}
+
 .sidebar-float .nav-link .bi {
   font-size: 1.25rem;
   margin-right: 1rem;
   transition: margin-right 0.3s ease;
 }
+
+/* --- Collapsed State --- */
 
 .sidebar-float.collapsed {
   width: 80px;
@@ -76,8 +86,10 @@
 }
 
 .sidebar-float.collapsed .nav-link {
-  padding-left: 1.8rem;
-  padding-right: 1.8rem;
+  /* This is the core alignment fix */
+  justify-content: center;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
 .sidebar-float.collapsed .nav-link .bi {
@@ -92,14 +104,17 @@
   margin-right: 0 !important;
 }
 
+/* --- Expanded State --- */
+
 .sidebar-float.expanded {
   width: 250px;
 }
 
+/* --- Footer --- */
+
 .sidebar-float-footer {
   margin-top: auto;
   padding: 1rem;
-  border-top: 1px solid var(--accent);
   display: flex;
   flex-direction: column;
 }
@@ -109,6 +124,11 @@
   align-items: center;
   margin-bottom: 1rem;
   padding: 0 0.5rem;
+}
+
+/* This alignment rule now applies to our new trigger button */
+.sidebar-float.collapsed .user-profile {
+  justify-content: center;
 }
 
 .user-info {
@@ -122,7 +142,6 @@
 }
 
 .user-email {
-  /* Renamed from .user-emargl for clarity */
   font-size: 0.8rem;
   opacity: 0.7;
 }
@@ -140,5 +159,51 @@
 
 .collapse-btn:hover {
   opacity: 1;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* --- NEW: Account Drop-up Menu Styles --- */
+
+.account-menu-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.account-menu-dropup {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1001;
+  margin-bottom: 0.5rem;
+  background: var(--primary-dark, rgb(186, 59, 70));
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+
+.account-menu-dropup .nav-link {
+  width: 100%;
+  opacity: 0.9;
+}
+.account-menu-dropup .nav-link:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.user-profile.as-button {
+  background: none;
+  border: none;
+  color: var(--light-text);
+  width: 100%;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  padding: 0 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.user-profile.as-button:hover {
   background-color: rgba(0, 0, 0, 0.1);
 }
