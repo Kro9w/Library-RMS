@@ -1,0 +1,96 @@
+/* apps/web/src/components/UploadModal.css */
+
+.upload-modal-content {
+  max-width: 600px; /* Make this modal wider */
+}
+
+.upload-dropzone {
+  border: 2px dashed #ccc;
+  border-radius: 0.5rem;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  background-color: #f9f9f9;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  margin-top: 1rem;
+}
+
+.upload-dropzone i {
+  font-size: 3rem;
+  color: #6c757d;
+}
+
+.upload-dropzone p {
+  margin: 0;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.upload-dropzone:hover {
+  border-color: var(--primary, #0056b3);
+}
+
+.upload-dropzone.dropzone-active {
+  background-color: #e6f0ff;
+  border-color: var(--primary, #0056b3);
+}
+
+.file-list {
+  margin-top: 1.5rem;
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+}
+
+.file-list ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.file-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.file-list li:last-child {
+  border-bottom: none;
+}
+
+.file-list li button {
+  background: none;
+  border: none;
+  color: #d90429;
+  font-size: 1.25rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* Dark Mode Styles */
+body[data-bs-theme="dark"] .upload-dropzone {
+  background-color: #2c3034;
+  border-color: #444;
+}
+
+body[data-bs-theme="dark"] .upload-dropzone p,
+body[data-bs-theme="dark"] .upload-dropzone i {
+  color: #9a9a9a;
+}
+
+body[data-bs-theme="dark"] .upload-dropzone.dropzone-active {
+  background-color: #343a40;
+  border-color: #aad8ff;
+}
+
+body[data-bs-theme="dark"] .file-list {
+  border-color: #444;
+}
+
+body[data-bs-theme="dark"] .file-list li {
+  border-bottom-color: #343a40;
+}

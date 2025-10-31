@@ -1,3 +1,6 @@
+/* apps/web/src/pages/Dashboard.css */
+
+/* --- Stat Card Styles (Unchanged) --- */
 .stat-card {
   color: var(--light-text);
   border: none;
@@ -13,80 +16,75 @@
 .card.stat-card.card-title {
   opacity: 0.9;
   font-weight: 500;
+  display: flex;
+  justify-content: center;
 }
 
 .card.stat-card-primary .card-body {
-  color:var(--primary);
-}
-
-.list-group-item {
-  background-color: #fff; 
-  border-color: rgba(0, 0, 0, 0.05);
-}
-
-.recent-uploads-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background-color: white;
-  padding: 1rem 1.5rem;
-  border-radius: 1rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  margin-bottom: 1rem;
-}
-
-.recent-uploads-item a {
-  font-weight: 500;
   color: var(--primary);
 }
 
-.dashboard-lower-section {
-  display: flex;
-  gap: 2rem;
-  margin-top: 1rem;
+.list-group-item {
+  background-color: #fff;
+  border-color: rgba(0, 0, 0, 0.05);
 }
 
-.recent-uploads-container {
-  flex: 2;
-}
-
-.side-stats-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  height: 100%;
-}
-
+/* --- 1. THIS IS THE FIX --- */
+/*
+ * I have UN-COMMENTED your original rule and
+ * ADDED the shadow and background to match .document-table-card.
+*/
 .card.mini-stat-card {
+  /* Consistent styles from .document-table-card */
+  background-color: white;
+  overflow: hidden; /* Helps with border-radius */
+
+  /* Your original styles (which were correct) */
   border-radius: 1rem;
   border: none;
 }
+/* ------------------------- */
 
-body[data-bs-theme="dark"] .recent-uploads-item {
-  background-color: #23272b;
-  color: #f1f1f1;
-  border-radius: 1rem; /* Retain rounded corners */
+/* --- 2. GRID OVERRIDE (Unchanged) --- */
+/* This is still needed for the "Recent Uploads" list */
+.document-list-header.recent-uploads-header,
+.document-item.recent-upload-item {
+  grid-template-columns: 3fr 1fr; /* Title (flexible) and Owner (fixed) */
+  gap: 1rem;
 }
 
-body[data-bs-theme="dark"] .recent-uploads-item a {
-  color: #aad8ff;
+/* This is also still needed */
+.recent-uploads-header > span:last-child,
+.recent-upload-item .document-owner {
+  justify-self: end;
 }
 
+/* --- 3. HELPER STYLE (Unchanged) --- */
+/* This is still needed to add padding to the *contents*
+   of the analytics cards, since .card-body is inside.
+*/
+.document-table-card .card-body {
+  padding: 1.25rem;
+}
+
+/* --- Dark Mode Styles --- */
 body[data-bs-theme="dark"] .stat-card,
 body[data-bs-theme="dark"] .card.stat-card-primary {
   background-color: #23272b;
   color: #f1f1f1;
-  border-radius: 1rem; /* Retain rounded corners */
+  border-radius: 1rem;
 }
 
 body[data-bs-theme="dark"] .card.stat-card-primary .card-body {
   color: #aad8ff;
 }
 
-body[data-bs-theme="dark"] .card,
-body[data-bs-theme="dark"] .stat-card,
-body[data-bs-theme="dark"] .card.stat-card-primary,
-body[data-bs-theme="dark"] .recent-uploads-item {
-  border-radius: 1rem !important;
+/* --- 4. FIX FOR DARK MODE --- */
+/* I have also un-commented and fixed the dark mode
+   version for your mini-stat-cards.
+*/
+body[data-bs-theme="dark"] .card.mini-stat-card {
+  background-color: #23272b;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: none;
 }

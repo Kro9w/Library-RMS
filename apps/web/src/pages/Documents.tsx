@@ -1,4 +1,4 @@
-// apps/web/src/components/Documents.tsx
+// apps/web/src/pages/Documents.tsx
 
 import React, { useState } from "react";
 import { trpc } from "../trpc";
@@ -8,14 +8,40 @@ import "./Documents.css";
 
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
-// This 'Document' type will now AUTOMATICALLY include 'createdAt'
-// because tRPC's inferRouterOutputs detected our router change.
+// This type now correctly includes fileType and fileSize
 type Document = AppRouterOutputs["documents"]["getAll"][0];
+
+// --- 1. FIXED HELPER FUNCTIONS ---
+
+const formatFileSize = (bytes: number | null | undefined): string => {
+  if (bytes === null || bytes === undefined || bytes === 0) return "—";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
+
+const formatFileType = (fileType: string | null | undefined): string => {
+  if (!fileType) return "FILE";
+  if (fileType.includes("pdf")) return "PDF";
+  if (fileType.includes("word")) return "DOCX";
+  if (fileType.includes("excel") || fileType.includes("spreadsheet")) return "XLSX";
+  if (fileType.includes("image")) return "IMG";
+  if (fileType.includes("text")) return "TXT";
+  return "FILE";
+};
+
+// ------------------------------
 
 const Documents: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [showConfirm, setShowConfirm] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+
+  // --- 2. MODIFICATION: Split state for two modals ---
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferEmail, setTransferEmail] = useState("");
+  // --------------------------------------------------
 
   const utils = trpc.useUtils();
 
@@ -27,71 +53,80 @@ const Documents: React.FC = () => {
     },
   });
 
-  const sendMutation = trpc.documents.transferDocument.useMutation({
-    onSuccess: () => {
-      utils.documents.getAll.invalidate();
-      alert("Document transferred!");
-    },
-    onError: (error: any) => {
-      alert(`Error: ${error.message}`);
-    },
-  });
+  // --- 3. MODIFICATION: Add isLoading and update onSuccess ---
+  const { mutate: transferMutation, isPending: isTransferring } =
+    trpc.documents.transferDocument.useMutation({
+      onSuccess: () => {
+        utils.documents.getAll.invalidate();
+        alert("Document transferred!");
+        // Close modal and clear state on success
+        setShowTransferModal(false);
+        setTransferEmail("");
+        setSelectedDoc(null);
+      },
+      onError: (error: any) => {
+        alert(`Error: ${error.message}`);
+      },
+    });
+  // ---------------------------------------------------------
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
 
+  // --- 4. MODIFICATION: Rename and update functions ---
   const handleDeleteClick = (doc: Document) => {
     setSelectedDoc(doc);
-    setShowConfirm(true);
+    setShowDeleteModal(true);
   };
 
   const confirmDelete = () => {
     if (selectedDoc) {
       deleteMutation.mutate({ id: selectedDoc.id });
     }
-    setShowConfirm(false);
+    setShowDeleteModal(false);
     setSelectedDoc(null);
   };
 
-  const handleSend = (doc: Document) => {
-    const email = prompt(
-      "Enter the email of the user to send this document to:"
-    );
-    if (email) {
-      sendMutation.mutate({ docId: doc.id, newOwnerEmail: email });
+  // This new function opens the transfer modal
+  const handleTransferClick = (doc: Document) => {
+    setSelectedDoc(doc);
+    setShowTransferModal(true);
+  };
+
+  // This new function runs when the transfer is confirmed
+  const confirmTransfer = () => {
+    if (selectedDoc && transferEmail) {
+      transferMutation({ docId: selectedDoc.id, newOwnerEmail: transferEmail });
     }
   };
+  // ----------------------------------------------------
 
   const filteredDocuments = documents?.filter((doc: Document) =>
     doc.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Helper function to format file size (you can use this later)
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  return (
+ return (
     <div className="documents-container">
-      <h2>Documents</h2>
-      <input
-        type="text"
-        placeholder="Search documents..."
-        value={searchTerm}
-        onChange={handleSearch}
-        className="search-bar"
-      />
+      
+      {/* --- 1. ADD THIS WRAPPER --- */}
+      <div className="page-header">
+        <h2>Documents</h2>
+        <input
+          type="text"
+          placeholder="Search documents..."
+          value={searchTerm}
+          onChange={handleSearch}
+          className="search-bar"
+        />
+      </div>
+      {/* --------------------------- */}
+
       {isLoading && <div>Loading documents...</div>}
 
-      {/* --- MODIFICATION --- */}
-      {/* Added a wrapper and the 6-column header from your CSS */}
-      <div className="document-list-wrapper">
+      <div className="document-table-card">
         <div className="document-list-header">
+          {/* ...header spans... */}
           <span>Type</span>
           <span>Title</span>
           <span>Owner</span>
@@ -103,60 +138,90 @@ const Documents: React.FC = () => {
         <ul className="document-list">
           {filteredDocuments?.map((doc: Document) => (
             <li key={doc.id} className="document-item">
-              {/* Col 1: Type (Placeholder) */}
               <span className="doc-type-badge">
-                {/* @ts-ignore - 'fileType' is not in your schema yet */}
-                {doc.fileType || "DOC"}
+                {formatFileType(doc.fileType)}
               </span>
 
-              {/* Col 2: Title (Exists) */}
               <Link to={`/documents/${doc.id}`}>{doc.title}</Link>
 
-              {/* Col 3: Owner (Exists) */}
               <span className="document-owner">
                 {doc.uploadedBy?.name || "Unknown"}
               </span>
 
-              {/* Col 4: Date (Newly Added) */}
               <span className="document-date">
                 {new Date(doc.createdAt).toLocaleDateString()}
               </span>
 
-
-              {/* Col 5: File Size (Placeholder) */}
               <span className="document-size">
-                {/* @ts-ignore - 'fileSize' is not in your schema yet */}
-                {/* Use the helper: formatFileSize(doc.fileSize) || "N/A" */}
-                {/* @ts-ignore */}
-                {doc.fileSize || "N/A"}
+                {formatFileSize(doc.fileSize)}
               </span>
 
-              {/* Col 6: Actions (Exists) */}
               <div className="document-actions">
-                <button onClick={() => handleSend(doc)} className="btn-send">
-                  Transfer
+                {/* --- 5. MODIFICATION: Update onClick --- */}
+                <button
+                  onClick={() => handleTransferClick(doc)} // Changed from handleSend
+                  className="btn-icon btn-send"
+                  title="Transfer Document"
+                >
+                  <i className="bi bi-send"></i>
                 </button>
+                {/* -------------------------------------- */}
                 <button
                   onClick={() => handleDeleteClick(doc)}
-                  className="btn-delete"
+                  className="btn-icon btn-delete"
+                  title="Delete Document"
                 >
-                  Delete
+                  <i className="bi bi-trash"></i>
                 </button>
               </div>
             </li>
           ))}
         </ul>
       </div>
-      {/* --- END MODIFICATION --- */}
 
+      {/* This is your existing Delete Modal */}
       <ConfirmModal
-        show={showConfirm}
-        onClose={() => setShowConfirm(false)}
+        show={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
         onConfirm={confirmDelete}
         title="Confirm Delete"
+        isConfirming={deleteMutation.isPending}
       >
         Are you sure you want to delete the document "{selectedDoc?.title || ""}"?
       </ConfirmModal>
+
+      {/* --- 6. NEW: Add the Transfer Modal --- */}
+      <ConfirmModal
+        show={showTransferModal}
+        onClose={() => {
+          setShowTransferModal(false);
+          setTransferEmail(""); // Clear email on close
+        }}
+        onConfirm={confirmTransfer}
+        title="Transfer Document"
+        isConfirming={isTransferring}
+      >
+        {/* Here we pass our input as the 'children' */}
+        <p>
+          Transfer "<strong>{selectedDoc?.title || ""}</strong>" to a new owner.
+        </p>
+        <label
+          htmlFor="transfer-email"
+          style={{ display: "block", marginBottom: "0.5rem" }}
+        >
+          New Owner's Email:
+        </label>
+        <input
+          type="email"
+          id="transfer-email"
+          className="form-control" // Assuming you have a standard form control style
+          value={transferEmail}
+          onChange={(e) => setTransferEmail(e.target.value)}
+          placeholder="user@example.com"
+          style={{ width: "100%" }}
+        />
+      </ConfirmModal>
+      {/* ------------------------------------ */}
     </div>
   );
 };

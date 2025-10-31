@@ -22,7 +22,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
   const [isAccountMenuOpen, setAccountMenuOpen] = useState(false);
 
   // --- THIS IS THE FIX ---
-  // We specify <HTMLDivElement> for the ref's type.
+  // The ref must be specific to the element it's attached to.
   const accountMenuRef = useRef<HTMLDivElement>(null);
   // -------------------------
 
@@ -55,10 +55,6 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
             <i className="bi bi-file-earmark-text-fill"></i>
             <span className="link-text">Documents</span>
           </NavLink>
-          <NavLink to="/upload" className="nav-link">
-            <i className="bi bi-upload"></i>
-            <span className="link-text">Upload</span>
-          </NavLink>
           <NavLink to="/tags" className="nav-link">
             <i className="bi bi-tags-fill"></i>
             <span className="link-text">Tags</span>
@@ -75,6 +71,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
 
         <div className="sidebar-float-footer">
           {user && dbUser && (
+            // This div (line 78) is what requires the <HTMLDivElement> ref
             <div className="account-menu-wrapper" ref={accountMenuRef}>
               {isAccountMenuOpen && (
                 <div className="account-menu-dropup">
@@ -121,7 +118,6 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
               </button>
             </div>
           )}
-          <hr style={{ borderColor: "var(--accent)", margin: "1rem 0" }} />
           <button className="collapse-btn" onClick={onToggle}>
             <i
               className={`bi ${
