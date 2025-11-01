@@ -20,7 +20,6 @@ export class DocumentsRouter {
        * Gets a single document by its ID.
        */
       getById: protectedProcedure
-        // ... (rest of getById is unchanged)
         .meta({
           openapi: {
             method: 'GET',
@@ -38,12 +37,19 @@ export class DocumentsRouter {
               message: 'User does not belong to an organization.',
             });
           }
+          
           const doc = await this.prisma.document.findFirst({
             where: {
               id: input.id,
               organizationId: ctx.dbUser.organizationId,
             },
-            include: {
+            select: {
+              id: true,
+              title: true,
+              createdAt: true,
+              fileType: true,
+              s3Key: true,
+              s3Bucket: true,
               uploadedBy: {
                 select: {
                   name: true,
@@ -51,6 +57,7 @@ export class DocumentsRouter {
               },
             },
           });
+
           if (!doc) {
             throw new TRPCError({ code: 'NOT_FOUND' });
           }
@@ -81,7 +88,7 @@ export class DocumentsRouter {
         .output(z.any())
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
-          if (!dbUser.organizationId) {
+          if (!ctx.dbUser.organizationId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'User does not belong to an organization.',
@@ -94,7 +101,7 @@ export class DocumentsRouter {
               s3Bucket: input.storageBucket,
               content: '',
               uploadedById: user.id,
-              organizationId: dbUser.organizationId,
+              organizationId: dbUser.organizationId!,
               fileType: input.fileType,
               fileSize: input.fileSize,
             },
@@ -105,7 +112,6 @@ export class DocumentsRouter {
        * Gets a temporary signed URL to view a private document.
        */
       getSignedDocumentUrl: protectedProcedure
-        // ... (rest of getSignedDocumentUrl is unchanged)
         .meta({
           openapi: {
             method: 'GET',
@@ -123,32 +129,48 @@ export class DocumentsRouter {
               message: 'User does not belong to an organization.',
             });
           }
+          
           const doc = await this.prisma.document.findFirst({
             where: {
               id: input.documentId,
               organizationId: ctx.dbUser.organizationId,
             },
+            select: {
+              s3Key: true,
+              s3Bucket: true,
+            },
           });
+
           if (!doc) {
-            throw new TRPCError({ code: 'NOT_FOUND' });
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Document not found in getSignedDocumentUrl',
+            });
           }
+
+          if (!doc.s3Key || !doc.s3Bucket) {
+             throw new TRPCError({
+              code: 'INTERNAL_SERVER_ERROR',
+              message: 'Document record is missing storage key or bucket.',
+            });
+          }
+
           const { data, error } = await this.supabase
             .getAdminClient()
             .storage.from(doc.s3Bucket)
             .createSignedUrl(doc.s3Key, 300);
+
           if (error) {
             throw new TRPCError({
               code: 'INTERNAL_SERVER_ERROR',
-              message: 'Could not generate signed URL.',
+              message: `Could not generate signed URL: ${error.message}`,
             });
           }
           return { signedUrl: data.signedUrl };
         }),
 
-      // --- PROCEDURES FOR OWNERSHIP GRAPH ---
-
+      // ... (rest of your procedures: getAppUsers, getAll, etc.)
       getAppUsers: protectedProcedure
-        // ... (rest of getAppUsers is unchanged)
         .meta({
           openapi: {
             method: 'GET',
@@ -173,7 +195,6 @@ export class DocumentsRouter {
           });
         }),
 
-      // --- THIS IS THE MODIFIED PROCEDURE ---
       getAll: protectedProcedure
         .meta({
           openapi: {
@@ -192,7 +213,6 @@ export class DocumentsRouter {
               message: 'User does not belong to an organization.',
             });
           }
-
           return this.prisma.document.findMany({
             where: {
               organizationId: ctx.dbUser.organizationId,
@@ -202,21 +222,18 @@ export class DocumentsRouter {
               title: true,
               createdAt: true,
               uploadedBy: { select: { name: true } },
-              
-              // --- ADD THESE TWO LINES ---
               fileType: true,
               fileSize: true,
-              // -------------------------
+              uploadedById: true,
+              organizationId: true,
             },
             orderBy: {
               createdAt: 'desc',
             },
           });
         }),
-      // --- END OF MODIFICATION ---
 
       getDocumentsByUserId: protectedProcedure
-        // ... (rest of getDocumentsByUserId is unchanged)
         .meta({
           openapi: {
             method: 'GET',
@@ -225,7 +242,7 @@ export class DocumentsRouter {
             summary: "Get all documents for a specific user",
           },
         })
-        .input(z.string()) // The input is just the user ID string
+        .input(z.string())
         .output(z.any())
         .query(async ({ ctx, input: userId }) => {
           if (!ctx.dbUser.organizationId) {
@@ -255,7 +272,6 @@ export class DocumentsRouter {
         }),
 
       deleteDocument: protectedProcedure
-        // ... (rest of deleteDocument is unchanged)
         .meta({
           openapi: {
             method: 'DELETE',
@@ -278,6 +294,11 @@ export class DocumentsRouter {
               id: input.id,
               organizationId: ctx.dbUser.organizationId,
             },
+            select: {
+              id: true,
+              s3Key: true,
+              s3Bucket: true,
+            },
           });
           if (!doc) {
             throw new TRPCError({
@@ -298,7 +319,6 @@ export class DocumentsRouter {
         }),
 
       transferDocument: protectedProcedure
-        // ... (rest of transferDocument is unchanged)
         .meta({
           openapi: {
             method: 'POST',
@@ -345,10 +365,7 @@ export class DocumentsRouter {
           });
         }),
 
-      // --- NEW PROCEDURES FOR TAGS.TSX ---
-
       getTags: protectedProcedure
-        // ... (rest of getTags is unchanged)
         .meta({
           openapi: {
             method: 'GET',
@@ -370,7 +387,6 @@ export class DocumentsRouter {
         }),
 
       createTag: protectedProcedure
-        // ... (rest of createTag is unchanged)
         .meta({
           openapi: {
             method: 'POST',
@@ -390,7 +406,6 @@ export class DocumentsRouter {
         }),
 
       updateTag: protectedProcedure
-        // ... (rest of updateTag is unchanged)
         .meta({
           openapi: {
             method: 'POST',
@@ -409,7 +424,6 @@ export class DocumentsRouter {
         }),
 
       deleteTag: protectedProcedure
-        // ... (rest of deleteTag is unchanged)
         .meta({
           openapi: {
             method: 'DELETE',
@@ -418,7 +432,7 @@ export class DocumentsRouter {
             summary: 'Delete a tag',
           },
         })
-        .input(z.string()) // Input is just the tag ID
+        .input(z.string())
         .output(z.any())
         .mutation(async ({ ctx, input: tagId }) => {
           return this.prisma.tag.delete({

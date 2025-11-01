@@ -10,15 +10,22 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// apps/api/prisma/schema.prisma
+
 model User {
-  id             String         @id // Supabase Auth User ID
-  email          String         @unique
-  name           String? // Your router query uses 'name', not 'displayName'
-  role           Role           @default(USER)
-  organization   Organization?  @relation(fields: [organizationId], references: [id])
-  organizationId String?
-  documents      Document[]     @relation("uploadedBy") // Matches relation name 'uploadedBy' in Document
-  DocumentAccess DocumentAccess[]
+  id    String  @id // Supabase Auth User ID
+  email String  @unique
+  name  String?
+  
+  // --- 1. ADD THIS LINE ---
+  imageUrl String? // URL for the user's profile picture
+  // ----------------------
+
+  role             Role             @default(USER)
+  organization     Organization?    @relation(fields: [organizationId], references: [id])
+  organizationId   String?
+  documents        Document[]       @relation("uploadedBy")
+  DocumentAccess   DocumentAccess[]
 }
 
 model Organization {

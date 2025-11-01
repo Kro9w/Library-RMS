@@ -1,19 +1,26 @@
 /* apps/web/src/App.css */
 
+/* --- 1. RESTORED: Original Layout Styles --- */
 .main-content {
-  /* Smooth transition for margin changes */
   transition: margin-left 0.3s ease;
-  padding: 1rem 1.5rem;
+  min-height: 100vh;
+  /* Add some default padding to all pages */
+  padding: 1.5rem;
 }
 
-/* When sidebar is expanded */
 .main-content.expanded {
-  /* 250px (sidebar) + 1rem (wrapper padding) */
-  margin-left: 266px;
+  margin-left: 250px;
 }
 
-/* When sidebar is collapsed */
 .main-content.collapsed {
-  /* 80px (sidebar) + 1rem (wrapper padding) */
-  margin-left: 96px;
+  margin-left: 80px;
+}
+/* ----------------------------------------- */
+
+/* This is for your public pages like /login, /signup */
+.main-content-logged-out {
+  padding: 0;
+  margin: 0;
+  width: 100vw;
+  height: 100vh;
 }

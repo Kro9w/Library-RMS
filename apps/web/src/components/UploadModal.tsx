@@ -3,10 +3,12 @@ import React, { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { trpc } from "../trpc";
 import { supabase } from "../supabase";
-// We'll re-use the styles from your ConfirmModal for the backdrop
-import "./ConfirmModal.css"; 
-// We'll add new styles for the uploader itself
-import "./UploadModal.css"; 
+import "./ConfirmModal.css";
+import "./UploadModal.css";
+import { v4 as uuidv4 } from "uuid";
+import { useUser } from "@supabase/auth-helpers-react";
+
+const BUCKET_NAME = "FolioDocs";
 
 interface UploadModalProps {
   show: boolean;
@@ -16,12 +18,14 @@ interface UploadModalProps {
 export function UploadModal({ show, onClose }: UploadModalProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  // --- 1. ADD NEW STATE FOR THE WARNING ---
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  // ----------------------------------------
   const trpcCtx = trpc.useUtils();
+  const user = useUser();
 
-  // The tRPC mutation to create the DB record *after* upload
   const createRecordMutation = trpc.documents.createDocumentRecord.useMutation({
     onSuccess: () => {
-      // When successful, refresh dashboard and document lists
       trpcCtx.getDashboardStats.invalidate();
       trpcCtx.documents.getAll.invalidate();
     },
@@ -31,32 +35,31 @@ export function UploadModal({ show, onClose }: UploadModalProps) {
   });
 
   const handleUpload = async () => {
-    if (files.length === 0) return;
+    if (files.length === 0 || !user) return;
     setIsUploading(true);
+    setUploadError(null); // Clear errors on new upload
 
     try {
-      // Upload files one by one
       for (const file of files) {
-        
-        // --- 1. UPLOAD TO SUPABASE STORAGE ---
-        // !!! IMPORTANT: Replace 'documents' with your actual bucket name
+        const fileExtension = file.name.split(".").pop();
+        const storageKey = `${user.id}/${uuidv4()}.${fileExtension}`;
+
         const { data: uploadData, error: uploadError } =
           await supabase.storage
-            .from("documents") // <--- REPLACE 'documents' with your bucket name
-            .upload(file.name, file, {
+            .from(BUCKET_NAME)
+            .upload(storageKey, file, {
               cacheControl: "3600",
-              upsert: false, // Don't overwrite existing files
+              upsert: false,
             });
 
         if (uploadError) {
           throw new Error(`Supabase upload error: ${uploadError.message}`);
         }
 
-        // --- 2. CREATE DATABASE RECORD via tRPC ---
         await createRecordMutation.mutateAsync({
           title: file.name,
           storageKey: uploadData.path,
-          storageBucket: "documents", // <--- REPLACE 'documents' with your bucket name
+          storageBucket: BUCKET_NAME,
           fileType: file.type,
           fileSize: file.size,
         });
@@ -71,34 +74,54 @@ export function UploadModal({ show, onClose }: UploadModalProps) {
     }
   };
 
-  // Resets state and calls the parent onClose
   const handleClose = () => {
     setFiles([]);
+    setUploadError(null); // Clear errors on close
     setIsUploading(false);
     onClose();
   };
 
-  // --- react-dropzone hook logic ---
+  // --- 2. MODIFY 'onDrop' to clear errors ---
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setFiles((prevFiles) => [...prevFiles, ...acceptedFiles]);
+    setUploadError(null); // Clear any previous errors on a *successful* drop
   }, []);
+  // ------------------------------------------
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    // --- 3. ADD FILE TYPE VALIDATION ---
+    accept: {
+      "application/pdf": [".pdf"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+        ".docx",
+      ],
+      "application/msword": [".doc"],
+    },
+    // This handler fires when a file is REJECTED
+    onDropRejected: (fileRejections) => {
+      const firstError = fileRejections[0].errors[0];
+      if (firstError.code === "file-invalid-type") {
+        setUploadError(
+          "Warning: Other file types are not currently supported. Please upload PDF or DOCX files only."
+        );
+      } else {
+        setUploadError(firstError.message); // Show other errors (e.g., file too large)
+      }
+      setFiles([]); // Clear any previously accepted files
+    },
+    // -------------------------------------
     disabled: isUploading,
   });
 
   const removeFile = (fileName: string) => {
     setFiles(files.filter((file) => file.name !== fileName));
   };
-  // ---------------------------------
 
   if (!show) return null;
 
   return (
-    // Re-use backdrop style from ConfirmModal.css
     <div className="custom-modal-backdrop" onClick={handleClose}>
-      {/* Re-use content style, but add our own for sizing */}
       <div
         className="custom-modal-content upload-modal-content"
         onClick={(e) => e.stopPropagation()}
@@ -114,9 +137,18 @@ export function UploadModal({ show, onClose }: UploadModalProps) {
           {isDragActive ? (
             <p>Drop the files here ...</p>
           ) : (
-            <p>Drag & drop files here, or click to select files</p>
+            <p>Drag 'n' drop PDF or DOCX files here, or click to select</p>
           )}
         </div>
+
+        {/* --- 4. ADD THE WARNING MESSAGE UI --- */}
+        {uploadError && (
+          <div className="upload-error-message">
+            <i className="bi bi-exclamation-triangle-fill"></i>
+            {uploadError}
+          </div>
+        )}
+        {/* ----------------------------------- */}
 
         {files.length > 0 && (
           <div className="file-list">

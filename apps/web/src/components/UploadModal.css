@@ -5,41 +5,41 @@
 }
 
 .upload-dropzone {
-  border: 2px dashed #ccc;
+  border: 2px dashed var(--card-border); /* USE VAR */
   border-radius: 0.5rem;
   padding: 2rem;
   text-align: center;
   cursor: pointer;
-  background-color: #f9f9f9;
+  background-color: var(--hover-bg); /* USE VAR */
   transition: background-color 0.2s ease, border-color 0.2s ease;
-  margin-top: 1rem;
+  margin: 1rem;
 }
 
 .upload-dropzone i {
   font-size: 3rem;
-  color: #6c757d;
+  color: var(--text-muted); /* USE VAR */
 }
 
 .upload-dropzone p {
   margin: 0;
-  color: #6c757d;
+  color: var(--text-muted); /* USE VAR */
   font-weight: 500;
 }
 
 .upload-dropzone:hover {
-  border-color: var(--primary, #0056b3);
+  border-color: var(--primary); /* This is correct */
 }
 
 .upload-dropzone.dropzone-active {
-  background-color: #e6f0ff;
-  border-color: var(--primary, #0056b3);
+  background-color: var(--btn-icon-hover-blue-bg); /* USE VAR */
+  border-color: var(--primary);
 }
 
 .file-list {
   margin-top: 1.5rem;
   max-height: 150px;
   overflow-y: auto;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--card-border); /* USE VAR */
   border-radius: 0.5rem;
   padding: 0.5rem;
 }
@@ -55,7 +55,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 0.5rem;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--card-border); /* USE VAR */
 }
 
 .file-list li:last-child {
@@ -65,32 +65,95 @@
 .file-list li button {
   background: none;
   border: none;
-  color: #d90429;
+  color: var(--btn-icon-hover-red-text); /* USE VAR */
   font-size: 1.25rem;
   font-weight: bold;
   cursor: pointer;
 }
 
-/* Dark Mode Styles */
-body[data-bs-theme="dark"] .upload-dropzone {
-  background-color: #2c3034;
-  border-color: #444;
+/* --- Styles for the Warning --- */
+.upload-error-message {
+  color: var(--primary); /* USE VAR */
+  font-weight: 500;
+  /* We can create a light-red using a transparent primary color */
+  background-color: rgba(186, 59, 70, 0.1); /* USE VAR */
+  border: 1px solid var(--primary); /* USE VAR */
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-body[data-bs-theme="dark"] .upload-dropzone p,
-body[data-bs-theme="dark"] .upload-dropzone i {
-  color: #9a9a9a;
+.upload-error-message i {
+  font-size: 1.25rem;
+  flex-shrink: 0;
 }
 
-body[data-bs-theme="dark"] .upload-dropzone.dropzone-active {
-  background-color: #343a40;
-  border-color: #aad8ff;
+/* --- ConfirmModal Styles (Refactored) --- */
+
+.custom-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
 }
 
-body[data-bs-theme="dark"] .file-list {
-  border-color: #444;
+.custom-modal-content {
+  background: var(--card-background); /* USE VAR */
+  border: 1px solid var(--card-border); /* USE VAR */
+  border-radius: 8px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: var(--card-shadow); /* USE VAR */
+  animation: fadeIn 0.3s ease-out;
 }
 
-body[data-bs-theme="dark"] .file-list li {
-  border-bottom-color: #343a40;
+.custom-modal-title {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--card-border); /* USE VAR */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0;
+  font-size: 1.5rem;
+  color: var(--text); /* USE VAR */
 }
+
+.custom-modal-message {
+  margin-bottom: 0;
+  padding: 1.5rem;
+  color: var(--text-muted); /* USE VAR */
+}
+
+.custom-modal-actions {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--card-border); /* USE VAR */
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/*
+ * --- ALL 'body[data-bs-theme="dark"]' STYLES ARE GONE! ---
+ * They are no longer needed because 'index.css'
+ * handles the theme change globally.
+*/

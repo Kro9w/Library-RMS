@@ -1,5 +1,6 @@
+// apps/web/src/App.tsx
 import React, { useState, useEffect } from "react";
-import "./App.css"; // Make sure App.css is imported
+import "./App.css";
 import {
   BrowserRouter as Router,
   Routes,
@@ -10,7 +11,7 @@ import {
 } from "react-router-dom";
 import { Dashboard } from "./pages/Dashboard";
 import Documents from "./pages/Documents";
-import Upload from "./pages/Upload";
+// import Upload from "./pages/Upload"; // This page is no longer needed
 import Account from "./pages/Account";
 import { Settings } from "./pages/Settings";
 import LoginPage from "./pages/LoginPage";
@@ -23,8 +24,10 @@ import { GraphView } from "./pages/GraphView";
 import JoinOrganization from "./pages/JoinOrganization";
 import { Users } from "./pages/Users";
 import { trpc } from "./trpc";
+// 1. REMOVED: TopNavbar import is gone
 
 const AuthRedirectHandler: React.FC = () => {
+  // ... (This component is unchanged)
   const session = useSession();
   const navigate = useNavigate();
   const location = useLocation();
@@ -57,9 +60,10 @@ const AuthRedirectHandler: React.FC = () => {
 const AppContent: React.FC = () => {
   const session = useSession();
   const { isLoading: isLoadingSession } = useSessionContext();
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
 
+  // 2. RESTORED: The original state for the collapsible sidebar
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const toggleNavbar = () => setIsCollapsed(!isCollapsed);
 
   if (isLoadingSession) {
@@ -68,6 +72,7 @@ const AppContent: React.FC = () => {
 
   const showNavbar = session && location.pathname !== "/join";
 
+  // 3. RESTORED: The original class logic for main-content
   const mainContentClass = showNavbar
     ? `main-content ${isCollapsed ? "collapsed" : "expanded"}`
     : "main-content-logged-out";
@@ -75,9 +80,13 @@ const AppContent: React.FC = () => {
   return (
     <>
       {session && <AuthRedirectHandler />}
+      
+      {/* 4. RESTORED: We only render the single, powerful Navbar */}
       {showNavbar && <Navbar isCollapsed={isCollapsed} onToggle={toggleNavbar} />}
+
       <div className={mainContentClass}>
         <Routes>
+          {/* ... (All your Routes are correct and unchanged) ... */}
           <Route
             path="/login"
             element={!session ? <LoginPage /> : <Navigate to="/" replace />}
@@ -99,10 +108,6 @@ const AppContent: React.FC = () => {
             element={
               session ? <DocumentDetails /> : <Navigate to="/login" replace />
             }
-          />
-          <Route
-            path="/upload"
-            element={session ? <Upload /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/tags"
