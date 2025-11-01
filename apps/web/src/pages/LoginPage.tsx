@@ -1,9 +1,11 @@
+// apps/web/src/pages/LoginPage.tsx
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../supabase";
 import { trpc } from "../trpc";
 import AuthLayout from '../components/AuthLayout';
-import './LoginPage.css';
+// --- 1. THIS IS THE FIX ---
+import './Auth.css'; // Import the new unified CSS file
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -46,8 +48,9 @@ const LoginPage: React.FC = () => {
 
   return (
     <AuthLayout title="Login">
-      <div className="login-container">
-        <form onSubmit={handleSubmit}>
+      {/* --- 2. APPLY NEW CLASSES --- */}
+      <div className="auth-container">
+        <form className="auth-form" onSubmit={handleSubmit}>
           <input
             type="email"
             placeholder="Email"
@@ -55,6 +58,7 @@ const LoginPage: React.FC = () => {
             onChange={(e) => setEmail(e.target.value)}
             required
             disabled={loading}
+            className="form-control" 
           />
           <input
             type="password"
@@ -63,16 +67,18 @@ const LoginPage: React.FC = () => {
             onChange={(e) => setPassword(e.target.value)}
             required
             disabled={loading}
+            className="form-control"
           />
-          <button type="submit" disabled={loading}>
+          <button type="submit" disabled={loading} className="btn btn-primary">
             {loading ? "Logging in..." : "Login"}
           </button>
-          {error && <p className="error">{error}</p>}
+          {error && <p className="auth-error">{error}</p>}
         </form>
-        <p>
+        <p className="auth-footer-link">
           Don't have an account? <Link to="/signup">Sign Up</Link>
         </p>
       </div>
+      {/* --- END OF FIX --- */}
     </AuthLayout>
   );
 };

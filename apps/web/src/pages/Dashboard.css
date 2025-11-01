@@ -1,6 +1,6 @@
 /* apps/web/src/pages/Dashboard.css */
 
-/* --- Stat Card Styles (Unchanged) --- */
+/* --- Stat Card Styles (Refactored) --- */
 .stat-card {
   color: var(--light-text);
   border: none;
@@ -8,7 +8,8 @@
 }
 
 .card.stat-card-primary {
-  background-color: white;
+  background-color: var(--card-background); /* USE VAR */
+  box-shadow: var(--card-shadow);      /* USE VAR */
   border-radius: 1rem;
   border: none;
 }
@@ -21,70 +22,47 @@
 }
 
 .card.stat-card-primary .card-body {
-  color: var(--primary);
+  color: var(--primary); /* This is correct */
 }
 
+/* This is for the "Most Used Tags" list */
 .list-group-item {
-  background-color: #fff;
-  border-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--card-background); /* USE VAR */
+  border-color: var(--card-border);     /* USE VAR */
+  color: var(--text);                /* USE VAR */
 }
 
-/* --- 1. THIS IS THE FIX --- */
-/*
- * I have UN-COMMENTED your original rule and
- * ADDED the shadow and background to match .document-table-card.
-*/
+/* This is for the "Analytics" cards */
 .card.mini-stat-card {
-  /* Consistent styles from .document-table-card */
-  background-color: white;
-  overflow: hidden; /* Helps with border-radius */
-
-  /* Your original styles (which were correct) */
+  background-color: var(--card-background); /* USE VAR */
+  box-shadow: var(--card-shadow);      /* USE VAR */
+  overflow: hidden;
   border-radius: 1rem;
   border: none;
 }
-/* ------------------------- */
 
-/* --- 2. GRID OVERRIDE (Unchanged) --- */
-/* This is still needed for the "Recent Uploads" list */
+/* --- Grid Override (Unchanged) --- */
+/* This is for the "Recent Uploads" list */
 .document-list-header.recent-uploads-header,
 .document-item.recent-upload-item {
   grid-template-columns: 3fr 1fr; /* Title (flexible) and Owner (fixed) */
   gap: 1rem;
 }
 
-/* This is also still needed */
+/* This is also for "Recent Uploads" */
 .recent-uploads-header > span:last-child,
 .recent-upload-item .document-owner {
   justify-self: end;
 }
 
-/* --- 3. HELPER STYLE (Unchanged) --- */
-/* This is still needed to add padding to the *contents*
-   of the analytics cards, since .card-body is inside.
-*/
+/* --- Helper Style (Unchanged) --- */
+/* This adds padding inside the "Analytics" cards */
 .document-table-card .card-body {
   padding: 1.25rem;
 }
 
-/* --- Dark Mode Styles --- */
-body[data-bs-theme="dark"] .stat-card,
-body[data-bs-theme="dark"] .card.stat-card-primary {
-  background-color: #23272b;
-  color: #f1f1f1;
-  border-radius: 1rem;
-}
-
-body[data-bs-theme="dark"] .card.stat-card-primary .card-body {
-  color: #aad8ff;
-}
-
-/* --- 4. FIX FOR DARK MODE --- */
-/* I have also un-commented and fixed the dark mode
-   version for your mini-stat-cards.
+/*
+ * --- ALL DARK MODE STYLES ARE GONE! ---
+ * They are no longer needed because 'index.css'
+ * handles the theme change globally.
 */
-body[data-bs-theme="dark"] .card.mini-stat-card {
-  background-color: #23272b;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border: none;
-}

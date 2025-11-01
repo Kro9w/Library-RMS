@@ -1,3 +1,5 @@
+/* --- ConfirmModal Styles (Refactored) --- */
+
 .custom-modal-backdrop {
   position: fixed;
   top: 0;
@@ -12,32 +14,35 @@
 }
 
 .custom-modal-content {
-  background: white;
+  background: var(--card-background); /* USE VAR */
+  border: 1px solid var(--card-border); /* USE VAR */
   border-radius: 8px;
   width: 100%;
   max-width: 500px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--card-shadow); /* USE VAR */
   animation: fadeIn 0.3s ease-out;
 }
 
 .custom-modal-title {
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid #dee2e6;
+  border-bottom: 1px solid var(--card-border); /* USE VAR */
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0;
   font-size: 1.5rem;
+  color: var(--text); /* USE VAR */
 }
 
 .custom-modal-message {
   margin-bottom: 0;
   padding: 1.5rem;
+  color: var(--text-muted); /* USE VAR */
 }
 
 .custom-modal-actions {
   padding: 1rem 1.5rem;
-  border-top: 1px solid #dee2e6;
+  border-top: 1px solid var(--card-border); /* USE VAR */
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;

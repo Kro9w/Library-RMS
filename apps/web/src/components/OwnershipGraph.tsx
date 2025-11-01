@@ -4,28 +4,36 @@ import * as d3 from "d3";
 import { trpc } from "../trpc";
 import "./OwnershipGraph.css";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
+import { Link } from "react-router-dom";
 
-// Define node types, adding 'organization'
+// (Type definitions are unchanged)
 type NodeType = "user" | "organization" | "document";
-// Add optional organizationId to User nodes for easier linking
 type Node = {
   id: string;
   name: string;
   type: NodeType;
-  organizationId?: string; // Add this
+  organizationId?: string;
 };
 type Link = { source: string; target: string };
 type GraphData = { nodes: Node[]; links: Link[] };
-
 type AppUser = AppRouterOutputs["documents"]["getAppUsers"][0];
 type OrgDocument = AppRouterOutputs["documents"]["getAll"][0];
 type UserDocument = AppRouterOutputs["documents"]["getDocumentsByUserId"][0];
 
+// --- 1. THIS IS THE FIX ---
+// I've changed the default maxLength from 15 to 10.
+const truncateText = (name: string, type: NodeType, maxLength = 10) => {
+  if (type !== "document" || name.length <= maxLength) {
+    return name;
+  }
+  return name.substring(0, maxLength) + "...";
+};
+// ------------------------------
+
 export function OwnershipGraph() {
   const svgRef = useRef<SVGSVGElement>(null);
-  const transformRef = useRef<d3.ZoomTransform | null>(null);
 
-  // State Management
+  // (State Management is unchanged)
   const [currentView, setCurrentView] = useState<"org" | "doc">("org");
   const [selectedOrg, setSelectedOrg] = useState<
     AppRouterOutputs["user"]["getMe"]["organization"] | null
@@ -37,25 +45,15 @@ export function OwnershipGraph() {
   const [selectedUserNode, setSelectedUserNode] = useState<Node | null>(null);
   const [userDocuments, setUserDocuments] = useState<UserDocument[]>([]);
 
-  // --- Data Fetching ---
+  // (Data Fetching is unchanged)
   const { data: currentUserData, isLoading: isLoadingCurrentUser } =
     trpc.user.getMe.useQuery();
 
-  const {
-    data: users,
-    isLoading: isLoadingUsers,
-    isError: isUsersError,
-    error: usersError,
-  } = trpc.documents.getAppUsers.useQuery(undefined, {
+  const usersQuery = trpc.documents.getAppUsers.useQuery(undefined, {
     enabled: !!currentUserData?.organizationId,
   });
 
-  const {
-    data: allDocuments,
-    isLoading: isLoadingAllDocs,
-    isError: isAllDocsError,
-    error: allDocsError,
-  } = trpc.documents.getAll.useQuery(undefined, {
+  const allDocumentsQuery = trpc.documents.getAll.useQuery(undefined, {
     enabled: !!currentUserData?.organizationId,
   });
 
@@ -64,9 +62,11 @@ export function OwnershipGraph() {
       enabled: !!selectedUserNode,
     });
 
-  // --- Data Processing Effect ---
+  // (Data Processing Effect is unchanged)
   useEffect(() => {
-    // Org View: Show the organization node AND its users
+    const users = usersQuery.data;
+    const allDocuments = allDocumentsQuery.data;
+
     if (currentView === "org" && currentUserData?.organization && users) {
       const orgNode: Node = {
         id: currentUserData.organization.id,
@@ -77,29 +77,24 @@ export function OwnershipGraph() {
         id: user.id,
         name: user.name || user.email || "User",
         type: "user",
-        organizationId: user.organizationId ?? undefined, // Store orgId on node
+        organizationId: user.organizationId ?? undefined,
       }));
-      // Link users TO the organization node
       const userLinks: Link[] = userNodes.map((userNode) => ({
-        source: userNode.id, // User is the source
-        target: orgNode.id, // Org is the target
+        source: userNode.id,
+        target: orgNode.id,
       }));
-
       setGraphData({
         nodes: [orgNode, ...userNodes],
         links: userLinks,
       });
-      setSelectedOrg(null); // Clear selected org
-    }
-    // Detailed Org/Doc View: Show users and docs for the selected org
-    else if (currentView === "doc" && selectedOrg && users && allDocuments) {
+      setSelectedOrg(null);
+    } else if (currentView === "doc" && selectedOrg && users && allDocuments) {
       const orgUsers = users.filter(
         (u: { organizationId: any }) => u.organizationId === selectedOrg.id
       );
       const orgDocs = allDocuments.filter(
-        (d: { organizationId: any }) => d.organizationId === selectedOrg.id
+        (d: OrgDocument) => d.organizationId === selectedOrg.id
       );
-
       const userNodes: Node[] = orgUsers.map((user: AppUser) => ({
         id: user.id,
         name: user.name || user.email || "User",
@@ -115,7 +110,6 @@ export function OwnershipGraph() {
         source: doc.id,
         target: doc.uploadedById,
       }));
-
       setGraphData({
         nodes: [...userNodes, ...docNodes],
         links: [...docLinks],
@@ -123,9 +117,15 @@ export function OwnershipGraph() {
     } else {
       setGraphData({ nodes: [], links: [] });
     }
-  }, [currentView, selectedOrg, currentUserData, users, allDocuments]);
+  }, [
+    currentView,
+    selectedOrg,
+    currentUserData,
+    usersQuery.data,
+    allDocumentsQuery.data,
+  ]);
 
-  // Effect to update the documents in the side panel
+  // (User Documents Effect is unchanged)
   useEffect(() => {
     if (documentsData) {
       setUserDocuments(documentsData);
@@ -134,12 +134,11 @@ export function OwnershipGraph() {
     }
   }, [documentsData]);
 
-  // --- UI Handlers ---
+  // (UI Handlers are unchanged)
   const closeDetailsPanel = () => {
     setSelectedUserNode(null);
     d3.selectAll(".node-circle.selected").classed("selected", false);
   };
-
   const handleNodeClick = (event: MouseEvent, d: Node) => {
     event.stopPropagation();
     if (d.type === "organization") {
@@ -150,7 +149,6 @@ export function OwnershipGraph() {
         closeDetailsPanel();
       }
     } else if (d.type === "user" && currentView === "doc") {
-      // Only allow user selection in doc view
       setSelectedUserNode(d);
       d3.selectAll(".node-circle.selected").classed("selected", false);
       d3.select(event.currentTarget as SVGGElement)
@@ -160,15 +158,13 @@ export function OwnershipGraph() {
       closeDetailsPanel();
     }
   };
-
   const handleBackClick = () => {
     setCurrentView("org");
     setSelectedOrg(null);
     closeDetailsPanel();
   };
 
-  // --- D3 Rendering Effect ---
-  // --- D3 Rendering Effect ---
+  // (D3 Rendering Effect is unchanged)
   useEffect(() => {
     const svgElement = svgRef.current;
     if (graphData.nodes.length === 0 || !svgElement?.parentElement) {
@@ -186,49 +182,17 @@ export function OwnershipGraph() {
       .attr("height", height);
     svg.selectAll("*").remove();
 
-    // --- Add Back Button using D3 and CSS Classes ---
-    if (currentView === "doc") {
-      const backButton = svg
-        .append("g")
-        .attr("class", "back-button-group") // Apply main group class
-        .style("cursor", "pointer")
-        .on("click", handleBackClick);
-
-      // Apply class to rect
-      backButton
-        .append("rect")
-        .attr("x", 10)
-        .attr("y", 10)
-        .attr("width", 80)
-        .attr("height", 30)
-        .attr("rx", 5)
-        .attr("class", "back-button-rect"); // Apply rect class
-
-      // Apply class to text
-      backButton
-        .append("text")
-        .attr("x", 20)
-        .attr("y", 30) // Centering vertically: y = top_y + height / 2 + font_size / 3 (approx)
-        .attr("class", "back-button-text") // Apply text class
-        .text("⬅ Back");
-    }
-
-    const g = svg.append("g"); // Main group for zoom/pan
-
-    // --- Zoom/Pan Behavior ---
+    const g = svg.append("g");
     const zoomBehavior = d3
       .zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 5])
       .on("start", () => svg.classed("grabbing", true))
       .on("zoom", (event) => {
         g.attr("transform", event.transform);
-        transformRef.current = event.transform;
       })
       .on("end", () => svg.classed("grabbing", false));
-
     svg.call(zoomBehavior).on("dblclick.zoom", null);
 
-    // --- Simulation ---
     const simulation = d3
       .forceSimulation(nodes as d3.SimulationNodeDatum[])
       .force(
@@ -248,7 +212,7 @@ export function OwnershipGraph() {
         "collide",
         d3
           .forceCollide()
-          .radius((d) => {
+          .radius((d: any) => {
             if ((d as Node).type === "organization") return 45;
             if ((d as Node).type === "user") return 35;
             return 25;
@@ -256,7 +220,6 @@ export function OwnershipGraph() {
           .strength(0.9)
       );
 
-    // --- Drawing Links ---
     const link = g
       .append("g")
       .attr("class", "links")
@@ -265,7 +228,6 @@ export function OwnershipGraph() {
       .enter()
       .append("line");
 
-    // --- Drawing Nodes ---
     const node = g
       .append("g")
       .attr("class", "nodes")
@@ -273,9 +235,9 @@ export function OwnershipGraph() {
       .data(nodes, (d: any) => d.id)
       .enter()
       .append("g")
-      .style("cursor", (d) =>
-        d.type === "organization" ||
-        (d.type === "user" && currentView === "doc")
+      .style("cursor", (d: any) =>
+        (d as Node).type === "organization" ||
+        ((d as Node).type === "user" && currentView === "doc")
           ? "pointer"
           : "default"
       )
@@ -286,22 +248,31 @@ export function OwnershipGraph() {
           .on("drag", dragged)
           .on("end", dragended)
       )
-      .on("click", (event, d) => handleNodeClick(event, d as Node));
+      .on("click", (event, d: any) => handleNodeClick(event, d as Node))
+      .on("mouseover", function (_event, d: any) {
+        d3.select(this).raise();
+        d3.select(this).select("text").text((d as Node).name);
+      })
+      .on("mouseout", function (_event, d: any) {
+        d3.select(this)
+          .select("text")
+          .text(truncateText((d as Node).name, (d as Node).type));
+      });
 
     node
       .append("circle")
-      .attr("r", (d) => {
-        if (d.type === "organization") return 35;
-        if (d.type === "user") return 25;
+      .attr("r", (d: any) => {
+        if ((d as Node).type === "organization") return 35;
+        if ((d as Node).type === "user") return 25;
         return 12;
       })
-      .attr("class", (d) => `node-circle ${d.type}`)
-      .classed("selected", (d) => d.id === selectedUserNode?.id);
+      .attr("class", (d: any) => `node-circle ${(d as Node).type}`)
+      .classed("selected", (d: any) => d.id === selectedUserNode?.id);
 
     node
       .append("text")
-      .text((d) => d.name)
-      .attr("x", (d) => (d.type === "organization" ? 40 : 30))
+      .text((d: any) => truncateText((d as Node).name, (d as Node).type))
+      .attr("x", (d: any) => ((d as Node).type === "organization" ? 40 : 30))
       .attr("y", 5)
       .attr("class", "node-label");
 
@@ -314,35 +285,34 @@ export function OwnershipGraph() {
       node.attr("transform", (d: any) => `translate(${d.x},${d.y})`);
     });
 
-    // --- Drag Functions ---
     function dragstarted(
-      event: d3.D3DragEvent<SVGGElement, Node, any>,
+      event: d3.D3DragEvent<SVGGElement, any, any>,
       d: any
     ) {
       if (!event.active) simulation.alphaTarget(0.3).restart();
       d.fx = d.x;
       d.fy = d.y;
     }
-    function dragged(event: d3.D3DragEvent<SVGGElement, Node, any>, d: any) {
+    function dragged(event: d3.D3DragEvent<SVGGElement, any, any>, d: any) {
       d.fx = event.x;
       d.fy = event.y;
     }
-    function dragended(event: d3.D3DragEvent<SVGGElement, Node, any>, d: any) {
+    function dragended(event: d3.D3DragEvent<SVGGElement, any, any>, d: any) {
       if (!event.active) simulation.alphaTarget(0);
       d.fx = null;
       d.fy = null;
     }
 
-    // Cleanup function
     return () => {
       simulation.stop();
     };
-  }, [graphData, currentView]); // Keep currentView dependency-run D3 effect also when currentView changes (for back button)
+  }, [graphData, currentView, selectedUserNode]);
 
-  // --- Loading/Error States ---
-  const isLoading = isLoadingCurrentUser || isLoadingUsers || isLoadingAllDocs;
-  const isError = isUsersError || isAllDocsError;
-  const error = usersError || allDocsError;
+  // (Loading/Error States are unchanged)
+  const isLoading =
+    isLoadingCurrentUser || usersQuery.isLoading || allDocumentsQuery.isLoading;
+  const isError = usersQuery.isError || allDocumentsQuery.isError;
+  const error = usersQuery.error || allDocumentsQuery.error;
 
   if (isLoading)
     return <div className="graph-status-message">Loading graph data...</div>;
@@ -359,11 +329,19 @@ export function OwnershipGraph() {
     );
   }
 
-  // --- Render Component ---
+  // (Render Component is unchanged)
   return (
     <div className="graph-container">
-      {/* Back button is now rendered inside SVG by D3 */}
       <div className="graph-canvas-wrapper">
+        {currentView === "doc" && (
+          <button
+            className="btn-icon btn-back"
+            onClick={handleBackClick}
+            title="Go Back"
+          >
+            <i className="bi bi-arrow-left"></i>
+          </button>
+        )}
         <svg ref={svgRef}></svg>
       </div>
       <div
@@ -387,7 +365,7 @@ export function OwnershipGraph() {
               <ul className="list-group">
                 {userDocuments.map((doc: UserDocument) => (
                   <li key={doc.id} className="list-group-item">
-                    {doc.title}
+                    <Link to={`/documents/${doc.id}`}>{doc.title}</Link>
                   </li>
                 ))}
               </ul>

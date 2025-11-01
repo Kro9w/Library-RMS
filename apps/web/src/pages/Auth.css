@@ -1,0 +1,94 @@
+/* apps/web/src/pages/Auth.css */
+/* This single file styles your entire authentication flow */
+
+/* --- 1. The Main Layout (from AuthLayout.css) --- */
+.auth-layout {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 100vh;
+  /* Use global --background from index.css */
+  /* This is automatically handled by the <body> tag */
+  padding: 2rem;
+  box-sizing: border-box;
+}
+
+.auth-card {
+  /* Use our global theme variables */
+  background-color: var(--card-background);
+  border-radius: 1rem;
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--card-border);
+  
+  padding: 2rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.auth-title {
+  text-align: center;
+  color: var(--primary);
+  margin-bottom: 1.5rem;
+}
+
+/* --- 2. Generic Form Styles (from LoginPage.css, etc.) --- */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+}
+
+/* All inputs in the auth flow will now be theme-aware.
+   The .form-control class from index.css does most of the work.
+*/
+.auth-form input[type="text"],
+.auth-form input[type="email"],
+.auth-form input[type="password"] {
+  /* We just need to add margin */
+  margin-bottom: 1rem;
+  /* All other styles (padding, border, colors) 
+     are handled by the global .form-control class
+  */
+}
+
+/* All buttons in the form are full-width */
+.auth-form button {
+  width: 100%;
+}
+
+.auth-error {
+  color: var(--primary);
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+.auth-footer-link {
+  text-align: center;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+}
+
+/* --- 3. Join Organization Styles (from JoinOrganization.css) --- */
+.join-org-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-section {
+  border-bottom: 1px solid var(--card-border);
+  padding-bottom: 1.5rem;
+}
+
+.form-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.form-section h3 {
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: var(--text); /* Use theme text color */
+}

@@ -1,7 +1,7 @@
 // apps/web/src/Theme.tsx
 import { createContext, useContext, useEffect, useState } from "react";
 
-export type Theme = "light" | "dark"; // <-- ADDED 'export'
+export type Theme = "light" | "dark";
 type ThemeContextType = {
   theme: Theme;
   toggleTheme: () => void;
@@ -15,14 +15,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
-    // This tells Mantine (when set to 'auto') which theme to use
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-      document.documentElement.classList.remove("light");
-    } else {
-      document.documentElement.classList.add("light");
-      document.documentElement.classList.remove("dark");
-    }
+    // --- THIS IS THE FIX ---
+    // We will set the data-bs-theme attribute on the <body>
+    // This will make it work with all your existing component CSS.
+    document.body.setAttribute("data-bs-theme", theme);
+    // --- END OF FIX ---
+    
     localStorage.setItem("theme", theme);
   }, [theme]);
 

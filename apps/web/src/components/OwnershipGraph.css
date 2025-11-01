@@ -1,80 +1,70 @@
 /* apps/web/src/components/OwnershipGraph.css */
 
-/* Use root variables */
-:root {
-  --primary: #ba3b46;
-  --accent: #ed9b40;
-  --background: #ffeedb;
-  --text: #4a1e22;
-  --light-text: #ffffff;
-}
+/* --- 1. REMOVED: The local :root block is gone. --- */
+/* This file now uses the global variables from index.css */
 
+/* --- 2. APPLY THE 'CARD' STYLE (Refactored) --- */
 .graph-container {
   display: flex;
   height: 75vh;
   width: 100%;
-  border: 1px solid rgba(var(--text), 0.2);
-  border-radius: 8px;
-  overflow: hidden;
   position: relative;
+  /* Use our global theme variables */
+  background-color: var(--card-background);
+  border-radius: 1rem;
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
 }
 
 .graph-canvas-wrapper {
   flex-grow: 1;
   position: relative;
   overflow: hidden;
+  border-radius: 1rem 0 0 1rem;
 }
 
 svg {
-  background-color: var(--background); /* Ensure background is set */
+  /*
+   * NOTE: Your old CSS had a special cream background here.
+   * We are now using the main var(--background) for consistency.
+   * If you want the cream color back, we can add a new
+   * --graph-background variable to index.css later.
+  */
+  background-color: var(--background); 
   width: 100%;
   height: 100%;
-  cursor: auto; /* Default cursor for the canvas */
+  cursor: auto;
 }
-
-/* Cursor style for when panning/zooming */
 svg.grabbing {
   cursor: grabbing !important;
 }
 
-/* --- D3 Node Styles --- */
-
-/* Base cursor for nodes (grab for dragging) */
-/* Applied to the circle inside the group */
+/* --- D3 Node Styles (Already using variables, no change) --- */
 .node-circle {
   stroke: var(--light-text);
   stroke-width: 1.5px;
-  cursor: grab; /* Default grab cursor for dragging */
+  cursor: grab;
   transition: fill 0.2s ease-in-out, stroke 0.2s ease-in-out;
 }
-
-/* Cursor for clickable nodes (pointer) */
-/* Applied to the <g> element containing the circle and text */
 .clickable-node {
-  cursor: pointer !important; /* Use pointer for clickable nodes */
+  cursor: pointer !important;
 }
-/* Ensure the circle within a clickable node doesn't override the pointer */
 .clickable-node .node-circle {
   cursor: pointer !important;
 }
-
 .node-circle.selected {
   stroke: var(--accent);
   stroke-width: 3px;
 }
-
 .node-circle.organization {
   fill: var(--primary);
 }
-
 .node-circle.user {
   fill: var(--accent);
 }
-
 .node-circle.document {
   fill: var(--text);
 }
-
 .node-label {
   fill: var(--text);
   font-size: 10px;
@@ -83,20 +73,20 @@ svg.grabbing {
   text-anchor: start;
 }
 
-/* --- D3 Link Styles --- */
+/* --- D3 Link Styles (Already using variables, no change) --- */
 .links line {
   stroke: var(--text);
   stroke-opacity: 0.4;
   stroke-width: 1.5px;
 }
 
-/* --- Details Panel --- */
+/* --- 3. UPDATE THE DETAILS PANEL (Refactored) --- */
 .details-panel {
   width: 300px;
-  background-color: var(--background);
-  border-left: 1px solid rgba(var(--text), 0.2);
+  background-color: var(--card-background); /* USE VAR */
+  border-left: 1px solid var(--card-border);  /* USE VAR */
   padding: 1.5rem;
-  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.05);
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.05); /* This shadow is fine */
   transform: translateX(100%);
   transition: transform 0.3s ease-in-out;
   flex-shrink: 0;
@@ -106,36 +96,54 @@ svg.grabbing {
   top: 0;
   bottom: 0;
   z-index: 10;
-  color: var(--text);
+  color: var(--text); /* USE VAR */
 }
 
 .details-panel.visible {
   transform: translateX(0);
 }
-
 .details-panel h4 {
   margin-bottom: 0.5rem;
   font-size: 1.25rem;
-  color: var(--primary);
+  color: var(--primary); /* This is correct */
 }
-
 .details-panel .btn-close {
   font-size: 0.8rem;
   margin-left: 1rem;
 }
+.details-panel .list-group {
+  list-style: none;
+  padding-left: 0;
+}
 
+/* --- 4. MODIFIED LIST ITEM STYLES (Refactored) --- */
 .details-panel .list-group-item {
   font-size: 0.9rem;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid rgba(var(--text), 0.1);
+  padding: 0;
+  border-bottom: 1px solid var(--card-border); /* USE VAR */
   background-color: transparent;
-  color: var(--text);
+  color: var(--text); /* USE VAR */
 }
 .details-panel .list-group-item:last-child {
   border-bottom: none;
 }
 
-/* Status messages */
+/* --- 5. LINK STYLES (Refactored) --- */
+.details-panel .list-group-item a {
+  display: block;
+  padding: 0.75rem 0.25rem;
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  border-radius: 0.25rem;
+}
+.details-panel .list-group-item a:hover {
+  color: var(--primary);
+  background-color: var(--hover-bg); /* USE VAR */
+}
+/* --- REMOVED dark mode rule --- */
+
+/* --- 6. STATUS MESSAGES (Refactored) --- */
 .graph-status-message {
   position: absolute;
   top: 50%;
@@ -146,20 +154,40 @@ svg.grabbing {
   opacity: 0.7;
   font-size: 1.1rem;
 }
-
 .graph-status-message.error {
   color: var(--primary);
   opacity: 1;
 }
 
-/* D3 Back Button Group - Add classes for styling */
-.back-button-group rect {
-  fill: var(--text);
+/* --- 7. ICON BUTTON STYLES (Refactored) --- */
+.btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted); /* USE VAR */
+  transition: all 0.2s ease;
 }
-.back-button-group text {
-  fill: var(--light-text);
-  font-size: 12px;
-  font-family: sans-serif;
-  pointer-events: none;
-  text-anchor: start;
+.btn-icon i {
+  font-size: 1.1rem;
 }
+
+/* --- 8. HTML BACK BUTTON STYLE (Refactored) --- */
+.btn-back {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 10;
+  /* Use our global card styles for consistency */
+  background-color: var(--card-background); 
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+}
+.btn-back:hover {
+  background-color: var(--hover-bg);
+}
+/* --- REMOVED dark mode rule --- */

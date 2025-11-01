@@ -1,9 +1,11 @@
+// apps/web/src/pages/SignUpPage.tsx
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabase";
 import { trpc } from "../trpc";
 import AuthLayout from '../components/AuthLayout';
-import './SignUpPage.css';
+// --- 1. THIS IS THE FIX ---
+import './Auth.css'; // Import the new unified CSS file
 
 const SignUpPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -26,7 +28,7 @@ const SignUpPage: React.FC = () => {
         password,
         options: {
           data: {
-            display_name: displayName, // This becomes user_metadata.display_name
+            display_name: displayName,
           },
         },
       });
@@ -38,37 +40,31 @@ const SignUpPage: React.FC = () => {
       // 2. Handle email confirmation
       if (data.user && !data.session) {
         alert("Signup successful! Please check your email to confirm.");
-        navigate("/login"); // Still navigate to login if confirmation needed
-        setLoading(false); // Stop loading here
+        navigate("/login");
+        setLoading(false);
         return;
       }
 
       // 3. If auto-confirmed or no confirmation required, sync user
       if (data.user && data.session) {
-        // Wait for syncUser to complete
         await syncUser.mutateAsync({
           email: data.user.email!,
           name: data.user.user_metadata.display_name,
         });
-
-        // 4. Removed navigation. App.tsx will handle the redirect.
-        // navigate('/');
       } else {
-        // Handle case where signup seems successful but no user/session
         throw new Error("Signup successful but no session data received.");
       }
     } catch (err: any) {
       setError(err.message || "Failed to sign up");
-      setLoading(false); // Ensure loading is stopped on error
+      setLoading(false);
     }
-    // No finally block needed here as loading should only stop on error or completion
-    // The component will unmount/rerender on successful signup/sync/redirect by App.tsx
   };
 
   return (
     <AuthLayout title="Sign Up">
+      {/* --- 2. APPLY NEW CLASSES --- */}
       <div className="signup-container">
-        <form onSubmit={handleSubmit}>
+        <form className="auth-form" onSubmit={handleSubmit}>
           <input
             type="text"
             placeholder="Display Name"
@@ -76,6 +72,7 @@ const SignUpPage: React.FC = () => {
             onChange={(e) => setDisplayName(e.target.value)}
             required
             disabled={loading}
+            className="form-control"
           />
           <input
             type="email"
@@ -84,6 +81,7 @@ const SignUpPage: React.FC = () => {
             onChange={(e) => setEmail(e.target.value)}
             required
             disabled={loading}
+            className="form-control"
           />
           <input
             type="password"
@@ -92,16 +90,18 @@ const SignUpPage: React.FC = () => {
             onChange={(e) => setPassword(e.target.value)}
             required
             disabled={loading}
+            className="form-control"
           />
-          <button type="submit" disabled={loading}>
+          <button type="submit" disabled={loading} className="btn btn-primary">
             {loading ? "Signing up..." : "Sign Up"}
           </button>
-          {error && <p className="error">{error}</p>}
+          {error && <p className="auth-error">{error}</p>}
         </form>
-        <p>
+        <p className="auth-footer-link">
           Already have an account? <Link to="/login">Login</Link>
         </p>
       </div>
+      {/* --- END OF FIX --- */}
     </AuthLayout>
   );
 };
