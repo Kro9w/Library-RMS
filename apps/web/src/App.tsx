@@ -16,7 +16,11 @@ import Account from "./pages/Account";
 import { Settings } from "./pages/Settings";
 import LoginPage from "./pages/LoginPage";
 import SignUpPage from "./pages/SignUpPage";
-import { useSession, useSessionContext } from "@supabase/auth-helpers-react";
+import {
+  useSession,
+  useSessionContext,
+  useSupabaseClient, // Import useSupabaseClient
+} from "@supabase/auth-helpers-react";
 import { Navbar } from "./components/Navbar";
 import { DocumentDetails } from "./pages/DocumentDetails";
 import { Tags } from "./pages/Tags";
@@ -24,21 +28,41 @@ import { GraphView } from "./pages/GraphView";
 import JoinOrganization from "./pages/JoinOrganization";
 import { Users } from "./pages/Users";
 import { trpc } from "./trpc";
+import { TRPCClientError } from "@trpc/client"; // Import TRPCClientError
+
 // 1. REMOVED: TopNavbar import is gone
 
 const AuthRedirectHandler: React.FC = () => {
-  // ... (This component is unchanged)
   const session = useSession();
   const navigate = useNavigate();
   const location = useLocation();
+  const supabaseClient = useSupabaseClient(); // Get the Supabase client
 
-  const { data: dbUser, isLoading: isLoadingDbUser } = trpc.user.getMe.useQuery(
-    undefined,
-    {
-      enabled: !!session,
-      retry: 1,
+  // FIX: Destructure isError and error from the hook
+  const {
+    data: dbUser,
+    isLoading: isLoadingDbUser,
+    isError,
+    error,
+  } = trpc.user.getMe.useQuery(undefined, {
+    enabled: !!session,
+    retry: 1,
+    // FIX: Removed the invalid onError property
+  });
+
+  // FIX: Add a useEffect to handle the error
+  useEffect(() => {
+    if (isError && error) {
+      if (
+        error instanceof TRPCClientError &&
+        error.data?.code === "UNAUTHORIZED"
+      ) {
+        // This fires if the backend check fails (e.g., user not in DB)
+        // We sign the user out of Supabase to clear the session
+        supabaseClient.auth.signOut();
+      }
     }
-  );
+  }, [isError, error, supabaseClient]);
 
   useEffect(() => {
     if (!isLoadingDbUser && session) {
@@ -80,9 +104,11 @@ const AppContent: React.FC = () => {
   return (
     <>
       {session && <AuthRedirectHandler />}
-      
+
       {/* 4. RESTORED: We only render the single, powerful Navbar */}
-      {showNavbar && <Navbar isCollapsed={isCollapsed} onToggle={toggleNavbar} />}
+      {showNavbar && (
+        <Navbar isCollapsed={isCollapsed} onToggle={toggleNavbar} />
+      )}
 
       <div className={mainContentClass}>
         <Routes>
