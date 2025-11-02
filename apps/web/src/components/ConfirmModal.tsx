@@ -26,8 +26,8 @@ export function ConfirmModal({
     <div className="custom-modal-backdrop">
       <div className="custom-modal-content">
         <h4 className="custom-modal-title">{title}</h4>
-        {/* Use children here */}
-        <p className="custom-modal-message">{children}</p>
+        {/* Use children here. Changed <p> to <div> to avoid nesting errors. */}
+        <div className="custom-modal-message">{children}</div>
         <div className="custom-modal-actions">
           <button
             className="btn btn-secondary"

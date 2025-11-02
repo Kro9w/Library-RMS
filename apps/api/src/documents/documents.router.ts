@@ -439,6 +439,67 @@ export class DocumentsRouter {
             where: { id: tagId },
           });
         }),
+      
+      // --- NEW PROCEDURES FOR GLOBAL GRAPH VIEW ---
+      getAllOrgs: protectedProcedure
+        .meta({
+          openapi: {
+            method: 'GET',
+            path: '/documents.getAllOrgs',
+            tags: ['documents', 'admin'],
+            summary: 'Get all organizations',
+          },
+        })
+        .input(z.void())
+        .output(z.any())
+        .query(async ({ ctx }) => {
+          // You might want to add admin-level protection here
+          return this.prisma.organization.findMany();
+        }),
+
+      getAllUsers: protectedProcedure
+        .meta({
+          openapi: {
+            method: 'GET',
+            path: '/documents.getAllUsers',
+            tags: ['documents', 'admin'],
+            summary: 'Get all users in the system',
+          },
+        })
+        .input(z.void())
+        .output(z.any())
+        .query(async ({ ctx }) => {
+          // You might want to add admin-level protection here
+          return this.prisma.user.findMany();
+        }),
+      
+      getAllDocs: protectedProcedure
+        .meta({
+          openapi: {
+            method: 'GET',
+            path: '/documents.getAllDocs',
+            tags: ['documents', 'admin'],
+            summary: 'Get all documents in the system',
+          },
+        })
+        .input(z.void())
+        .output(z.any())
+        .query(async ({ ctx }) => {
+          // You might want to add admin-level protection here
+          return this.prisma.document.findMany({
+             select: {
+              id: true,
+              title: true,
+              createdAt: true,
+              uploadedBy: { select: { name: true } },
+              fileType: true,
+              fileSize: true,
+              uploadedById: true,
+              organizationId: true,
+            },
+          });
+        }),
+      // --- END NEW PROCEDURES ---
     });
   }
 }
