@@ -1,0 +1,97 @@
+/* apps/web/src/pages/Account.css */
+
+/* Re-use .document-table-card for the main wrapper */
+.account-form-wrapper {
+  padding: 2rem;
+  max-width: 700px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+/*
+ * REMOVED: The dark mode rule for .form-control
+ * is now handled globally by index.css.
+*/
+
+/* Avatar Uploader Styles */
+.avatar-group {
+  align-items: center;
+}
+
+.avatar-uploader {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.avatar-preview {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid var(--card-background); /* USE VAR */
+  box-shadow: var(--card-shadow);       /* USE VAR */
+}
+
+.avatar-dropzone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: var(--light-text); /* USE VAR */
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.avatar-uploader:hover .avatar-dropzone {
+  opacity: 1;
+}
+
+.avatar-dropzone.active {
+  opacity: 1;
+  /* Use a transparent version of your primary color */
+  background-color: rgba(186, 59, 70, 0.7); /* USE VAR (from --primary) */
+}
+
+.avatar-dropzone i {
+  font-size: 1.5rem;
+}
+.avatar-dropzone span {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--card-border); /* USE VAR */
+  padding-top: 1.5rem;
+  margin-top: 1rem;
+}
+
+/*
+ * REMOVED: The dark mode rule for .form-actions
+ * is now handled globally by index.css.
+*/

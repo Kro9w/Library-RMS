@@ -1,137 +1,257 @@
 // apps/web/src/components/Navbar.tsx
-import React from "react";
+import React, { useState, useRef } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-// 1. FIX: Import Supabase hooks and tRPC
 import { useUser } from "@supabase/auth-helpers-react";
 import { supabase } from "../supabase";
 import { trpc } from "../trpc";
+import { useOutsideClick } from "../hooks/OutsideClick";
 import "./Navbar.css";
 
-// 1. ADDED: Props interface
+// --- Imports for Modals ---
+import { useForm } from "react-hook-form";
+import { UploadModal } from "./UploadModal";
+import { ConfirmModal } from "./ConfirmModal";
+
+// Define the form types for the transfer modal
+type TransferFormData = {
+  controlNumber: string;
+  email: string;
+};
+
 interface NavbarProps {
   isCollapsed: boolean;
   onToggle: () => void;
 }
 
 export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
-  // 2. FIX: Get Supabase auth user
   const user = useUser();
-  // 3. FIX: Get database user from tRPC (and remove stray '_')
+  
   const { data: dbUser } = trpc.user.getMe.useQuery(undefined, {
-    enabled: !!user, // Only run if we have a Supabase user
+    enabled: !!user,
   });
+  
   const navigate = useNavigate();
 
+  // State for account menu
+  const [isAccountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  useOutsideClick(accountMenuRef, () => {
+    setAccountMenuOpen(false);
+  });
+
+  // --- Modal State and Logic ---
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const { register, handleSubmit, reset } = useForm<TransferFormData>();
+
+  const { mutate: transferMutation, isPending: isTransferring } =
+    trpc.documents.transferDocument.useMutation({
+      onSuccess: () => {
+        alert("Document transferred successfully!");
+        setShowTransferModal(false);
+        reset();
+      },
+      onError: (error) => {
+        alert(`Error transferring document: ${error.message}`);
+      },
+    });
+
+  const handleCloseTransferModal = () => {
+    setShowTransferModal(false);
+    reset();
+  };
+
+  // --- THIS IS THE FIX ---
+  // Added the missing '=>' to define the arrow function
+  const onConfirmTransfer = (formData: TransferFormData) => {
+  // -----------------------
+    transferMutation({
+      docId: formData.controlNumber,
+      newOwnerEmail: formData.email,
+    });
+  };
+
   const handleSignOut = async () => {
-    // 4. FIX: Use supabase.auth.signOut
     await supabase.auth.signOut();
     navigate("/login");
   };
 
+  const avatarUrl =
+    dbUser?.imageUrl ||
+    user?.user_metadata?.avatar_url ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(
+      dbUser?.name || dbUser?.email || "User"
+    )}&background=random&color=fff&size=128`;
+
   return (
-    <div className="sidebar-wrapper">
-      {" "}
-      <nav
-        className={`sidebar-float ${isCollapsed ? "collapsed" : "expanded"}`}
-      >
-        {" "}
-        <div className="sidebar-content">
-          {" "}
-          <div className="logo-item">
-            {" "}
-            <a href="/" className="nav-link">
-              {" "}
-              <i className="bi bi-book"></i>{" "}
-              <span className="link-text">Folio</span>{" "}
-            </a>{" "}
-          </div>{" "}
-          <NavLink to="/" end className="nav-link">
-            {" "}
-            <i className="bi bi-grid-fill"></i>{" "}
-            <span className="link-text">Dashboard</span>{" "}
-          </NavLink>{" "}
-          <NavLink to="/documents" className="nav-link">
-            {" "}
-            <i className="bi bi-file-earmark-text-fill"></i>{" "}
-            <span className="link-text">Documents</span>{" "}
-          </NavLink>{" "}
-          <NavLink to="/upload" className="nav-link">
-            {" "}
-            <i className="bi bi-upload"></i>{" "}
-            <span className="link-text">Upload</span>{" "}
-          </NavLink>{" "}
-          <NavLink to="/tags" className="nav-link">
-            {" "}
-            <i className="bi bi-tags-fill"></i>{" "}
-            <span className="link-text">Tags</span>{" "}
-          </NavLink>{" "}
-          <NavLink to="/graph" className="nav-link">
-            {" "}
-            <i className="bi bi-share-fill"></i>{" "}
-            <span className="link-text">Graph</span>{" "}
-          </NavLink>{" "}
-          <NavLink to="/users" className="nav-link">
-            {" "}
-            <i className="bi bi-people-fill"></i>{" "}
-            <span className="link-text">Users</span>{" "}
-          </NavLink>{" "}
-        </div>{" "}
-        <div className="sidebar-float-footer">
-          {" "}
-          {user && dbUser && (
-            <div className="user-profile">
-              {" "}
-              <img
-                src={
-                  // @ts-ignore - dbUser.imageUrl is not in the schema, but was in your code
-                  dbUser.imageUrl ||
-                  // 5. FIX: Use Supabase user_metadata
-                  user.user_metadata?.avatar_url ||
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                    dbUser.name || dbUser.email
-                  )}`
-                }
-                alt="User"
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "50%",
-                  objectFit: "cover",
-                }}
-              />{" "}
-              <div className="user-info">
-                {" "}
-                <span className="user-name">{dbUser.name}</span>{" "}
-                <span className="user-email">{dbUser.email}</span>{" "}
-              </div>{" "}
+    <>
+      <div className="sidebar-wrapper">
+        <nav
+          className={`sidebar-float ${isCollapsed ? "collapsed" : "expanded"}`}
+        >
+          <div className="sidebar-content">
+            {/* Logo */}
+            <div className="logo-item">
+              <a href="/" className="nav-link">
+                <i className="bi bi-book"></i>
+                <span className="link-text">Folio</span>
+              </a>
             </div>
-          )}{" "}
-          <NavLink to="/account" className="nav-link">
-            {" "}
-            <i className="bi bi-person-circle"></i>{" "}
-            <span className="link-text">My Account</span>{" "}
-          </NavLink>{" "}
-          <button
-            className="nav-link"
-            onClick={handleSignOut}
-            style={{ width: "100%" }}
+
+            {/* Search Bar */}
+            <div className="sidebar-search-bar">
+              <i className="bi bi-search"></i>
+              <input type="text" placeholder="Search..." />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="sidebar-actions">
+              <button
+                className="nav-link"
+                onClick={() => setShowUploadModal(true)}
+              >
+                <i className="bi bi-cloud-arrow-up-fill"></i>
+                <span className="link-text">Upload</span>
+              </button>
+              <button
+                className="nav-link"
+                onClick={() => setShowTransferModal(true)}
+              >
+                <i className="bi bi-box-arrow-right"></i>
+                <span className="link-text">Transfer</span>
+              </button>
+            </div>
+
+            {/* Main Navigation */}
+            <div className="sidebar-nav-links">
+              <NavLink to="/" end className="nav-link">
+                <i className="bi bi-grid-fill"></i>
+                <span className="link-text">Dashboard</span>
+              </NavLink>
+              <NavLink to="/documents" className="nav-link">
+                <i className="bi bi-file-earmark-text-fill"></i>
+                <span className="link-text">Documents</span>
+              </NavLink>
+              <NavLink to="/tags" className="nav-link">
+                <i className="bi bi-tags-fill"></i>
+                <span className="link-text">Tags</span>
+              </NavLink>
+              <NavLink to="/graph" className="nav-link">
+                <i className="bi bi-share-fill"></i>
+                <span className="link-text">Graph</span>
+              </NavLink>
+              <NavLink to="/users" className="nav-link">
+                <i className="bi bi-people-fill"></i>
+                <span className="link-text">Users</span>
+              </NavLink>
+            </div>
+          </div>
+
+          {/* Footer with Dropdown */}
+          <div className="sidebar-float-footer">
+            {user && dbUser && (
+              <div className="account-menu-wrapper" ref={accountMenuRef}>
+                {isAccountMenuOpen && (
+                  <div className="account-menu-dropup">
+                    <div className="dropdown-header">
+                      <img src={avatarUrl} alt="User Avatar" />
+                      <div className="user-details">
+                        <span className="user-name">{dbUser.name}</span>
+                        <span className="user-email">{dbUser.email}</span>
+                      </div>
+                    </div>
+                    <NavLink
+                      to="/account"
+                      className="dropdown-item"
+                      onClick={() => setAccountMenuOpen(false)}
+                    >
+                      <i className="bi bi-person-circle"></i> My Account
+                    </NavLink>
+                    <NavLink
+                      to="/settings"
+                      className="dropdown-item"
+                      onClick={() => setAccountMenuOpen(false)}
+                    >
+                      <i className="bi bi-gear-fill"></i> Settings
+                    </NavLink>
+                    <button className="dropdown-item" onClick={handleSignOut}>
+                      <i className="bi bi-box-arrow-left"></i> Sign Out
+                    </button>
+                  </div>
+                )}
+
+                {/* This is the new trigger button */}
+                <button
+                  className="user-profile-button"
+                  onClick={() => setAccountMenuOpen(!isAccountMenuOpen)}
+                >
+                  <img src={avatarUrl} alt="User Avatar" />
+                  <div className="user-info single-line">
+                    <span className="user-greeting">Hello, </span>
+                    <span className="user-name">{dbUser.name}</span>
+                  </div>
+                </button>
+              </div>
+            )}
+
+            {/* This is the original collapse button */}
+            <button className="collapse-btn" onClick={onToggle}>
+              <i
+                className={`bi ${
+                  isCollapsed ? "bi-chevron-right" : "bi-chevron-left"
+                }`}
+              ></i>
+            </button>
+          </div>
+        </nav>
+      </div>
+
+      {/* Modals (Unchanged) */}
+      <UploadModal
+        show={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+      />
+      
+      <ConfirmModal
+        show={showTransferModal}
+        onClose={handleCloseTransferModal}
+        onConfirm={handleSubmit(onConfirmTransfer)}
+        title="Transfer Document"
+        isConfirming={isTransferring}
+      >
+        <fieldset disabled={isTransferring}>
+          <label
+            htmlFor="controlNumber"
+            className="form-label"
+            style={{ display: "block", marginBottom: "0.5rem" }}
           >
-            {" "}
-            <i className="bi bi-box-arrow-left"></i>{" "}
-            <span className="link-text">Sign Out</span>{" "}
-          </button>{" "}
-          <hr style={{ borderColor: "var(--accent)", margin: "1rem 0" }} />{" "}
-          {/* 4. Use the 'onToggle' prop */}{" "}
-          <button className="collapse-btn" onClick={onToggle}>
-            {" "}
-            <i
-              className={`bi ${
-                isCollapsed ? "bi-chevron-right" : "bi-chevron-left"
-              }`}
-            ></i>{" "}
-          </button>{" "}
-        </div>{" "}
-      </nav>{" "}
-    </div>
+            Document Control Number:
+          </label>
+          <input
+            {...register("controlNumber", { required: true })}
+            type="text"
+            id="controlNumber"
+            className="form-control"
+            placeholder="Scan or Enter Control Number"
+            style={{ width: "100%", marginBottom: "1rem" }}
+          />
+          <label
+            htmlFor="email"
+            className="form-label"
+            style={{ display: "block", marginBottom: "0.5rem" }}
+          >
+            New Owner's Email:
+          </label>
+          <input
+            {...register("email", { required: true })}
+            type="email"
+            id="email"
+            className="form-control"
+            placeholder="user@example.com"
+            style={{ width: "100%" }}
+          />
+        </fieldset>
+      </ConfirmModal>
+    </>
   );
 }

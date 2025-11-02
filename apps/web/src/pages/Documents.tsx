@@ -1,118 +1,227 @@
+// apps/web/src/pages/Documents.tsx
+
 import React, { useState } from "react";
 import { trpc } from "../trpc";
 import { Link } from "react-router-dom";
-// 1. FIX: Use a named import for ConfirmModal
 import { ConfirmModal } from "../components/ConfirmModal";
 import "./Documents.css";
 
-// 2. FIX: Import the correct tRPC output type
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
-// 3. FIX: Use the correct type from the 'getAll' procedure
+// This type now correctly includes fileType and fileSize
 type Document = AppRouterOutputs["documents"]["getAll"][0];
+
+// --- 1. FIXED HELPER FUNCTIONS ---
+
+const formatFileSize = (bytes: number | null | undefined): string => {
+  if (bytes === null || bytes === undefined || bytes === 0) return "—";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
+
+const formatFileType = (fileType: string | null | undefined): string => {
+  if (!fileType) return "FILE";
+  if (fileType.includes("pdf")) return "PDF";
+  if (fileType.includes("word")) return "DOCX";
+  if (fileType.includes("excel") || fileType.includes("spreadsheet")) return "XLSX";
+  if (fileType.includes("image")) return "IMG";
+  if (fileType.includes("text")) return "TXT";
+  return "FILE";
+};
+
+// ------------------------------
 
 const Documents: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [showConfirm, setShowConfirm] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+
+  // --- 2. MODIFICATION: Split state for two modals ---
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferEmail, setTransferEmail] = useState("");
+  // --------------------------------------------------
 
   const utils = trpc.useUtils();
 
-  // 4. FIX: Call 'getAll' instead of 'getDocuments'
   const { data: documents, isLoading } = trpc.documents.getAll.useQuery();
 
-  // 5. FIX: Call 'deleteDocument'
   const deleteMutation = trpc.documents.deleteDocument.useMutation({
     onSuccess: () => {
-      utils.documents.getAll.invalidate(); // Invalidate the 'getAll' query
+      utils.documents.getAll.invalidate();
     },
   });
 
-  // 6. FIX: Call 'transferDocument'
-  const sendMutation = trpc.documents.transferDocument.useMutation({
-    onSuccess: () => {
-      utils.documents.getAll.invalidate();
-      alert("Document transferred!");
-    },
-    // 7. FIX: Added proper typing to 'error'
-    onError: (error: any) => {
-      alert(`Error: ${error.message}`);
-    },
-  });
+  // --- 3. MODIFICATION: Add isLoading and update onSuccess ---
+  const { mutate: transferMutation, isPending: isTransferring } =
+    trpc.documents.transferDocument.useMutation({
+      onSuccess: () => {
+        utils.documents.getAll.invalidate();
+        alert("Document transferred!");
+        // Close modal and clear state on success
+        setShowTransferModal(false);
+        setTransferEmail("");
+        setSelectedDoc(null);
+      },
+      onError: (error: any) => {
+        alert(`Error: ${error.message}`);
+      },
+    });
+  // ---------------------------------------------------------
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
 
+  // --- 4. MODIFICATION: Rename and update functions ---
   const handleDeleteClick = (doc: Document) => {
     setSelectedDoc(doc);
-    setShowConfirm(true);
+    setShowDeleteModal(true);
   };
 
   const confirmDelete = () => {
     if (selectedDoc) {
       deleteMutation.mutate({ id: selectedDoc.id });
     }
-    setShowConfirm(false);
+    setShowDeleteModal(false);
     setSelectedDoc(null);
   };
 
-  const handleSend = (doc: Document) => {
-    const email = prompt(
-      "Enter the email of the user to send this document to:"
-    );
-    if (email) {
-      sendMutation.mutate({ docId: doc.id, newOwnerEmail: email });
-    }
+  // This new function opens the transfer modal
+  const handleTransferClick = (doc: Document) => {
+    setSelectedDoc(doc);
+    setShowTransferModal(true);
   };
 
-  // 8. FIX: Add explicit type 'doc: Document' to fix 'any' error
+  // This new function runs when the transfer is confirmed
+  const confirmTransfer = () => {
+    if (selectedDoc && transferEmail) {
+      transferMutation({ docId: selectedDoc.id, newOwnerEmail: transferEmail });
+    }
+  };
+  // ----------------------------------------------------
+
   const filteredDocuments = documents?.filter((doc: Document) =>
     doc.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  return (
+ return (
     <div className="documents-container">
-      <h2>Documents</h2>
-      <input
-        type="text"
-        placeholder="Search documents..."
-        value={searchTerm}
-        onChange={handleSearch}
-        className="search-bar"
-      />
+      
+      {/* --- 1. ADD THIS WRAPPER --- */}
+      <div className="page-header">
+        <h2>Documents</h2>
+        <input
+          type="text"
+          placeholder="Search documents..."
+          value={searchTerm}
+          onChange={handleSearch}
+          className="search-bar"
+        />
+      </div>
+      {/* --------------------------- */}
+
       {isLoading && <div>Loading documents...</div>}
-      <ul className="document-list">
-        {/* 9. FIX: Add explicit type 'doc: Document' to fix 'any' error */}
-        {filteredDocuments?.map((doc: Document) => (
-          <li key={doc.id} className="document-item">
-            <Link to={`/documents/${doc.id}`}>{doc.title}</Link>
-            <span className="document-owner">
-              Uploaded by: {doc.uploadedBy?.name || "Unknown"}
-            </span>
-            <div className="document-actions">
-              <button onClick={() => handleSend(doc)} className="btn-send">
-                Transfer
-              </button>
-              <button
-                onClick={() => handleDeleteClick(doc)}
-                className="btn-delete"
-              >
-                Delete
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+
+      <div className="document-table-card">
+        <div className="document-list-header">
+          {/* ...header spans... */}
+          <span>Type</span>
+          <span>Title</span>
+          <span>Owner</span>
+          <span>Date</span>
+          <span>File Size</span>
+          <span>Actions</span>
+        </div>
+
+        <ul className="document-list">
+          {filteredDocuments?.map((doc: Document) => (
+            <li key={doc.id} className="document-item">
+              <span className="doc-type-badge">
+                {formatFileType(doc.fileType)}
+              </span>
+
+              <Link to={`/documents/${doc.id}`}>{doc.title}</Link>
+
+              <span className="document-owner">
+                {doc.uploadedBy?.name || "Unknown"}
+              </span>
+
+              <span className="document-date">
+                {new Date(doc.createdAt).toLocaleDateString()}
+              </span>
+
+              <span className="document-size">
+                {formatFileSize(doc.fileSize)}
+              </span>
+
+              <div className="document-actions">
+                {/* --- 5. MODIFICATION: Update onClick --- */}
+                <button
+                  onClick={() => handleTransferClick(doc)} // Changed from handleSend
+                  className="btn-icon btn-send"
+                  title="Transfer Document"
+                >
+                  <i className="bi bi-send"></i>
+                </button>
+                {/* -------------------------------------- */}
+                <button
+                  onClick={() => handleDeleteClick(doc)}
+                  className="btn-icon btn-delete"
+                  title="Delete Document"
+                >
+                  <i className="bi bi-trash"></i>
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* This is your existing Delete Modal */}
       <ConfirmModal
-        show={showConfirm}
-        onClose={() => setShowConfirm(false)}
+        show={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
         onConfirm={confirmDelete}
         title="Confirm Delete"
+        isConfirming={deleteMutation.isPending}
       >
-        Are you sure you want to delete the document "{selectedDoc?.title || ""}
-        "?
+        Are you sure you want to delete the document "{selectedDoc?.title || ""}"?
       </ConfirmModal>
+
+      {/* --- 6. NEW: Add the Transfer Modal --- */}
+      <ConfirmModal
+        show={showTransferModal}
+        onClose={() => {
+          setShowTransferModal(false);
+          setTransferEmail(""); // Clear email on close
+        }}
+        onConfirm={confirmTransfer}
+        title="Transfer Document"
+        isConfirming={isTransferring}
+      >
+        {/* Here we pass our input as the 'children' */}
+        <p>
+          Transfer "<strong>{selectedDoc?.title || ""}</strong>" to a new owner.
+        </p>
+        <label
+          htmlFor="transfer-email"
+          style={{ display: "block", marginBottom: "0.5rem" }}
+        >
+          New Owner's Email:
+        </label>
+        <input
+          type="email"
+          id="transfer-email"
+          className="form-control" // Assuming you have a standard form control style
+          value={transferEmail}
+          onChange={(e) => setTransferEmail(e.target.value)}
+          placeholder="user@example.com"
+          style={{ width: "100%" }}
+        />
+      </ConfirmModal>
+      {/* ------------------------------------ */}
     </div>
   );
 };

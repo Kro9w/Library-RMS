@@ -1,3 +1,5 @@
+// apps/api/src/documents/documents.router.ts
+
 import { z } from 'zod';
 import { protectedProcedure, publicProcedure, router } from '../trpc/trpc';
 import { PrismaService } from '../prisma/prisma.service';
@@ -35,12 +37,19 @@ export class DocumentsRouter {
               message: 'User does not belong to an organization.',
             });
           }
+          
           const doc = await this.prisma.document.findFirst({
             where: {
               id: input.id,
               organizationId: ctx.dbUser.organizationId,
             },
-            include: {
+            select: {
+              id: true,
+              title: true,
+              createdAt: true,
+              fileType: true,
+              s3Key: true,
+              s3Bucket: true,
               uploadedBy: {
                 select: {
                   name: true,
@@ -48,6 +57,7 @@ export class DocumentsRouter {
               },
             },
           });
+
           if (!doc) {
             throw new TRPCError({ code: 'NOT_FOUND' });
           }
@@ -71,12 +81,14 @@ export class DocumentsRouter {
             title: z.string(),
             storageKey: z.string(),
             storageBucket: z.string(),
+            fileType: z.string().optional(),
+            fileSize: z.number().optional(),
           }),
         )
         .output(z.any())
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
-          if (!dbUser.organizationId) {
+          if (!ctx.dbUser.organizationId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'User does not belong to an organization.',
@@ -89,7 +101,9 @@ export class DocumentsRouter {
               s3Bucket: input.storageBucket,
               content: '',
               uploadedById: user.id,
-              organizationId: dbUser.organizationId,
+              organizationId: dbUser.organizationId!,
+              fileType: input.fileType,
+              fileSize: input.fileSize,
             },
           });
         }),
@@ -115,30 +129,47 @@ export class DocumentsRouter {
               message: 'User does not belong to an organization.',
             });
           }
+          
           const doc = await this.prisma.document.findFirst({
             where: {
               id: input.documentId,
               organizationId: ctx.dbUser.organizationId,
             },
+            select: {
+              s3Key: true,
+              s3Bucket: true,
+            },
           });
+
           if (!doc) {
-            throw new TRPCError({ code: 'NOT_FOUND' });
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Document not found in getSignedDocumentUrl',
+            });
           }
+
+          if (!doc.s3Key || !doc.s3Bucket) {
+             throw new TRPCError({
+              code: 'INTERNAL_SERVER_ERROR',
+              message: 'Document record is missing storage key or bucket.',
+            });
+          }
+
           const { data, error } = await this.supabase
             .getAdminClient()
             .storage.from(doc.s3Bucket)
             .createSignedUrl(doc.s3Key, 300);
+
           if (error) {
             throw new TRPCError({
               code: 'INTERNAL_SERVER_ERROR',
-              message: 'Could not generate signed URL.',
+              message: `Could not generate signed URL: ${error.message}`,
             });
           }
           return { signedUrl: data.signedUrl };
         }),
 
-      // --- PROCEDURES FOR OWNERSHIP GRAPH ---
-
+      // ... (rest of your procedures: getAppUsers, getAll, etc.)
       getAppUsers: protectedProcedure
         .meta({
           openapi: {
@@ -186,8 +217,18 @@ export class DocumentsRouter {
             where: {
               organizationId: ctx.dbUser.organizationId,
             },
-            include: {
+            select: {
+              id: true,
+              title: true,
+              createdAt: true,
               uploadedBy: { select: { name: true } },
+              fileType: true,
+              fileSize: true,
+              uploadedById: true,
+              organizationId: true,
+            },
+            orderBy: {
+              createdAt: 'desc',
             },
           });
         }),
@@ -201,7 +242,7 @@ export class DocumentsRouter {
             summary: "Get all documents for a specific user",
           },
         })
-        .input(z.string()) // The input is just the user ID string
+        .input(z.string())
         .output(z.any())
         .query(async ({ ctx, input: userId }) => {
           if (!ctx.dbUser.organizationId) {
@@ -252,6 +293,11 @@ export class DocumentsRouter {
             where: {
               id: input.id,
               organizationId: ctx.dbUser.organizationId,
+            },
+            select: {
+              id: true,
+              s3Key: true,
+              s3Bucket: true,
             },
           });
           if (!doc) {
@@ -319,11 +365,6 @@ export class DocumentsRouter {
           });
         }),
 
-      // --- NEW PROCEDURES FOR TAGS.TSX ---
-
-      /**
-       * Gets all tags and their document count.
-       */
       getTags: protectedProcedure
         .meta({
           openapi: {
@@ -336,8 +377,6 @@ export class DocumentsRouter {
         .input(z.void())
         .output(z.any())
         .query(async ({ ctx }) => {
-          // This query gets all tags and includes a count of how many
-          // documents are associated with each tag.
           return this.prisma.tag.findMany({
             include: {
               _count: {
@@ -347,9 +386,6 @@ export class DocumentsRouter {
           });
         }),
 
-      /**
-       * Creates a new tag.
-       */
       createTag: protectedProcedure
         .meta({
           openapi: {
@@ -365,14 +401,10 @@ export class DocumentsRouter {
           return this.prisma.tag.create({
             data: {
               name: input.name,
-              // TODO: You may want to scope tags to an organization
             },
           });
         }),
 
-      /**
-       * Updates an existing tag.
-       */
       updateTag: protectedProcedure
         .meta({
           openapi: {
@@ -391,9 +423,6 @@ export class DocumentsRouter {
           });
         }),
 
-      /**
-       * Deletes a tag.
-       */
       deleteTag: protectedProcedure
         .meta({
           openapi: {
@@ -403,13 +432,9 @@ export class DocumentsRouter {
             summary: 'Delete a tag',
           },
         })
-        .input(z.string()) // Input is just the tag ID
+        .input(z.string())
         .output(z.any())
         .mutation(async ({ ctx, input: tagId }) => {
-          // Note: This will fail if the tag is still in use by documents
-          // due to the relation. You might want to first disconnect
-          // it from all documents in a transaction.
-          // For now, we'll just delete.
           return this.prisma.tag.delete({
             where: { id: tagId },
           });

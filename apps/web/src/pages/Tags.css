@@ -31,7 +31,6 @@
 /* Specific styling for each individual tag item */
 .tag-list-item {
   background-color: white;
-  border-radius: 1rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 

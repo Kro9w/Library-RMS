@@ -1,3 +1,6 @@
+/* apps/web/src/pages/Dashboard.css */
+
+/* --- Stat Card Styles (Refactored) --- */
 .stat-card {
   color: var(--light-text);
   border: none;
@@ -5,7 +8,8 @@
 }
 
 .card.stat-card-primary {
-  background-color: white;
+  background-color: var(--card-background); /* USE VAR */
+  box-shadow: var(--card-shadow);      /* USE VAR */
   border-radius: 1rem;
   border: none;
 }
@@ -13,80 +17,52 @@
 .card.stat-card.card-title {
   opacity: 0.9;
   font-weight: 500;
+  display: flex;
+  justify-content: center;
 }
 
 .card.stat-card-primary .card-body {
-  color:var(--primary);
+  color: var(--primary); /* This is correct */
 }
 
+/* This is for the "Most Used Tags" list */
 .list-group-item {
-  background-color: #fff; 
-  border-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--card-background); /* USE VAR */
+  border-color: var(--card-border);     /* USE VAR */
+  color: var(--text);                /* USE VAR */
 }
 
-.recent-uploads-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background-color: white;
-  padding: 1rem 1.5rem;
-  border-radius: 1rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  margin-bottom: 1rem;
-}
-
-.recent-uploads-item a {
-  font-weight: 500;
-  color: var(--primary);
-}
-
-.dashboard-lower-section {
-  display: flex;
-  gap: 2rem;
-  margin-top: 1rem;
-}
-
-.recent-uploads-container {
-  flex: 2;
-}
-
-.side-stats-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  height: 100%;
-}
-
+/* This is for the "Analytics" cards */
 .card.mini-stat-card {
+  background-color: var(--card-background); /* USE VAR */
+  box-shadow: var(--card-shadow);      /* USE VAR */
+  overflow: hidden;
   border-radius: 1rem;
   border: none;
 }
 
-body[data-bs-theme="dark"] .recent-uploads-item {
-  background-color: #23272b;
-  color: #f1f1f1;
-  border-radius: 1rem; /* Retain rounded corners */
+/* --- Grid Override (Unchanged) --- */
+/* This is for the "Recent Uploads" list */
+.document-list-header.recent-uploads-header,
+.document-item.recent-upload-item {
+  grid-template-columns: 3fr 1fr; /* Title (flexible) and Owner (fixed) */
+  gap: 1rem;
 }
 
-body[data-bs-theme="dark"] .recent-uploads-item a {
-  color: #aad8ff;
+/* This is also for "Recent Uploads" */
+.recent-uploads-header > span:last-child,
+.recent-upload-item .document-owner {
+  justify-self: end;
 }
 
-body[data-bs-theme="dark"] .stat-card,
-body[data-bs-theme="dark"] .card.stat-card-primary {
-  background-color: #23272b;
-  color: #f1f1f1;
-  border-radius: 1rem; /* Retain rounded corners */
+/* --- Helper Style (Unchanged) --- */
+/* This adds padding inside the "Analytics" cards */
+.document-table-card .card-body {
+  padding: 1.25rem;
 }
 
-body[data-bs-theme="dark"] .card.stat-card-primary .card-body {
-  color: #aad8ff;
-}
-
-body[data-bs-theme="dark"] .card,
-body[data-bs-theme="dark"] .stat-card,
-body[data-bs-theme="dark"] .card.stat-card-primary,
-body[data-bs-theme="dark"] .recent-uploads-item {
-  border-radius: 1rem !important;
-}
+/*
+ * --- ALL DARK MODE STYLES ARE GONE! ---
+ * They are no longer needed because 'index.css'
+ * handles the theme change globally.
+*/

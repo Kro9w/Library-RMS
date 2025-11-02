@@ -1,5 +1,6 @@
+// apps/api/src/user/user.router.ts
+
 import { z } from 'zod';
-// 1. FIX: Import 'supabaseAuthedProcedure'
 import {
   protectedProcedure,
   publicProcedure,
@@ -20,9 +21,7 @@ export class UserRouter {
       /**
        * Creates a user in our public.User table after
        * a successful Supabase signup or login.
-       * Ensures the auth user exists in our DB.
        */
-      // 2. FIX: Use 'supabaseAuthedProcedure' instead of 'protectedProcedure'
       syncUser: supabaseAuthedProcedure
         .meta({
           openapi: {
@@ -40,31 +39,26 @@ export class UserRouter {
         )
         .output(z.any())
         .mutation(async ({ ctx, input }) => {
-          const { user: authUser } = ctx; // from Supabase JWT
+          const { user: authUser } = ctx; 
 
-          // 3. FIX: We CANNOT use ctx.dbUser here. We must query.
           const user = await this.prisma.user.findUnique({
             where: { id: authUser.id },
           });
 
           if (user) {
-            // User already exists, just return it
             return user;
           }
 
-          // New user, create them in our DB
           const newUser = await this.prisma.user.create({
             data: {
-              id: authUser.id, // Use the ID from Supabase Auth
+              id: authUser.id,
               email: input.email,
               name: input.name,
-              // role is USER by default
             },
           });
           return newUser;
         }),
 
-      // All other procedures can remain protected
       getMe: protectedProcedure
         .meta({
           openapi: {
@@ -77,10 +71,9 @@ export class UserRouter {
         .input(z.void())
         .output(z.any())
         .query(async ({ ctx }) => {
-          // The 'dbUser' from context doesn't have relations included
-          // We must re-fetch to include the organization
           const userWithOrg = await ctx.prisma.user.findUnique({
             where: { id: ctx.dbUser.id },
+            // Select all fields, including relations
             include: { organization: true },
           });
 
@@ -169,6 +162,27 @@ export class UserRouter {
 
           return org;
         }),
+
+      // --- 2. NEW MUTATION (SYNTAX FIXED) ---
+      updateProfile: protectedProcedure
+        .input(
+          z.object({
+            name: z.string().min(1),
+            // imageUrl is optional, but if provided, it must be a URL
+            imageUrl: z.string().url().optional(),
+          }),
+        )
+        .mutation(async ({ ctx, input }) => {
+          return ctx.prisma.user.update({
+            where: { id: ctx.dbUser.id },
+            data: {
+              name: input.name,
+              // Only update imageUrl if a new one was provided
+              ...(input.imageUrl && { imageUrl: input.imageUrl }),
+            },
+          });
+        }),
+      // --- END OF NEW MUTATION ---
     });
   }
 }
