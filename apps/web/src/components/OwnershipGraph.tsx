@@ -5,35 +5,45 @@ import { trpc } from "../trpc";
 import "./OwnershipGraph.css";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 import { Link } from "react-router-dom";
+// import { ConfirmModal } from "./ConfirmModal"; // Removed for this step
 
-// (Type definitions are unchanged)
 type NodeType = "user" | "organization" | "document";
-type Node = {
+
+type Node = d3.SimulationNodeDatum & {
   id: string;
   name: string;
   type: NodeType;
   organizationId?: string;
+  email?: string;
+  _detachedLink?: Link | null; // Keep this based on your logic
 };
-type Link = { source: string; target: string };
+
+type Link = d3.SimulationLinkDatum<Node>;
+
 type GraphData = { nodes: Node[]; links: Link[] };
 type AppUser = AppRouterOutputs["documents"]["getAppUsers"][0];
 type OrgDocument = AppRouterOutputs["documents"]["getAll"][0];
 type UserDocument = AppRouterOutputs["documents"]["getDocumentsByUserId"][0];
 
-// --- 1. THIS IS THE FIX ---
-// I've changed the default maxLength from 15 to 10.
 const truncateText = (name: string, type: NodeType, maxLength = 10) => {
   if (type !== "document" || name.length <= maxLength) {
     return name;
   }
   return name.substring(0, maxLength) + "...";
 };
-// ------------------------------
 
 export function OwnershipGraph() {
   const svgRef = useRef<SVGSVGElement>(null);
+  const simulationRef = useRef<d3.Simulation<Node, Link> | null>(null);
 
-  // (State Management is unchanged)
+  // --- 1. Refs for drag logic ---
+  const dragTimer = useRef<NodeJS.Timeout | null>(null);
+  // FIX: Store the line ELEMENT, not its data
+  const detachedLineElementRef = useRef<SVGLineElement | null>(null);
+  // --- Drop target ref for drag ---
+  const dropTargetNodeRef = useRef<Node | null>(null);
+  // -------------------------------
+
   const [currentView, setCurrentView] = useState<"org" | "doc">("org");
   const [selectedOrg, setSelectedOrg] = useState<
     AppRouterOutputs["user"]["getMe"]["organization"] | null
@@ -44,6 +54,10 @@ export function OwnershipGraph() {
   });
   const [selectedUserNode, setSelectedUserNode] = useState<Node | null>(null);
   const [userDocuments, setUserDocuments] = useState<UserDocument[]>([]);
+
+  // --- 1. Add state for drop target ---
+  const [dropTargetNode, setDropTargetNode] = useState<Node | null>(null);
+  // ------------------------------------
 
   // (Data Fetching is unchanged)
   const { data: currentUserData, isLoading: isLoadingCurrentUser } =
@@ -62,7 +76,9 @@ export function OwnershipGraph() {
       enabled: !!selectedUserNode,
     });
 
-  // (Data Processing Effect is unchanged)
+  // (Removed tRPC mutation)
+
+  // (Data Processing Effect - Unchanged)
   useEffect(() => {
     const users = usersQuery.data;
     const allDocuments = allDocumentsQuery.data;
@@ -78,10 +94,11 @@ export function OwnershipGraph() {
         name: user.name || user.email || "User",
         type: "user",
         organizationId: user.organizationId ?? undefined,
+        email: user.email,
       }));
       const userLinks: Link[] = userNodes.map((userNode) => ({
-        source: userNode.id,
-        target: orgNode.id,
+        source: userNode, // Use node object
+        target: orgNode, // Use node object
       }));
       setGraphData({
         nodes: [orgNode, ...userNodes],
@@ -95,24 +112,37 @@ export function OwnershipGraph() {
       const orgDocs = allDocuments.filter(
         (d: OrgDocument) => d.organizationId === selectedOrg.id
       );
+
       const userNodes: Node[] = orgUsers.map((user: AppUser) => ({
         id: user.id,
         name: user.name || user.email || "User",
         type: "user",
         organizationId: user.organizationId ?? undefined,
+        email: user.email,
       }));
       const docNodes: Node[] = orgDocs.map((doc: OrgDocument) => ({
         id: doc.id,
         name: doc.title,
         type: "document",
       }));
-      const docLinks: Link[] = orgDocs.map((doc: OrgDocument) => ({
-        source: doc.id,
-        target: doc.uploadedById,
-      }));
+
+      const nodes = [...userNodes, ...docNodes];
+      const docLinks: Link[] = orgDocs
+        .map((doc: OrgDocument) => {
+          const sourceNode = nodes.find((n) => n.id === doc.id);
+          const targetNode = nodes.find((n) => n.id === doc.uploadedById);
+          if (sourceNode && targetNode) {
+            return {
+              source: sourceNode, // Use node object
+              target: targetNode, // Use node object
+            };
+          }
+          return null;
+        })
+        .filter((l: Link | null): l is Link => l !== null);
       setGraphData({
-        nodes: [...userNodes, ...docNodes],
-        links: [...docLinks],
+        nodes,
+        links: docLinks,
       });
     } else {
       setGraphData({ nodes: [], links: [] });
@@ -134,12 +164,13 @@ export function OwnershipGraph() {
     }
   }, [documentsData]);
 
-  // (UI Handlers are unchanged)
+  // (UI Handlers are unchanged...)
   const closeDetailsPanel = () => {
     setSelectedUserNode(null);
     d3.selectAll(".node-circle.selected").classed("selected", false);
   };
   const handleNodeClick = (event: MouseEvent, d: Node) => {
+    if (event.defaultPrevented) return; // Prevents click on drag
     event.stopPropagation();
     if (d.type === "organization") {
       const orgData = currentUserData?.organization;
@@ -164,7 +195,9 @@ export function OwnershipGraph() {
     closeDetailsPanel();
   };
 
-  // (D3 Rendering Effect is unchanged)
+  // (Removed Modal Handlers)
+
+  // (D3 Rendering Effect)
   useEffect(() => {
     const svgElement = svgRef.current;
     if (graphData.nodes.length === 0 || !svgElement?.parentElement) {
@@ -173,7 +206,9 @@ export function OwnershipGraph() {
       return;
     }
 
-    const { nodes, links } = graphData;
+    const nodes = graphData.nodes;
+    const links = graphData.links;
+
     const width = svgElement.parentElement.clientWidth;
     const height = svgElement.parentElement.clientHeight;
     const svg = d3
@@ -194,7 +229,7 @@ export function OwnershipGraph() {
     svg.call(zoomBehavior).on("dblclick.zoom", null);
 
     const simulation = d3
-      .forceSimulation(nodes as d3.SimulationNodeDatum[])
+      .forceSimulation(nodes)
       .force(
         "link",
         d3
@@ -205,7 +240,15 @@ export function OwnershipGraph() {
       )
       .force(
         "charge",
-        d3.forceManyBody().strength(currentView === "org" ? -600 : -200)
+        d3.forceManyBody().strength((d: d3.SimulationNodeDatum) => {
+          const node = d as Node;
+          // 🧠 Disable charge repulsion while dragging
+          if ((node as any)._isDragging) return 0;
+          if (currentView === "org") {
+            return node.type === "organization" ? -600 : -400;
+          }
+          return node.type === "document" ? -0 : -50;
+        })
       )
       .force("center", d3.forceCenter(width / 2, height / 2))
       .force(
@@ -219,6 +262,8 @@ export function OwnershipGraph() {
           })
           .strength(0.9)
       );
+
+    simulationRef.current = simulation as d3.Simulation<Node, Link>;
 
     const link = g
       .append("g")
@@ -235,12 +280,13 @@ export function OwnershipGraph() {
       .data(nodes, (d: any) => d.id)
       .enter()
       .append("g")
-      .style("cursor", (d: any) =>
-        (d as Node).type === "organization" ||
-        ((d as Node).type === "user" && currentView === "doc")
-          ? "pointer"
-          : "default"
-      )
+      .style("cursor", (d: any) => {
+        const n = d as Node;
+        if (n.type === "organization") return "pointer";
+        if (n.type === "user" && currentView === "doc") return "pointer";
+        if (n.type === "document" && currentView === "doc") return "grab";
+        return "default";
+      })
       .call(
         d3
           .drag<SVGGElement, Node>()
@@ -251,7 +297,9 @@ export function OwnershipGraph() {
       .on("click", (event, d: any) => handleNodeClick(event, d as Node))
       .on("mouseover", function (_event, d: any) {
         d3.select(this).raise();
-        d3.select(this).select("text").text((d as Node).name);
+        d3.select(this)
+          .select("text")
+          .text((d as Node).name);
       })
       .on("mouseout", function (_event, d: any) {
         d3.select(this)
@@ -285,28 +333,191 @@ export function OwnershipGraph() {
       node.attr("transform", (d: any) => `translate(${d.x},${d.y})`);
     });
 
-    function dragstarted(
-      event: d3.D3DragEvent<SVGGElement, any, any>,
-      d: any
-    ) {
-      if (!event.active) simulation.alphaTarget(0.3).restart();
+    // --- 2. Simplified Drag Handlers ---
+    function dragstarted(event: d3.D3DragEvent<SVGGElement, any, any>, d: any) {
+      event.sourceEvent.stopPropagation();
+      if (!event.active) simulation.alphaTarget(0.1).restart();
+
+      // Set dragging flag for forceManyBody
+      (d as any)._isDragging = true;
+      simulation.alpha(0.1).restart();
+
       d.fx = d.x;
       d.fy = d.y;
+
+      const node = d as Node;
+      if (node.type === "document" && currentView === "doc") {
+        d3.select(event.sourceEvent.currentTarget).raise();
+
+        if (dragTimer.current) clearTimeout(dragTimer.current);
+        detachedLineElementRef.current = null;
+        d3.selectAll(".links line.link-detached").classed(
+          "link-detached",
+          false
+        );
+        d3.selectAll(".node-circle.armed-for-drop").classed(
+          "armed-for-drop",
+          false
+        );
+
+        // 🟢 Add global mouseup listener
+        const handleMouseUp = () => {
+          if (detachedLineElementRef.current) {
+            d3.select(detachedLineElementRef.current).classed(
+              "link-detached",
+              false
+            );
+            detachedLineElementRef.current = null;
+          }
+          d3.select(window).on("mouseup.drag-cleanup", null); // remove listener
+        };
+        d3.select(window).on("mouseup.drag-cleanup", handleMouseUp);
+
+        // Remove timeout logic for armed-for-drop: now handled in dragged()
+        // Instead, detach the link immediately
+        const simulation = simulationRef.current;
+        if (!simulation) return;
+        const linkForce = simulation.force<d3.ForceLink<Node, Link>>("link");
+        if (!linkForce) return;
+
+        const linkData = linkForce
+          .links()
+          .find(
+            (l: Link) =>
+              (l.source as Node).id === d.id || (l.target as Node).id === d.id
+          );
+
+        if (linkData) {
+          // Remove the link from the simulation
+          const links = linkForce.links().filter((l) => l !== linkData);
+          linkForce.links(links);
+          (d as any)._detachedLink = linkData; // Store on node
+
+          const lineElement = d3
+            .selectAll<SVGLineElement, Link>(".links line")
+            .filter((l: Link) => l === linkData)
+            .node();
+
+          if (lineElement) {
+            detachedLineElementRef.current = lineElement;
+            d3.select(lineElement).classed("link-detached", true);
+          }
+        }
+      }
     }
+
     function dragged(event: d3.D3DragEvent<SVGGElement, any, any>, d: any) {
       d.fx = event.x;
       d.fy = event.y;
+
+      const detachedLink = (d as any)._detachedLink;
+      if (!detachedLink) return;
+
+      let target: Node | null = null;
+      const threshold = 70;
+      const originalOwnerId = (detachedLink.target as Node).id;
+
+      for (const u of nodes) {
+        if (u.type !== "user" || u.id === originalOwnerId) continue;
+        if (!u.x || !u.y || !d.fx || !d.fy) continue;
+        const dx = u.x - d.fx;
+        const dy = u.y - d.fy;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < threshold) {
+          target = u;
+          break; // nearest user within 100px
+        }
+      }
+
+      // Type-safe selection for the dragged node's <g> element and its circle
+      const nodeElement = d3
+        .selectAll<SVGGElement, Node>(".nodes g")
+        .filter((n) => n.id === d.id)
+        .node();
+      if (nodeElement) {
+        d3.select(nodeElement)
+          .select<SVGCircleElement>(".node-circle")
+          .classed("armed-for-drop", target !== null);
+      }
+
+      // Update drop target ref and state
+      dropTargetNodeRef.current = target;
+      if (target) {
+        setDropTargetNode(target);
+      } else {
+        setDropTargetNode(null);
+      }
     }
+
     function dragended(event: d3.D3DragEvent<SVGGElement, any, any>, d: any) {
       if (!event.active) simulation.alphaTarget(0);
+
+      // Reset dragging flag for forceManyBody
+      (d as any)._isDragging = false;
+      simulation.alpha(0.3).restart();
+
+      if (dragTimer.current) {
+        clearTimeout(dragTimer.current);
+        dragTimer.current = null;
+      }
+
+      // --- 3. Log drop target from ref and clear drop target state on drag end ---
+      if (dropTargetNodeRef.current) {
+        console.log("Dropped near user:", dropTargetNodeRef.current.name);
+      }
+      dropTargetNodeRef.current = null;
+      setDropTargetNode(null);
+      // ------------------------------------------
+
       d.fx = null;
       d.fy = null;
+
+      // Restore the link to the simulation if it was detached
+      const linkForce = simulation.force<d3.ForceLink<Node, Link>>("link");
+      const detachedLink = (d as any)._detachedLink;
+      if (linkForce && detachedLink) {
+        const links = linkForce.links();
+        links.push(detachedLink);
+        linkForce.links(links);
+        (d as any)._detachedLink = null;
+      }
+
+      // ✅ Safely remove visual cue from all nodes instead of relying on currentTarget
+      d3.selectAll(".node-circle.armed-for-drop").classed(
+        "armed-for-drop",
+        false
+      );
+
+      d3.select(window).on("mouseup.drag-cleanup", null);
+
+      if (detachedLineElementRef.current) {
+        d3.select(detachedLineElementRef.current).classed(
+          "link-detached",
+          false
+        );
+        detachedLineElementRef.current = null;
+      }
     }
+    // ------------------------------------
 
     return () => {
       simulation.stop();
+      simulationRef.current = null;
+      if (dragTimer.current) {
+        clearTimeout(dragTimer.current);
+      }
     };
   }, [graphData, currentView, selectedUserNode]);
+
+  // --- 4. Add effect to apply/remove .drop-target class ---
+  useEffect(() => {
+    if (!svgRef.current) return;
+    // Apply/remove class based on React state
+    d3.select(svgRef.current)
+      .selectAll(".node-circle.user")
+      .classed("drop-target", (d: any) => d.id === dropTargetNode?.id);
+  }, [dropTargetNode]);
+  // ------------------------------------------------------
 
   // (Loading/Error States are unchanged)
   const isLoading =
@@ -329,7 +540,7 @@ export function OwnershipGraph() {
     );
   }
 
-  // (Render Component is unchanged)
+  // (Render Component)
   return (
     <div className="graph-container">
       <div className="graph-canvas-wrapper">
@@ -375,6 +586,8 @@ export function OwnershipGraph() {
           </>
         )}
       </div>
+
+      {/* (Removed Modal from render) */}
     </div>
   );
 }

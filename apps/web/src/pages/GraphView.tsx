@@ -9,7 +9,8 @@ export function GraphView() {
       </div>
       <p className="text-muted">
         Click on a user node to see their assigned documents. You can drag nodes
-        and pan/zoom the canvas.
+        and pan/zoom the canvas. Drag a document node onto a user to transfer
+        ownership.
       </p>
       <OwnershipGraph />
     </div>
