@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { protectedProcedure, publicProcedure, router } from './trpc';
 import { DocumentsRouter } from '../documents/documents.router';
 import { UserRouter } from '../user/user.router';
+import { rolesRouter } from '../roles/roles.router';
 import type { inferRouterOutputs, inferRouterInputs } from '@trpc/server';
 
 @Injectable()
@@ -119,6 +120,7 @@ export class TrpcRouter {
 
       documents: this.documentsRouter.createRouter(),
       user: this.userRouter.createRouter(),
+      roles: rolesRouter,
     });
   }
 }

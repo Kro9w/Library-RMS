@@ -5,10 +5,11 @@ import { DocumentsModule } from '../documents/documents.module';
 import { UserModule } from '../user/user.module';
 import { PrismaModule } from '../prisma/prisma.module'; // 1. Add this import
 import { SupabaseModule } from '../supabase/supabase.module'; // 2. Add this import
+import { RolesModule } from '../roles/roles.module';
 
 @Module({
   // 3. Add PrismaModule and SupabaseModule here
-  imports: [DocumentsModule, UserModule, PrismaModule, SupabaseModule],
+  imports: [DocumentsModule, UserModule, PrismaModule, SupabaseModule, RolesModule],
   providers: [TrpcRouter, TrpcContextFactory],
   exports: [TrpcRouter, TrpcContextFactory],
 })

@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { SupabaseService } from '../supabase/supabase.service';
 import { SupabaseUser } from '../types/express';
 import { PrismaService } from '../prisma/prisma.service';
+import { RolesService } from '../roles/roles.service';
 import { PrismaClient } from '@prisma/client';
 
 export interface TrpcContext {
@@ -10,6 +11,7 @@ export interface TrpcContext {
   res: Response;
   user: SupabaseUser | null;
   prisma: PrismaClient;
+  rolesService: RolesService;
 }
 
 @Injectable()
@@ -19,6 +21,7 @@ export class TrpcContextFactory {
   constructor(
     private readonly supabase: SupabaseService,
     private readonly prisma: PrismaService,
+    private readonly rolesService: RolesService,
   ) {}
 
   async createContext(opts: {
@@ -58,6 +61,7 @@ export class TrpcContextFactory {
       res,
       user,
       prisma: this.prisma,
+      rolesService: this.rolesService,
     };
   }
 }

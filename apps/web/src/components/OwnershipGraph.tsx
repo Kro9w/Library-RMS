@@ -107,7 +107,7 @@ export function OwnershipGraph() {
     if (currentView === "org" && allOrgs && allUsers) {
       const orgNodes: Node[] = allOrgs.map((org: Org) => ({
         id: org.id,
-        name: org.name,
+        name: org.acronym,
         type: "organization",
       }));
 

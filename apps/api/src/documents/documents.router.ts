@@ -289,6 +289,23 @@ export class DocumentsRouter {
               message: 'User does not belong to an organization.',
             });
           }
+
+          const userRoles = await ctx.prisma.userRole.findMany({
+            where: { userId: ctx.dbUser.id },
+            include: { role: true },
+          });
+
+          const canManageDocuments = userRoles.some(
+            (userRole) => userRole.role.canManageDocuments
+          );
+
+          if (!canManageDocuments) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'You do not have permission to delete documents.',
+            });
+          }
+
           const doc = await this.prisma.document.findFirst({
             where: {
               id: input.id,
@@ -485,8 +502,38 @@ export class DocumentsRouter {
         .input(z.void())
         .output(z.any())
         .query(async ({ ctx }) => {
-          // You might want to add admin-level protection here
+          const userRoles = await ctx.prisma.userRole.findMany({
+            where: { userId: ctx.dbUser.id },
+            include: { role: true },
+          });
+
+          const canManageDocuments = userRoles.some(
+            (userRole) => userRole.role.canManageDocuments
+          );
+
+          if (canManageDocuments) {
+            return this.prisma.document.findMany({
+              select: {
+                id: true,
+                title: true,
+                createdAt: true,
+                uploadedBy: { select: { name: true } },
+                fileType: true,
+                fileSize: true,
+                uploadedById: true,
+                organizationId: true,
+              },
+            });
+          }
+
+          if (!ctx.dbUser.organizationId) {
+            return [];
+          }
+
           return this.prisma.document.findMany({
+            where: {
+              organizationId: ctx.dbUser.organizationId,
+            },
              select: {
               id: true,
               title: true,
@@ -500,6 +547,23 @@ export class DocumentsRouter {
           });
         }),
       // --- END NEW PROCEDURES ---
+      
+      // --- NEW QUERY ---
+      getMyDocuments: protectedProcedure.query(async ({ ctx }) => {
+        if (!ctx.dbUser.organizationId) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'User does not belong to an organization.',
+          });
+        }
+        return ctx.prisma.document.findMany({
+          where: {
+            uploadedById: ctx.dbUser.id,
+            organizationId: ctx.dbUser.organizationId,
+          },
+        });
+      }),
+      // --- END OF NEW QUERY ---
     });
   }
 }

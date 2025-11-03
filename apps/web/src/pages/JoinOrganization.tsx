@@ -2,15 +2,18 @@
 import React, { useState } from "react";
 import { trpc } from "../trpc";
 import { useNavigate } from "react-router-dom";
-import AuthLayout from '../components/AuthLayout';
+import AuthLayout from "../components/AuthLayout";
 // --- 1. THIS IS THE FIX ---
-import './Auth.css'; // Import the new unified CSS file
+import "./Auth.css"; // Import the new unified CSS file
 
 const JoinOrganization: React.FC = () => {
   const [orgName, setOrgName] = useState("");
-  const [orgId, setOrgId] = useState("");
+  const [orgAcronym, setOrgAcronym] = useState("");
+  const [selectedOrgId, setSelectedOrgId] = useState("");
   const navigate = useNavigate();
   const utils = trpc.useUtils();
+
+  const { data: organizations } = trpc.user.getAllOrgs.useQuery();
 
   const createOrg = trpc.user.createOrganization.useMutation({
     onSuccess: () => {
@@ -34,12 +37,12 @@ const JoinOrganization: React.FC = () => {
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    createOrg.mutate({ orgName });
+    createOrg.mutate({ orgName, orgAcronym });
   };
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
-    joinOrg.mutate({ orgId });
+    joinOrg.mutate({ orgId: selectedOrgId });
   };
 
   return (
@@ -57,6 +60,14 @@ const JoinOrganization: React.FC = () => {
               required
               className="form-control"
             />
+            <input
+              type="text"
+              placeholder="Acronym"
+              value={orgAcronym}
+              onChange={(e) => setOrgAcronym(e.target.value)}
+              required
+              className="form-control"
+            />
             <button
               type="submit"
               className="btn-primary"
@@ -70,14 +81,21 @@ const JoinOrganization: React.FC = () => {
         <div className="form-section">
           <h3>Join Existing Organization</h3>
           <form className="auth-form" onSubmit={handleJoin}>
-            <input
-              type="text"
-              placeholder="Organization ID (Invite Code)"
-              value={orgId}
-              onChange={(e) => setOrgId(e.target.value)}
+            <select
+              value={selectedOrgId}
+              onChange={(e) => setSelectedOrgId(e.target.value)}
               required
-              className="form-control"
-            />
+              className="form-control mb-3"
+            >
+              <option value="" disabled>
+                Select an organization
+              </option>
+              {organizations?.map((org) => (
+                <option key={org.id} value={org.id}>
+                  {org.name}
+                </option>
+              ))}
+            </select>
             <button
               type="submit"
               className="btn-secondary"

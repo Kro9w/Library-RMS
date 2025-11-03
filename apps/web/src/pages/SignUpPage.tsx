@@ -3,13 +3,14 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabase";
 import { trpc } from "../trpc";
-import AuthLayout from '../components/AuthLayout';
+import AuthLayout from "../components/AuthLayout";
 // --- 1. THIS IS THE FIX ---
-import './Auth.css'; // Import the new unified CSS file
+import "./Auth.css"; // Import the new unified CSS file
 
 const SignUpPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -20,6 +21,12 @@ const SignUpPage: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
+    }
 
     try {
       // 1. Sign up with Supabase
@@ -88,6 +95,15 @@ const SignUpPage: React.FC = () => {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={loading}
+            className="form-control"
+          />
+          <input
+            type="password"
+            placeholder="Confirm Password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
             required
             disabled={loading}
             className="form-control"

@@ -74,7 +74,14 @@ export class UserRouter {
           const userWithOrg = await ctx.prisma.user.findUnique({
             where: { id: ctx.dbUser.id },
             // Select all fields, including relations
-            include: { organization: true },
+            include: {
+              organization: true,
+              roles: {
+                include: {
+                  role: true,
+                },
+              },
+            },
           });
 
           if (!userWithOrg) {
@@ -95,7 +102,7 @@ export class UserRouter {
             summary: 'Create a new organization',
           },
         })
-        .input(z.object({ orgName: z.string().min(1) }))
+        .input(z.object({ orgName: z.string().min(1), orgAcronym: z.string().min(1) }))
         .output(z.any())
         .mutation(async ({ ctx, input }) => {
           if (ctx.dbUser.organizationId) {
@@ -108,15 +115,33 @@ export class UserRouter {
           const newOrg = await this.prisma.organization.create({
             data: {
               name: input.orgName,
+              acronym: input.orgAcronym,
               users: {
                 connect: { id: ctx.dbUser.id },
               },
             },
           });
 
+          const adminRole = await this.prisma.role.create({
+            data: {
+              name: 'Admin',
+              canManageUsers: true,
+              canManageRoles: true,
+              canManageDocuments: true,
+              organizationId: newOrg.id,
+            },
+          });
+
+          await this.prisma.userRole.create({
+            data: {
+              userId: ctx.dbUser.id,
+              roleId: adminRole.id,
+            },
+          });
+
           await this.prisma.user.update({
             where: { id: ctx.dbUser.id },
-            data: { role: Role.OWNER, organizationId: newOrg.id },
+            data: { organizationId: newOrg.id },
           });
 
           return newOrg;
@@ -152,11 +177,39 @@ export class UserRouter {
             });
           }
 
+          // Update only the organizationId on the user (there is no scalar `role` on the user model)
           await this.prisma.user.update({
             where: { id: ctx.dbUser.id },
             data: {
               organizationId: org.id,
-              role: Role.USER,
+            },
+          });
+
+          // Assign a "User" role to the joining user by creating a userRole entry.
+          // Try to find an existing role named 'User' for this organization; if none exists, create it.
+          let userRoleRecord = await this.prisma.role.findFirst({
+            where: {
+              organizationId: org.id,
+              name: 'User',
+            },
+          });
+
+          if (!userRoleRecord) {
+            userRoleRecord = await this.prisma.role.create({
+              data: {
+                name: 'User',
+                canManageUsers: false,
+                canManageRoles: false,
+                canManageDocuments: false,
+                organizationId: org.id,
+              },
+            });
+          }
+
+          await this.prisma.userRole.create({
+            data: {
+              userId: ctx.dbUser.id,
+              roleId: userRoleRecord.id,
             },
           });
 
@@ -179,6 +232,90 @@ export class UserRouter {
               name: input.name,
               // Only update imageUrl if a new one was provided
               ...(input.imageUrl && { imageUrl: input.imageUrl }),
+            },
+          });
+        }),
+      // --- END OF NEW MUTATION ---
+      
+      // --- NEW MUTATION ---
+      deleteUser: protectedProcedure
+        .input(z.object({ userId: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+          const userRoles = await ctx.prisma.userRole.findMany({
+            where: { userId: ctx.dbUser.id },
+            include: { role: true },
+          });
+
+          const canManageUsers = userRoles.some(
+            (userRole) => userRole.role.canManageUsers
+          );
+
+          if (!canManageUsers) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'You do not have permission to delete users.',
+            });
+          }
+
+          return ctx.prisma.user.delete({
+            where: { id: input.userId },
+          });
+        }),
+      // --- END OF NEW MUTATION ---
+      
+      // --- NEW QUERY ---
+      getUsersWithRoles: protectedProcedure.query(async ({ ctx }) => {
+        if (!ctx.dbUser.organizationId) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'User does not belong to an organization.',
+          });
+        }
+        return ctx.prisma.user.findMany({
+          where: {
+            organizationId: ctx.dbUser.organizationId,
+          },
+          include: {
+            roles: {
+              include: {
+                role: true,
+              },
+            },
+          },
+        });
+      }),
+      // --- END OF NEW QUERY ---
+
+      // --- NEW QUERY ---
+      getAllOrgs: protectedProcedure.query(async ({ ctx }) => {
+        return ctx.prisma.organization.findMany();
+      }),
+      // --- END OF NEW QUERY ---
+
+      // --- NEW MUTATION ---
+      removeUserFromOrg: protectedProcedure
+        .input(z.object({ userId: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+          const userRoles = await ctx.prisma.userRole.findMany({
+            where: { userId: ctx.dbUser.id },
+            include: { role: true },
+          });
+
+          const canManageUsers = userRoles.some(
+            (userRole) => userRole.role.canManageUsers
+          );
+
+          if (!canManageUsers) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'You do not have permission to remove users from the organization.',
+            });
+          }
+
+          return ctx.prisma.user.update({
+            where: { id: input.userId },
+            data: {
+              organizationId: null,
             },
           });
         }),

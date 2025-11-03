@@ -21,18 +21,40 @@ model User {
   imageUrl String? // URL for the user's profile picture
   // ----------------------
 
-  role             Role             @default(USER)
   organization     Organization?    @relation(fields: [organizationId], references: [id])
   organizationId   String?
   documents        Document[]       @relation("uploadedBy")
   DocumentAccess   DocumentAccess[]
+  roles UserRole[]
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String
+  canManageUsers Boolean @default(false)
+  canManageRoles Boolean @default(false)
+  canManageDocuments Boolean @default(false)
+  users UserRole[]
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+}
+
+model UserRole {
+  user User @relation(fields: [userId], references: [id])
+  userId String
+  role Role @relation(fields: [roleId], references: [id])
+  roleId String
+
+  @@id([userId, roleId])
 }
 
 model Organization {
   id        String     @id @default(cuid())
   name      String
+  acronym   String
   users     User[]
   documents Document[] // Add this relation
+  roles     Role[]
 }
 
 model Document {
@@ -90,10 +112,4 @@ model DocumentTag {
   tagId      String
 
   @@unique([documentId, tagId])
-}
-
-enum Role {
-  USER
-  ADMIN
-  OWNER
 }
