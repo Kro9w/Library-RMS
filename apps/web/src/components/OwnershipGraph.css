@@ -41,11 +41,10 @@ svg.grabbing {
 
 /* --- D3 Node Styles (Already using variables, no change) --- */
 .node-circle {
-  stroke: var(--light-text);
-  stroke-width: 1.5px;
+  stroke: none;
+  stroke-width: 0;
   cursor: grab;
-  transition: fill 0.2s ease-in-out, stroke 0.2s ease-in-out,
-    transform 0.2s ease-in-out; /* Add transform to transition */
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 .clickable-node {
   cursor: pointer !important;
@@ -80,6 +79,10 @@ svg.grabbing {
   fill: var(--primary); /* Change color to show it's "active" */
   stroke: var(--primary);
   stroke-width: 3px;
+}
+.drop-magnet {
+  fill: var(--primary);
+  opacity: 1;
 }
 /* ------------------------------------- */
 
