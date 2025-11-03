@@ -360,13 +360,12 @@ export class DocumentsRouter {
           const newOwner = await this.prisma.user.findFirst({
             where: {
               email: input.newOwnerEmail,
-              organizationId: ctx.dbUser.organizationId,
             },
           });
-          if (!newOwner) {
+          if (!newOwner || !newOwner.organizationId) {
             throw new TRPCError({
               code: 'NOT_FOUND',
-              message: 'New owner not found in your organization.',
+              message: 'New owner not found or does not belong to an organization.',
             });
           }
           const doc = await this.prisma.document.findFirst({
@@ -378,10 +377,15 @@ export class DocumentsRouter {
           if (!doc) {
             throw new TRPCError({ code: 'NOT_FOUND' });
           }
+
+          const isNewOrg = newOwner.organizationId !== doc.organizationId;
+
           return this.prisma.document.update({
             where: { id: doc.id },
             data: {
               uploadedById: newOwner.id,
+              organizationId: newOwner.organizationId,
+              documentTypeId: isNewOrg ? null : doc.documentTypeId,
             },
           });
         }),
