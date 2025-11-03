@@ -10,10 +10,10 @@ const getBaseUrl = () => {
   // FIX: This logic was inverted.
   // In the browser (window is defined), we MUST use the full VITE_API_URL.
   if (typeof window !== 'undefined') {
-    return import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+    return import.meta.env.VITE_API_URL ?? 'http://localhost:2000';
   }
   // On the server, we can use the relative path (this is for SSR, not critical now)
-  return 'http://localhost:3000';
+  return 'http://localhost:2000';
 };
 
 export const trpcClient = trpc.createClient({
