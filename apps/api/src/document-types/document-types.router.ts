@@ -26,13 +26,29 @@ export class DocumentTypesRouter {
         )
         .mutation(async ({ ctx, input }) => {
           const orgId = ctx.dbUser.organizationId as string;
-          return ctx.prisma.documentType.create({
+          const newDocType = await ctx.prisma.documentType.create({
             data: {
               name: input.name,
               color: input.color,
               organizationId: orgId,
             },
           });
+
+          const userRoles = await ctx.prisma.userRole.findMany({
+            where: { userId: ctx.dbUser.id },
+            include: { role: true },
+          });
+
+          await ctx.prisma.log.create({
+            data: {
+              action: `Created document type: ${newDocType.name}`,
+              userId: ctx.dbUser.id,
+              organizationId: orgId,
+              userRole: userRoles.map((userRole) => userRole.role.name).join(', '),
+            },
+          });
+
+          return newDocType;
         }),
 
       // Procedure to update an existing document type
@@ -58,9 +74,25 @@ export class DocumentTypesRouter {
       delete: protectedProcedure
         .input(z.object({ id: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          return ctx.prisma.documentType.delete({
+          const deletedDocType = await ctx.prisma.documentType.delete({
             where: { id: input.id },
           });
+
+          const userRoles = await ctx.prisma.userRole.findMany({
+            where: { userId: ctx.dbUser.id },
+            include: { role: true },
+          });
+
+          await ctx.prisma.log.create({
+            data: {
+              action: `Deleted document type: ${deletedDocType.name}`,
+              userId: ctx.dbUser.id,
+              organizationId: deletedDocType.organizationId,
+              userRole: userRoles.map((userRole) => userRole.role.name).join(', '),
+            },
+          });
+
+          return deletedDocType;
         }),
     });
   }

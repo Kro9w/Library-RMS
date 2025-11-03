@@ -27,6 +27,7 @@ import { Tags } from "./pages/Tags";
 import { GraphView } from "./pages/GraphView";
 import JoinOrganization from "./pages/JoinOrganization";
 import { Users } from "./pages/Users";
+import LogsPage from "./pages/LogsPage";
 import { trpc } from "./trpc";
 import { TRPCClientError } from "@trpc/client"; // Import TRPCClientError
 
@@ -154,6 +155,10 @@ const AppContent: React.FC = () => {
           <Route
             path="/settings"
             element={session ? <Settings /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/logs"
+            element={session ? <LogsPage /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/join"

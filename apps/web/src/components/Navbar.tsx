@@ -25,11 +25,11 @@ interface NavbarProps {
 
 export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
   const user = useUser();
-  
+
   const { data: dbUser } = trpc.user.getMe.useQuery(undefined, {
     enabled: !!user,
   });
-  
+
   const navigate = useNavigate();
 
   // State for account menu
@@ -64,7 +64,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
   // --- THIS IS THE FIX ---
   // Added the missing '=>' to define the arrow function
   const onConfirmTransfer = (formData: TransferFormData) => {
-  // -----------------------
+    // -----------------------
     transferMutation({
       docId: formData.controlNumber,
       newOwnerEmail: formData.email,
@@ -144,6 +144,10 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
                 <i className="bi bi-people-fill"></i>
                 <span className="link-text">Users</span>
               </NavLink>
+              <NavLink to="/logs" className="nav-link">
+                <i className="bi bi-journal-text"></i>
+                <span className="link-text">Logs</span>
+              </NavLink>
             </div>
           </div>
 
@@ -211,7 +215,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
         show={showUploadModal}
         onClose={() => setShowUploadModal(false)}
       />
-      
+
       <ConfirmModal
         show={showTransferModal}
         onClose={handleCloseTransferModal}

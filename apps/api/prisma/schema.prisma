@@ -26,6 +26,7 @@ model User {
   documents        Document[]       @relation("uploadedBy")
   DocumentAccess   DocumentAccess[]
   roles UserRole[]
+  logs  Log[]
 }
 
 model Role {
@@ -56,6 +57,18 @@ model Organization {
   documents Document[] // Add this relation
   roles     Role[]
   documentTypes DocumentType[]
+  logs      Log[]
+}
+
+model Log {
+  id             String       @id @default(cuid())
+  user           User         @relation(fields: [userId], references: [id])
+  userId         String
+  action         String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  userRole       String
+  createdAt      DateTime     @default(now())
 }
 
 model DocumentType {

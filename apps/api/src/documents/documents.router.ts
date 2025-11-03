@@ -96,7 +96,13 @@ export class DocumentsRouter {
               message: 'User does not belong to an organization.',
             });
           }
-          return this.prisma.document.create({
+
+          const userRoles = await this.prisma.userRole.findMany({
+            where: { userId: user.id },
+            include: { role: true },
+          });
+
+          const document = await this.prisma.document.create({
             data: {
               title: input.title,
               s3Key: input.storageKey,
@@ -109,6 +115,17 @@ export class DocumentsRouter {
               documentTypeId: input.documentTypeId,
             },
           });
+
+          await this.prisma.log.create({
+            data: {
+              action: `Created document: ${document.title}`,
+              userId: user.id,
+              organizationId: dbUser.organizationId!,
+              userRole: userRoles.map((userRole) => userRole.role.name).join(', '),
+            },
+          });
+
+          return document;
         }),
 
       /**
@@ -319,6 +336,7 @@ export class DocumentsRouter {
               id: true,
               s3Key: true,
               s3Bucket: true,
+              title: true,
             },
           });
           if (!doc) {
@@ -334,6 +352,16 @@ export class DocumentsRouter {
           if (storageError) {
             console.error('Failed to delete file from storage:', storageError);
           }
+
+          await this.prisma.log.create({
+            data: {
+              action: `Deleted document: ${doc.title}`,
+              userId: ctx.dbUser.id,
+              organizationId: ctx.dbUser.organizationId!,
+              userRole: userRoles.map((userRole) => userRole.role.name).join(', '),
+            },
+          });
+
           return this.prisma.document.delete({
             where: { id: doc.id },
           });
@@ -380,7 +408,7 @@ export class DocumentsRouter {
 
           const isNewOrg = newOwner.organizationId !== doc.organizationId;
 
-          return this.prisma.document.update({
+          const updatedDocument = await this.prisma.document.update({
             where: { id: doc.id },
             data: {
               uploadedById: newOwner.id,
@@ -388,6 +416,22 @@ export class DocumentsRouter {
               documentTypeId: isNewOrg ? null : doc.documentTypeId,
             },
           });
+
+          const userRoles = await this.prisma.userRole.findMany({
+            where: { userId: ctx.dbUser.id },
+            include: { role: true },
+          });
+
+          await this.prisma.log.create({
+            data: {
+              action: `Transferred document: ${updatedDocument.title} to ${newOwner.email}`,
+              userId: ctx.dbUser.id,
+              organizationId: ctx.dbUser.organizationId!,
+              userRole: userRoles.map((userRole) => userRole.role.name).join(', '),
+            },
+          });
+
+          return updatedDocument;
         }),
 
       getTags: protectedProcedure

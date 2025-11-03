@@ -38,7 +38,7 @@ export const rolesRouter = router({
       return await ctx.rolesService.createRole({
         ...input,
         organizationId: ctx.dbUser.organizationId,
-      });
+      }, ctx.dbUser.id);
     }),
 
   getRoles: protectedProcedure
@@ -82,7 +82,7 @@ export const rolesRouter = router({
           message: 'You do not have permission to update roles.',
         });
       }
-      return await ctx.rolesService.updateRole(input.id, input);
+      return await ctx.rolesService.updateRole(input.id, input, ctx.dbUser.id);
     }),
 
   deleteRole: protectedProcedure
@@ -103,7 +103,7 @@ export const rolesRouter = router({
           message: 'You do not have permission to delete roles.',
         });
       }
-      return await ctx.rolesService.deleteRole(input);
+      return await ctx.rolesService.deleteRole(input, ctx.dbUser.id);
     }),
 
   assignRoleToUser: protectedProcedure
@@ -127,7 +127,7 @@ export const rolesRouter = router({
           message: 'You do not have permission to assign roles.',
         });
       }
-      return await ctx.rolesService.assignRoleToUser(input.userId, input.roleId);
+      return await ctx.rolesService.assignRoleToUser(input.userId, input.roleId, ctx.dbUser.id);
     }),
 
   unassignRoleFromUser: protectedProcedure
@@ -151,6 +151,6 @@ export const rolesRouter = router({
           message: 'You do not have permission to unassign roles.',
         });
       }
-      return await ctx.rolesService.unassignRoleFromUser(input.userId, input.roleId);
+      return await ctx.rolesService.unassignRoleFromUser(input.userId, input.roleId, ctx.dbUser.id);
     }),
 });

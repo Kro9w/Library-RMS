@@ -8,6 +8,7 @@ import { rolesRouter } from '../roles/roles.router';
 import type { inferRouterOutputs, inferRouterInputs } from '@trpc/server';
 
 import { DocumentTypesRouter } from '../document-types/document-types.router';
+import { LogRouter } from '../log/log.router';
 
 @Injectable()
 export class TrpcRouter {
@@ -15,6 +16,7 @@ export class TrpcRouter {
     private readonly documentsRouter: DocumentsRouter,
     private readonly userRouter: UserRouter,
     private readonly documentTypesRouter: DocumentTypesRouter,
+    private readonly logRouter: LogRouter,
   ) {}
 
   get appRouter() {
@@ -125,6 +127,7 @@ export class TrpcRouter {
       user: this.userRouter.createRouter(),
       roles: rolesRouter,
       documentTypes: this.documentTypesRouter.createRouter(),
+      logs: this.logRouter.createRouter(),
     });
   }
 }

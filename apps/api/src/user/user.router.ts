@@ -144,6 +144,15 @@ export class UserRouter {
             data: { organizationId: newOrg.id },
           });
 
+          await this.prisma.log.create({
+            data: {
+              action: `Created organization: ${newOrg.name}`,
+              userId: ctx.dbUser.id,
+              organizationId: newOrg.id,
+              userRole: 'Admin',
+            },
+          });
+
           return newOrg;
         }),
 
@@ -213,6 +222,15 @@ export class UserRouter {
             },
           });
 
+          await this.prisma.log.create({
+            data: {
+              action: `Joined organization: ${org.name}`,
+              userId: ctx.dbUser.id,
+              organizationId: org.id,
+              userRole: 'User',
+            },
+          });
+
           return org;
         }),
 
@@ -257,9 +275,20 @@ export class UserRouter {
             });
           }
 
-          return ctx.prisma.user.delete({
+          const deletedUser = await ctx.prisma.user.delete({
             where: { id: input.userId },
           });
+
+          await ctx.prisma.log.create({
+            data: {
+              action: `Deleted user: ${deletedUser.email}`,
+              userId: ctx.dbUser.id,
+              organizationId: ctx.dbUser.organizationId!,
+              userRole: userRoles.map((userRole) => userRole.role.name).join(', '),
+            },
+          });
+
+          return deletedUser;
         }),
       // --- END OF NEW MUTATION ---
       
@@ -312,12 +341,23 @@ export class UserRouter {
             });
           }
 
-          return ctx.prisma.user.update({
+          const updatedUser = await ctx.prisma.user.update({
             where: { id: input.userId },
             data: {
               organizationId: null,
             },
           });
+
+          await ctx.prisma.log.create({
+            data: {
+              action: `Removed user: ${updatedUser.email} from organization`,
+              userId: ctx.dbUser.id,
+              organizationId: ctx.dbUser.organizationId!,
+              userRole: userRoles.map((userRole) => userRole.role.name).join(', '),
+            },
+          });
+
+          return updatedUser;
         }),
       // --- END OF NEW MUTATION ---
     });
