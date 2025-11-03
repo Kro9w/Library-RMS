@@ -55,6 +55,16 @@ model Organization {
   users     User[]
   documents Document[] // Add this relation
   roles     Role[]
+  documentTypes DocumentType[]
+}
+
+model DocumentType {
+  id        String   @id @default(cuid())
+  name      String
+  color     String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  documents Document[]
 }
 
 model Document {
@@ -64,6 +74,9 @@ model Document {
   s3Key          String   @unique
   s3Bucket       String
   
+  documentType   DocumentType? @relation(fields: [documentTypeId], references: [id])
+  documentTypeId String?
+
   // Your router queries 'uploadedBy', so we use that relation name
   uploadedBy     User     @relation("uploadedBy", fields: [uploadedById], references: [id])
   uploadedById   String

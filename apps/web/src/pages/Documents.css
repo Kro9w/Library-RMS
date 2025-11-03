@@ -18,7 +18,7 @@
 
 .document-list-header {
   display: grid;
-  grid-template-columns: 60px 2.5fr 1fr 1fr 1fr 1fr;
+  grid-template-columns: 1.5fr 2.5fr 1fr 1fr 1fr 1fr;
   align-items: center;
   padding: 1rem 1.5rem;
   font-weight: 600;
@@ -30,7 +30,7 @@
 
 .document-item {
   display: grid;
-  grid-template-columns: 60px 2.5fr 1fr 1fr 1fr 1fr;
+  grid-template-columns: 1.5fr 2.5fr 1fr 1fr 1fr 1fr;
   align-items: center;
   padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--card-border);
@@ -133,8 +133,23 @@
   box-shadow: var(--shadow-primary-focus);
 }
 
-/*
- * --- ALL 'body[data-bs-theme="dark"]' STYLES ARE GONE! ---
- * They are no longer needed because 'index.css'
- * handles the theme change globally.
-*/
+.doc-type-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25em 0.6em;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: baseline;
+  border-radius: 50rem; /* Make it a pill shape */
+  justify-self: start; /* Align to the start of the grid cell */
+}
+
+.doc-type-pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}

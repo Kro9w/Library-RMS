@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useTheme } from "../Theme";
 import { RolesModal } from "../components/Roles/RolesModal";
 import { trpc } from "../trpc";
+import { DocumentTypesSettings } from "./DocumentTypesSettings";
 
 export function Settings() {
   const { theme, toggleTheme } = useTheme();
@@ -97,6 +98,7 @@ export function Settings() {
           <RolesModal />
         </>
       )}
+      <DocumentTypesSettings />
     </div>
   );
 }

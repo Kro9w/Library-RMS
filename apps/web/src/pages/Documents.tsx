@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { trpc } from "../trpc";
 import { Link } from "react-router-dom";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { UploadModal } from "../components/UploadModal";
 import "./Documents.css";
 
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
@@ -25,7 +26,8 @@ const formatFileType = (fileType: string | null | undefined): string => {
   if (!fileType) return "FILE";
   if (fileType.includes("pdf")) return "PDF";
   if (fileType.includes("word")) return "DOCX";
-  if (fileType.includes("excel") || fileType.includes("spreadsheet")) return "XLSX";
+  if (fileType.includes("excel") || fileType.includes("spreadsheet"))
+    return "XLSX";
   if (fileType.includes("image")) return "IMG";
   if (fileType.includes("text")) return "TXT";
   return "FILE";
@@ -40,6 +42,7 @@ const Documents: React.FC = () => {
   // --- 2. MODIFICATION: Split state for two modals ---
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [transferEmail, setTransferEmail] = useState("");
   // --------------------------------------------------
 
@@ -106,19 +109,26 @@ const Documents: React.FC = () => {
     doc.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
- return (
+  return (
     <div className="documents-container">
-      
       {/* --- 1. ADD THIS WRAPPER --- */}
       <div className="page-header">
         <h2>Documents</h2>
-        <input
-          type="text"
-          placeholder="Search documents..."
-          value={searchTerm}
-          onChange={handleSearch}
-          className="search-bar"
-        />
+        <div className="header-actions">
+          <input
+            type="text"
+            placeholder="Search documents..."
+            value={searchTerm}
+            onChange={handleSearch}
+            className="search-bar"
+          />
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowUploadModal(true)}
+          >
+            New
+          </button>
+        </div>
       </div>
       {/* --------------------------- */}
 
@@ -138,9 +148,28 @@ const Documents: React.FC = () => {
         <ul className="document-list">
           {filteredDocuments?.map((doc: Document) => (
             <li key={doc.id} className="document-item">
-              <span className="doc-type-badge">
-                {formatFileType(doc.fileType)}
-              </span>
+              {doc.documentType ? (
+                <span
+                  className="doc-type-pill"
+                  style={
+                    {
+                      "--type-color": `#${doc.documentType.color}`,
+                      backgroundColor: `#${doc.documentType.color}33`,
+                      color: `#${doc.documentType.color}`,
+                    } as React.CSSProperties
+                  }
+                >
+                  <span
+                    className="doc-type-pill-dot"
+                    style={{ backgroundColor: `var(--type-color)` }}
+                  />
+                  {doc.documentType.name}
+                </span>
+              ) : (
+                <span className="doc-type-badge">
+                  {formatFileType(doc.fileType)}
+                </span>
+              )}
 
               <Link to={`/documents/${doc.id}`}>{doc.title}</Link>
 
@@ -187,7 +216,8 @@ const Documents: React.FC = () => {
         title="Confirm Delete"
         isConfirming={deleteMutation.isPending}
       >
-        Are you sure you want to delete the document "{selectedDoc?.title || ""}"?
+        Are you sure you want to delete the document "{selectedDoc?.title || ""}
+        "?
       </ConfirmModal>
 
       {/* --- 6. NEW: Add the Transfer Modal --- */}
@@ -222,6 +252,10 @@ const Documents: React.FC = () => {
         />
       </ConfirmModal>
       {/* ------------------------------------ */}
+      <UploadModal
+        show={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+      />
     </div>
   );
 };

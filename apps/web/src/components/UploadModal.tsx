@@ -1,200 +1,176 @@
 // apps/web/src/components/UploadModal.tsx
-import React, { useState, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useDropzone } from "react-dropzone";
-import { trpc } from "../trpc";
 import { supabase } from "../supabase";
-import "./ConfirmModal.css";
-import "./UploadModal.css";
-import { v4 as uuidv4 } from "uuid";
 import { useUser } from "@supabase/auth-helpers-react";
-
-const BUCKET_NAME = "FolioDocs";
+import { trpc } from "../trpc";
+import { v4 as uuidv4 } from "uuid";
+import { Modal } from "bootstrap";
+import "./UploadModal.css";
 
 interface UploadModalProps {
   show: boolean;
   onClose: () => void;
 }
 
-export function UploadModal({ show, onClose }: UploadModalProps) {
+export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
   const [files, setFiles] = useState<File[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  // --- 1. ADD NEW STATE FOR THE WARNING ---
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  // ----------------------------------------
-  const trpcCtx = trpc.useUtils();
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedDocumentType, setSelectedDocumentType] = useState<
+    string | undefined
+  >();
   const user = useUser();
+  const createDocMutation = trpc.documents.createDocumentRecord.useMutation();
+  const { data: documentTypes } = trpc.documentTypes.getAll.useQuery();
+  const bucketName = import.meta.env.VITE_SUPABASE_BUCKET_NAME || "documents";
 
-  const createRecordMutation = trpc.documents.createDocumentRecord.useMutation({
-    onSuccess: () => {
-      trpcCtx.getDashboardStats.invalidate();
-      trpcCtx.documents.getAll.invalidate();
+  const modalRef = useRef<HTMLDivElement>(null);
+  const modalInstanceRef = useRef<Modal | null>(null);
+
+  useEffect(() => {
+    if (modalRef.current) {
+      modalInstanceRef.current = new Modal(modalRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (show) {
+      modalInstanceRef.current?.show();
+    } else {
+      modalInstanceRef.current?.hide();
+    }
+  }, [show]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      setFiles(acceptedFiles);
     },
-    onError: (error) => {
-      alert(`Error creating document record: ${error.message}`);
+    accept: {
+      "application/pdf": [".pdf"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        [".docx"],
     },
   });
 
   const handleUpload = async () => {
     if (files.length === 0 || !user) return;
-    setIsUploading(true);
-    setUploadError(null); // Clear errors on new upload
+    if (!bucketName) {
+      setError(
+        "Supabase bucket name is not configured in environment variables."
+      );
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+
+    const file = files[0];
+    const fileExtension = file.name.split(".").pop();
+    const storageKey = `${user.id}/${uuidv4()}.${fileExtension}`;
 
     try {
-      for (const file of files) {
-        const fileExtension = file.name.split(".").pop();
-        const storageKey = `${user.id}/${uuidv4()}.${fileExtension}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(storageKey, file);
 
-        const { data: uploadData, error: uploadError } =
-          await supabase.storage
-            .from(BUCKET_NAME)
-            .upload(storageKey, file, {
-              cacheControl: "3600",
-              upsert: false,
-            });
-
-        if (uploadError) {
-          throw new Error(`Supabase upload error: ${uploadError.message}`);
-        }
-
-        await createRecordMutation.mutateAsync({
-          title: file.name,
-          storageKey: uploadData.path,
-          storageBucket: BUCKET_NAME,
-          fileType: file.type,
-          fileSize: file.size,
-        });
+      if (uploadError) {
+        throw uploadError;
       }
 
-      alert("All files uploaded successfully!");
-      handleClose();
-    } catch (error: any) {
-      alert(`An error occurred during upload: ${error.message}`);
+      await createDocMutation.mutateAsync({
+        title: file.name,
+        storageKey: uploadData.path,
+        storageBucket: bucketName,
+        documentTypeId: selectedDocumentType,
+        fileType: file.type,
+        fileSize: file.size,
+      });
+
+      setFiles([]);
+      onClose();
+      alert("Upload successful!");
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "An error occurred during upload.");
     } finally {
-      setIsUploading(false);
+      setUploading(false);
     }
   };
 
-  const handleClose = () => {
-    setFiles([]);
-    setUploadError(null); // Clear errors on close
-    setIsUploading(false);
-    onClose();
-  };
-
-  // --- 2. MODIFY 'onDrop' to clear errors ---
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    setFiles((prevFiles) => [...prevFiles, ...acceptedFiles]);
-    setUploadError(null); // Clear any previous errors on a *successful* drop
-  }, []);
-  // ------------------------------------------
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    // --- 3. ADD FILE TYPE VALIDATION ---
-    accept: {
-      "application/pdf": [".pdf"],
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
-        ".docx",
-      ],
-      "application/msword": [".doc"],
-    },
-    // This handler fires when a file is REJECTED
-    onDropRejected: (fileRejections) => {
-      const firstError = fileRejections[0].errors[0];
-      if (firstError.code === "file-invalid-type") {
-        setUploadError(
-          "Warning: Other file types are not currently supported. Please upload PDF or DOCX files only."
-        );
-      } else {
-        setUploadError(firstError.message); // Show other errors (e.g., file too large)
-      }
-      setFiles([]); // Clear any previously accepted files
-    },
-    // -------------------------------------
-    disabled: isUploading,
-  });
-
-  const removeFile = (fileName: string) => {
-    setFiles(files.filter((file) => file.name !== fileName));
-  };
-
-  if (!show) return null;
-
   return (
-    <div className="custom-modal-backdrop" onClick={handleClose}>
-      <div
-        className="custom-modal-content upload-modal-content"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h4 className="custom-modal-title">Upload Documents</h4>
-
-        <div
-          {...getRootProps()}
-          className={`upload-dropzone ${isDragActive ? "dropzone-active" : ""}`}
-        >
-          <input {...getInputProps()} />
-          <i className="bi bi-cloud-arrow-up-fill"></i>
-          {isDragActive ? (
-            <p>Drop the files here ...</p>
-          ) : (
-            <p>Drag 'n' drop PDF or DOCX files here, or click to select</p>
-          )}
-        </div>
-
-        {/* --- 4. ADD THE WARNING MESSAGE UI --- */}
-        {uploadError && (
-          <div className="upload-error-message">
-            <i className="bi bi-exclamation-triangle-fill"></i>
-            {uploadError}
+    <div className="modal fade" ref={modalRef} id="uploadModal" tabIndex={-1}>
+      <div className="modal-dialog">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title">Upload Document</h5>
+            <button
+              type="button"
+              className="btn-close"
+              onClick={onClose}
+            ></button>
           </div>
-        )}
-        {/* ----------------------------------- */}
-
-        {files.length > 0 && (
-          <div className="file-list">
-            <strong>Selected files:</strong>
-            <ul>
-              {files.map((file, i) => (
-                <li key={i}>
-                  <span>{file.name}</span>
-                  <button
-                    onClick={() => removeFile(file.name)}
-                    disabled={isUploading}
-                  >
-                    &times;
-                  </button>
-                </li>
-              ))}
-            </ul>
+          <div className="modal-body">
+            <div
+              {...getRootProps({
+                className: `upload-dropzone${
+                  isDragActive ? " dropzone-active" : ""
+                }`,
+              })}
+            >
+              <input {...getInputProps()} />
+              <i className="bi bi-cloud-arrow-up-fill"></i>
+              <p>Drag 'n' drop PDF or DOCX files here, or click to select</p>
+            </div>
+            <aside>
+              <h4>Files</h4>
+              <ul>
+                {files.map((file) => (
+                  <li key={file.name}>
+                    {file.name} - {file.size} bytes
+                  </li>
+                ))}
+              </ul>
+            </aside>
+            <div className="mb-3">
+              <label htmlFor="documentType" className="form-label">
+                Document Type
+              </label>
+              <select
+                id="documentType"
+                className="form-select"
+                value={selectedDocumentType}
+                onChange={(e) => setSelectedDocumentType(e.target.value)}
+              >
+                <option value="">Select a type...</option>
+                {documentTypes?.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {error && <p className="error">{error}</p>}
           </div>
-        )}
-
-        <div className="custom-modal-actions">
-          <button
-            className="btn btn-secondary"
-            onClick={handleClose}
-            disabled={isUploading}
-          >
-            Cancel
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={handleUpload}
-            disabled={files.length === 0 || isUploading}
-          >
-            {isUploading ? (
-              <>
-                <span
-                  className="spinner-border spinner-border-sm me-2"
-                  role="status"
-                  aria-hidden="true"
-                ></span>
-                Uploading...
-              </>
-            ) : `Upload ${files.length} File(s)`}
-          </button>
+          <div className="modal-footer">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={onClose}
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleUpload}
+              disabled={uploading || files.length === 0}
+            >
+              {uploading ? "Uploading..." : "Upload"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
-}
+};

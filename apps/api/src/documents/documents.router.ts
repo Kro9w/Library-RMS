@@ -50,6 +50,7 @@ export class DocumentsRouter {
               fileType: true,
               s3Key: true,
               s3Bucket: true,
+              documentType: true,
               uploadedBy: {
                 select: {
                   name: true,
@@ -83,6 +84,7 @@ export class DocumentsRouter {
             storageBucket: z.string(),
             fileType: z.string().optional(),
             fileSize: z.number().optional(),
+            documentTypeId: z.string().optional(),
           }),
         )
         .output(z.any())
@@ -104,6 +106,7 @@ export class DocumentsRouter {
               organizationId: dbUser.organizationId!,
               fileType: input.fileType,
               fileSize: input.fileSize,
+              documentTypeId: input.documentTypeId,
             },
           });
         }),
@@ -226,6 +229,7 @@ export class DocumentsRouter {
               fileSize: true,
               uploadedById: true,
               organizationId: true,
+              documentType: true,
             },
             orderBy: {
               createdAt: 'desc',
@@ -522,6 +526,7 @@ export class DocumentsRouter {
                 fileSize: true,
                 uploadedById: true,
                 organizationId: true,
+                documentType: true,
               },
             });
           }

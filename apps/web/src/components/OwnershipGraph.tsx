@@ -15,6 +15,7 @@ type Node = d3.SimulationNodeDatum & {
   type: NodeType;
   organizationId?: string;
   email?: string;
+  color?: string;
 };
 
 type Link = d3.SimulationLinkDatum<Node> & { isDetached?: boolean };
@@ -150,6 +151,7 @@ export function OwnershipGraph() {
             id: doc.id,
             name: doc.title,
             type: "document",
+            color: doc.documentType?.color,
           }));
 
           const docLinks: Link[] = docNodes.map((docNode) => ({
@@ -191,6 +193,7 @@ export function OwnershipGraph() {
         id: doc.id,
         name: doc.title,
         type: "document",
+        color: doc.documentType?.color,
       }));
 
       const nodes = [...userNodes, ...docNodes];
@@ -482,7 +485,13 @@ export function OwnershipGraph() {
         if ((d as Node).type === "user") return 25;
         return 12;
       })
-      .attr("class", (d: any) => `node-circle ${(d as Node).type}`);
+      .attr("class", (d: any) => `node-circle ${(d as Node).type}`)
+      .style("fill", (d: any) => {
+        if ((d as Node).type === "document" && d.color) {
+          return `#${d.color}`;
+        }
+        return null;
+      });
 
     nodeEnter
       .append("text")

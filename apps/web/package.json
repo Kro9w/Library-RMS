@@ -47,6 +47,7 @@
   "devDependencies": {
     "@eslint/js": "^9.33.0",
     "@tailwindcss/postcss": "^4.1.16",
+    "@types/bootstrap": "^5.2.10",
     "@types/d3": "^7.4.3",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
