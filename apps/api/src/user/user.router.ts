@@ -11,10 +11,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { TRPCError } from '@trpc/server';
 import { Role } from '@prisma/client';
+import { UserService } from './user.service';
 
 @Injectable()
 export class UserRouter {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly userService: UserService,
+  ) {}
 
   createRouter() {
     return router({
@@ -259,10 +263,7 @@ export class UserRouter {
       deleteUser: protectedProcedure
         .input(z.object({ userId: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          const userRoles = await ctx.prisma.userRole.findMany({
-            where: { userId: ctx.dbUser.id },
-            include: { role: true },
-          });
+          const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
 
           const canManageUsers = userRoles.some(
             (userRole) => userRole.role.canManageUsers
@@ -325,10 +326,7 @@ export class UserRouter {
       removeUserFromOrg: protectedProcedure
         .input(z.object({ userId: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          const userRoles = await ctx.prisma.userRole.findMany({
-            where: { userId: ctx.dbUser.id },
-            include: { role: true },
-          });
+          const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
 
           const canManageUsers = userRoles.some(
             (userRole) => userRole.role.canManageUsers

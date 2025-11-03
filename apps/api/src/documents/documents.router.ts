@@ -6,12 +6,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { TRPCError } from '@trpc/server';
 import { SupabaseService } from '../supabase/supabase.service';
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class DocumentsRouter {
   constructor(
     private readonly prisma: PrismaService,
     private readonly supabase: SupabaseService,
+    private readonly userService: UserService,
   ) {}
 
   createRouter() {
@@ -97,10 +99,7 @@ export class DocumentsRouter {
             });
           }
 
-          const userRoles = await this.prisma.userRole.findMany({
-            where: { userId: user.id },
-            include: { role: true },
-          });
+          const userRoles = await this.userService.getUserRoles(user.id);
 
           const document = await this.prisma.document.create({
             data: {
@@ -311,10 +310,7 @@ export class DocumentsRouter {
             });
           }
 
-          const userRoles = await ctx.prisma.userRole.findMany({
-            where: { userId: ctx.dbUser.id },
-            include: { role: true },
-          });
+          const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
 
           const canManageDocuments = userRoles.some(
             (userRole) => userRole.role.canManageDocuments
@@ -352,7 +348,7 @@ export class DocumentsRouter {
           if (storageError) {
             console.error('Failed to delete file from storage:', storageError);
           }
-
+          
           await this.prisma.log.create({
             data: {
               action: `Deleted document: ${doc.title}`,
@@ -417,14 +413,11 @@ export class DocumentsRouter {
             },
           });
 
-          const userRoles = await this.prisma.userRole.findMany({
-            where: { userId: ctx.dbUser.id },
-            include: { role: true },
-          });
+          const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
 
           await this.prisma.log.create({
             data: {
-              action: `Transferred document: ${updatedDocument.title} to ${newOwner.email}`,
+              action: `Transferred document: ${updatedDocument.title} to ${newOwner.name}`,
               userId: ctx.dbUser.id,
               organizationId: ctx.dbUser.organizationId!,
               userRole: userRoles.map((userRole) => userRole.role.name).join(', '),

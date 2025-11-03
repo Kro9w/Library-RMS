@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { protectedProcedure, publicProcedure, router } from './trpc';
 import { DocumentsRouter } from '../documents/documents.router';
 import { UserRouter } from '../user/user.router';
-import { rolesRouter } from '../roles/roles.router';
+import { RolesRouter } from '../roles/roles.router';
 import type { inferRouterOutputs, inferRouterInputs } from '@trpc/server';
 
 import { DocumentTypesRouter } from '../document-types/document-types.router';
@@ -17,6 +17,7 @@ export class TrpcRouter {
     private readonly userRouter: UserRouter,
     private readonly documentTypesRouter: DocumentTypesRouter,
     private readonly logRouter: LogRouter,
+    private readonly rolesRouter: RolesRouter,
   ) {}
 
   get appRouter() {
@@ -125,7 +126,7 @@ export class TrpcRouter {
 
       documents: this.documentsRouter.createRouter(),
       user: this.userRouter.createRouter(),
-      roles: rolesRouter,
+      roles: this.rolesRouter.createRouter(),
       documentTypes: this.documentTypesRouter.createRouter(),
       logs: this.logRouter.createRouter(),
     });

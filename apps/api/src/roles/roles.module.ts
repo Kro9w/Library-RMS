@@ -1,11 +1,12 @@
-// apps/api/src/roles/roles.module.ts
 import { Module } from '@nestjs/common';
-import { PrismaModule } from '../prisma/prisma.module';
+import { RolesRouter } from './roles.router';
 import { RolesService } from './roles.service';
+import { UserModule } from '../user/user.module';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-  imports: [PrismaModule],
-  providers: [RolesService],
-  exports: [RolesService],
+  imports: [UserModule, PrismaModule],
+  providers: [RolesRouter, RolesService],
+  exports: [RolesRouter, RolesService],
 })
 export class RolesModule {}

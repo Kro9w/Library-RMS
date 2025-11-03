@@ -98,12 +98,6 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
               </a>
             </div>
 
-            {/* Search Bar */}
-            <div className="sidebar-search-bar">
-              <i className="bi bi-search"></i>
-              <input type="text" placeholder="Search..." />
-            </div>
-
             {/* Action Buttons */}
             <div className="sidebar-actions">
               <button
