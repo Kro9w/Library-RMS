@@ -1,0 +1,57 @@
+/* apps/web/src/components/Roles/RolePill.css */
+.role-pill {
+  display: inline-flex;
+  align-items: center;
+  background-color: #e9ecef;
+  border-radius: 16px;
+  padding: 4px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #495057;
+  cursor: default;
+  transition: background-color 0.2s;
+}
+
+.role-pill:hover {
+  background-color: #dee2e6;
+}
+
+.role-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 8px;
+  background-color: #6c757d; /* Default color */
+}
+
+/* Generates a pseudo-random, consistent color for a role dot based on the role name */
+.role-pill[data-role-name="Admin"] .role-dot {
+  background-color: #dc3545;
+}
+.role-pill[data-role-name="Member"] .role-dot {
+  background-color: #0d6efd;
+}
+.role-pill[data-role-name="Editor"] .role-dot {
+  background-color: #ffc107;
+}
+.role-pill[data-role-name="Viewer"] .role-dot {
+  background-color: #198754;
+}
+.role-pill[data-role-name="Contributor"] .role-dot {
+  background-color: #fd7e14;
+}
+
+.remove-role-btn {
+  margin-left: 8px;
+  background: none;
+  border: none;
+  color: #6c757d;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.remove-role-btn:hover {
+  color: #212529;
+}

@@ -1,6 +1,7 @@
 // apps/web/src/components/Roles/RolesModal.tsx
 import { useState } from "react";
 import { trpc } from "../../trpc";
+import RolePill from "./RolePill";
 import "./RolesModal.css";
 
 export function RolesModal() {
@@ -146,14 +147,7 @@ export function RolesModal() {
                     </div>
                   ) : (
                     <div className="d-flex justify-content-between align-items-center">
-                      <div
-                        key={role.id}
-                        className="role-pill"
-                        data-role-name={role.name}
-                      >
-                        <span className="role-dot"></span>
-                        {role.name}
-                      </div>
+                      <RolePill roleName={role.name} />
                       <div className="d-flex justify-content-between align-items-center">
                         <button
                           className="btn btn-icon"
@@ -199,22 +193,13 @@ export function RolesModal() {
                             (r) => r.id === userRole.roleId
                           );
                           return role ? (
-                            <div
+                            <RolePill
                               key={role.id}
-                              className="role-pill"
-                              data-role-name={role.name}
-                            >
-                              <span className="role-dot"></span>
-                              {role.name}
-                              <button
-                                className="remove-role-btn"
-                                onClick={() =>
-                                  handleUnassignRole(user.id, role.id)
-                                }
-                              >
-                                &times;
-                              </button>
-                            </div>
+                              roleName={role.name}
+                              onRemove={() =>
+                                handleUnassignRole(user.id, role.id)
+                              }
+                            />
                           ) : null;
                         })}
                         <div className="add-role-container">
