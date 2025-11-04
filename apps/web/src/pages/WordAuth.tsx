@@ -1,41 +1,105 @@
 // apps/web/src/pages/WordAuth.tsx
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { supabase } from "../supabase";
+import LoginPage from "./LoginPage";
+import AuthLayout from "../components/AuthLayout";
+import "./Auth.css";
+
+/* global Office */
 
 const WordAuth: React.FC = () => {
+  const [session, setSession] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const location = useLocation();
+
+  const queryParams = new URLSearchParams(location.search);
+  const [fileName, setFileName] = useState(queryParams.get("fileName") || "");
+  const [controlNumber, setControlNumber] = useState(
+    queryParams.get("controlNumber") || ""
+  );
+
   useEffect(() => {
-    const handleAuth = async () => {
-      // Check if there is an active session
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setIsLoading(false);
+    });
 
-      if (session) {
-        // If logged in, redirect to the callback with the token
-        window.location.assign(
-          `/word-auth-callback.html#access_token=${session.access_token}`
-        );
-      } else {
-        // If not logged in, redirect to the login page
-        window.location.assign("/login?for_word=true");
-      }
-    };
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setIsLoading(false);
+    });
 
-    handleAuth();
+    return () => subscription.unsubscribe();
   }, []);
 
+  const sendMessageToParent = (message: object) => {
+    Office.context.ui.messageParent(JSON.stringify(message), {
+      targetOrigin: "https://localhost:3000",
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (session) {
+      sendMessageToParent({
+        status: "success",
+        token: session.access_token,
+        data: { fileName, controlNumber },
+      });
+    } else {
+      sendMessageToParent({
+        status: "error",
+        error: "Not authenticated.",
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <AuthLayout title="Loading...">
+        <p>Please wait...</p>
+      </AuthLayout>
+    );
+  }
+
+  if (!session) {
+    return <LoginPage />;
+  }
+
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100vh",
-        fontFamily: "sans-serif",
-      }}
-    >
-      <p>Please wait, authenticating...</p>
-    </div>
+    <AuthLayout title="Send to Folio">
+      <div className="auth-container">
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="fileName">File Name</label>
+            <input
+              id="fileName"
+              type="text"
+              value={fileName}
+              onChange={(e) => setFileName(e.target.value)}
+              className="form-control"
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="controlNumber">Control Number</label>
+            <input
+              id="controlNumber"
+              type="text"
+              value={controlNumber}
+              onChange={(e) => setControlNumber(e.target.value)}
+              className="form-control"
+            />
+          </div>
+          <button type="submit" className="btn btn-primary">
+            Confirm and Send
+          </button>
+        </form>
+      </div>
+    </AuthLayout>
   );
 };
 

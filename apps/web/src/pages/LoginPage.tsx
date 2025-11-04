@@ -36,24 +36,8 @@ const LoginPage: React.FC = () => {
           name: data.user.user_metadata?.display_name,
         });
 
-        // Check if this login is for the Word add-in
-        const queryParams = new URLSearchParams(window.location.search);
-        if (queryParams.get("for_word") === "true") {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          if (session?.access_token) {
-            // Redirect the popup window to the callback page with the token in the hash
-            window.location.assign(
-              `/word-auth-callback.html#access_token=${session.access_token}`
-            );
-          } else {
-            throw new Error(
-              "Login successful but could not retrieve session for Word add-in."
-            );
-          }
-        }
-        // For a normal login, the existing auth state listener will handle the redirect automatically.
+        // After a successful login, the onAuthStateChange listener in WordAuth.tsx
+        // or the main App.tsx will handle the next steps.
       } else {
         throw new Error("Login successful but no user data received.");
       }

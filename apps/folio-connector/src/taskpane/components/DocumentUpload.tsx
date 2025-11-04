@@ -113,36 +113,46 @@ const DocumentUpload: React.FC = () => {
 
   const scanForControlNumber = async (): Promise<string> => {
     return Word.run(async (context) => {
-      const searchResults = context.document.body.search("CONTROL NO.", { matchCase: true });
-      searchResults.load("items");
+      // 1. Get the entire body text
+      const body = context.document.body;
+      body.load("text");
       await context.sync();
+      const bodyText = body.text;
 
-      let controlNumber = "";
-      if (searchResults.items.length > 0) {
-        const range = searchResults.items[0].getRange("End");
-        const endRange = range.search("-FL", { matchCase: true });
-        endRange.load("items");
-        await context.sync();
+      // 2. Use a flexible regex to find the control number
+      // - "CONTROL NO\."     : Matches the literal text "CONTROL NO."
+      // - [\s\S]*?           : Matches any character (including newlines) in a non-greedy way
+      // - ([a-zA-Z0-9-]+)    : Captures the control number (alphanumeric and hyphens)
+      // - \s*-FL             : Matches the terminator "-FL", preceded by optional whitespace
+      const regex = /CONTROL NO\.([\s\S]*?)([a-zA-Z0-9-]+)\s*-FL/;
+      const match = bodyText.match(regex);
 
-        if (endRange.items.length > 0) {
-          const controlNumberRange = range.expandTo(endRange.items[0]);
-          controlNumberRange.load("text");
-          await context.sync();
-          controlNumber = controlNumberRange.text.replace("-FL", "").trim();
-        }
+      // 3. Extract the control number if a match is found
+      if (match && match[2]) {
+        // The second captured group is our control number
+        return match[2].trim();
       }
-      return controlNumber;
+
+      return ""; // Return empty string if no match is found
     });
   };
 
   const handleSendToFolio = async () => {
-    setStatus("authenticating");
+    setStatus("scanning");
     setErrorMessage("");
 
-    Office.context.ui.displayDialogAsync(
-      "https://localhost:5173/word-auth",
-      { height: 60, width: 40 },
-      (result) => {
+    try {
+      // 1. Scan the document first
+      const fileName = await getFileName();
+      const controlNumber = await scanForControlNumber();
+
+      // 2. Open the dialog, passing the scanned data in the URL
+      const url = new URL("https://localhost:5173/word-auth");
+      url.searchParams.append("fileName", fileName);
+      url.searchParams.append("controlNumber", controlNumber);
+
+      setStatus("authenticating");
+      Office.context.ui.displayDialogAsync(url.toString(), { height: 60, width: 50 }, (result) => {
         if (result.status === Office.AsyncResultStatus.Failed) {
           setStatus("error");
           setErrorMessage(`Could not open auth window: ${result.error.message}`);
@@ -152,25 +162,27 @@ const DocumentUpload: React.FC = () => {
         dialog = result.value;
         dialog.addEventHandler(Office.EventType.DialogMessageReceived, async (arg: any) => {
           dialog.close();
-          if (arg.message.startsWith("error")) {
+
+          const message = JSON.parse(arg.message);
+
+          if (message.status === "error") {
             setStatus("error");
-            setErrorMessage(`Authentication failed: ${arg.message}`);
+            setErrorMessage(message.error);
             return;
           }
 
-          setAccessToken(arg.message);
+          // 3. Set the token received from the dialog
+          setAccessToken(message.token);
 
+          // 4. Get the document content and upload with the final data from the dialog
           try {
-            setStatus("scanning");
-            const fileName = await getFileName();
-            const controlNumber = await scanForControlNumber();
+            setStatus("uploading");
             const file = await getDocumentAsBase64();
 
-            setStatus("uploading");
             await trpc.wordDocument.upload.mutate({
               file,
-              fileName,
-              controlNumber,
+              fileName: message.data.fileName,
+              controlNumber: message.data.controlNumber,
             });
 
             setStatus("success");
@@ -180,8 +192,12 @@ const DocumentUpload: React.FC = () => {
             setErrorMessage(error.message || "An unknown error occurred.");
           }
         });
-      }
-    );
+      });
+    } catch (error: any) {
+      console.error("Error scanning document:", error);
+      setStatus("error");
+      setErrorMessage(error.message || "Failed to scan document.");
+    }
   };
 
   const renderStatus = () => {

@@ -405,6 +405,9 @@ importers:
       '@types/d3':
         specifier: ^7.4.3
         version: 7.4.3
+      '@types/office-js':
+        specifier: ^1.0.555
+        version: 1.0.555
       '@types/react':
         specifier: ^19.1.10
         version: 19.2.2
