@@ -3,9 +3,9 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../supabase";
 import { trpc } from "../trpc";
-import AuthLayout from '../components/AuthLayout';
+import AuthLayout from "../components/AuthLayout";
 // --- 1. THIS IS THE FIX ---
-import './Auth.css'; // Import the new unified CSS file
+import "./Auth.css"; // Import the new unified CSS file
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -27,15 +27,33 @@ const LoginPage: React.FC = () => {
         }
       );
 
-      if (authError) {
-        throw authError;
-      }
+      if (authError) throw authError;
 
       if (data.user) {
-        await syncUser.mutateAsync({
+        // Sync the user in our DB
+        syncUser.mutate({
           email: data.user.email!,
           name: data.user.user_metadata?.display_name,
         });
+
+        // Check if this login is for the Word add-in
+        const queryParams = new URLSearchParams(window.location.search);
+        if (queryParams.get("for_word") === "true") {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            // Redirect the popup window to the callback page with the token in the hash
+            window.location.assign(
+              `/word-auth-callback.html#access_token=${session.access_token}`
+            );
+          } else {
+            throw new Error(
+              "Login successful but could not retrieve session for Word add-in."
+            );
+          }
+        }
+        // For a normal login, the existing auth state listener will handle the redirect automatically.
       } else {
         throw new Error("Login successful but no user data received.");
       }
@@ -58,7 +76,7 @@ const LoginPage: React.FC = () => {
             onChange={(e) => setEmail(e.target.value)}
             required
             disabled={loading}
-            className="form-control" 
+            className="form-control"
           />
           <input
             type="password"

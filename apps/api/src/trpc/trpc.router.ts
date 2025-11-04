@@ -9,6 +9,7 @@ import type { inferRouterOutputs, inferRouterInputs } from '@trpc/server';
 
 import { DocumentTypesRouter } from '../document-types/document-types.router';
 import { LogRouter } from '../log/log.router';
+import { WordDocumentRouter } from '../word-document/word-document.router';
 
 @Injectable()
 export class TrpcRouter {
@@ -18,6 +19,7 @@ export class TrpcRouter {
     private readonly documentTypesRouter: DocumentTypesRouter,
     private readonly logRouter: LogRouter,
     private readonly rolesRouter: RolesRouter,
+    private readonly wordDocumentRouter: WordDocumentRouter,
   ) {}
 
   get appRouter() {
@@ -129,6 +131,7 @@ export class TrpcRouter {
       roles: this.rolesRouter.createRouter(),
       documentTypes: this.documentTypesRouter.createRouter(),
       logs: this.logRouter.createRouter(),
+      wordDocument: this.wordDocumentRouter.wordDocumentRouter,
     });
   }
 }

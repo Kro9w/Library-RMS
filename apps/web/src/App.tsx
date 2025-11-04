@@ -30,6 +30,7 @@ import { Users } from "./pages/Users";
 import LogsPage from "./pages/LogsPage";
 import { trpc } from "./trpc";
 import { TRPCClientError } from "@trpc/client"; // Import TRPCClientError
+import WordAuth from "./pages/WordAuth";
 
 // 1. REMOVED: TopNavbar import is gone
 
@@ -114,6 +115,7 @@ const AppContent: React.FC = () => {
       <div className={mainContentClass}>
         <Routes>
           {/* ... (All your Routes are correct and unchanged) ... */}
+          <Route path="/word-auth" element={<WordAuth />} />
           <Route
             path="/login"
             element={!session ? <LoginPage /> : <Navigate to="/" replace />}

@@ -15,7 +15,10 @@ async function bootstrap() {
   const app: INestApplication = await NestFactory.create(AppModule, {
     bodyParser: true,
   });
-  app.enableCors({ origin: ['http://localhost:5173'], credentials: true });
+  app.enableCors({
+    origin: ['http://localhost:5173', 'https://localhost:5173', 'https://localhost:3000'],
+    credentials: true,
+  });
 
   // Mount tRPC by getting the router and context from the Nest app
   const trpcRouter = app.get(TrpcRouter);

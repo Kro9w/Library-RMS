@@ -1,20 +1,21 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 import path from 'path';
-import tailwindcss from '@tailwindcss/vite'
+import tailwindcss from '@tailwindcss/vite';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [
-    tailwindcss(),
-    react()
-  ],
+  plugins: [tailwindcss(), react(), basicSsl()],
   optimizeDeps: {
     exclude: ['pdfjs-dist'], // 👈 Add this exclude option
   },
-    resolve: {
+  resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
-})
+  server: {
+    https: {},
+  },
+});

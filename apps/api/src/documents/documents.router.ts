@@ -104,6 +104,7 @@ export class DocumentsRouter {
           const document = await this.prisma.document.create({
             data: {
               title: input.title,
+              fileName: input.title,
               s3Key: input.storageKey,
               s3Bucket: input.storageBucket,
               content: '',
