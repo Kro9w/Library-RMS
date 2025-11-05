@@ -19,7 +19,7 @@ export function Users() {
   const { data: currentUser } = trpc.user.getMe.useQuery();
   const { data: myDocuments } = trpc.documents.getMyDocuments.useQuery();
   const removeUserFromOrg = trpc.user.removeUserFromOrg.useMutation();
-  const transferDocument = trpc.documents.transferDocument.useMutation();
+  const transferDocument = trpc.documents.sendDocument.useMutation();
   const utils = trpc.useUtils();
 
   const [userToRemove, setUserToRemove] = useState<User | null>(null);
@@ -49,7 +49,11 @@ export function Users() {
   const handleSendDocument = () => {
     if (userToSendTo && documentToSend) {
       transferDocument.mutate(
-        { docId: documentToSend, newOwnerEmail: userToSendTo.email },
+        {
+          documentId: documentToSend,
+          recipientId: userToSendTo.id,
+          tagIds: [],
+        },
         {
           onSuccess: () => {
             setUserToSendTo(null);
@@ -71,7 +75,7 @@ export function Users() {
   return (
     <>
       <div className="container mt-4">
-        <h1 className="mb-4">
+        <h2 className="mb-4">
           Users
           {currentUser?.organization && (
             <small className="text-muted">
@@ -80,7 +84,7 @@ export function Users() {
               {currentUser.organization.acronym})
             </small>
           )}
-        </h1>
+        </h2>
         <div className="card">
           <div className="card-body">
             <table className="table">

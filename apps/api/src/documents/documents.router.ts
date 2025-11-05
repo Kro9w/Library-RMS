@@ -231,19 +231,26 @@ export class DocumentsRouter {
             summary: 'Get all documents in the organization',
           },
         })
-        .input(z.void())
+        .input(z.object({ filter: z.string() }))
         .output(z.any())
-        .query(async ({ ctx }) => {
+        .query(async ({ ctx, input }) => {
           if (!ctx.dbUser.organizationId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'User does not belong to an organization.',
             });
           }
+
+          const whereClause: any = {
+            organizationId: ctx.dbUser.organizationId,
+          };
+
+          if (input.filter === 'mine') {
+            whereClause.uploadedById = ctx.user.id;
+          }
+
           return this.prisma.document.findMany({
-            where: {
-              organizationId: ctx.dbUser.organizationId,
-            },
+            where: whereClause,
             select: {
               id: true,
               title: true,

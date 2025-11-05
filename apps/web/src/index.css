@@ -12,13 +12,13 @@
   --text: #4a1e22;
   --text-muted: #6c757d;
   --link-color: var(--primary);
-  
+
   /* Card & Modal Palette */
   --card-background: #ffffff;
   --card-border: #e9ecef;
   --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   --card-stripe-bg: #fcfcfc; /* For zebra striping */
-  
+
   /* Form & Button Palette */
   --hover-bg: #f9f9f9;
   --input-bg: #f0f2f5;
@@ -26,7 +26,7 @@
   --badge-bg: #e9ecef;
   --badge-text: #495057;
   --shadow-primary-focus: 0 0 0 3px rgba(186, 59, 70, 0.2);
-  
+
   /* Specific Icon Button Hovers */
   --btn-icon-hover-blue-bg: #e6f0ff;
   --btn-icon-hover-blue-text: #0056b3;
@@ -41,13 +41,13 @@ body[data-bs-theme="dark"] {
   --text: #f1f1f1;
   --text-muted: #9a9a9a;
   --link-color: #aad8ff;
-  
+
   /* Card & Modal Palette */
   --card-background: #23272b;
   --card-border: #343a40;
   --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   --card-stripe-bg: #282c30;
-  
+
   /* Form & Button Palette */
   --hover-bg: #343a40;
   --input-bg: #2c3034;
@@ -55,7 +55,7 @@ body[data-bs-theme="dark"] {
   --badge-bg: #343a40;
   --badge-text: #aad8ff;
   --shadow-primary-focus: 0 0 0 3px rgba(186, 59, 70, 0.3);
-  
+
   /* Specific Icon Button Hovers */
   --btn-icon-hover-blue-bg: #343a40;
   --btn-icon-hover-blue-text: #aad8ff;
@@ -127,14 +127,13 @@ button,
 }
 /* -------------------------------------- */
 
-
 /* Brand buttons (Unchanged) */
 .btn-primary {
   background-color: var(--primary);
   color: var(--light-text);
 }
 .btn-primary:hover {
-  background-color: #a5343d; 
+  background-color: #a5343d;
 }
 
 .btn-secondary {
@@ -143,4 +142,11 @@ button,
 }
 .btn-secondary:hover {
   background-color: #d88c3a;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  background-color: var(--badge-bg);
+  color: var(--text-muted);
+  border-color: transparent;
 }

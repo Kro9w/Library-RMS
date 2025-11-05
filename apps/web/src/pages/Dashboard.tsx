@@ -7,11 +7,9 @@ import { trpc } from "../trpc";
 import "./Documents.css";
 import "./Dashboard.css";
 
-import { PieChart, Pie, Cell, Legend } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useForm } from "react-hook-form";
-import { useUser } from "@supabase/auth-helpers-react";
 
-import { ConfirmModal } from "../components/ConfirmModal";
 import { UploadModal } from "../components/UploadModal";
 import { SendDocumentModal } from "../components/SendDocumentModal";
 import { SelectDocumentModal } from "../components/SelectDocumentModal";
@@ -27,8 +25,6 @@ type DocTypeStat = AppRouterOutputs["getDashboardStats"]["docsByType"][0];
 type TopTagStat = AppRouterOutputs["getDashboardStats"]["topTags"][0];
 
 export function Dashboard() {
-  const user = useUser();
-  // --- 3. STRAY UNDERSCORE REMOVED ---
   const { data, isLoading, isError, error } = trpc.getDashboardStats.useQuery();
   useForm<{
     controlNumber: string;
@@ -76,13 +72,13 @@ export function Dashboard() {
         <div className="d-flex gap-2 align-items-center">
           <button
             onClick={() => setShowSelectDocumentModal(true)}
-            className="btn btn-outline-primary"
+            className="btn btn-secondary"
           >
             <i className="bi bi-send"></i> Send
           </button>
           <button
             onClick={() => setShowUploadModal(true)}
-            className="btn btn-brand-primary"
+            className="btn btn-primary"
           >
             <i className="bi bi-upload me-2"></i>Upload Document
           </button>
@@ -171,35 +167,59 @@ export function Dashboard() {
                 <div className="card-body d-flex flex-column align-items-center">
                   <h5 className="card-title">Documents by Type</h5>
                   {stats.docsByType.length > 0 ? (
-                    <PieChart width={300} height={200}>
-                      <Pie
-                        data={stats.docsByType}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                        nameKey="name"
-                      >
-                        {/* --- 6. EXPLICIT TYPES ADDED --- */}
-                        {stats.docsByType.map(
-                          (_entry: DocTypeStat, index: number) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={
-                                PIE_CHART_COLORS[
-                                  index % PIE_CHART_COLORS.length
-                                ]
-                              }
-                            />
-                          )
-                        )}
-                      </Pie>
-                      <Legend
-                        formatter={(_value, entry: any) => entry.payload.name}
-                      />
-                    </PieChart>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie
+                          data={stats.docsByType}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          nameKey="name"
+                        >
+                          {/* --- 6. EXPLICIT TYPES ADDED --- */}
+                          {stats.docsByType.map(
+                            // --- 6. EXPLICIT TYPES ADDED ---
+                            (_entry: DocTypeStat, index: number) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={
+                                  PIE_CHART_COLORS[
+                                    index % PIE_CHART_COLORS.length
+                                  ]
+                                }
+                              />
+                            )
+                          )}
+                        </Pie>
+                        <Tooltip
+                          cursor={{ fill: "transparent" }}
+                          content={({ payload }) => {
+                            if (!payload || payload.length === 0) return null;
+                            const { name, value } = payload[0].payload;
+                            const percentage = (
+                              (value / stats.totalDocuments) *
+                              100
+                            ).toFixed(2);
+                            return (
+                              <div
+                                style={{
+                                  backgroundColor: "rgba(0, 0, 0, 0.8)",
+                                  color: "#fff", // ✅ Works reliably
+                                  borderRadius: "5px",
+                                  padding: "6px 10px",
+                                  fontSize: "0.85rem",
+                                }}
+                              >
+                                <strong>{name}</strong>: {percentage}%
+                              </div>
+                            );
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
                   ) : (
                     <p className="card-text text-muted">
                       No documents found to generate stats.

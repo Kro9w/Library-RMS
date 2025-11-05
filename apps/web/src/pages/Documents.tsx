@@ -30,6 +30,7 @@ const formatFileType = (fileType: string | null | undefined): string => {
 
 const Documents: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [filter, setFilter] = useState("all");
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -39,7 +40,9 @@ const Documents: React.FC = () => {
 
   const utils = trpc.useUtils();
 
-  const { data: documents, isLoading } = trpc.documents.getAll.useQuery();
+  const { data: documents, isLoading } = trpc.documents.getAll.useQuery({
+    filter,
+  });
   const { data: currentUser } = trpc.user.getMe.useQuery();
 
   const deleteMutation = trpc.documents.deleteDocument.useMutation({
@@ -86,6 +89,14 @@ const Documents: React.FC = () => {
       <div className="page-header">
         <h2>Documents</h2>
         <div className="header-actions">
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="filter-dropdown"
+          >
+            <option value="all">All Organization Documents</option>
+            <option value="mine">My Documents</option>
+          </select>
           <input
             type="text"
             placeholder="Search documents..."
@@ -157,36 +168,50 @@ const Documents: React.FC = () => {
               </span>
 
               <div className="document-actions">
-                <button
-                  onClick={() => handleSendClick(doc)}
-                  className="btn-icon btn-send"
-                  title="Send Document"
-                >
-                  <i className="bi bi-send"></i>
-                </button>
-                {currentUser?.roles.some(
-                  (role: { role: { canManageDocuments: any } }) =>
-                    role.role.canManageDocuments
-                ) &&
-                  doc.tags.some(
-                    (tag: { tag: { name: string } }) =>
-                      tag.tag.name === "for review"
-                  ) && (
+                {currentUser && currentUser.id === doc.uploadedById ? (
+                  <>
                     <button
-                      onClick={() => handleReviewClick(doc)}
-                      className="btn-icon btn-review"
-                      title="Review Document"
+                      onClick={() => handleSendClick(doc)}
+                      className="btn-icon btn-send"
+                      title="Send Document"
                     >
-                      <i className="bi bi-eye"></i>
+                      <i className="bi bi-send"></i>
                     </button>
-                  )}
-                <button
-                  onClick={() => handleDeleteClick(doc)}
-                  className="btn-icon btn-delete"
-                  title="Delete Document"
-                >
-                  <i className="bi bi-trash"></i>
-                </button>
+                    {currentUser?.roles.some(
+                      (role: { role: { canManageDocuments: any } }) =>
+                        role.role.canManageDocuments
+                    ) &&
+                      doc.tags.some(
+                        (tag: { tag: { name: string } }) =>
+                          tag.tag.name === "for review"
+                      ) && (
+                        <button
+                          onClick={() => handleReviewClick(doc)}
+                          className="btn-icon btn-review"
+                          title="Review Document"
+                        >
+                          <i className="bi bi-eye"></i>
+                        </button>
+                      )}
+                    <button
+                      onClick={() => handleDeleteClick(doc)}
+                      className="btn-icon btn-delete"
+                      title="Delete Document"
+                    >
+                      <i className="bi bi-trash"></i>
+                    </button>
+                  </>
+                ) : (
+                  <span title="No access" className="no-access-icon">
+                    <i
+                      className="bi bi-lock-fill"
+                      style={{
+                        fontSize: "1.1rem",
+                        color: "var(--text-muted)",
+                      }}
+                    ></i>
+                  </span>
+                )}
               </div>
             </li>
           ))}

@@ -9,9 +9,14 @@
 
 .card.stat-card-primary {
   background-color: var(--card-background); /* USE VAR */
-  box-shadow: var(--card-shadow);      /* USE VAR */
+  box-shadow: var(--card-shadow); /* USE VAR */
   border-radius: 1rem;
   border: none;
+}
+
+/* --- NEW: Center the chart and prevent overflow --- */
+.card.mini-stat-card .recharts-wrapper {
+  margin: 0 auto;
 }
 
 .card.stat-card.card-title {
@@ -28,14 +33,14 @@
 /* This is for the "Most Used Tags" list */
 .list-group-item {
   background-color: var(--card-background); /* USE VAR */
-  border-color: var(--card-border);     /* USE VAR */
-  color: var(--text);                /* USE VAR */
+  border-color: var(--card-border); /* USE VAR */
+  color: var(--text); /* USE VAR */
 }
 
 /* This is for the "Analytics" cards */
 .card.mini-stat-card {
   background-color: var(--card-background); /* USE VAR */
-  box-shadow: var(--card-shadow);      /* USE VAR */
+  box-shadow: var(--card-shadow); /* USE VAR */
   overflow: hidden;
   border-radius: 1rem;
   border: none;
@@ -66,3 +71,15 @@
  * They are no longer needed because 'index.css'
  * handles the theme change globally.
 */
+
+.custom-tooltip {
+  position: fixed;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px;
+  border-radius: 5px;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  transition: opacity 0.2s;
+  z-index: 1000;
+}

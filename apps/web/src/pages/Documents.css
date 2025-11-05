@@ -18,7 +18,7 @@
 
 .document-list-header {
   display: grid;
-  grid-template-columns: 1.5fr 2.5fr 1fr 1fr 1fr 1fr;
+  grid-template-columns: 1fr 2.5fr 1fr 1fr 1fr 0.5fr;
   align-items: center;
   padding: 1rem 1.5rem;
   font-weight: 600;
@@ -30,7 +30,7 @@
 
 .document-item {
   display: grid;
-  grid-template-columns: 1.5fr 2.5fr 1fr 1fr 1fr 1fr;
+  grid-template-columns: 1fr 2.5fr 1fr 1fr 1fr 0.5fr;
   align-items: center;
   padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--card-border);
@@ -114,7 +114,13 @@
   margin: 0;
 }
 
-/* --- Search Bar Styles (Now Themed) --- */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.filter-dropdown,
 .search-bar {
   border-radius: 50px;
   border: 1px solid var(--card-border);
@@ -124,6 +130,7 @@
   font-size: 0.9rem;
   width: 300px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  margin-right: 0.5rem;
 }
 
 .search-bar:focus,

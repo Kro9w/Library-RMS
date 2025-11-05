@@ -12,7 +12,7 @@ const LogsPage: React.FC = () => {
 
   return (
     <div className="container mt-4">
-      <h1 className="mb-4">Audit Logs</h1>
+      <h2 className="mb-4">Audit Logs</h2>
       {isLoading && <LoadingAnimation />}
       {isError && <p>Error loading logs.</p>}
       {data && <Timeline logs={data.logs} />}

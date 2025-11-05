@@ -31,8 +31,25 @@ import LogsPage from "./pages/LogsPage";
 import { trpc } from "./trpc";
 import { TRPCClientError } from "@trpc/client"; // Import TRPCClientError
 import WordAuth from "./pages/WordAuth";
+import { useIsAdmin } from "./hooks/usIsAdmin";
 
 // 1. REMOVED: TopNavbar import is gone
+
+const AdminRoute: React.FC<{ children: React.ReactElement }> = ({
+  children,
+}) => {
+  const { isAdmin, isLoading } = useIsAdmin();
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
 
 const AuthRedirectHandler: React.FC = () => {
   const session = useSession();
@@ -148,7 +165,15 @@ const AppContent: React.FC = () => {
           />
           <Route
             path="/users"
-            element={session ? <Users /> : <Navigate to="/login" replace />}
+            element={
+              session ? (
+                <AdminRoute>
+                  <Users />
+                </AdminRoute>
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
           />
           <Route
             path="/account"
@@ -160,7 +185,15 @@ const AppContent: React.FC = () => {
           />
           <Route
             path="/logs"
-            element={session ? <LogsPage /> : <Navigate to="/login" replace />}
+            element={
+              session ? (
+                <AdminRoute>
+                  <LogsPage />
+                </AdminRoute>
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
           />
           <Route
             path="/join"
