@@ -13,6 +13,8 @@ import { useUser } from "@supabase/auth-helpers-react";
 
 import { ConfirmModal } from "../components/ConfirmModal";
 import { UploadModal } from "../components/UploadModal";
+import { SendDocumentModal } from "../components/SendDocumentModal";
+import { SelectDocumentModal } from "../components/SelectDocumentModal";
 
 // --- 1. IMPORT TRPC OUTPUT TYPE (Fixes 'any' errors) ---
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
@@ -28,45 +30,15 @@ export function Dashboard() {
   const user = useUser();
   // --- 3. STRAY UNDERSCORE REMOVED ---
   const { data, isLoading, isError, error } = trpc.getDashboardStats.useQuery();
-  const { register, handleSubmit, reset } = useForm<{
+  useForm<{
     controlNumber: string;
     email: string;
   }>();
 
-  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-
-  // --- 4. STRAY UNDERSCORE REMOVED ---
-  const { mutate: transferMutation, isPending: isTransferring } =
-    trpc.documents.transferDocument.useMutation({
-      onSuccess: () => {
-        alert("Document transferred successfully!");
-        setShowTransferModal(false);
-        reset();
-      },
-      onError: (error) => {
-        alert(`Error transferring document: ${error.message}`);
-      },
-    });
-
-  const handleOpenTransferModal = () => setShowTransferModal(true);
-  const handleCloseTransferModal = () => {
-    setShowTransferModal(false);
-    reset();
-  };
-  const onConfirmTransfer = (formData: {
-    controlNumber: string;
-    email: string;
-  }) => {
-    if (!user) {
-      alert("You must be logged in to transfer documents.");
-      return;
-    }
-    transferMutation({
-      docId: formData.controlNumber,
-      newOwnerEmail: formData.email,
-    });
-  };
+  const [showSelectDocumentModal, setShowSelectDocumentModal] = useState(false);
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -103,10 +75,10 @@ export function Dashboard() {
         <h1>Dashboard</h1>
         <div className="d-flex gap-2 align-items-center">
           <button
-            onClick={handleOpenTransferModal}
+            onClick={() => setShowSelectDocumentModal(true)}
             className="btn btn-outline-primary"
           >
-            <i className="bi bi-arrow-right-circle"></i> Transfer
+            <i className="bi bi-send"></i> Send
           </button>
           <button
             onClick={() => setShowUploadModal(true)}
@@ -265,48 +237,23 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* --- Modals (Unchanged) --- */}
-      <ConfirmModal
-        show={showTransferModal}
-        onClose={handleCloseTransferModal}
-        onConfirm={handleSubmit(onConfirmTransfer)}
-        title="Transfer Document"
-        isConfirming={isTransferring}
-      >
-        <fieldset disabled={isTransferring}>
-          <label
-            htmlFor="controlNumber"
-            className="form-label"
-            style={{ display: "block", marginBottom: "0.5rem" }}
-          >
-            Document Control Number:
-          </label>
-          <input
-            {...register("controlNumber", { required: true })}
-            type="text"
-            id="controlNumber"
-            className="form-control"
-            placeholder="Scan or Enter Control Number"
-            style={{ width: "100%", marginBottom: "1rem" }}
-          />
+      {selectedDocId && (
+        <SendDocumentModal
+          show={showSendModal}
+          onClose={() => setShowSendModal(false)}
+          documentId={selectedDocId}
+        />
+      )}
 
-          <label
-            htmlFor="email"
-            className="form-label"
-            style={{ display: "block", marginBottom: "0.5rem" }}
-          >
-            New Owner's Email:
-          </label>
-          <input
-            {...register("email", { required: true })}
-            type="email"
-            id="email"
-            className="form-control"
-            placeholder="user@example.com"
-            style={{ width: "100%" }}
-          />
-        </fieldset>
-      </ConfirmModal>
+      <SelectDocumentModal
+        show={showSelectDocumentModal}
+        onClose={() => setShowSelectDocumentModal(false)}
+        onSelect={(docId) => {
+          setSelectedDocId(docId);
+          setShowSelectDocumentModal(false);
+          setShowSendModal(true);
+        }}
+      />
 
       <UploadModal
         show={showUploadModal}

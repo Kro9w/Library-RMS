@@ -16,48 +16,50 @@ model User {
   id    String  @id // Supabase Auth User ID
   email String  @unique
   name  String?
-  
+
   // --- 1. ADD THIS LINE ---
   imageUrl String? // URL for the user's profile picture
   // ----------------------
 
-  organization     Organization?    @relation(fields: [organizationId], references: [id])
-  organizationId   String?
-  documents        Document[]       @relation("uploadedBy")
-  DocumentAccess   DocumentAccess[]
-  roles UserRole[]
-  logs  Log[]
+  organization    Organization?    @relation(fields: [organizationId], references: [id])
+  organizationId  String?
+  documents       Document[]       @relation("uploadedBy")
+  DocumentAccess  DocumentAccess[]
+  roles           UserRole[]
+  logs            Log[]
+  Remark          Remark[]
+  reviewRequested Document[]       @relation("DocumentReviewRequester")
 }
 
 model Role {
-  id          String   @id @default(cuid())
-  name        String
-  canManageUsers Boolean @default(false)
-  canManageRoles Boolean @default(false)
-  canManageDocuments Boolean @default(false)
-  users UserRole[]
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  organizationId String
+  id                 String       @id @default(cuid())
+  name               String
+  canManageUsers     Boolean      @default(false)
+  canManageRoles     Boolean      @default(false)
+  canManageDocuments Boolean      @default(false)
+  users              UserRole[]
+  organization       Organization @relation(fields: [organizationId], references: [id])
+  organizationId     String
 }
 
 model UserRole {
-  user User @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
   userId String
-  role Role @relation(fields: [roleId], references: [id])
+  role   Role   @relation(fields: [roleId], references: [id])
   roleId String
 
   @@id([userId, roleId])
 }
 
 model Organization {
-  id        String     @id @default(cuid())
-  name      String
-  acronym   String
-  users     User[]
-  documents Document[] // Add this relation
-  roles     Role[]
+  id            String         @id @default(cuid())
+  name          String
+  acronym       String
+  users         User[]
+  documents     Document[] // Add this relation
+  roles         Role[]
   documentTypes DocumentType[]
-  logs      Log[]
+  logs          Log[]
 }
 
 model Log {
@@ -72,45 +74,51 @@ model Log {
 }
 
 model DocumentType {
-  id        String   @id @default(cuid())
-  name      String
-  color     String
+  id             String       @id @default(cuid())
+  name           String
+  color          String
   organization   Organization @relation(fields: [organizationId], references: [id])
   organizationId String
-  documents Document[]
+  documents      Document[]
 }
 
 model Document {
-  id             String   @id @default(cuid())
-  fileName       String
-  controlNumber  String?
-  title          String
-  content        String
-  s3Key          String   @unique
-  s3Bucket       String
-  
+  id            String  @id @default(cuid())
+  fileName      String
+  controlNumber String?
+  title         String
+  content       String
+  s3Key         String  @unique
+  s3Bucket      String
+
   documentType   DocumentType? @relation(fields: [documentTypeId], references: [id])
   documentTypeId String?
 
   // Your router queries 'uploadedBy', so we use that relation name
-  uploadedBy     User     @relation("uploadedBy", fields: [uploadedById], references: [id])
-  uploadedById   String
+  uploadedBy   User   @relation("uploadedBy", fields: [uploadedById], references: [id])
+  uploadedById String
 
   // Your router queries 'organizationId', so we add this relation
   organization   Organization @relation(fields: [organizationId], references: [id])
   organizationId String
 
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  
-  fileType         String?
-  fileSize         Int?
-  
-  access         DocumentAccess[]
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fileType String?
+  fileSize Int?
+
+  access DocumentAccess[]
+
   // Your router queries 'tags: { include: { tag: true } }'
   // This requires an explicit join table model
-  tags           DocumentTag[]
+  tags DocumentTag[]
+
+  reviewRequester   User?   @relation("DocumentReviewRequester", fields: [reviewRequesterId], references: [id])
+  reviewRequesterId String?
+
+  status  String? // eg. approved, returned, disapproved
+  remarks Remark[]
 }
 
 model DocumentAccess {
@@ -128,6 +136,8 @@ model Tag {
   id        String        @id @default(cuid())
   name      String        @unique
   documents DocumentTag[] // Relation to the join table
+  isGlobal  Boolean       @default(false)
+  isLocked  Boolean       @default(false)
 }
 
 // Explicit join table for Document <-> Tag
@@ -140,4 +150,14 @@ model DocumentTag {
   tagId      String
 
   @@unique([documentId, tagId])
+}
+
+model Remark {
+  id         String   @id @default(cuid())
+  message    String
+  document   Document @relation(fields: [documentId], references: [id])
+  documentId String
+  author     User     @relation(fields: [authorId], references: [id])
+  authorId   String
+  createdAt  DateTime @default(now())
 }

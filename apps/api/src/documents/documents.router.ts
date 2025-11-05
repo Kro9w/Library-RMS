@@ -58,6 +58,11 @@ export class DocumentsRouter {
                   name: true,
                 },
               },
+              reviewRequester: {
+                select: {
+                  name: true,
+                },
+              },
             },
           });
 
@@ -250,6 +255,16 @@ export class DocumentsRouter {
               organizationId: true,
               documentType: true,
               controlNumber: true,
+              tags: {
+                select: {
+                  tag: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
             },
             orderBy: {
               createdAt: 'desc',
@@ -367,63 +382,155 @@ export class DocumentsRouter {
           });
         }),
 
-      transferDocument: protectedProcedure
-        .meta({
-          openapi: {
-            method: 'POST',
-            path: '/documents.transfer',
-            tags: ['documents'],
-            summary: 'Transfer a document to another user',
-          },
-        })
-        .input(z.object({ docId: z.string(), newOwnerEmail: z.string() }))
-        .output(z.any())
+      sendDocument: protectedProcedure
+        .input(
+          z.object({
+            documentId: z.string(),
+            recipientId: z.string(),
+            tagIds: z.array(z.string()),
+            tagsToKeep: z.array(z.string()).optional(),
+          }),
+        )
         .mutation(async ({ ctx, input }) => {
-          if (!ctx.dbUser.organizationId) {
+          const { user, dbUser } = ctx;
+
+          if (!dbUser.organizationId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'User does not belong to an organization.',
             });
           }
-          const newOwner = await this.prisma.user.findFirst({
-            where: {
-              email: input.newOwnerEmail,
-            },
+
+          const recipient = await this.prisma.user.findUnique({
+            where: { id: input.recipientId },
           });
-          if (!newOwner || !newOwner.organizationId) {
+
+          if (!recipient) {
             throw new TRPCError({
               code: 'NOT_FOUND',
-              message: 'New owner not found or does not belong to an organization.',
+              message: 'Recipient not found.',
             });
           }
-          const doc = await this.prisma.document.findFirst({
+
+          const tags = await this.prisma.tag.findMany({
             where: {
-              id: input.docId,
-              organizationId: ctx.dbUser.organizationId,
+              id: {
+                in: input.tagIds,
+              },
             },
           });
-          if (!doc) {
-            throw new TRPCError({ code: 'NOT_FOUND' });
-          }
 
-          const isNewOrg = newOwner.organizationId !== doc.organizationId;
+          const isReview = tags.some((tag) => tag.name === 'for review');
 
           const updatedDocument = await this.prisma.document.update({
-            where: { id: doc.id },
+            where: { id: input.documentId },
             data: {
-              uploadedById: newOwner.id,
-              organizationId: newOwner.organizationId,
-              documentTypeId: isNewOrg ? null : doc.documentTypeId,
+              uploadedById: recipient.id,
+              reviewRequesterId: isReview ? user.id : null,
+              tags: {
+                deleteMany: {
+                  NOT: {
+                    tagId: {
+                      in: input.tagsToKeep || [],
+                    },
+                  },
+                },
+                create: input.tagIds.map((tagId) => ({
+                  tagId,
+                })),
+              },
             },
           });
 
-          const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
+          const userRoles = await this.userService.getUserRoles(user.id);
 
           await this.prisma.log.create({
             data: {
-              action: `Transferred document: ${updatedDocument.title} to ${newOwner.name}`,
-              userId: ctx.dbUser.id,
-              organizationId: ctx.dbUser.organizationId!,
+              action: `Sent document: ${updatedDocument.title} to ${recipient.name}`,
+              userId: user.id,
+              organizationId: dbUser.organizationId,
+              userRole: userRoles.map((userRole) => userRole.role.name).join(', '),
+            },
+          });
+
+          return updatedDocument;
+        }),
+
+      reviewDocument: protectedProcedure
+        .input(
+          z.object({
+            documentId: z.string(),
+            status: z.enum(['approved', 'returned', 'disapproved']),
+            remarks: z.string().optional(),
+          }),
+        )
+        .mutation(async ({ ctx, input }) => {
+          const { user, dbUser } = ctx;
+
+          if (!dbUser.organizationId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to an organization.',
+            });
+          }
+
+          const userRoles = await this.userService.getUserRoles(user.id);
+          const canManageDocuments = userRoles.some(
+            (userRole) => userRole.role.canManageDocuments,
+          );
+
+          if (!canManageDocuments) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'You do not have permission to review documents.',
+            });
+          }
+
+          const document = await this.prisma.document.findUnique({
+            where: { id: input.documentId },
+          });
+
+          if (!document) {
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Document not found.',
+            });
+          }
+
+          if (input.remarks) {
+            await this.prisma.remark.create({
+              data: {
+                message: input.remarks,
+                documentId: input.documentId,
+                authorId: user.id,
+              },
+            });
+          }
+
+          const forReviewTag = await this.prisma.tag.findUnique({
+            where: { name: 'for review' },
+          });
+
+          const updatedDocument = await this.prisma.document.update({
+            where: { id: input.documentId },
+            data: {
+              status: input.status,
+              tags: {
+                deleteMany: forReviewTag ? { tagId: forReviewTag.id } : {},
+                create: {
+                  tag: {
+                    connect: { name: input.status },
+                  },
+                },
+              },
+            },
+          });
+
+          await this.prisma.log.create({
+            data: {
+              action: `Reviewed document: ${updatedDocument.title} with status ${input.status}`,
+              userId: user.id,
+              organizationId: dbUser.organizationId,
               userRole: userRoles.map((userRole) => userRole.role.name).join(', '),
             },
           });
@@ -444,6 +551,33 @@ export class DocumentsRouter {
         .output(z.any())
         .query(async ({ ctx }) => {
           return this.prisma.tag.findMany({
+            where: {
+              isGlobal: false,
+            },
+            include: {
+              _count: {
+                select: { documents: true },
+              },
+            },
+          });
+        }),
+      
+      getGlobalTags: protectedProcedure
+        .meta({
+          openapi: {
+            method: 'GET',
+            path: '/documents.getGlobalTags',
+            tags: ['tags'],
+            summary: 'Get all global tags with document count',
+          },
+        })
+        .input(z.void())
+        .output(z.any())
+        .query(async ({ ctx }) => {
+          return this.prisma.tag.findMany({
+            where: {
+              isGlobal: true,
+            },
             include: {
               _count: {
                 select: { documents: true },
@@ -503,6 +637,33 @@ export class DocumentsRouter {
         .mutation(async ({ ctx, input: tagId }) => {
           return this.prisma.tag.delete({
             where: { id: tagId },
+          });
+        }),
+
+      getRemarks: protectedProcedure
+        .input(z.object({ documentId: z.string() }))
+        .query(async ({ ctx, input }) => {
+          if (!ctx.dbUser.organizationId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to an organization.',
+            });
+          }
+
+          return this.prisma.remark.findMany({
+            where: {
+              documentId: input.documentId,
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
+            include: {
+              author: {
+                select: {
+                  name: true,
+                },
+              },
+            },
           });
         }),
       

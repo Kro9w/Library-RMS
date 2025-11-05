@@ -5,6 +5,8 @@ import { trpc } from "../trpc";
 import { Link } from "react-router-dom";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { UploadModal } from "../components/UploadModal";
+import { SendDocumentModal } from "../components/SendDocumentModal";
+import { ReviewDocumentModal } from "../components/ReviewDocumentModal";
 import { LoadingAnimation } from "../components/ui/LoadingAnimation";
 import "./Documents.css";
 
@@ -30,16 +32,15 @@ const Documents: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
 
-  // --- 2. MODIFICATION: Split state for two modals ---
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [transferEmail, setTransferEmail] = useState("");
-  // --------------------------------------------------
 
   const utils = trpc.useUtils();
 
   const { data: documents, isLoading } = trpc.documents.getAll.useQuery();
+  const { data: currentUser } = trpc.user.getMe.useQuery();
 
   const deleteMutation = trpc.documents.deleteDocument.useMutation({
     onSuccess: () => {
@@ -47,28 +48,10 @@ const Documents: React.FC = () => {
     },
   });
 
-  // --- 3. MODIFICATION: Add isLoading and update onSuccess ---
-  const { mutate: transferMutation, isPending: isTransferring } =
-    trpc.documents.transferDocument.useMutation({
-      onSuccess: () => {
-        utils.documents.getAll.invalidate();
-        alert("Document transferred!");
-        // Close modal and clear state on success
-        setShowTransferModal(false);
-        setTransferEmail("");
-        setSelectedDoc(null);
-      },
-      onError: (error: any) => {
-        alert(`Error: ${error.message}`);
-      },
-    });
-  // ---------------------------------------------------------
-
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
 
-  // --- 4. MODIFICATION: Rename and update functions ---
   const handleDeleteClick = (doc: Document) => {
     setSelectedDoc(doc);
     setShowDeleteModal(true);
@@ -82,17 +65,14 @@ const Documents: React.FC = () => {
     setSelectedDoc(null);
   };
 
-  // This new function opens the transfer modal
-  const handleTransferClick = (doc: Document) => {
+  const handleSendClick = (doc: Document) => {
     setSelectedDoc(doc);
-    setShowTransferModal(true);
+    setShowSendModal(true);
   };
 
-  // This new function runs when the transfer is confirmed
-  const confirmTransfer = () => {
-    if (selectedDoc && transferEmail) {
-      transferMutation({ docId: selectedDoc.id, newOwnerEmail: transferEmail });
-    }
+  const handleReviewClick = (doc: Document) => {
+    setSelectedDoc(doc);
+    setShowReviewModal(true);
   };
   // ----------------------------------------------------
 
@@ -177,15 +157,29 @@ const Documents: React.FC = () => {
               </span>
 
               <div className="document-actions">
-                {/* --- 5. MODIFICATION: Update onClick --- */}
                 <button
-                  onClick={() => handleTransferClick(doc)} // Changed from handleSend
+                  onClick={() => handleSendClick(doc)}
                   className="btn-icon btn-send"
-                  title="Transfer Document"
+                  title="Send Document"
                 >
                   <i className="bi bi-send"></i>
                 </button>
-                {/* -------------------------------------- */}
+                {currentUser?.roles.some(
+                  (role: { role: { canManageDocuments: any } }) =>
+                    role.role.canManageDocuments
+                ) &&
+                  doc.tags.some(
+                    (tag: { tag: { name: string } }) =>
+                      tag.tag.name === "for review"
+                  ) && (
+                    <button
+                      onClick={() => handleReviewClick(doc)}
+                      className="btn-icon btn-review"
+                      title="Review Document"
+                    >
+                      <i className="bi bi-eye"></i>
+                    </button>
+                  )}
                 <button
                   onClick={() => handleDeleteClick(doc)}
                   className="btn-icon btn-delete"
@@ -199,7 +193,6 @@ const Documents: React.FC = () => {
         </ul>
       </div>
 
-      {/* This is your existing Delete Modal */}
       <ConfirmModal
         show={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
@@ -211,38 +204,22 @@ const Documents: React.FC = () => {
         "?
       </ConfirmModal>
 
-      {/* --- 6. NEW: Add the Transfer Modal --- */}
-      <ConfirmModal
-        show={showTransferModal}
-        onClose={() => {
-          setShowTransferModal(false);
-          setTransferEmail(""); // Clear email on close
-        }}
-        onConfirm={confirmTransfer}
-        title="Transfer Document"
-        isConfirming={isTransferring}
-      >
-        {/* Here we pass our input as the 'children' */}
-        <p>
-          Transfer "<strong>{selectedDoc?.title || ""}</strong>" to a new owner.
-        </p>
-        <label
-          htmlFor="transfer-email"
-          style={{ display: "block", marginBottom: "0.5rem" }}
-        >
-          New Owner's Email:
-        </label>
-        <input
-          type="email"
-          id="transfer-email"
-          className="form-control" // Assuming you have a standard form control style
-          value={transferEmail}
-          onChange={(e) => setTransferEmail(e.target.value)}
-          placeholder="user@example.com"
-          style={{ width: "100%" }}
+      {selectedDoc && (
+        <SendDocumentModal
+          show={showSendModal}
+          onClose={() => setShowSendModal(false)}
+          documentId={selectedDoc.id}
         />
-      </ConfirmModal>
-      {/* ------------------------------------ */}
+      )}
+
+      {selectedDoc && (
+        <ReviewDocumentModal
+          show={showReviewModal}
+          onClose={() => setShowReviewModal(false)}
+          documentId={selectedDoc.id}
+        />
+      )}
+
       <UploadModal
         show={showUploadModal}
         onClose={() => setShowUploadModal(false)}

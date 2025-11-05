@@ -5,7 +5,7 @@ import { trpc } from "../trpc";
 import "./OwnershipGraph.css";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 import { Link } from "react-router-dom";
-import { ConfirmModal } from "./ConfirmModal";
+import { SendDocumentModal } from "./SendDocumentModal";
 import { LoadingAnimation } from "./ui/LoadingAnimation";
 
 type NodeType = "user" | "organization" | "document";
@@ -65,9 +65,8 @@ export function OwnershipGraph() {
 
   const [dropTargetNode, setDropTargetNode] = useState<Node | null>(null);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [transferDetails, setTransferDetails] =
-    useState<TransferDetails | null>(null);
+  const [isSendModalOpen, setIsSendModalOpen] = useState(false);
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
 
   const [expandedUserNodeId, setExpandedUserNodeId] = useState<string | null>(
     null
@@ -86,18 +85,6 @@ export function OwnershipGraph() {
     trpc.documents.getDocumentsByUserId.useQuery(selectedUserNode?.id || "", {
       enabled: !!selectedUserNode,
     });
-
-  const transferMutation = trpc.documents.transferDocument.useMutation({
-    onSuccess: () => {
-      utils.documents.getAllDocs.invalidate();
-      utils.documents.getDocumentsByUserId.invalidate(selectedUserNode?.id);
-      handleCloseModal();
-    },
-    onError: (error) => {
-      console.error("Transfer failed:", error);
-      alert(`Transfer failed: ${error.message}`);
-    },
-  });
 
   useEffect(() => {
     const allUsers = allUsersQuery.data;
@@ -276,29 +263,6 @@ export function OwnershipGraph() {
     setSelectedOrg(null);
     setExpandedUserNodeId(null);
     closeDetailsPanel();
-  };
-
-  const handleConfirmTransfer = () => {
-    if (transferDetails && transferDetails.userNode.email) {
-      transferMutation.mutate({
-        docId: transferDetails.docNode.id,
-        newOwnerEmail: transferDetails.userNode.email,
-      });
-    } else {
-      console.error("Missing transfer details or target user email");
-      alert("Could not initiate transfer: target user email is missing.");
-    }
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    if (transferDetails?.link && !transferMutation.isSuccess) {
-      transferDetails.link.isDetached = false;
-      setGraphData({ ...graphData });
-      simulationRef.current?.alpha(0.1).restart();
-    }
-
-    setTransferDetails(null);
   };
 
   useEffect(() => {
@@ -647,12 +611,8 @@ export function OwnershipGraph() {
       const activeLink = (d as any)._activeLink;
 
       if (targetUser && draggedDoc.type === "document" && activeLink) {
-        setTransferDetails({
-          docNode: draggedDoc,
-          userNode: targetUser,
-          link: activeLink,
-        });
-        setIsModalOpen(true);
+        setSelectedDocId(draggedDoc.id);
+        setIsSendModalOpen(true);
       } else if (activeLink) {
         activeLink.isDetached = false;
         setGraphData({ ...graphData });
@@ -758,50 +718,13 @@ export function OwnershipGraph() {
         )}
       </div>
 
-      <ConfirmModal
-        show={isModalOpen}
-        title="Confirm Ownership Transfer"
-        onClose={handleCloseModal}
-        onConfirm={handleConfirmTransfer}
-        isConfirming={transferMutation.isPending}
-      >
-        {transferDetails ? (
-          <div>
-            <p>Are you sure you want to transfer ownership of this document?</p>
-
-            <div
-              style={{
-                padding: "12px",
-                backgroundColor: "#f8f9fa",
-                borderRadius: "4px",
-                margin: "12px 0",
-                border: "1px solid #dee2e6",
-              }}
-            >
-              <p style={{ margin: 0 }}>
-                <strong>Document:</strong> {transferDetails.docNode.name}
-              </p>
-              <hr style={{ margin: "8px 0" }} />
-              <p style={{ margin: 0 }}>
-                <strong>Recipient:</strong> {transferDetails.userNode.name}
-              </p>
-              <p style={{ margin: 0, marginTop: "4px" }}>
-                <strong>Organization:</strong>{" "}
-                {allOrgsQuery.data?.find(
-                  (o: { id: string | undefined }) =>
-                    o.id === transferDetails.userNode.organizationId
-                )?.name || "N/A"}
-              </p>
-            </div>
-
-            <p className="text-muted small mb-0">
-              This action cannot be undone.
-            </p>
-          </div>
-        ) : (
-          <LoadingAnimation />
-        )}
-      </ConfirmModal>
+      {selectedDocId && (
+        <SendDocumentModal
+          show={isSendModalOpen}
+          onClose={() => setIsSendModalOpen(false)}
+          documentId={selectedDocId}
+        />
+      )}
     </div>
   );
 }

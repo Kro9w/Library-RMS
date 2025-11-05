@@ -64,6 +64,12 @@ export class RolesRouter {
         return await this.rolesService.getRoles(ctx.dbUser.organizationId);
       }),
 
+      getUserRoles: protectedProcedure
+        .input(z.string())
+        .query(async ({ input: userId }) => {
+          return await this.userService.getUserRoles(userId);
+        }),
+      
       getRoleById: protectedProcedure
         .input(z.string())
         .query(async ({ input, ctx }) => {

@@ -137,8 +137,5 @@ export class TrpcRouter {
 }
 
 export type AppRouter = TrpcRouter['appRouter'];
-
-// --- 2. FIX: CORRECTED THE TYPO ---
-// Changed 'AppArrayRouter' back to 'AppRouter'
 export type AppRouterOutputs = inferRouterOutputs<AppRouter>;
 export type AppRouterInputs = inferRouterInputs<AppRouter>;
