@@ -1,10 +1,11 @@
 // apps/web/src/pages/Users.tsx
-import React, { useState } from "react";
+import { useState } from "react";
 import { trpc } from "../trpc";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 import "../components/Roles/RolesModal.css";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { RolesModal } from "../components/Roles/RolesModal";
+import { LoadingAnimation } from "../components/ui/LoadingAnimation";
 
 type User = AppRouterOutputs["user"]["getUsersWithRoles"][0];
 
@@ -59,7 +60,7 @@ export function Users() {
     }
   };
 
-  if (isLoading) return <div className="container mt-4">Loading users...</div>;
+  if (isLoading) return <LoadingAnimation />;
   if (isError)
     return (
       <div className="container mt-4 alert alert-danger">

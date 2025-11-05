@@ -1,5 +1,5 @@
 // apps/web/src/pages/Dashboard.tsx
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { trpc } from "../trpc";
 
@@ -7,7 +7,7 @@ import { trpc } from "../trpc";
 import "./Documents.css";
 import "./Dashboard.css";
 
-import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
+import { PieChart, Pie, Cell, Legend } from "recharts";
 import { useForm } from "react-hook-form";
 import { useUser } from "@supabase/auth-helpers-react";
 
@@ -175,7 +175,9 @@ export function Dashboard() {
                       >
                         <Link to={`/documents/${file.id}`}>{file.title}</Link>
                         <span className="document-owner">
-                          {file.uploadedBy ? `by ${file.uploadedBy}` : "Unknown"}
+                          {file.uploadedBy
+                            ? `by ${file.uploadedBy}`
+                            : "Unknown"}
                         </span>
                       </li>
                     ))
@@ -210,7 +212,7 @@ export function Dashboard() {
                       >
                         {/* --- 6. EXPLICIT TYPES ADDED --- */}
                         {stats.docsByType.map(
-                          (entry: DocTypeStat, index: number) => (
+                          (_entry: DocTypeStat, index: number) => (
                             <Cell
                               key={`cell-${index}`}
                               fill={
@@ -223,7 +225,7 @@ export function Dashboard() {
                         )}
                       </Pie>
                       <Legend
-                        formatter={(value, entry: any) => entry.payload.name}
+                        formatter={(_value, entry: any) => entry.payload.name}
                       />
                     </PieChart>
                   ) : (

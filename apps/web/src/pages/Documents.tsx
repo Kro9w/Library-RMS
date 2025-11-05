@@ -5,6 +5,7 @@ import { trpc } from "../trpc";
 import { Link } from "react-router-dom";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { UploadModal } from "../components/UploadModal";
+import { LoadingAnimation } from "../components/ui/LoadingAnimation";
 import "./Documents.css";
 
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
@@ -132,7 +133,7 @@ const Documents: React.FC = () => {
       </div>
       {/* --------------------------- */}
 
-      {isLoading && <div>Loading documents...</div>}
+      {isLoading && <LoadingAnimation />}
 
       <div className="document-table-card">
         <div className="document-list-header">

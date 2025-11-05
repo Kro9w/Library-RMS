@@ -1,12 +1,13 @@
 // apps/web/src/pages/Tags.tsx
-import React, { useState } from "react";
+import { useState } from "react";
 import { trpc } from "../trpc";
 import { TagModal } from "../components/TagModal";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { LoadingAnimation } from "../components/ui/LoadingAnimation";
 
 // --- 1. THIS IS THE FIX ---
 // Import Documents.css from the *same* 'pages' directory.
-import "./Documents.css"; 
+import "./Documents.css";
 // Import Tags.css *second* to override the grid.
 import "./Tags.css";
 // -----------------------------
@@ -70,8 +71,7 @@ export function Tags() {
     }
   };
 
-  if (isLoading)
-    return <div className="container mt-4 text-center">Loading...</div>;
+  if (isLoading) return <LoadingAnimation />;
   if (isError)
     return (
       <div className="container mt-4 alert alert-danger">
@@ -84,10 +84,7 @@ export function Tags() {
       <div className="container">
         <div className="page-header">
           <h2>Manage Tags</h2>
-          <button
-            className="btn btn-primary"
-            onClick={handleOpenCreateModal}
-          >
+          <button className="btn btn-primary" onClick={handleOpenCreateModal}>
             <i className="bi bi-plus-circle me-2"></i>Create New Tag
           </button>
         </div>
@@ -104,9 +101,7 @@ export function Tags() {
               <li key={tag.id} className="document-item tag-list-item">
                 <span className="tag-name">{tag.name}</span>
 
-                <span className="tag-doc-count">
-                  {tag._count.documents}
-                </span>
+                <span className="tag-doc-count">{tag._count.documents}</span>
 
                 <div className="document-actions">
                   <button

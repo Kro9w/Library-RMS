@@ -8,16 +8,12 @@ import { useDropzone } from "react-dropzone";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "../supabase";
 import "./Account.css"; // We'll create this file
-// --- 1. IMPORT THE CORRECT TRPC TYPE ---
-import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
+import { LoadingAnimation } from "../components/ui/LoadingAnimation";
 
 // The data our form will manage
 type ProfileFormData = {
   name: string;
 };
-
-// This type is inferred from your router
-type UserWithOrg = AppRouterOutputs["user"]["getMe"];
 
 // The bucket we created
 const AVATAR_BUCKET = "avatars";
@@ -91,13 +87,12 @@ const Account: React.FC = () => {
       const fileExtension = avatarFile.name.split(".").pop();
       const storageKey = `${dbUser.id}/${uuidv4()}.${fileExtension}`;
 
-      const { data: uploadData, error: uploadError } =
-        await supabase.storage
-          .from(AVATAR_BUCKET)
-          .upload(storageKey, avatarFile, {
-            cacheControl: "3600",
-            upsert: true, // Overwrite existing avatar
-          });
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(AVATAR_BUCKET)
+        .upload(storageKey, avatarFile, {
+          cacheControl: "3600",
+          upsert: true, // Overwrite existing avatar
+        });
 
       if (uploadError) {
         alert(`Error uploading avatar: ${uploadError.message}`);
@@ -108,7 +103,7 @@ const Account: React.FC = () => {
       const { data: urlData } = supabase.storage
         .from(AVATAR_BUCKET)
         .getPublicUrl(uploadData.path);
-      
+
       newAvatarUrl = urlData.publicUrl;
     }
 
@@ -121,13 +116,7 @@ const Account: React.FC = () => {
 
   // --- Loading and Auth States ---
   if (isLoadingUser) {
-    return (
-      <div className="container mt-4">
-        <div className="spinner-border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
+    return <LoadingAnimation />;
   }
 
   if (!authUser || !dbUser) {

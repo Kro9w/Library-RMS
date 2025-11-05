@@ -1,11 +1,12 @@
 // apps/web/src/components/OwnershipGraph.tsx
-import React, { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState } from "react";
 import * as d3 from "d3";
 import { trpc } from "../trpc";
 import "./OwnershipGraph.css";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 import { Link } from "react-router-dom";
 import { ConfirmModal } from "./ConfirmModal";
+import { LoadingAnimation } from "./ui/LoadingAnimation";
 
 type NodeType = "user" | "organization" | "document";
 
@@ -49,8 +50,6 @@ export function OwnershipGraph() {
     undefined
   > | null>(null);
 
-  const dragTimer = useRef<NodeJS.Timeout | null>(null);
-  const detachedLineElementRef = useRef<SVGLineElement | null>(null);
   const dropTargetNodeRef = useRef<Node | null>(null);
 
   const [currentView, setCurrentView] = useState<"org" | "doc">("org");
@@ -707,8 +706,7 @@ export function OwnershipGraph() {
     allOrgsQuery.isError || allUsersQuery.isError || allDocsQuery.isError;
   const error = allOrgsQuery.error || allUsersQuery.error || allDocsQuery.error;
 
-  if (isLoading)
-    return <div className="graph-status-message">Loading graph data...</div>;
+  if (isLoading) return <LoadingAnimation />;
   if (isError)
     return (
       <div className="graph-status-message error">Error: {error?.message}</div>
@@ -744,7 +742,7 @@ export function OwnershipGraph() {
             </div>
             <hr />
             {isLoadingDocsForPanel ? (
-              <p>Loading documents...</p>
+              <LoadingAnimation />
             ) : userDocuments.length > 0 ? (
               <ul className="list-group">
                 {userDocuments.map((doc: UserDocument) => (
@@ -801,7 +799,7 @@ export function OwnershipGraph() {
             </p>
           </div>
         ) : (
-          <p>Loading transfer details...</p>
+          <LoadingAnimation />
         )}
       </ConfirmModal>
     </div>

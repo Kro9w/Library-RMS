@@ -3,6 +3,7 @@ import React from "react";
 import { useParams } from "react-router-dom";
 import { trpc } from "../trpc";
 import "./DocumentDetails.css";
+import { LoadingAnimation } from "../components/ui/LoadingAnimation";
 
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 type Document = AppRouterOutputs["documents"]["getById"];
@@ -11,13 +12,15 @@ const SUPPORTED_PREVIEW_TYPES = {
   // PDF
   "application/pdf": "pdf",
   // Microsoft Word
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "office",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    "office",
   "application/msword": "office",
   // Microsoft Excel
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "office",
   "application/vnd.ms-excel": "office",
   // Microsoft PowerPoint
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "office",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+    "office",
   "application/vnd.ms-powerpoint": "office",
 };
 
@@ -28,7 +31,6 @@ const formatFileTypeDisplay = (
   fileType: string | null | undefined,
   title: string
 ): string => {
-  
   // First, try to read the explicit fileType (for new documents)
   if (fileType) {
     switch (fileType) {
@@ -79,13 +81,7 @@ export const DocumentDetails: React.FC = () => {
     );
 
   if (isLoadingDoc || isLoadingUrl) {
-    return (
-      <div className="container mt-4">
-        <div className="spinner-border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
+    return <LoadingAnimation />;
   }
 
   if (!document || !urlData) {
@@ -178,7 +174,7 @@ export const DocumentDetails: React.FC = () => {
                 <strong>Created:</strong>{" "}
                 {new Date(document.createdAt).toLocaleDateString()}
               </p>
-              
+
               {/* This now calls our new, safe function */}
               <p>
                 <strong>File Type:</strong>{" "}

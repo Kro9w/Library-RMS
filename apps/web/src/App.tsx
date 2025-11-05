@@ -93,7 +93,7 @@ const AppContent: React.FC = () => {
   const toggleNavbar = () => setIsCollapsed(!isCollapsed);
 
   if (isLoadingSession) {
-    return <div>Loading...</div>;
+    return null; // Return nothing to avoid flashing a loader
   }
 
   const showNavbar = session && location.pathname !== "/join";
