@@ -63,7 +63,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
           }
         } catch (err) {
           console.error("Error reading docx file:", err);
-          setControlNumber("Could not scan document");
+          setControlNumber("NONE");
         }
       }
     };
