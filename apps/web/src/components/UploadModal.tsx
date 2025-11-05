@@ -6,6 +6,7 @@ import { useUser } from "@supabase/auth-helpers-react";
 import { trpc } from "../trpc";
 import { v4 as uuidv4 } from "uuid";
 import { Modal } from "bootstrap";
+import mammoth from "mammoth";
 import "./UploadModal.css";
 
 interface UploadModalProps {
@@ -20,6 +21,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
   const [selectedDocumentType, setSelectedDocumentType] = useState<
     string | undefined
   >();
+  const [controlNumber, setControlNumber] = useState<string | null>(null);
   const user = useUser();
   const createDocMutation = trpc.documents.createDocumentRecord.useMutation();
   const { data: documentTypes } = trpc.documentTypes.getAll.useQuery();
@@ -42,9 +44,38 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
     }
   }, [show]);
 
+  const scanForControlNumber = async (file: File) => {
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const arrayBuffer = event.target?.result;
+      if (arrayBuffer instanceof ArrayBuffer) {
+        try {
+          const result = await mammoth.extractRawText({ arrayBuffer });
+          const text = result.value;
+          const regex = /CICS\-([\s\S]*?)([a-zA-Z0-9-]+)\s*-FL/;
+          const match = text.match(regex);
+          if (match && match[2]) {
+            setControlNumber(match[2].trim());
+          } else {
+            setControlNumber("No control number found in this document");
+          }
+        } catch (err) {
+          console.error("Error reading docx file:", err);
+          setControlNumber("Could not scan document");
+        }
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: (acceptedFiles) => {
       setFiles(acceptedFiles);
+      if (acceptedFiles.length > 0) {
+        scanForControlNumber(acceptedFiles[0]);
+      }
     },
     accept: {
       "application/pdf": [".pdf"],
@@ -85,6 +116,10 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
         documentTypeId: selectedDocumentType,
         fileType: file.type,
         fileSize: file.size,
+        controlNumber:
+          controlNumber !== "No control number found in this document"
+            ? controlNumber
+            : null,
       });
 
       setFiles([]);
@@ -132,6 +167,20 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
                 ))}
               </ul>
             </aside>
+            <div className="mb-3">
+              <label htmlFor="controlNumber" className="form-label">
+                Control Number
+              </label>
+              <input
+                type="text"
+                id="controlNumber"
+                className="form-control"
+                value={
+                  controlNumber || "Drop a file to scan for a control number"
+                }
+                readOnly
+              />
+            </div>
             <div className="mb-3">
               <label htmlFor="documentType" className="form-label">
                 Document Type

@@ -1,3 +1,5 @@
 declare module "mammoth" {
-  export function convertToHtml(options: { arrayBuffer: ArrayBuffer }): Promise<{ value: string }>;
+  export type MammothResult = { value: string; messages: any[] };
+  export function convertToHtml(options: { arrayBuffer: ArrayBuffer }): Promise<MammothResult>;
+  export function extractRawText(options: { arrayBuffer: ArrayBuffer }): Promise<MammothResult>;
 }

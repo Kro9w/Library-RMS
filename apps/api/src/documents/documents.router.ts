@@ -87,6 +87,7 @@ export class DocumentsRouter {
             fileType: z.string().optional(),
             fileSize: z.number().optional(),
             documentTypeId: z.string().optional(),
+            controlNumber: z.string().optional().nullable(),
           }),
         )
         .output(z.any())
@@ -113,6 +114,7 @@ export class DocumentsRouter {
               fileType: input.fileType,
               fileSize: input.fileSize,
               documentTypeId: input.documentTypeId,
+              controlNumber: input.controlNumber,
             },
           });
 
@@ -247,6 +249,7 @@ export class DocumentsRouter {
               uploadedById: true,
               organizationId: true,
               documentType: true,
+              controlNumber: true,
             },
             orderBy: {
               createdAt: 'desc',

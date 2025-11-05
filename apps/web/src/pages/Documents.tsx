@@ -13,16 +13,6 @@ import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 // This type now correctly includes fileType and fileSize
 type Document = AppRouterOutputs["documents"]["getAll"][0];
 
-// --- 1. FIXED HELPER FUNCTIONS ---
-
-const formatFileSize = (bytes: number | null | undefined): string => {
-  if (bytes === null || bytes === undefined || bytes === 0) return "—";
-  const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-};
-
 const formatFileType = (fileType: string | null | undefined): string => {
   if (!fileType) return "FILE";
   if (fileType.includes("pdf")) return "PDF";
@@ -141,8 +131,8 @@ const Documents: React.FC = () => {
           <span>Type</span>
           <span>Title</span>
           <span>Owner</span>
+          <span>Control Number</span>
           <span>Date</span>
-          <span>File Size</span>
           <span>Actions</span>
         </div>
 
@@ -178,12 +168,12 @@ const Documents: React.FC = () => {
                 {doc.uploadedBy?.name || "Unknown"}
               </span>
 
-              <span className="document-date">
-                {new Date(doc.createdAt).toLocaleDateString()}
+              <span className="document-control-number">
+                {doc.controlNumber || "—"}
               </span>
 
-              <span className="document-size">
-                {formatFileSize(doc.fileSize)}
+              <span className="document-date">
+                {new Date(doc.createdAt).toLocaleDateString()}
               </span>
 
               <div className="document-actions">
