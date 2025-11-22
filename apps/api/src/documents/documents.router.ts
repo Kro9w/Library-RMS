@@ -215,11 +215,7 @@ export class DocumentsRouter {
               message: 'User does not belong to an organization.',
             });
           }
-          return this.prisma.user.findMany({
-            where: {
-              organizationId: ctx.dbUser.organizationId,
-            },
-          });
+          return this.prisma.user.findMany();
         }),
 
       getAll: protectedProcedure

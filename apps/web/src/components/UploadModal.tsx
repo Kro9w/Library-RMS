@@ -54,7 +54,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
         try {
           const result = await mammoth.extractRawText({ arrayBuffer });
           const text = result.value;
-          const regex = /CICS\-([\s\S]*?)([a-zA-Z0-9-]+)\s*-FL/;
+          const regex = /CONTROL NO\.([\s\S]*?)([a-zA-Z0-9-]+)\s*-FL/;
           const match = text.match(regex);
           if (match && match[2]) {
             setControlNumber(match[2].trim());

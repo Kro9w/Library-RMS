@@ -67,6 +67,7 @@ export function OwnershipGraph() {
 
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [targetUserId, setTargetUserId] = useState<string | null>(null);
 
   const [expandedUserNodeId, setExpandedUserNodeId] = useState<string | null>(
     null
@@ -612,6 +613,7 @@ export function OwnershipGraph() {
 
       if (targetUser && draggedDoc.type === "document" && activeLink) {
         setSelectedDocId(draggedDoc.id);
+        setTargetUserId(targetUser.id);
         setIsSendModalOpen(true);
       } else if (activeLink) {
         activeLink.isDetached = false;
@@ -721,8 +723,20 @@ export function OwnershipGraph() {
       {selectedDocId && (
         <SendDocumentModal
           show={isSendModalOpen}
-          onClose={() => setIsSendModalOpen(false)}
+          onClose={() => {
+            setIsSendModalOpen(false);
+            setTargetUserId(null);
+            const linkData = graphData.links.find(
+              (l) => (l.source as Node).id === selectedDocId
+            );
+            if (linkData) {
+              linkData.isDetached = false;
+              setGraphData({ ...graphData });
+              simulationRef.current?.alpha(0.1).restart();
+            }
+          }}
           documentId={selectedDocId}
+          initialRecipientId={targetUserId}
         />
       )}
     </div>

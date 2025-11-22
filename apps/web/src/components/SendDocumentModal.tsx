@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { trpc } from "../trpc";
 import { useUser } from "@supabase/auth-helpers-react";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
@@ -6,21 +6,26 @@ import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 type User = AppRouterOutputs["documents"]["getAppUsers"][0];
 type Tag = AppRouterOutputs["documents"]["getTags"][0];
 type UserRole = AppRouterOutputs["roles"]["getUserRoles"][0];
+type Organization = AppRouterOutputs["documents"]["getAllOrgs"][0];
 
 interface SendDocumentModalProps {
   show: boolean;
   onClose: () => void;
   documentId: string;
+  initialRecipientId?: string | null;
 }
 
 export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
   show,
   onClose,
   documentId,
+  initialRecipientId,
 }) => {
-  const [recipientId, setRecipientId] = useState("");
+  const [recipientId, setRecipientId] = useState(initialRecipientId || "");
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const { data: users } = trpc.documents.getAppUsers.useQuery();
+  const { data: orgs } = trpc.documents.getAllOrgs.useQuery();
   const { data: tags } = trpc.documents.getTags.useQuery();
   const { data: globalTags } = trpc.documents.getGlobalTags.useQuery();
   const { data: recipientRoles } = trpc.roles.getUserRoles.useQuery(
@@ -31,6 +36,22 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
   );
   const sendDocumentMutation = trpc.documents.sendDocument.useMutation();
   const user = useUser();
+
+  useEffect(() => {
+    if (show) {
+      setRecipientId(initialRecipientId || "");
+      if (initialRecipientId && users) {
+        const initialRecipient = users.find(
+          (u: { id: string }) => u.id === initialRecipientId
+        );
+        if (initialRecipient) {
+          setSelectedOrgId(initialRecipient.organizationId);
+        }
+      } else {
+        setSelectedOrgId(null);
+      }
+    }
+  }, [show, initialRecipientId, users]);
 
   const handleSend = async () => {
     if (!documentId || !recipientId) return;
@@ -67,23 +88,52 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
             ></button>
           </div>
           <div className="modal-body">
-            <div className="mb-3">
-              <label htmlFor="recipient" className="form-label">
-                Recipient
-              </label>
-              <select
-                id="recipient"
-                className="form-select"
-                value={recipientId}
-                onChange={(e) => setRecipientId(e.target.value)}
-              >
-                <option value="">Select a recipient...</option>
-                {users?.map((user: User) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name}
-                  </option>
-                ))}
-              </select>
+            <div className="row">
+              <div className="col-md-6 mb-3">
+                <label htmlFor="organization" className="form-label">
+                  Organization
+                </label>
+                <select
+                  id="organization"
+                  className="form-select"
+                  value={selectedOrgId || ""}
+                  onChange={(e) => {
+                    setSelectedOrgId(e.target.value);
+                    setRecipientId("");
+                  }}
+                >
+                  <option value="">Select an organization...</option>
+                  {orgs?.map((org: Organization) => (
+                    <option key={org.id} value={org.id}>
+                      {org.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-md-6 mb-3">
+                <label htmlFor="recipient" className="form-label">
+                  Recipient
+                </label>
+                <select
+                  id="recipient"
+                  className="form-select"
+                  value={recipientId}
+                  onChange={(e) => setRecipientId(e.target.value)}
+                  disabled={!selectedOrgId}
+                >
+                  <option value="">Select a recipient...</option>
+                  {users
+                    ?.filter(
+                      (user: { organizationId: string | null }) =>
+                        user.organizationId === selectedOrgId
+                    )
+                    .map((user: User) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
             </div>
             <div className="mb-3">
               <label className="form-label">Tags</label>
