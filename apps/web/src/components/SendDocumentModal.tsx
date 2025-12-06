@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { trpc } from "../trpc";
-import { useUser } from "@supabase/auth-helpers-react";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
 type User = AppRouterOutputs["documents"]["getAppUsers"][0];
 type Tag = AppRouterOutputs["documents"]["getTags"][0];
-type UserRole = AppRouterOutputs["roles"]["getUserRoles"][0];
 type Organization = AppRouterOutputs["documents"]["getAllOrgs"][0];
 
 interface SendDocumentModalProps {
@@ -35,7 +33,6 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
     }
   );
   const sendDocumentMutation = trpc.documents.sendDocument.useMutation();
-  const user = useUser();
 
   useEffect(() => {
     if (show) {

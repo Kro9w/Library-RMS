@@ -196,7 +196,6 @@ export class DocumentsRouter {
           return { signedUrl: data.signedUrl };
         }),
 
-      // ... (rest of your procedures: getAppUsers, getAll, etc.)
       getAppUsers: protectedProcedure
         .meta({
           openapi: {

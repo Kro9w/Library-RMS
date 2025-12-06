@@ -1,0 +1,13 @@
+{
+  "name": "@repo/supabase-types",
+  "private": true,
+  "main": "index.ts",
+  "types": "index.ts",
+  "scripts": {
+    "generate": "supabase gen types typescript --project-id jnqtohdhekmquwccwklg > index.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

@@ -11,6 +11,7 @@
     "@tauri-apps/cli": "^2.8.4",
     "@types/recharts": "^1.8.29",
     "concurrently": "^8.2.2",
+    "supabase": "^2.65.6",
     "typescript": "^5.9.2"
   },
   "dependencies": {

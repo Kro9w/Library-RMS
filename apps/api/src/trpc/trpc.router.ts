@@ -65,7 +65,7 @@ export class TrpcRouter {
           recentFiles,
           totalUsers,
           allDocumentTags,
-          docsByTypeRaw, // Result of our new query
+          docsByTypeRaw, // Result of new query
         ] = await Promise.all([
           ctx.prisma.document.count({ where: { organizationId: orgId } }),
           ctx.prisma.document.count({
@@ -92,14 +92,11 @@ export class TrpcRouter {
           docsByTypeQuery, // Run the query
         ]);
 
-        // TRANSFORM THE DATA for the pie chart
-        // This will now work because formatFileType is in scope
         const docsByType = docsByTypeRaw.map((group) => ({
           name: formatFileType(group.fileType),
           value: group._count.fileType,
         }));
 
-        // This is your existing tag logic (unchanged)
         const tagCountMap: Record<string, number> = {};
         for (const doc of allDocumentTags) {
           for (const docTag of doc.tags) {
@@ -112,7 +109,6 @@ export class TrpcRouter {
           .slice(0, 5)
           .map(([name, count]) => ({ name, count }));
 
-        // RETURN THE REAL DATA
         return {
           totalDocuments,
           recentUploadsCount,

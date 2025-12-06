@@ -15,6 +15,7 @@
     "@mantine/dropzone": "^8.3.5",
     "@mantine/form": "^8.3.5",
     "@mantine/hooks": "^8.3.5",
+    "@repo/supabase-types": "workspace:*",
     "@supabase/auth-helpers-react": "^0.5.0",
     "@supabase/supabase-js": "^2.76.1",
     "@tabler/icons-react": "^3.35.0",
