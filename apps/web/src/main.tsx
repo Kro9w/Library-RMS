@@ -4,10 +4,10 @@ import App from "./App.tsx";
 import "./index.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "./trpc.ts";
-// import { AuthProvider } from './context/AuthContext.tsx'; // Remove this
-import { SessionContextProvider } from "@supabase/auth-helpers-react"; // Add this
-import { supabase } from "./supabase.ts"; // Add this
 import { ThemeProvider } from "./Theme.tsx";
+
+// CHANGE: Import the new provider
+import { SessionProvider } from "./contexts/SessionContext.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,17 +20,14 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <SessionContextProvider supabaseClient={supabase}>
+    <SessionProvider>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
-            {/* <AuthProvider> // Remove this wrapper
-              <App />
-            </AuthProvider> */}
-            <App /> {/* App is now a direct child */}
+            <App />
           </ThemeProvider>
         </QueryClientProvider>
       </trpc.Provider>
-    </SessionContextProvider>
+    </SessionProvider>
   </React.StrictMode>
 );
