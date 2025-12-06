@@ -1,6 +1,6 @@
 // apps/web/src/pages/Account.tsx
 import React, { useState, useEffect } from "react";
-import { useUser } from "@supabase/auth-helpers-react";
+import { useUser } from "../contexts/SessionContext.tsx";
 import { trpc } from "../trpc";
 import { Navigate } from "react-router-dom";
 import { useForm } from "react-hook-form";

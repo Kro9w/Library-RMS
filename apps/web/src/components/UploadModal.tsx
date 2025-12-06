@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useDropzone } from "react-dropzone";
 import { supabase } from "../supabase";
-import { useUser } from "@supabase/auth-helpers-react";
+import { useUser } from "../contexts/SessionContext.tsx";
 import { trpc } from "../trpc";
 import { v4 as uuidv4 } from "uuid";
 import { Modal } from "bootstrap";

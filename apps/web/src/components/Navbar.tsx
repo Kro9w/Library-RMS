@@ -1,7 +1,7 @@
 // apps/web/src/components/Navbar.tsx
 import { useState, useRef } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { useUser } from "@supabase/auth-helpers-react";
+import { useUser } from "../contexts/SessionContext";
 import { supabase } from "../supabase";
 import { trpc } from "../trpc";
 import { useOutsideClick } from "../hooks/OutsideClick";

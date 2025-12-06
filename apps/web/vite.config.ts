@@ -8,12 +8,13 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 export default defineConfig({
   plugins: [tailwindcss(), react(), basicSsl()],
   optimizeDeps: {
-    exclude: ['pdfjs-dist'], // 👈 Add this exclude option
+    exclude: ['pdfjs-dist'],
   },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    dedupe: ['react', 'react-dom'],
   },
   server: {
     https: {},
