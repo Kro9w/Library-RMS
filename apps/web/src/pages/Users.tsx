@@ -6,6 +6,7 @@ import "../components/Roles/RolesModal.css";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { RolesModal } from "../components/Roles/RolesModal";
 import { LoadingAnimation } from "../components/ui/LoadingAnimation";
+import { formatUserName, formatUserNameLastFirst } from "../utils/user";
 
 type User = AppRouterOutputs["user"]["getUsersWithRoles"][0];
 
@@ -106,9 +107,9 @@ export function Users() {
                         <div className="d-flex align-items-center">
                           <img
                             src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                              user.name || user.email || "User"
+                              formatUserName(user)
                             )}&background=ED9B40&color=fff`}
-                            alt={user.name || "User Avatar"}
+                            alt={formatUserName(user)}
                             className="rounded-circle me-3"
                             style={{
                               width: "48px",
@@ -118,7 +119,7 @@ export function Users() {
                           />
                           <div>
                             <h6 className="fw-bold mb-0">
-                              {user.name || "No Name"}
+                              {formatUserNameLastFirst(user)}
                             </h6>
                             <small className="text-muted">{user.email}</small>
                           </div>
@@ -199,8 +200,8 @@ export function Users() {
           <span>You can't remove yourself from the organization!</span>
         ) : (
           <>
-            Are you sure you want to remove {userToRemove?.name} from the
-            organization?
+            Are you sure you want to remove {formatUserName(userToRemove)} from
+            the organization?
           </>
         )}
       </ConfirmModal>
@@ -212,7 +213,7 @@ export function Users() {
         isConfirming={transferDocument.isPending}
       >
         <p>
-          Send a document to <strong>{userToSendTo?.name}</strong>
+          Send a document to <strong>{formatUserName(userToSendTo)}</strong>
         </p>
         <select
           className="form-select"

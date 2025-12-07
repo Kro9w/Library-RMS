@@ -1,17 +1,13 @@
 // apps/web/src/components/UserAvatar.tsx
-
-type User = {
-  name?: string | null;
-  email?: string | null;
-};
+import { UserNameFields, formatUserName } from "../utils/user";
 
 type Props = {
-  user: User;
+  user: UserNameFields;
   size?: number;
 };
 
 export function UserAvatar({ user, size = 48 }: Props) {
-  const displayName = user.name || user.email || "User";
+  const displayName = formatUserName(user);
   const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
     displayName
   )}&background=ED9B40&color=fff&size=${size * 2}`; // Request higher-res for retina

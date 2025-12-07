@@ -2,13 +2,11 @@
 import React from "react";
 import LogCard from "../LogCard/LogCard";
 import "./Timeline.css";
+import { UserNameFields } from "../../utils/user";
 
 interface Log {
   id: string;
-  user: {
-    name: string | null;
-    email: string | null;
-  };
+  user: UserNameFields;
   action: string;
   organization: {
     name: string;

@@ -55,12 +55,16 @@ export class DocumentsRouter {
               documentType: true,
               uploadedBy: {
                 select: {
-                  name: true,
+                  firstName: true,
+                  middleName: true,
+                  lastName: true,
                 },
               },
               reviewRequester: {
                 select: {
-                  name: true,
+                  firstName: true,
+                  middleName: true,
+                  lastName: true,
                 },
               },
               tags: true, 
@@ -246,18 +250,13 @@ export class DocumentsRouter {
             whereClause.uploadedById = ctx.user.id;
           }
 
-          // If filtering 'all', typically we just return all for the org.
-          // However, previous 'getAllDocs' logic had a permission check for 'canManageDocuments'.
-          // Let's preserve that logic if needed, or stick to organization scope.
-          // The previous 'getAll' was generic for org.
-          
           const docs = await this.prisma.document.findMany({
             where: whereClause,
             select: {
               id: true,
               title: true,
               createdAt: true,
-              uploadedBy: { select: { name: true } },
+              uploadedBy: { select: { firstName: true, middleName: true, lastName: true } },
               fileType: true,
               fileSize: true,
               uploadedById: true,
@@ -439,7 +438,7 @@ export class DocumentsRouter {
           await this.logService.logAction(
               user.id,
               dbUser.organizationId,
-              `Sent document: ${updatedDocument.title} to ${recipient.name}`,
+              `Sent document: ${updatedDocument.title} to ${recipient.firstName} ${recipient.lastName}`,
               dbUser.roles.map(r => r.name)
           );
 
@@ -638,7 +637,9 @@ export class DocumentsRouter {
             include: {
               author: {
                 select: {
-                  name: true,
+                  firstName: true,
+                  middleName: true,
+                  lastName: true,
                 },
               },
             },
@@ -695,7 +696,7 @@ export class DocumentsRouter {
                 id: true,
                 title: true,
                 createdAt: true,
-                uploadedBy: { select: { name: true } },
+                uploadedBy: { select: { firstName: true, middleName: true, lastName: true } },
                 fileType: true,
                 fileSize: true,
                 uploadedById: true,
@@ -717,7 +718,7 @@ export class DocumentsRouter {
               id: true,
               title: true,
               createdAt: true,
-              uploadedBy: { select: { name: true } },
+              uploadedBy: { select: { firstName: true, middleName: true, lastName: true } },
               fileType: true,
               fileSize: true,
               uploadedById: true,

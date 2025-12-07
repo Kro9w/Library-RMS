@@ -11,7 +11,9 @@ export function GraphView() {
         and pan/zoom the canvas. Drag a document node onto a user to transfer
         ownership.
       </p>
-      <OwnershipGraph />
+      <div className="card" style={{ height: "75vh", overflow: "hidden" }}>
+        <OwnershipGraph />
+      </div>
     </div>
   );
 }

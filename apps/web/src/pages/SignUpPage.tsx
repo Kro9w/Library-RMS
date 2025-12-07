@@ -4,14 +4,18 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabase";
 import { trpc } from "../trpc";
 import AuthLayout from "../components/AuthLayout";
-// --- 1. THIS IS THE FIX ---
-import "./Auth.css"; // Import the new unified CSS file
+import "./Auth.css";
 
 const SignUpPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
+
+  // New Name Fields
+  const [firstName, setFirstName] = useState("");
+  const [middleName, setMiddleName] = useState("");
+  const [lastName, setLastName] = useState("");
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -35,7 +39,13 @@ const SignUpPage: React.FC = () => {
         password,
         options: {
           data: {
-            display_name: displayName,
+            first_name: firstName,
+            middle_name: middleName,
+            last_name: lastName,
+            // Keeping display_name for backward compat or if needed by other tools
+            display_name: `${firstName} ${
+              middleName ? middleName + " " : ""
+            }${lastName}`,
           },
         },
       });
@@ -56,7 +66,9 @@ const SignUpPage: React.FC = () => {
       if (data.user && data.session) {
         await syncUser.mutateAsync({
           email: data.user.email!,
-          name: data.user.user_metadata.display_name,
+          firstName,
+          middleName: middleName || undefined,
+          lastName,
         });
       } else {
         throw new Error("Signup successful but no session data received.");
@@ -69,18 +81,37 @@ const SignUpPage: React.FC = () => {
 
   return (
     <AuthLayout title="Sign Up">
-      {/* --- 2. APPLY NEW CLASSES --- */}
       <div className="signup-container">
         <form className="auth-form" onSubmit={handleSubmit}>
-          <input
-            type="text"
-            placeholder="Display Name"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            required
-            disabled={loading}
-            className="form-control"
-          />
+          <div className="d-flex gap-2">
+            <input
+              type="text"
+              placeholder="First Name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+              disabled={loading}
+              className="form-control"
+            />
+            <input
+              type="text"
+              placeholder="Middle Name (Optional)"
+              value={middleName}
+              onChange={(e) => setMiddleName(e.target.value)}
+              disabled={loading}
+              className="form-control"
+            />
+            <input
+              type="text"
+              placeholder="Last Name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              required
+              disabled={loading}
+              className="form-control"
+            />
+          </div>
+
           <input
             type="email"
             placeholder="Email"
@@ -117,7 +148,6 @@ const SignUpPage: React.FC = () => {
           Already have an account? <Link to="/login">Login</Link>
         </p>
       </div>
-      {/* --- END OF FIX --- */}
     </AuthLayout>
   );
 };

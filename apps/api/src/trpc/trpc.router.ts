@@ -88,7 +88,7 @@ export class TrpcRouter {
             select: {
               id: true,
               title: true,
-              uploadedBy: { select: { name: true } },
+              uploadedBy: { select: { firstName: true, middleName: true, lastName: true } },
             },
           }),
           ctx.prisma.user.count({ where: { organizationId: orgId } }),
@@ -119,10 +119,17 @@ export class TrpcRouter {
         return {
           totalDocuments,
           recentUploadsCount,
-          recentFiles: recentFiles.map((f) => ({
-            ...f,
-            uploadedBy: f.uploadedBy.name,
-          })),
+          recentFiles: recentFiles.map((f) => {
+             // Format name here: First Middle Last
+             const u = f.uploadedBy;
+             const nameParts = [u.firstName, u.middleName, u.lastName].filter(Boolean);
+             const formattedName = nameParts.join(" ");
+
+             return {
+                ...f,
+                uploadedBy: formattedName,
+             };
+          }),
           totalUsers,
           docsByType: docsByType,
           topTags,

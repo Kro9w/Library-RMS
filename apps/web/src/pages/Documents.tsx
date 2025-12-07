@@ -10,6 +10,7 @@ import { ReviewDocumentModal } from "../components/ReviewDocumentModal";
 import { LoadingAnimation } from "../components/ui/LoadingAnimation";
 import { TagsManagementModal } from "../components/TagsManagementModal";
 import "./Documents.css";
+import { formatUserName } from "../utils/user";
 
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
@@ -125,107 +126,124 @@ const Documents: React.FC = () => {
 
       {isLoading && <LoadingAnimation />}
 
-      <div className="document-table-card">
-        <div className="document-list-header">
-          {/* ...header spans... */}
-          <span>Type</span>
-          <span>Title</span>
-          <span>Owner</span>
-          <span>Control Number</span>
-          <span>Date</span>
-          <span>Actions</span>
-        </div>
-
-        <ul className="document-list">
-          {filteredDocuments?.map((doc: Document) => (
-            <li key={doc.id} className="document-item">
-              {doc.documentType ? (
-                <span
-                  className="doc-type-pill"
-                  style={
-                    {
-                      "--type-color": `#${doc.documentType.color}`,
-                      backgroundColor: `#${doc.documentType.color}33`,
-                      color: `#${doc.documentType.color}`,
-                    } as React.CSSProperties
-                  }
-                >
-                  <span
-                    className="doc-type-pill-dot"
-                    style={{ backgroundColor: `var(--type-color)` }}
-                  />
-                  {doc.documentType.name}
-                </span>
-              ) : (
-                <span className="doc-type-badge">
-                  {formatFileType(doc.fileType)}
-                </span>
-              )}
-
-              <Link to={`/documents/${doc.id}`}>{doc.title}</Link>
-
-              <span className="document-owner">
-                {doc.uploadedBy?.name || "Unknown"}
-              </span>
-
-              <span className="document-control-number">
-                {doc.controlNumber || "—"}
-              </span>
-
-              <span className="document-date">
-                {new Date(doc.createdAt).toLocaleDateString()}
-              </span>
-
-              <div className="document-actions">
-                {currentUser && currentUser.id === doc.uploadedById ? (
-                  <>
-                    <button
-                      onClick={() => handleSendClick(doc)}
-                      className="btn-icon btn-send"
-                      title="Send Document"
+      <div className="card">
+        <div className="card-body">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Title</th>
+                <th>Owner</th>
+                <th>Control Number</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredDocuments?.map((doc: Document) => (
+                <tr key={doc.id}>
+                  <td>
+                    {doc.documentType ? (
+                      <span
+                        className="doc-type-pill"
+                        style={
+                          {
+                            "--type-color": `#${doc.documentType.color}`,
+                            backgroundColor: `#${doc.documentType.color}33`,
+                            color: `#${doc.documentType.color}`,
+                          } as React.CSSProperties
+                        }
+                      >
+                        <span
+                          className="doc-type-pill-dot"
+                          style={{ backgroundColor: `var(--type-color)` }}
+                        />
+                        {doc.documentType.name}
+                      </span>
+                    ) : (
+                      <span className="doc-type-badge">
+                        {formatFileType(doc.fileType)}
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    <Link
+                      to={`/documents/${doc.id}`}
+                      className="fw-bold text-decoration-none"
                     >
-                      <i className="bi bi-send"></i>
-                    </button>
-                    {/* REFACTOR: implicit relation */}
-                    {currentUser?.roles.some(
-                      (role: { canManageDocuments: boolean }) =>
-                        role.canManageDocuments
-                    ) &&
-                      doc.tags.some(
-                        (tag: { tag: { name: string } }) =>
-                          tag.tag.name === "for review"
-                      ) && (
-                        <button
-                          onClick={() => handleReviewClick(doc)}
-                          className="btn-icon btn-review"
-                          title="Review Document"
+                      {doc.title}
+                    </Link>
+                  </td>
+                  <td className="text-muted">
+                    {formatUserName(doc.uploadedBy)}
+                  </td>
+                  <td className="text-muted">{doc.controlNumber || "—"}</td>
+                  <td className="text-muted">
+                    {new Date(doc.createdAt).toLocaleDateString()}
+                  </td>
+                  <td>
+                    <div className="d-flex gap-2">
+                      {currentUser && currentUser.id === doc.uploadedById ? (
+                        <>
+                          <button
+                            onClick={() => handleSendClick(doc)}
+                            className="btn btn-icon btn-send"
+                            title="Send Document"
+                          >
+                            <i className="bi bi-send"></i>
+                          </button>
+                          {/* REFACTOR: implicit relation */}
+                          {currentUser?.roles.some(
+                            (role: { canManageDocuments: boolean }) =>
+                              role.canManageDocuments
+                          ) &&
+                            doc.tags.some(
+                              (tag: { tag: { name: string } }) =>
+                                tag.tag.name === "for review"
+                            ) && (
+                              <button
+                                onClick={() => handleReviewClick(doc)}
+                                className="btn btn-icon btn-review"
+                                title="Review Document"
+                              >
+                                <i className="bi bi-eye"></i>
+                              </button>
+                            )}
+                          <button
+                            onClick={() => handleDeleteClick(doc)}
+                            className="btn btn-icon btn-delete"
+                            title="Delete Document"
+                          >
+                            <i className="bi bi-trash"></i>
+                          </button>
+                        </>
+                      ) : (
+                        <span
+                          title="No access"
+                          className="no-access-icon text-muted"
                         >
-                          <i className="bi bi-eye"></i>
-                        </button>
+                          <i
+                            className="bi bi-lock-fill"
+                            style={{
+                              fontSize: "1.1rem",
+                            }}
+                          ></i>
+                        </span>
                       )}
-                    <button
-                      onClick={() => handleDeleteClick(doc)}
-                      className="btn-icon btn-delete"
-                      title="Delete Document"
-                    >
-                      <i className="bi bi-trash"></i>
-                    </button>
-                  </>
-                ) : (
-                  <span title="No access" className="no-access-icon">
-                    <i
-                      className="bi bi-lock-fill"
-                      style={{
-                        fontSize: "1.1rem",
-                        color: "var(--text-muted)",
-                      }}
-                    ></i>
-                  </span>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredDocuments?.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="text-center text-muted py-4">
+                    No documents found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <ConfirmModal

@@ -19,6 +19,11 @@
   --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   --card-stripe-bg: #fcfcfc; /* For zebra striping */
 
+  /* Status Colors */
+  --success: #198754; /* Bootstrap success green */
+  --danger: #dc3545; /* Bootstrap danger red */
+  --secondary: #6c757d; /* Bootstrap secondary grey */
+
   /* Form & Button Palette */
   --hover-bg: #f9f9f9;
   --input-bg: #f0f2f5;
@@ -47,6 +52,11 @@ body[data-bs-theme="dark"] {
   --card-border: #343a40;
   --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   --card-stripe-bg: #282c30;
+
+  /* Status Colors */
+  --success: #2ea043;
+  --danger: #f85149;
+  --secondary: #8b949e;
 
   /* Form & Button Palette */
   --hover-bg: #343a40;

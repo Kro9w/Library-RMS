@@ -4,8 +4,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../supabase";
 import { trpc } from "../trpc";
 import AuthLayout from "../components/AuthLayout";
-// --- 1. THIS IS THE FIX ---
-import "./Auth.css"; // Import the new unified CSS file
+import "./Auth.css";
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -31,13 +30,35 @@ const LoginPage: React.FC = () => {
 
       if (data.user) {
         // Sync the user in our DB
+        // We need to parse the metadata which should contain the name parts
+        const meta = data.user.user_metadata || {};
+
+        // Handle cases where we might still have old metadata or need to split display_name
+        let firstName = meta.first_name;
+        let middleName = meta.middle_name;
+        let lastName = meta.last_name;
+
+        if (!firstName && meta.display_name) {
+          const parts = meta.display_name.split(" ");
+          if (parts.length > 1) {
+            firstName = parts[0];
+            lastName = parts.slice(1).join(" "); // Rough approximation
+          } else {
+            firstName = parts[0];
+            lastName = "."; // Placeholder
+          }
+        }
+
+        // Fallback if completely missing
+        if (!firstName) firstName = "User";
+        if (!lastName) lastName = ".";
+
         syncUser.mutate({
           email: data.user.email!,
-          name: data.user.user_metadata?.display_name,
+          firstName,
+          middleName,
+          lastName,
         });
-
-        // After a successful login, the onAuthStateChange listener in WordAuth.tsx
-        // or the main App.tsx will handle the next steps.
       } else {
         throw new Error("Login successful but no user data received.");
       }
@@ -50,7 +71,6 @@ const LoginPage: React.FC = () => {
 
   return (
     <AuthLayout title="Login">
-      {/* --- 2. APPLY NEW CLASSES --- */}
       <div className="auth-container">
         <form className="auth-form" onSubmit={handleSubmit}>
           <input
@@ -80,7 +100,6 @@ const LoginPage: React.FC = () => {
           Don't have an account? <Link to="/signup">Sign Up</Link>
         </p>
       </div>
-      {/* --- END OF FIX --- */}
     </AuthLayout>
   );
 };

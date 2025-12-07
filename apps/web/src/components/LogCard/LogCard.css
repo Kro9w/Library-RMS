@@ -1,55 +1,51 @@
 /* apps/web/src/components/LogCard/LogCard.css */
-
 .log-card {
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  padding: 1rem;
-  margin-bottom: 1rem;
-  border-left: 4px solid #6c757d; /* Default border color */
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  position: relative;
+  background-color: var(--card-background);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  box-shadow: var(--card-shadow);
+  transition: all 0.2s ease;
+
+  /* 1. Set the base border for top, right, bottom */
+  border: 1px solid var(--card-border);
+
+  /* 2. Override the left border width to be thicker for the accent */
+  border-left-width: 4px;
+
+  /* 3. Set a default style, though color will be overridden by modifiers */
+  border-left-style: solid;
+  border-left-color: transparent;
 }
 
-.log-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+/* Removed hover transform/shadow to disable animation */
+/* .log-card:hover {
   transform: translateY(-2px);
-}
+  box-shadow: var(--shadow-lg);
+} */
 
 .log-card-success {
-  border-left-color: #28a745; /* Green for success actions */
+  border-left-color: var(--success);
 }
 
 .log-card-danger {
-  border-left-color: #dc3545; /* Red for danger actions */
+  border-left-color: var(--danger);
+}
+
+.log-card-default {
+  border-left-color: var(--secondary);
 }
 
 .log-card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .log-card-user {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-}
-
-.log-card-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background-color: #007bff;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-  font-weight: 600;
-  margin-right: 0.75rem;
-  flex-shrink: 0;
+  gap: 1rem;
 }
 
 .log-card-user-info {
@@ -58,34 +54,31 @@
 }
 
 .log-card-user-name {
-  font-weight: 600;
-  font-size: 1rem;
-  color: #343a40;
+  font-weight: 700;
+  color: var(--text);
 }
 
 .log-card-org-name {
-  font-size: 0.8rem;
-  color: #6c757d;
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }
 
 .log-card-body {
-  margin-bottom: 0.75rem;
-  padding-left: calc(40px + 0.75rem); /* Align with user info */
+  margin-bottom: 1rem;
 }
 
 .log-card-message {
-  font-size: 0.9rem;
-  color: #495057;
-  line-height: 1.4;
+  color: var(--text);
   margin: 0;
+  line-height: 1.5;
 }
 
 .log-card-footer {
-  text-align: right;
-  margin-top: 0.5rem;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .log-card-timestamp {
-  font-size: 0.75rem;
-  color: #adb5bd;
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }

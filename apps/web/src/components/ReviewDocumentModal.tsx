@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { trpc } from "../trpc";
 import { SendDocumentModal } from "./SendDocumentModal";
 import { Modal } from "bootstrap";
+import { formatUserName } from "../utils/user";
 
 interface ReviewDocumentModalProps {
   show: boolean;
@@ -148,7 +149,7 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
                   className="btn btn-info"
                   onClick={handleSendBack}
                 >
-                  Send to {document.reviewRequester?.name}
+                  Send to {formatUserName(document.reviewRequester)}
                 </button>
               )}
               <button

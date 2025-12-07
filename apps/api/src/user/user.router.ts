@@ -37,7 +37,9 @@ export class UserRouter {
         .input(
           z.object({
             email: z.string().email(),
-            name: z.string().optional(),
+            firstName: z.string().min(1),
+            middleName: z.string().optional(),
+            lastName: z.string().min(1),
           }),
         )
         .output(z.any())
@@ -48,13 +50,14 @@ export class UserRouter {
           return this.prisma.user.upsert({
             where: { id: authUser.id },
             update: {
-                // We might not want to overwrite name if it's already set?
-                // For now, let's keep it simple and safe.
+                // We typically don't update name on sync unless we want Supabase metadata to be source of truth
             },
             create: {
               id: authUser.id,
               email: input.email,
-              name: input.name,
+              firstName: input.firstName,
+              middleName: input.middleName,
+              lastName: input.lastName,
             },
           });
         }),
@@ -220,7 +223,9 @@ export class UserRouter {
       updateProfile: protectedProcedure
         .input(
           z.object({
-            name: z.string().min(1),
+            firstName: z.string().min(1),
+            middleName: z.string().optional(),
+            lastName: z.string().min(1),
             // imageUrl is optional, but if provided, it must be a URL
             imageUrl: z.string().url().optional(),
           }),
@@ -229,7 +234,9 @@ export class UserRouter {
           return ctx.prisma.user.update({
             where: { id: ctx.dbUser.id },
             data: {
-              name: input.name,
+              firstName: input.firstName,
+              middleName: input.middleName,
+              lastName: input.lastName,
               ...(input.imageUrl && { imageUrl: input.imageUrl }),
             },
           });

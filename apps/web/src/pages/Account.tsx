@@ -7,12 +7,15 @@ import { useForm } from "react-hook-form";
 import { useDropzone } from "react-dropzone";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "../supabase";
-import "./Account.css"; // We'll create this file
+import "./Account.css";
 import { LoadingAnimation } from "../components/ui/LoadingAnimation";
+import { formatUserName } from "../utils/user";
 
 // The data our form will manage
 type ProfileFormData = {
-  name: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
 };
 
 // The bucket we created
@@ -20,7 +23,7 @@ const AVATAR_BUCKET = "avatars";
 
 const Account: React.FC = () => {
   const authUser = useUser(); // This is the Supabase auth user
-  const trpcCtx = trpc.useUtils(); // This is now used
+  const trpcCtx = trpc.useUtils();
 
   // Get the user profile from *our* database
   const { data: dbUser, isLoading: isLoadingUser } = trpc.user.getMe.useQuery();
@@ -50,8 +53,10 @@ const Account: React.FC = () => {
 
   // This effect loads the user's current name into the form
   useEffect(() => {
-    if (dbUser?.name) {
-      setValue("name", dbUser.name);
+    if (dbUser) {
+      setValue("firstName", dbUser.firstName || "");
+      setValue("middleName", dbUser.middleName || "");
+      setValue("lastName", dbUser.lastName || "");
     }
   }, [dbUser, setValue]);
 
@@ -109,7 +114,9 @@ const Account: React.FC = () => {
 
     // 3. Call the tRPC mutation to save the new name and/or URL
     updateProfile({
-      name: formData.name,
+      firstName: formData.firstName,
+      middleName: formData.middleName || undefined,
+      lastName: formData.lastName,
       ...(newAvatarUrl && { imageUrl: newAvatarUrl }),
     });
   };
@@ -129,7 +136,7 @@ const Account: React.FC = () => {
     dbUser.imageUrl || // 2. The URL from our database (this now exists)
     authUser.user_metadata?.avatar_url || // 3. The URL from Supabase auth
     `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      dbUser.name || dbUser.email
+      formatUserName(dbUser)
     )}`;
 
   return (
@@ -166,12 +173,32 @@ const Account: React.FC = () => {
 
           {/* User Details Section */}
           <div className="form-group">
-            <label htmlFor="name">Display Name</label>
+            <label htmlFor="firstName">First Name</label>
             <input
-              id="name"
+              id="firstName"
               type="text"
               className="form-control"
-              {...register("name", { required: "Name is required" })}
+              {...register("firstName", { required: "First name is required" })}
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="middleName">Middle Name</label>
+            <input
+              id="middleName"
+              type="text"
+              className="form-control"
+              {...register("middleName")}
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="lastName">Last Name</label>
+            <input
+              id="lastName"
+              type="text"
+              className="form-control"
+              {...register("lastName", { required: "Last name is required" })}
             />
           </div>
 
@@ -192,7 +219,7 @@ const Account: React.FC = () => {
               id="role"
               type="text"
               className="form-control"
-              value={dbUser.role}
+              value={dbUser.role || "User"}
               disabled
             />
           </div>

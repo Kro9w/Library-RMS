@@ -1,5 +1,5 @@
 // apps/web/src/pages/Dashboard.tsx
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { trpc } from "../trpc";
 
@@ -26,6 +26,9 @@ type TopTagStat = AppRouterOutputs["getDashboardStats"]["topTags"][0];
 
 export function Dashboard() {
   const { data, isLoading, isError, error } = trpc.getDashboardStats.useQuery();
+  // Fetch current user for the greeting
+  const { data: user } = trpc.user.getMe.useQuery();
+
   useForm<{
     controlNumber: string;
     email: string;
@@ -35,6 +38,22 @@ export function Dashboard() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showSelectDocumentModal, setShowSelectDocumentModal] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+
+  // --- Greeting Logic ---
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    let timeGreeting = "Good morning";
+    if (hour >= 12 && hour < 18) {
+      timeGreeting = "Good afternoon";
+    } else if (hour >= 18) {
+      timeGreeting = "Good evening";
+    }
+
+    // User might not have loaded yet, or firstName might be missing if legacy
+    // But our types say firstName is string.
+    const name = user?.firstName || "User";
+    return `${timeGreeting}, ${name}`;
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -66,9 +85,9 @@ export function Dashboard() {
 
   return (
     <div className="container mt-4">
-      {/* --- Page Header (Unchanged) --- */}
+      {/* --- Page Header (Updated with Greeting) --- */}
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1>Dashboard</h1>
+        <h1>{greeting}</h1>
         <div className="d-flex gap-2 align-items-center">
           <button
             onClick={() => setShowSelectDocumentModal(true)}

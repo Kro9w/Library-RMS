@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { trpc } from "../trpc";
 import { Modal } from "bootstrap";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
+import { formatUserName } from "../utils/user";
 
 type User = AppRouterOutputs["documents"]["getAppUsers"][0];
 type Tag = AppRouterOutputs["documents"]["getTags"][0];
@@ -155,7 +156,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
                     )
                     .map((user: User) => (
                       <option key={user.id} value={user.id}>
-                        {user.name}
+                        {formatUserName(user)}
                       </option>
                     ))}
                 </select>

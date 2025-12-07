@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { trpc } from "../trpc";
 import "./DocumentDetails.css";
 import { LoadingAnimation } from "../components/ui/LoadingAnimation";
+import { formatUserName } from "../utils/user";
 
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 type Document = AppRouterOutputs["documents"]["getById"];
@@ -168,7 +169,7 @@ export const DocumentDetails: React.FC = () => {
               <h4 className="card-title">Details</h4>
               <hr />
               <p>
-                <strong>Owner:</strong> {document.uploadedBy?.name || "N/A"}
+                <strong>Owner:</strong> {formatUserName(document.uploadedBy)}
               </p>
               <p>
                 <strong>Created:</strong>{" "}

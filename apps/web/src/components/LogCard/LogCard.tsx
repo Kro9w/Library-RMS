@@ -3,13 +3,11 @@ import React from "react";
 import RolePill from "../Roles/RolePill";
 import { UserAvatar } from "../UserAvatar";
 import "./LogCard.css";
+import { UserNameFields, formatUserName } from "../../utils/user";
 
 interface Log {
   id: string;
-  user: {
-    name: string | null;
-    email: string | null;
-  };
+  user: UserNameFields;
   action: string;
   organization: {
     name: string;
@@ -51,7 +49,9 @@ const LogCard: React.FC<LogCardProps> = ({ log }) => {
         <div className="log-card-user">
           <UserAvatar user={log.user} size={40} />
           <div className="log-card-user-info">
-            <span className="log-card-user-name">{log.user.name}</span>
+            <span className="log-card-user-name">
+              {formatUserName(log.user)}
+            </span>
             <span className="log-card-org-name">{log.organization.name}</span>
           </div>
         </div>

@@ -28,7 +28,8 @@ type AppUser = AppRouterOutputs["documents"]["getAllUsers"][0];
 type Org = AppRouterOutputs["documents"]["getAllOrgs"][0];
 type UserDocument = AppRouterOutputs["documents"]["getDocumentsByUserId"][0];
 
-const truncateText = (name: string, type: NodeType, maxLength = 10) => {
+// Helper to truncate text *after* formatting
+const truncateText = (name: string, type: NodeType, maxLength = 15) => {
   if (type !== "document" || name.length <= maxLength) {
     return name;
   }
@@ -83,6 +84,16 @@ export function OwnershipGraph() {
       enabled: !!selectedUserNode,
     });
 
+  // Helper to format user name for the graph node specifically
+  const getGraphUserName = (user: AppUser) => {
+    const first = user.firstName;
+    const last = user.lastName;
+    if (!first) return user.email || "User";
+
+    const lastInitial = last ? last.charAt(0) : "";
+    return `${first}, ${lastInitial}.`;
+  };
+
   useEffect(() => {
     const allUsers = allUsersQuery.data;
     const allDocuments = allDocsQuery.data;
@@ -97,7 +108,7 @@ export function OwnershipGraph() {
 
       const userNodes: Node[] = allUsers.map((user: AppUser) => ({
         id: user.id,
-        name: user.name || user.email || "User",
+        name: getGraphUserName(user), // Use the specific graph format
         type: "user",
         organizationId: user.organizationId ?? undefined,
         email: user.email,
@@ -167,7 +178,7 @@ export function OwnershipGraph() {
 
       const userNodes: Node[] = orgUsers.map((user: AppUser) => ({
         id: user.id,
-        name: user.name || user.email || "User",
+        name: getGraphUserName(user),
         type: "user",
         organizationId: user.organizationId ?? undefined,
         email: user.email,

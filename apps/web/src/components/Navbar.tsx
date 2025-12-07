@@ -9,6 +9,7 @@ import "./Navbar.css";
 import { UploadModal } from "./UploadModal";
 import { SelectDocumentModal } from "./SelectDocumentModal";
 import { SendDocumentModal } from "./SendDocumentModal";
+import { formatUserName } from "../utils/user";
 
 interface NavbarProps {
   isCollapsed: boolean;
@@ -46,11 +47,14 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
 
   const { isAdmin } = useIsAdmin();
 
+  // Use the utility to format the name for the avatar
+  const displayName = dbUser ? formatUserName(dbUser) : user?.email || "User";
+
   const avatarUrl =
     dbUser?.imageUrl ||
     user?.user_metadata?.avatar_url ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      dbUser?.name || dbUser?.email || "User"
+      displayName
     )}&background=random&color=fff&size=128`;
 
   return (
@@ -164,7 +168,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
                     <div className="dropdown-header">
                       <img src={avatarUrl} alt="User Avatar" />
                       <div className="user-details">
-                        <span className="user-name">{dbUser.name}</span>
+                        <span className="user-name">{displayName}</span>
                         <span className="user-email">{dbUser.email}</span>
                       </div>
                     </div>
@@ -196,8 +200,9 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
                 >
                   <img src={avatarUrl} alt="User Avatar" />
                   <div className="user-info single-line">
-                    <span className="user-greeting">Hello, </span>
-                    <span className="user-name">{dbUser.name}</span>
+                    <span className="user-name">
+                      {dbUser.firstName || "User"} {dbUser.lastName}
+                    </span>
                   </div>
                 </button>
               </div>
