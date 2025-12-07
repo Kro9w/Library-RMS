@@ -6,14 +6,9 @@ import { trpc } from "../trpc";
 import { useOutsideClick } from "../hooks/OutsideClick";
 import { useIsAdmin } from "../hooks/usIsAdmin";
 import "./Navbar.css";
-import { useForm } from "react-hook-form";
 import { UploadModal } from "./UploadModal";
-import { ConfirmModal } from "./ConfirmModal";
-
-type TransferFormData = {
-  controlNumber: string;
-  email: string;
-};
+import { SelectDocumentModal } from "./SelectDocumentModal";
+import { SendDocumentModal } from "./SendDocumentModal";
 
 interface NavbarProps {
   isCollapsed: boolean;
@@ -38,33 +33,11 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
 
   // --- Modal State and Logic ---
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [showTransferModal, setShowTransferModal] = useState(false);
-  const { register, handleSubmit, reset } = useForm<TransferFormData>();
 
-  const { mutate: transferMutation, isPending: isTransferring } =
-    trpc.documents.sendDocument.useMutation({
-      onSuccess: () => {
-        alert("Document transferred successfully!");
-        setShowTransferModal(false);
-        reset();
-      },
-      onError: (error) => {
-        alert(`Error transferring document: ${error.message}`);
-      },
-    });
-
-  const handleCloseTransferModal = () => {
-    setShowTransferModal(false);
-    reset();
-  };
-
-  const onConfirmTransfer = (formData: TransferFormData) => {
-    transferMutation({
-      documentId: formData.controlNumber,
-      recipientId: formData.email,
-      tagIds: [],
-    });
-  };
+  // New Send Flow State
+  const [showSelectDocumentModal, setShowSelectDocumentModal] = useState(false);
+  const [showSendDocumentModal, setShowSendDocumentModal] = useState(false);
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -124,11 +97,11 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
               </button>
               <button
                 className="nav-link"
-                onClick={() => setShowTransferModal(true)}
-                title={isCollapsed ? "Transfer" : ""}
+                onClick={() => setShowSelectDocumentModal(true)}
+                title={isCollapsed ? "Send" : ""}
               >
-                <i className="bi bi-box-arrow-right"></i>
-                <span className="link-text">Transfer</span>
+                <i className="bi bi-send-fill"></i>
+                <span className="link-text">Send</span>
               </button>
             </div>
 
@@ -246,52 +219,29 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
         </nav>
       </div>
 
-      {/* Modals (Unchanged) */}
+      {/* Modals */}
       <UploadModal
         show={showUploadModal}
         onClose={() => setShowUploadModal(false)}
       />
 
-      <ConfirmModal
-        show={showTransferModal}
-        onClose={handleCloseTransferModal}
-        onConfirm={handleSubmit(onConfirmTransfer)}
-        title="Transfer Document"
-        isConfirming={isTransferring}
-      >
-        <fieldset disabled={isTransferring}>
-          <label
-            htmlFor="controlNumber"
-            className="form-label"
-            style={{ display: "block", marginBottom: "0.5rem" }}
-          >
-            Document Control Number:
-          </label>
-          <input
-            {...register("controlNumber", { required: true })}
-            type="text"
-            id="controlNumber"
-            className="form-control"
-            placeholder="Scan or Enter Control Number"
-            style={{ width: "100%", marginBottom: "1rem" }}
-          />
-          <label
-            htmlFor="email"
-            className="form-label"
-            style={{ display: "block", marginBottom: "0.5rem" }}
-          >
-            New Owner's Email:
-          </label>
-          <input
-            {...register("email", { required: true })}
-            type="email"
-            id="email"
-            className="form-control"
-            placeholder="user@example.com"
-            style={{ width: "100%" }}
-          />
-        </fieldset>
-      </ConfirmModal>
+      <SelectDocumentModal
+        show={showSelectDocumentModal}
+        onClose={() => setShowSelectDocumentModal(false)}
+        onSelect={(docId) => {
+          setSelectedDocId(docId);
+          setShowSelectDocumentModal(false);
+          setShowSendDocumentModal(true);
+        }}
+      />
+
+      {selectedDocId && (
+        <SendDocumentModal
+          show={showSendDocumentModal}
+          onClose={() => setShowSendDocumentModal(false)}
+          documentId={selectedDocId}
+        />
+      )}
     </>
   );
 }

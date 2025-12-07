@@ -33,6 +33,9 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
   useEffect(() => {
     if (modalRef.current) {
       modalInstanceRef.current = new Modal(modalRef.current);
+      modalRef.current.addEventListener("hidden.bs.modal", () => {
+        onClose();
+      });
     }
   }, []);
 
@@ -135,7 +138,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
 
   return (
     <div className="modal fade" ref={modalRef} id="uploadModal" tabIndex={-1}>
-      <div className="modal-dialog">
+      <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title">Upload Document</h5>

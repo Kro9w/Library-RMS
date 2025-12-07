@@ -22,7 +22,7 @@
   flex-direction: column;
   background: var(--primary);
   color: var(--light-text);
-  border-radius: 0.7rem;
+  border-radius: 1rem;
   overflow: hidden;
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
 }

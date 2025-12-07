@@ -656,7 +656,7 @@ export class DocumentsRouter {
         })
         .input(z.void())
         .output(z.any())
-        .query(async ({ ctx }) => {
+        .query(async () => {
             return this.prisma.organization.findMany();
         }),
 

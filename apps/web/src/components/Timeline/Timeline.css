@@ -2,7 +2,7 @@
 
 .timeline-container {
   position: relative;
-  padding: 1rem 0;
+  margin-left: 1rem;
 }
 
 .timeline-container::before {
@@ -10,24 +10,22 @@
   position: absolute;
   top: 0;
   left: 11px; /* Center the line on the 24px-wide dot area */
-  width: 2px;
+  width: 1px;
   height: 100%;
-  background-color: #e9ecef;
+  background-color: var(--text-muted);
   z-index: 0;
 }
 
 .timeline-date-header {
   position: sticky;
   top: 0;
-  background-color: #f8f9fa;
+  background-color: var(--background);
   padding: 0.5rem 1.5rem;
   margin: 1rem -1.5rem; /* Extend to the edges of the parent container */
   font-size: 0.9rem;
   font-weight: 600;
-  color: #495057;
+  color: var(--dark-text);
   z-index: 2;
-  border-top: 1px solid #dee2e6;
-  border-bottom: 1px solid #dee2e6;
 }
 
 .timeline-item {
@@ -38,13 +36,13 @@
 
 .timeline-dot {
   position: absolute;
-  top: 1.25rem; /* Align with the top of the card's content area */
-  left: -9px; /* Position on the timeline line */
+  top: 3.6rem; /* Align with the top of the card's content area */
+  left: -22px; /* Position on the timeline line */
   width: 20px;
   height: 20px;
   border-radius: 50%;
   background-color: #fff;
-  border: 4px solid #007bff;
+  border: 4px solid var(--text-muted);
   z-index: 1;
 }
 

@@ -87,7 +87,7 @@ const Documents: React.FC = () => {
   );
 
   return (
-    <div className="documents-container">
+    <div className="container mt-4">
       {/* --- 1. ADD THIS WRAPPER --- */}
       <div className="page-header">
         <h2>Documents</h2>

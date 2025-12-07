@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { trpc } from "../trpc";
+import { Modal } from "bootstrap";
 
 interface SelectDocumentModalProps {
   show: boolean;
@@ -17,11 +18,38 @@ export const SelectDocumentModal: React.FC<SelectDocumentModalProps> = ({
     filter: "mine",
   });
 
-  if (!show) return null;
+  const modalRef = useRef<HTMLDivElement>(null);
+  const modalInstanceRef = useRef<Modal | null>(null);
+
+  useEffect(() => {
+    if (modalRef.current) {
+      modalInstanceRef.current = new Modal(modalRef.current);
+      modalRef.current.addEventListener("hidden.bs.modal", () => {
+        onClose();
+      });
+    }
+    return () => {
+      modalInstanceRef.current?.dispose();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (show) {
+      modalInstanceRef.current?.show();
+    } else {
+      modalInstanceRef.current?.hide();
+    }
+  }, [show]);
 
   return (
-    <div className="modal fade show" style={{ display: "block" }} tabIndex={-1}>
-      <div className="modal-dialog">
+    <div
+      className="modal fade"
+      ref={modalRef}
+      id="selectDocumentModal"
+      tabIndex={-1}
+      aria-hidden="true"
+    >
+      <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title">Select a Document</h5>
@@ -29,6 +57,7 @@ export const SelectDocumentModal: React.FC<SelectDocumentModalProps> = ({
               type="button"
               className="btn-close"
               onClick={onClose}
+              aria-label="Close"
             ></button>
           </div>
           <div className="modal-body">
@@ -38,6 +67,7 @@ export const SelectDocumentModal: React.FC<SelectDocumentModalProps> = ({
                   key={doc.id}
                   className="list-group-item list-group-item-action"
                   onClick={() => onSelect(doc.id)}
+                  style={{ cursor: "pointer" }}
                 >
                   {doc.title}
                 </li>

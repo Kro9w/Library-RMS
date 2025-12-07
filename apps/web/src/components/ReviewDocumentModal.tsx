@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { trpc } from "../trpc";
 import { SendDocumentModal } from "./SendDocumentModal";
+import { Modal } from "bootstrap";
 
 interface ReviewDocumentModalProps {
   show: boolean;
@@ -25,6 +26,29 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
   const { data: globalTags } = trpc.documents.getGlobalTags.useQuery();
 
   const sendDocumentMutation = trpc.documents.sendDocument.useMutation();
+
+  const modalRef = useRef<HTMLDivElement>(null);
+  const modalInstanceRef = useRef<Modal | null>(null);
+
+  useEffect(() => {
+    if (modalRef.current) {
+      modalInstanceRef.current = new Modal(modalRef.current);
+      modalRef.current.addEventListener("hidden.bs.modal", () => {
+        onClose();
+      });
+    }
+    return () => {
+      modalInstanceRef.current?.dispose();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (show) {
+      modalInstanceRef.current?.show();
+    } else {
+      modalInstanceRef.current?.hide();
+    }
+  }, [show]);
 
   const handleSendBack = async () => {
     if (!documentId || !document?.reviewRequesterId) return;
@@ -58,16 +82,16 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
     setShowSendModal(true);
   };
 
-  if (!show) return null;
-
   return (
     <>
       <div
-        className="modal fade show"
-        style={{ display: "block" }}
+        className="modal fade"
+        ref={modalRef}
+        id="reviewDocumentModal"
         tabIndex={-1}
+        aria-hidden="true"
       >
-        <div className="modal-dialog">
+        <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
             <div className="modal-header">
               <h5 className="modal-title">Review Document</h5>
@@ -75,6 +99,7 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
                 type="button"
                 className="btn-close"
                 onClick={onClose}
+                aria-label="Close"
               ></button>
             </div>
             <div className="modal-body">

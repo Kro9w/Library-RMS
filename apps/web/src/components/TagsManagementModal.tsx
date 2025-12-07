@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { trpc } from "../trpc";
 import { Modal } from "bootstrap";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
@@ -126,7 +126,7 @@ export function TagsManagementModal({
       tabIndex={-1}
       aria-hidden="true"
     >
-      <div className="modal-dialog modal-lg">
+      <div className="modal-dialog modal-lg modal-dialog-centered">
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title">Manage Tags</h5>
@@ -189,93 +189,33 @@ export function TagsManagementModal({
                     className="list-group"
                     style={{ maxHeight: "400px", overflowY: "auto" }}
                   >
-                    {tags?.map(
-                      (tag: {
-                        id: React.Key | null | undefined;
-                        name:
-                          | string
-                          | number
-                          | bigint
-                          | boolean
-                          | React.ReactElement<
-                              unknown,
-                              string | React.JSXElementConstructor<any>
-                            >
-                          | Iterable<React.ReactNode>
-                          | React.ReactPortal
-                          | Promise<
-                              | string
-                              | number
-                              | bigint
-                              | boolean
-                              | React.ReactPortal
-                              | React.ReactElement<
-                                  unknown,
-                                  string | React.JSXElementConstructor<any>
-                                >
-                              | Iterable<React.ReactNode>
-                              | null
-                              | undefined
-                            >
-                          | null
-                          | undefined;
-                        _count: {
-                          documents:
-                            | string
-                            | number
-                            | bigint
-                            | boolean
-                            | React.ReactElement<
-                                unknown,
-                                string | React.JSXElementConstructor<any>
-                              >
-                            | Iterable<React.ReactNode>
-                            | React.ReactPortal
-                            | Promise<
-                                | string
-                                | number
-                                | bigint
-                                | boolean
-                                | React.ReactPortal
-                                | React.ReactElement<
-                                    unknown,
-                                    string | React.JSXElementConstructor<any>
-                                  >
-                                | Iterable<React.ReactNode>
-                                | null
-                                | undefined
-                              >
-                            | null
-                            | undefined;
-                        };
-                      }) => (
-                        <li
-                          key={tag.id}
-                          className="list-group-item d-flex justify-content-between align-items-center"
-                        >
-                          <div>
-                            <span className="fw-bold">{tag.name}</span>
-                            <small className="text-muted ms-2">
-                              ({tag._count.documents} docs)
-                            </small>
-                          </div>
-                          <div>
-                            <button
-                              className="btn btn-sm btn-outline-primary me-2"
-                              onClick={() => handleEdit(tag)}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              className="btn btn-sm btn-outline-danger"
-                              onClick={() => handleDelete(tag.id as string)}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </li>
-                      )
-                    )}
+                    {tags?.map((tag: Tag) => (
+                      <li
+                        key={tag.id}
+                        className="list-group-item d-flex justify-content-between align-items-center"
+                      >
+                        <div>
+                          <span className="fw-bold">{tag.name}</span>
+                          <small className="text-muted ms-2">
+                            ({tag._count.documents} docs)
+                          </small>
+                        </div>
+                        <div>
+                          <button
+                            className="btn btn-sm btn-outline-primary me-2"
+                            onClick={() => handleEdit(tag)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => handleDelete(tag.id as string)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </li>
+                    ))}
                     {!tags?.length && (
                       <li className="list-group-item text-muted">
                         No tags found.
