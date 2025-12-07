@@ -1,0 +1,7 @@
+
+> library-rms-monorepo@1.0.0 dev:web /app
+> pnpm --filter web dev
+
+
+> web@0.0.0 dev /app/apps/web
+> vite
