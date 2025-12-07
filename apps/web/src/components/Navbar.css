@@ -188,11 +188,6 @@ a.nav-link {
   transition: opacity 0.2s ease, max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Logo specific overrides for collapsed */
-.sidebar-float.collapsed .logo-item .nav-link {
-  /* Logo keeps its padding, just hiding text */
-}
-
 .sidebar-float.expanded {
   width: 260px;
 }
@@ -233,10 +228,6 @@ a.nav-link {
   object-fit: cover;
   flex-shrink: 0;
   margin-right: 0.75rem;
-}
-
-.sidebar-float.collapsed .user-profile-button {
-  /* No changes needed to padding/justify if calculated correctly */
 }
 
 .user-info {

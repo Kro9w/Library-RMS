@@ -8,6 +8,7 @@ import { UploadModal } from "../components/UploadModal";
 import { SendDocumentModal } from "../components/SendDocumentModal";
 import { ReviewDocumentModal } from "../components/ReviewDocumentModal";
 import { LoadingAnimation } from "../components/ui/LoadingAnimation";
+import { TagsManagementModal } from "../components/TagsManagementModal";
 import "./Documents.css";
 
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
@@ -38,6 +39,7 @@ const Documents: React.FC = () => {
   const [showSendModal, setShowSendModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showTagsModal, setShowTagsModal] = useState(false);
 
   const utils = trpc.useUtils();
 
@@ -106,10 +108,16 @@ const Documents: React.FC = () => {
             className="search-bar"
           />
           <button
+            className="btn btn-secondary me-2"
+            onClick={() => setShowTagsModal(true)}
+          >
+            Tags
+          </button>
+          <button
             className="btn btn-primary"
             onClick={() => setShowUploadModal(true)}
           >
-            New
+            Upload
           </button>
         </div>
       </div>
@@ -250,6 +258,11 @@ const Documents: React.FC = () => {
       <UploadModal
         show={showUploadModal}
         onClose={() => setShowUploadModal(false)}
+      />
+
+      <TagsManagementModal
+        show={showTagsModal}
+        onClose={() => setShowTagsModal(false)}
       />
     </div>
   );

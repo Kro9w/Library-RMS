@@ -152,14 +152,6 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
                 <span className="link-text">Documents</span>
               </NavLink>
               <NavLink
-                to="/tags"
-                className="nav-link"
-                title={isCollapsed ? "Tags" : ""}
-              >
-                <i className="bi bi-tags-fill"></i>
-                <span className="link-text">Tags</span>
-              </NavLink>
-              <NavLink
                 to="/graph"
                 className="nav-link"
                 title={isCollapsed ? "Graph" : ""}

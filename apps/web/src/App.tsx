@@ -22,7 +22,6 @@ import {
 
 import { Navbar } from "./components/Navbar";
 import { DocumentDetails } from "./pages/DocumentDetails";
-import { Tags } from "./pages/Tags";
 import { GraphView } from "./pages/GraphView";
 import JoinOrganization from "./pages/JoinOrganization";
 import { Users } from "./pages/Users";
@@ -141,10 +140,6 @@ const AppContent: React.FC = () => {
             element={
               session ? <DocumentDetails /> : <Navigate to="/login" replace />
             }
-          />
-          <Route
-            path="/tags"
-            element={session ? <Tags /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/graph"
