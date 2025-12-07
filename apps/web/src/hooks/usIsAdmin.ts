@@ -1,4 +1,4 @@
-// apps/web/src/hooks/useIsAdmin.ts
+// apps/web/src/hooks/usIsAdmin.ts
 import { trpc } from "../trpc";
 
 export function useIsAdmin() {
@@ -6,8 +6,8 @@ export function useIsAdmin() {
 
   const isAdmin =
     user?.roles.some(
-      (userRole: { role: { canManageRoles: any } }) =>
-        userRole.role.canManageRoles
+      (role: { canManageRoles: boolean }) =>
+        role.canManageRoles
     ) || false;
 
   return { isAdmin, isLoading };

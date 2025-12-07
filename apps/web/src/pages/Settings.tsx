@@ -13,10 +13,10 @@ export function Settings() {
 
   const { data: user } = trpc.user.getMe.useQuery();
 
+  // REFACTOR: implicit relation
   const canManageRoles =
     user?.roles.some(
-      (userRole: { role: { canManageRoles: any } }) =>
-        userRole.role.canManageRoles
+      (role: { canManageRoles: boolean }) => role.canManageRoles
     ) || false;
 
   useEffect(() => {

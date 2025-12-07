@@ -23,9 +23,6 @@ export class TrpcRouter {
   ) {}
 
   get appRouter() {
-    // --- 1. FIX: HELPER FUNCTION MOVED HERE ---
-    // It must be defined *inside* get appRouter,
-    // but *before* the router object itself.
     const formatFileType = (fileType: string | null | undefined): string => {
       if (!fileType) return "Other";
       if (fileType.includes("pdf")) return "PDF";
@@ -44,13 +41,11 @@ export class TrpcRouter {
           return `Hello, ${input.name}!`;
         }),
 
-      // This is the new, corrected getDashboardStats procedure
       getDashboardStats: protectedProcedure.query(async ({ ctx }) => {
         const twentyFourHoursAgo = new Date();
         twentyFourHoursAgo.setDate(twentyFourHoursAgo.getDate() - 1);
         const orgId = ctx.dbUser.organizationId as string;
 
-        // NEW QUERY for pie chart
         const docsByTypeQuery = ctx.prisma.document.groupBy({
           by: ["fileType"],
           _count: {
@@ -59,13 +54,16 @@ export class TrpcRouter {
           where: { organizationId: orgId },
         });
 
+        // Refactored to match implicit relations for tags
+        // Old: select: { tags: { include: { tag: true } } }
+        // New: select: { tags: true } (since it's implicit)
         const [
           totalDocuments,
           recentUploadsCount,
           recentFiles,
           totalUsers,
           allDocumentTags,
-          docsByTypeRaw, // Result of new query
+          docsByTypeRaw,
         ] = await Promise.all([
           ctx.prisma.document.count({ where: { organizationId: orgId } }),
           ctx.prisma.document.count({
@@ -87,9 +85,9 @@ export class TrpcRouter {
           ctx.prisma.user.count({ where: { organizationId: orgId } }),
           ctx.prisma.document.findMany({
             where: { organizationId: orgId },
-            select: { tags: { include: { tag: true } } },
+            select: { tags: true }, 
           }),
-          docsByTypeQuery, // Run the query
+          docsByTypeQuery,
         ]);
 
         const docsByType = docsByTypeRaw.map((group) => ({
@@ -99,9 +97,10 @@ export class TrpcRouter {
 
         const tagCountMap: Record<string, number> = {};
         for (const doc of allDocumentTags) {
-          for (const docTag of doc.tags) {
-            tagCountMap[docTag.tag.name] =
-              (tagCountMap[docTag.tag.name] || 0) + 1;
+          // doc.tags is now Tag[] directly
+          for (const tag of doc.tags) {
+            tagCountMap[tag.name] =
+              (tagCountMap[tag.name] || 0) + 1;
           }
         }
         const topTags = Object.entries(tagCountMap)
@@ -117,7 +116,7 @@ export class TrpcRouter {
             uploadedBy: f.uploadedBy.name,
           })),
           totalUsers,
-          docsByType: docsByType, // <-- Now contains real data
+          docsByType: docsByType,
           topTags,
         };
       }),

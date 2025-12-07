@@ -161,7 +161,8 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
                 {globalTags
                   ?.filter((tag: Tag) => {
                     const canManageDocuments = recipientRoles?.some(
-                      (role) => role.role.canManageDocuments
+                      // REFACTORED: recipientRoles is now Role[], so we access properties directly
+                      (role) => role.canManageDocuments
                     );
 
                     if (canManageDocuments) {

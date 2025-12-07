@@ -1,79 +1,60 @@
-import { TRPCError, initTRPC } from '@trpc/server';
-import { TrpcContext } from './trpc.context';
+// apps/api/src/trpc/trpc.ts
+import { initTRPC, TRPCError } from '@trpc/server';
 import { OpenApiMeta } from 'trpc-openapi';
+import { PrismaService } from '../prisma/prisma.service';
 import { User } from '@prisma/client';
-import { SupabaseUser } from '../types/express'; // Import SupabaseUser type
 
-const t = initTRPC.context<TrpcContext>().meta<OpenApiMeta>().create();
+export type Context = {
+  user: any; // Supabase user
+  dbUser?: User;
+  prisma: PrismaService;
+};
+
+const t = initTRPC
+  .context<Context>()
+  .meta<OpenApiMeta>()
+  .create();
 
 export const router = t.router;
 export const publicProcedure = t.procedure;
 
-// --- Context 1 & Middleware 1: For Syncing User ---
-
-// FIX: Define a clean context for procedures that only need Supabase auth
-export interface SupabaseAuthedContext {
-  prisma: TrpcContext['prisma'];
-  user: NonNullable<TrpcContext['user']>; // Just the Supabase user
-}
-
-const isAuthedWithSupabase = t.middleware(async ({ ctx, next }) => {
+const isAuthed = t.middleware(async ({ ctx, next }) => {
   if (!ctx.user) {
-    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+    throw new TRPCError({ code: 'UNAUTHORIZED' });
   }
 
-  // FIX: Return the new, clean context
-  return next({
-    ctx: {
-      prisma: ctx.prisma,
-      user: ctx.user,
-    },
-  });
-});
-
-/**
- * A procedure that only requires a valid Supabase JWT.
- * Use this for creating/syncing the user.
- */
-export const supabaseAuthedProcedure = t.procedure.use(isAuthedWithSupabase);
-
-// --- Context 2 & Middleware 2: For All Other Protected Calls ---
-
-export interface AuthedContext {
-  prisma: TrpcContext['prisma'];
-  user: NonNullable<TrpcContext['user']>;
-  dbUser: User;
-}
-
-const isAuthedAndInDB = t.middleware(async ({ ctx, next }) => {
-  if (!ctx.user) {
-    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
-  }
-
+  // Restore logic: Fetch user from DB
   const dbUser = await ctx.prisma.user.findUnique({
     where: { id: ctx.user.id },
   });
 
   if (!dbUser) {
-    throw new TRPCError({
+    // If authenticated via Supabase but not in our DB, we might want to throw or handle it.
+    // Usually strict authed procedures expect the user to exist in DB.
+    throw new TRPCError({ 
       code: 'UNAUTHORIZED',
-      message: 'User not found in database. Please sign in again.',
+      message: 'User record not found in database.'
     });
   }
 
-  // Pass the clean context for DB-authed procedures
   return next({
     ctx: {
-      prisma: ctx.prisma,
       user: ctx.user,
-      dbUser: dbUser,
+      dbUser: dbUser, // Pass the DB user to the context
     },
   });
 });
 
-/**
- * A protected procedure that requires a valid Supabase JWT
- * AND a corresponding user record in our database.
- * The context is enhanced with `ctx.dbUser`.
- */
-export const protectedProcedure = t.procedure.use(isAuthedAndInDB);
+const isSupabaseAuthed = t.middleware(async ({ ctx, next }) => {
+    if (!ctx.user) {
+      throw new TRPCError({ code: 'UNAUTHORIZED' });
+    }
+    return next({
+        ctx: {
+            user: ctx.user,
+        }
+    })
+})
+
+export const protectedProcedure = t.procedure.use(isAuthed);
+export const supabaseAuthedProcedure = t.procedure.use(isSupabaseAuthed);

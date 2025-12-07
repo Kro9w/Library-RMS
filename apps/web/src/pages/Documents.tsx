@@ -177,11 +177,17 @@ const Documents: React.FC = () => {
                     >
                       <i className="bi bi-send"></i>
                     </button>
+                    {/* REFACTOR: implicit relation */}
                     {currentUser?.roles.some(
-                      (role: { role: { canManageDocuments: any } }) =>
-                        role.role.canManageDocuments
+                      (role: { canManageDocuments: boolean }) =>
+                        role.canManageDocuments
                     ) &&
                       doc.tags.some(
+                        // The backend still returns mapped tags: doc.tags.map(t => ({ tag: t }))
+                        // as per my DocumentsRouter getAll implementation.
+                        // So `tag.tag.name` IS STILL CORRECT for `doc.tags` if I didn't change the router mapping.
+                        // I mapped it: return docs.map(doc => ({ ...doc, tags: doc.tags.map(t => ({ tag: t })), }));
+                        // So `tag.tag` IS correct for `doc.tags`.
                         (tag: { tag: { name: string } }) =>
                           tag.tag.name === "for review"
                       ) && (

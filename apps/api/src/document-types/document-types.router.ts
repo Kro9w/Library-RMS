@@ -34,17 +34,19 @@ export class DocumentTypesRouter {
             },
           });
 
-          const userRoles = await ctx.prisma.userRole.findMany({
-            where: { userId: ctx.dbUser.id },
-            include: { role: true },
+          // Implicit M:N
+          const user = await ctx.prisma.user.findUnique({
+             where: { id: ctx.dbUser.id },
+             include: { roles: true },
           });
+          const roles = user?.roles || [];
 
           await ctx.prisma.log.create({
             data: {
               action: `Created document type: ${newDocType.name}`,
               userId: ctx.dbUser.id,
               organizationId: orgId,
-              userRole: userRoles.map((userRole) => userRole.role.name).join(', '),
+              userRole: roles.map((role) => role.name).join(', '),
             },
           });
 
@@ -78,17 +80,19 @@ export class DocumentTypesRouter {
             where: { id: input.id },
           });
 
-          const userRoles = await ctx.prisma.userRole.findMany({
-            where: { userId: ctx.dbUser.id },
-            include: { role: true },
+          // Implicit M:N
+          const user = await ctx.prisma.user.findUnique({
+             where: { id: ctx.dbUser.id },
+             include: { roles: true },
           });
+          const roles = user?.roles || [];
 
           await ctx.prisma.log.create({
             data: {
               action: `Deleted document type: ${deletedDocType.name}`,
               userId: ctx.dbUser.id,
               organizationId: deletedDocType.organizationId,
-              userRole: userRoles.map((userRole) => userRole.role.name).join(', '),
+              userRole: roles.map((role) => role.name).join(', '),
             },
           });
 

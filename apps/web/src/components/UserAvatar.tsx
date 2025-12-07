@@ -1,5 +1,4 @@
 // apps/web/src/components/UserAvatar.tsx
-import React from "react";
 
 type User = {
   name?: string | null;

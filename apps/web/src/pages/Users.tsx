@@ -26,10 +26,10 @@ export function Users() {
   const [userToSendTo, setUserToSendTo] = useState<User | null>(null);
   const [documentToSend, setDocumentToSend] = useState<string>("");
 
+  // REFACTOR: currentUser.roles is now Role[] (implicit relation)
   const canManageUsers =
     currentUser?.roles.some(
-      (userRole: { role: { canManageUsers: any } }) =>
-        userRole.role.canManageUsers
+      (role: { canManageUsers: boolean }) => role.canManageUsers
     ) || false;
 
   const handleRemoveFromOrg = () => {
@@ -123,14 +123,15 @@ export function Users() {
                       </td>
                       <td className="align-middle">
                         <div className="role-pills-container">
-                          {user.roles.map((userRole: any) => (
+                          {/* REFACTOR: user.roles is now Role[] */}
+                          {user.roles.map((role: any) => (
                             <div
-                              key={userRole.role.id}
+                              key={role.id}
                               className="role-pill"
-                              data-role-name={userRole.role.name}
+                              data-role-name={role.name}
                             >
                               <span className="role-dot"></span>
-                              {userRole.role.name}
+                              {role.name}
                             </div>
                           ))}
                         </div>

@@ -1,4 +1,3 @@
-// apps/web/src/components/Navbar.tsx
 import { useState, useRef } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/SessionContext";
@@ -7,13 +6,10 @@ import { trpc } from "../trpc";
 import { useOutsideClick } from "../hooks/OutsideClick";
 import { useIsAdmin } from "../hooks/usIsAdmin";
 import "./Navbar.css";
-
-// --- Imports for Modals ---
 import { useForm } from "react-hook-form";
 import { UploadModal } from "./UploadModal";
 import { ConfirmModal } from "./ConfirmModal";
 
-// Define the form types for the transfer modal
 type TransferFormData = {
   controlNumber: string;
   email: string;

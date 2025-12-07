@@ -188,10 +188,9 @@ export function RolesModal() {
                     <td>{user.name}</td>
                     <td>
                       <div className="role-pills-container">
-                        {user.roles.map((userRole) => {
-                          const role = roles?.find(
-                            (r) => r.id === userRole.roleId
-                          );
+                        {/* REFACTOR: user.roles is now Role[] */}
+                        {user.roles.map((role: any) => {
+                          // role object is directly available
                           return role ? (
                             <RolePill
                               key={role.id}
@@ -219,7 +218,8 @@ export function RolesModal() {
                                 ?.filter(
                                   (role) =>
                                     !user.roles.some(
-                                      (userRole) => userRole.roleId === role.id
+                                      // REFACTOR: role access
+                                      (r: any) => r.id === role.id
                                     )
                                 )
                                 .map((role) => (

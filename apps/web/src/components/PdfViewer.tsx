@@ -21,7 +21,7 @@ export function PdfViewer({ fileUrl }: PdfViewerProps) {
   return (
     <div>
       <Document file={fileUrl} onLoadSuccess={onDocumentLoadSuccess}>
-        {Array.from(new Array(numPages || 0), (el, index) => (
+        {Array.from(new Array(numPages || 0), (_, index) => (
           <Page
             key={`page_${index + 1}`}
             pageNumber={index + 1}

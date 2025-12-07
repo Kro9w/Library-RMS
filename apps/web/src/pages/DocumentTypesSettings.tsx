@@ -1,15 +1,14 @@
 // apps/web/src/pages/DocumentTypesSettings.tsx
-import { useState } from "react";
 import { DocumentTypesModal } from "../components/DocumentTypes/DocumentTypesModal";
 import { trpc } from "../trpc";
 
 export function DocumentTypesSettings() {
   const { data: user } = trpc.user.getMe.useQuery();
 
+  // REFACTOR: user.roles is now Role[] (implicit)
   const canManageDocuments =
     user?.roles.some(
-      (userRole: { role: { canManageDocuments: any } }) =>
-        userRole.role.canManageDocuments
+      (role: { canManageDocuments: boolean }) => role.canManageDocuments
     ) || false;
 
   return (

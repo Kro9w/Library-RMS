@@ -7,9 +7,10 @@ export class UserService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getUserRoles(userId: string) {
-    return this.prisma.userRole.findMany({
-      where: { userId },
-      include: { role: true },
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { roles: true },
     });
+    return user?.roles || [];
   }
 }

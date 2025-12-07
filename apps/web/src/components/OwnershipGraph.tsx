@@ -21,11 +21,7 @@ type Node = d3.SimulationNodeDatum & {
 
 type Link = d3.SimulationLinkDatum<Node> & { isDetached?: boolean };
 
-type TransferDetails = {
-  docNode: Node;
-  userNode: Node;
-  link: Link;
-};
+// Removed unused TransferDetails type
 
 type GraphData = { nodes: Node[]; links: Link[] };
 type AppUser = AppRouterOutputs["documents"]["getAllUsers"][0];
@@ -73,7 +69,7 @@ export function OwnershipGraph() {
     null
   );
 
-  const utils = trpc.useContext();
+  // Removed unused utils
 
   const { data: currentUserData, isLoading: isLoadingCurrentUser } =
     trpc.user.getMe.useQuery();

@@ -26,9 +26,10 @@ export class RolesRouter {
         )
         .mutation(async ({ input, ctx }) => {
           const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
+          // userRoles is now Role[]
 
           const canManageRoles = userRoles.some(
-            (userRole) => userRole.role.canManageRoles,
+            (role) => role.canManageRoles,
           );
 
           if (!canManageRoles) {
@@ -67,12 +68,13 @@ export class RolesRouter {
       getUserRoles: protectedProcedure
         .input(z.string())
         .query(async ({ input: userId }) => {
+          // Now returns Role[] instead of UserRole[]
           return await this.userService.getUserRoles(userId);
         }),
       
       getRoleById: protectedProcedure
         .input(z.string())
-        .query(async ({ input, ctx }) => {
+        .query(async ({ input }) => {
           return await this.rolesService.getRoleById(input);
         }),
 
@@ -90,7 +92,7 @@ export class RolesRouter {
           const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
 
           const canManageRoles = userRoles.some(
-            (userRole) => userRole.role.canManageRoles,
+            (role) => role.canManageRoles,
           );
 
           if (!canManageRoles) {
@@ -112,7 +114,7 @@ export class RolesRouter {
           const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
 
           const canManageRoles = userRoles.some(
-            (userRole) => userRole.role.canManageRoles,
+            (role) => role.canManageRoles,
           );
 
           if (!canManageRoles) {
@@ -135,7 +137,7 @@ export class RolesRouter {
           const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
 
           const canManageRoles = userRoles.some(
-            (userRole) => userRole.role.canManageRoles,
+            (role) => role.canManageRoles,
           );
 
           if (!canManageRoles) {
@@ -162,7 +164,7 @@ export class RolesRouter {
           const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
 
           const canManageRoles = userRoles.some(
-            (userRole) => userRole.role.canManageRoles,
+            (role) => role.canManageRoles,
           );
 
           if (!canManageRoles) {

@@ -1,7 +1,7 @@
 // apps/api/src/documents/documents.router.ts
 
 import { z } from 'zod';
-import { protectedProcedure, publicProcedure, router } from '../trpc/trpc';
+import { protectedProcedure, router } from '../trpc/trpc';
 import { PrismaService } from '../prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { TRPCError } from '@trpc/server';
@@ -63,6 +63,8 @@ export class DocumentsRouter {
                   name: true,
                 },
               },
+              // Updated to use implicit relation
+              tags: true, 
             },
           });
 
@@ -128,7 +130,7 @@ export class DocumentsRouter {
               action: `Created document: ${document.title}`,
               userId: user.id,
               organizationId: dbUser.organizationId!,
-              userRole: userRoles.map((userRole) => userRole.role.name).join(', '),
+              userRole: userRoles.map((role) => role.name).join(', '),
             },
           });
 
@@ -244,7 +246,7 @@ export class DocumentsRouter {
             whereClause.uploadedById = ctx.user.id;
           }
 
-          return this.prisma.document.findMany({
+          const docs = await this.prisma.document.findMany({
             where: whereClause,
             select: {
               id: true,
@@ -259,12 +261,8 @@ export class DocumentsRouter {
               controlNumber: true,
               tags: {
                 select: {
-                  tag: {
-                    select: {
-                      id: true,
-                      name: true,
-                    },
-                  },
+                  id: true,
+                  name: true,
                 },
               },
             },
@@ -272,6 +270,11 @@ export class DocumentsRouter {
               createdAt: 'desc',
             },
           });
+          
+          return docs.map(doc => ({
+            ...doc,
+            tags: doc.tags.map(t => ({ tag: t })),
+          }));
         }),
 
       getDocumentsByUserId: protectedProcedure
@@ -334,7 +337,7 @@ export class DocumentsRouter {
           const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
 
           const canManageDocuments = userRoles.some(
-            (userRole) => userRole.role.canManageDocuments
+            (role) => role.canManageDocuments
           );
 
           if (!canManageDocuments) {
@@ -375,7 +378,7 @@ export class DocumentsRouter {
               action: `Deleted document: ${doc.title}`,
               userId: ctx.dbUser.id,
               organizationId: ctx.dbUser.organizationId!,
-              userRole: userRoles.map((userRole) => userRole.role.name).join(', '),
+              userRole: userRoles.map((role) => role.name).join(', '),
             },
           });
 
@@ -430,16 +433,10 @@ export class DocumentsRouter {
               uploadedById: recipient.id,
               reviewRequesterId: isReview ? user.id : null,
               tags: {
-                deleteMany: {
-                  NOT: {
-                    tagId: {
-                      in: input.tagsToKeep || [],
-                    },
-                  },
-                },
-                create: input.tagIds.map((tagId) => ({
-                  tagId,
-                })),
+                set: [
+                    ...input.tagIds.map(id => ({ id })),
+                    ...(input.tagsToKeep || []).map(id => ({ id }))
+                ]
               },
             },
           });
@@ -451,7 +448,7 @@ export class DocumentsRouter {
               action: `Sent document: ${updatedDocument.title} to ${recipient.name}`,
               userId: user.id,
               organizationId: dbUser.organizationId,
-              userRole: userRoles.map((userRole) => userRole.role.name).join(', '),
+              userRole: userRoles.map((role) => role.name).join(', '),
             },
           });
 
@@ -478,7 +475,7 @@ export class DocumentsRouter {
 
           const userRoles = await this.userService.getUserRoles(user.id);
           const canManageDocuments = userRoles.some(
-            (userRole) => userRole.role.canManageDocuments,
+            (role) => role.canManageDocuments,
           );
 
           if (!canManageDocuments) {
@@ -512,18 +509,18 @@ export class DocumentsRouter {
           const forReviewTag = await this.prisma.tag.findUnique({
             where: { name: 'for review' },
           });
-
+          
+          const statusTag = await this.prisma.tag.findUnique({
+             where: { name: input.status }
+          });
+          
           const updatedDocument = await this.prisma.document.update({
             where: { id: input.documentId },
             data: {
               status: input.status,
               tags: {
-                deleteMany: forReviewTag ? { tagId: forReviewTag.id } : {},
-                create: {
-                  tag: {
-                    connect: { name: input.status },
-                  },
-                },
+                disconnect: forReviewTag ? [{ id: forReviewTag.id }] : [],
+                connect: statusTag ? [{ id: statusTag.id }] : [],
               },
             },
           });
@@ -533,7 +530,7 @@ export class DocumentsRouter {
               action: `Reviewed document: ${updatedDocument.title} with status ${input.status}`,
               userId: user.id,
               organizationId: dbUser.organizationId,
-              userRole: userRoles.map((userRole) => userRole.role.name).join(', '),
+              userRole: userRoles.map((role) => role.name).join(', '),
             },
           });
 
@@ -551,7 +548,7 @@ export class DocumentsRouter {
         })
         .input(z.void())
         .output(z.any())
-        .query(async ({ ctx }) => {
+        .query(async () => {
           return this.prisma.tag.findMany({
             where: {
               isGlobal: false,
@@ -575,7 +572,7 @@ export class DocumentsRouter {
         })
         .input(z.void())
         .output(z.any())
-        .query(async ({ ctx }) => {
+        .query(async () => {
           return this.prisma.tag.findMany({
             where: {
               isGlobal: true,
@@ -599,7 +596,7 @@ export class DocumentsRouter {
         })
         .input(z.object({ name: z.string().min(1) }))
         .output(z.any())
-        .mutation(async ({ ctx, input }) => {
+        .mutation(async ({ input }) => {
           return this.prisma.tag.create({
             data: {
               name: input.name,
@@ -618,7 +615,7 @@ export class DocumentsRouter {
         })
         .input(z.object({ id: z.string(), name: z.string().min(1) }))
         .output(z.any())
-        .mutation(async ({ ctx, input }) => {
+        .mutation(async ({ input }) => {
           return this.prisma.tag.update({
             where: { id: input.id },
             data: { name: input.name },
@@ -636,7 +633,7 @@ export class DocumentsRouter {
         })
         .input(z.string())
         .output(z.any())
-        .mutation(async ({ ctx, input: tagId }) => {
+        .mutation(async ({ input: tagId }) => {
           return this.prisma.tag.delete({
             where: { id: tagId },
           });
@@ -669,7 +666,6 @@ export class DocumentsRouter {
           });
         }),
       
-      // --- NEW PROCEDURES FOR GLOBAL GRAPH VIEW ---
       getAllOrgs: protectedProcedure
         .meta({
           openapi: {
@@ -681,8 +677,7 @@ export class DocumentsRouter {
         })
         .input(z.void())
         .output(z.any())
-        .query(async ({ ctx }) => {
-          // You might want to add admin-level protection here
+        .query(async () => {
           return this.prisma.organization.findMany();
         }),
 
@@ -697,8 +692,7 @@ export class DocumentsRouter {
         })
         .input(z.void())
         .output(z.any())
-        .query(async ({ ctx }) => {
-          // You might want to add admin-level protection here
+        .query(async () => {
           return this.prisma.user.findMany();
         }),
       
@@ -714,13 +708,14 @@ export class DocumentsRouter {
         .input(z.void())
         .output(z.any())
         .query(async ({ ctx }) => {
-          const userRoles = await ctx.prisma.userRole.findMany({
-            where: { userId: ctx.dbUser.id },
-            include: { role: true },
+          const userWithRoles = await ctx.prisma.user.findUnique({
+              where: { id: ctx.dbUser.id },
+              include: { roles: true }
           });
+          const roles = userWithRoles?.roles || [];
 
-          const canManageDocuments = userRoles.some(
-            (userRole) => userRole.role.canManageDocuments
+          const canManageDocuments = roles.some(
+            (role) => role.canManageDocuments
           );
 
           if (canManageDocuments) {
@@ -759,9 +754,7 @@ export class DocumentsRouter {
             },
           });
         }),
-      // --- END NEW PROCEDURES ---
-      
-      // --- NEW QUERY ---
+
       getMyDocuments: protectedProcedure.query(async ({ ctx }) => {
         if (!ctx.dbUser.organizationId) {
           throw new TRPCError({
@@ -776,7 +769,6 @@ export class DocumentsRouter {
           },
         });
       }),
-      // --- END OF NEW QUERY ---
     });
   }
 }

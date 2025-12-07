@@ -3,14 +3,12 @@
 import { z } from 'zod';
 import {
   protectedProcedure,
-  publicProcedure,
   router,
   supabaseAuthedProcedure,
 } from '../trpc/trpc';
 import { PrismaService } from '../prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { TRPCError } from '@trpc/server';
-import { Role } from '@prisma/client';
 import { UserService } from './user.service';
 
 @Injectable()
@@ -80,11 +78,7 @@ export class UserRouter {
             // Select all fields, including relations
             include: {
               organization: true,
-              roles: {
-                include: {
-                  role: true,
-                },
-              },
+              roles: true, // Implicit relation
             },
           });
 
@@ -136,11 +130,14 @@ export class UserRouter {
             },
           });
 
-          await this.prisma.userRole.create({
-            data: {
-              userId: ctx.dbUser.id,
-              roleId: adminRole.id,
-            },
+          // Implicit relation: Connect user to role
+          await this.prisma.user.update({
+             where: { id: ctx.dbUser.id },
+             data: {
+                 roles: {
+                     connect: { id: adminRole.id }
+                 }
+             }
           });
 
           await this.prisma.user.update({
@@ -219,11 +216,14 @@ export class UserRouter {
             });
           }
 
-          await this.prisma.userRole.create({
-            data: {
-              userId: ctx.dbUser.id,
-              roleId: userRoleRecord.id,
-            },
+          // Implicit M:N connect
+          await this.prisma.user.update({
+             where: { id: ctx.dbUser.id },
+             data: {
+                 roles: {
+                     connect: { id: userRoleRecord.id }
+                 }
+             }
           });
 
           await this.prisma.log.create({
@@ -238,7 +238,6 @@ export class UserRouter {
           return org;
         }),
 
-      // --- 2. NEW MUTATION (SYNTAX FIXED) ---
       updateProfile: protectedProcedure
         .input(
           z.object({
@@ -257,16 +256,15 @@ export class UserRouter {
             },
           });
         }),
-      // --- END OF NEW MUTATION ---
       
-      // --- NEW MUTATION ---
       deleteUser: protectedProcedure
         .input(z.object({ userId: z.string() }))
         .mutation(async ({ ctx, input }) => {
           const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
+          // userRoles is now Role[]
 
           const canManageUsers = userRoles.some(
-            (userRole) => userRole.role.canManageUsers
+            (role) => role.canManageUsers
           );
 
           if (!canManageUsers) {
@@ -285,15 +283,13 @@ export class UserRouter {
               action: `Deleted user: ${deletedUser.email}`,
               userId: ctx.dbUser.id,
               organizationId: ctx.dbUser.organizationId!,
-              userRole: userRoles.map((userRole) => userRole.role.name).join(', '),
+              userRole: userRoles.map((role) => role.name).join(', '),
             },
           });
 
           return deletedUser;
         }),
-      // --- END OF NEW MUTATION ---
       
-      // --- NEW QUERY ---
       getUsersWithRoles: protectedProcedure.query(async ({ ctx }) => {
         if (!ctx.dbUser.organizationId) {
           throw new TRPCError({
@@ -306,30 +302,23 @@ export class UserRouter {
             organizationId: ctx.dbUser.organizationId,
           },
           include: {
-            roles: {
-              include: {
-                role: true,
-              },
-            },
+            roles: true, // Implicit relation
           },
         });
       }),
-      // --- END OF NEW QUERY ---
 
-      // --- NEW QUERY ---
       getAllOrgs: protectedProcedure.query(async ({ ctx }) => {
         return ctx.prisma.organization.findMany();
       }),
-      // --- END OF NEW QUERY ---
 
-      // --- NEW MUTATION ---
       removeUserFromOrg: protectedProcedure
         .input(z.object({ userId: z.string() }))
         .mutation(async ({ ctx, input }) => {
           const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
+          // userRoles is now Role[]
 
           const canManageUsers = userRoles.some(
-            (userRole) => userRole.role.canManageUsers
+            (role) => role.canManageUsers
           );
 
           if (!canManageUsers) {
@@ -351,13 +340,12 @@ export class UserRouter {
               action: `Removed user: ${updatedUser.email} from organization`,
               userId: ctx.dbUser.id,
               organizationId: ctx.dbUser.organizationId!,
-              userRole: userRoles.map((userRole) => userRole.role.name).join(', '),
+              userRole: userRoles.map((role) => role.name).join(', '),
             },
           });
 
           return updatedUser;
         }),
-      // --- END OF NEW MUTATION ---
     });
   }
 }
