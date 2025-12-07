@@ -1,7 +1,7 @@
 // apps/api/src/roles/roles.router.ts
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
-import { router, protectedProcedure } from '../trpc/trpc';
+import { router, protectedProcedure, requirePermission } from '../trpc/trpc';
 import { TRPCError } from '@trpc/server';
 import { RolesService } from './roles.service';
 import { UserService } from '../user/user.service';
@@ -25,19 +25,7 @@ export class RolesRouter {
           }),
         )
         .mutation(async ({ input, ctx }) => {
-          const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
-          // userRoles is now Role[]
-
-          const canManageRoles = userRoles.some(
-            (role) => role.canManageRoles,
-          );
-
-          if (!canManageRoles) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'You do not have permission to create roles.',
-            });
-          }
+          requirePermission(ctx.dbUser, 'canManageRoles');
 
           if (!ctx.dbUser.organizationId) {
             throw new TRPCError({
@@ -68,7 +56,6 @@ export class RolesRouter {
       getUserRoles: protectedProcedure
         .input(z.string())
         .query(async ({ input: userId }) => {
-          // Now returns Role[] instead of UserRole[]
           return await this.userService.getUserRoles(userId);
         }),
       
@@ -89,18 +76,8 @@ export class RolesRouter {
           }),
         )
         .mutation(async ({ input, ctx }) => {
-          const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
-
-          const canManageRoles = userRoles.some(
-            (role) => role.canManageRoles,
-          );
-
-          if (!canManageRoles) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'You do not have permission to update roles.',
-            });
-          }
+          requirePermission(ctx.dbUser, 'canManageRoles');
+          
           return await this.rolesService.updateRole(
             input.id,
             input,
@@ -111,18 +88,8 @@ export class RolesRouter {
       deleteRole: protectedProcedure
         .input(z.string())
         .mutation(async ({ input, ctx }) => {
-          const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
+          requirePermission(ctx.dbUser, 'canManageRoles');
 
-          const canManageRoles = userRoles.some(
-            (role) => role.canManageRoles,
-          );
-
-          if (!canManageRoles) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'You do not have permission to delete roles.',
-            });
-          }
           return await this.rolesService.deleteRole(input, ctx.dbUser.id);
         }),
 
@@ -134,18 +101,8 @@ export class RolesRouter {
           }),
         )
         .mutation(async ({ input, ctx }) => {
-          const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
+          requirePermission(ctx.dbUser, 'canManageRoles');
 
-          const canManageRoles = userRoles.some(
-            (role) => role.canManageRoles,
-          );
-
-          if (!canManageRoles) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'You do not have permission to assign roles.',
-            });
-          }
           return await this.rolesService.assignRoleToUser(
             input.userId,
             input.roleId,
@@ -161,18 +118,8 @@ export class RolesRouter {
           }),
         )
         .mutation(async ({ input, ctx }) => {
-          const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
+          requirePermission(ctx.dbUser, 'canManageRoles');
 
-          const canManageRoles = userRoles.some(
-            (role) => role.canManageRoles,
-          );
-
-          if (!canManageRoles) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'You do not have permission to unassign roles.',
-            });
-          }
           return await this.rolesService.unassignRoleFromUser(
             input.userId,
             input.roleId,

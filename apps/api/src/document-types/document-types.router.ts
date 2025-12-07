@@ -2,14 +2,20 @@
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { protectedProcedure, router } from '../trpc/trpc';
+import { LogService } from '../log/log.service';
 
 @Injectable()
 export class DocumentTypesRouter {
+  constructor(private readonly logService: LogService) {}
+
   createRouter() {
     return router({
       // Procedure to get all document types for the current user's organization
       getAll: protectedProcedure.query(async ({ ctx }) => {
         const orgId = ctx.dbUser.organizationId as string;
+        // Basic check if user belongs to org
+        if (!orgId) return [];
+
         return ctx.prisma.documentType.findMany({
           where: { organizationId: orgId },
           orderBy: { name: 'asc' },
@@ -34,21 +40,12 @@ export class DocumentTypesRouter {
             },
           });
 
-          // Implicit M:N
-          const user = await ctx.prisma.user.findUnique({
-             where: { id: ctx.dbUser.id },
-             include: { roles: true },
-          });
-          const roles = user?.roles || [];
-
-          await ctx.prisma.log.create({
-            data: {
-              action: `Created document type: ${newDocType.name}`,
-              userId: ctx.dbUser.id,
-              organizationId: orgId,
-              userRole: roles.map((role) => role.name).join(', '),
-            },
-          });
+          await this.logService.logAction(
+              ctx.dbUser.id,
+              orgId,
+              `Created document type: ${newDocType.name}`,
+              ctx.dbUser.roles.map(r => r.name)
+          );
 
           return newDocType;
         }),
@@ -80,21 +77,12 @@ export class DocumentTypesRouter {
             where: { id: input.id },
           });
 
-          // Implicit M:N
-          const user = await ctx.prisma.user.findUnique({
-             where: { id: ctx.dbUser.id },
-             include: { roles: true },
-          });
-          const roles = user?.roles || [];
-
-          await ctx.prisma.log.create({
-            data: {
-              action: `Deleted document type: ${deletedDocType.name}`,
-              userId: ctx.dbUser.id,
-              organizationId: deletedDocType.organizationId,
-              userRole: roles.map((role) => role.name).join(', '),
-            },
-          });
+          await this.logService.logAction(
+              ctx.dbUser.id,
+              deletedDocType.organizationId,
+              `Deleted document type: ${deletedDocType.name}`,
+              ctx.dbUser.roles.map(r => r.name)
+          );
 
           return deletedDocType;
         }),

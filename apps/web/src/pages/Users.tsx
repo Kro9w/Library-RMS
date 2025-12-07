@@ -17,7 +17,10 @@ export function Users() {
     error,
   } = trpc.user.getUsersWithRoles.useQuery();
   const { data: currentUser } = trpc.user.getMe.useQuery();
-  const { data: myDocuments } = trpc.documents.getMyDocuments.useQuery();
+  // Refactored to use getAll({ filter: 'mine' })
+  const { data: myDocuments } = trpc.documents.getAll.useQuery({
+    filter: "mine",
+  });
   const removeUserFromOrg = trpc.user.removeUserFromOrg.useMutation();
   const transferDocument = trpc.documents.sendDocument.useMutation();
   const utils = trpc.useUtils();
@@ -219,7 +222,7 @@ export function Users() {
           <option value="" disabled>
             Select a document
           </option>
-          {myDocuments?.map((doc) => (
+          {myDocuments?.map((doc: any) => (
             <option key={doc.id} value={doc.id}>
               {doc.title}
             </option>

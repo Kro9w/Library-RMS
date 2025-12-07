@@ -1,19 +1,19 @@
 // apps/api/src/documents/documents.router.ts
 
 import { z } from 'zod';
-import { protectedProcedure, router } from '../trpc/trpc';
+import { protectedProcedure, router, requirePermission, checkPermission } from '../trpc/trpc';
 import { PrismaService } from '../prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { TRPCError } from '@trpc/server';
 import { SupabaseService } from '../supabase/supabase.service';
-import { UserService } from '../user/user.service';
+import { LogService } from '../log/log.service';
 
 @Injectable()
 export class DocumentsRouter {
   constructor(
     private readonly prisma: PrismaService,
     private readonly supabase: SupabaseService,
-    private readonly userService: UserService,
+    private readonly logService: LogService,
   ) {}
 
   createRouter() {
@@ -63,7 +63,6 @@ export class DocumentsRouter {
                   name: true,
                 },
               },
-              // Updated to use implicit relation
               tags: true, 
             },
           });
@@ -100,14 +99,12 @@ export class DocumentsRouter {
         .output(z.any())
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
-          if (!ctx.dbUser.organizationId) {
+          if (!dbUser.organizationId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'User does not belong to an organization.',
             });
           }
-
-          const userRoles = await this.userService.getUserRoles(user.id);
 
           const document = await this.prisma.document.create({
             data: {
@@ -125,14 +122,12 @@ export class DocumentsRouter {
             },
           });
 
-          await this.prisma.log.create({
-            data: {
-              action: `Created document: ${document.title}`,
-              userId: user.id,
-              organizationId: dbUser.organizationId!,
-              userRole: userRoles.map((role) => role.name).join(', '),
-            },
-          });
+          await this.logService.logAction(
+             user.id,
+             dbUser.organizationId!,
+             `Created document: ${document.title}`,
+             dbUser.roles.map(r => r.name)
+          );
 
           return document;
         }),
@@ -216,9 +211,12 @@ export class DocumentsRouter {
               message: 'User does not belong to an organization.',
             });
           }
-          return this.prisma.user.findMany();
+          return this.prisma.user.findMany({
+             where: { organizationId: ctx.dbUser.organizationId }
+          });
         }),
 
+      // Consolidated getAll procedure
       getAll: protectedProcedure
         .meta({
           openapi: {
@@ -228,7 +226,9 @@ export class DocumentsRouter {
             summary: 'Get all documents in the organization',
           },
         })
-        .input(z.object({ filter: z.string() }))
+        .input(z.object({ 
+            filter: z.enum(['mine', 'all']).optional(),
+        }))
         .output(z.any())
         .query(async ({ ctx, input }) => {
           if (!ctx.dbUser.organizationId) {
@@ -246,6 +246,11 @@ export class DocumentsRouter {
             whereClause.uploadedById = ctx.user.id;
           }
 
+          // If filtering 'all', typically we just return all for the org.
+          // However, previous 'getAllDocs' logic had a permission check for 'canManageDocuments'.
+          // Let's preserve that logic if needed, or stick to organization scope.
+          // The previous 'getAll' was generic for org.
+          
           const docs = await this.prisma.document.findMany({
             where: whereClause,
             select: {
@@ -277,6 +282,7 @@ export class DocumentsRouter {
           }));
         }),
 
+      // Preserved for backward compatibility but implemented efficiently
       getDocumentsByUserId: protectedProcedure
         .meta({
           openapi: {
@@ -295,6 +301,7 @@ export class DocumentsRouter {
               message: 'User does not belong to an organization.',
             });
           }
+          // Verify user exists in org
           const userToQuery = await this.prisma.user.findFirst({
             where: {
               id: userId,
@@ -334,18 +341,7 @@ export class DocumentsRouter {
             });
           }
 
-          const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
-
-          const canManageDocuments = userRoles.some(
-            (role) => role.canManageDocuments
-          );
-
-          if (!canManageDocuments) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'You do not have permission to delete documents.',
-            });
-          }
+          requirePermission(ctx.dbUser, 'canManageDocuments');
 
           const doc = await this.prisma.document.findFirst({
             where: {
@@ -357,6 +353,7 @@ export class DocumentsRouter {
               s3Key: true,
               s3Bucket: true,
               title: true,
+              organizationId: true
             },
           });
           if (!doc) {
@@ -373,14 +370,12 @@ export class DocumentsRouter {
             console.error('Failed to delete file from storage:', storageError);
           }
           
-          await this.prisma.log.create({
-            data: {
-              action: `Deleted document: ${doc.title}`,
-              userId: ctx.dbUser.id,
-              organizationId: ctx.dbUser.organizationId!,
-              userRole: userRoles.map((role) => role.name).join(', '),
-            },
-          });
+          await this.logService.logAction(
+              ctx.dbUser.id,
+              doc.organizationId,
+              `Deleted document: ${doc.title}`,
+              ctx.dbUser.roles.map(r => r.name)
+          );
 
           return this.prisma.document.delete({
             where: { id: doc.id },
@@ -441,16 +436,12 @@ export class DocumentsRouter {
             },
           });
 
-          const userRoles = await this.userService.getUserRoles(user.id);
-
-          await this.prisma.log.create({
-            data: {
-              action: `Sent document: ${updatedDocument.title} to ${recipient.name}`,
-              userId: user.id,
-              organizationId: dbUser.organizationId,
-              userRole: userRoles.map((role) => role.name).join(', '),
-            },
-          });
+          await this.logService.logAction(
+              user.id,
+              dbUser.organizationId,
+              `Sent document: ${updatedDocument.title} to ${recipient.name}`,
+              dbUser.roles.map(r => r.name)
+          );
 
           return updatedDocument;
         }),
@@ -473,17 +464,7 @@ export class DocumentsRouter {
             });
           }
 
-          const userRoles = await this.userService.getUserRoles(user.id);
-          const canManageDocuments = userRoles.some(
-            (role) => role.canManageDocuments,
-          );
-
-          if (!canManageDocuments) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'You do not have permission to review documents.',
-            });
-          }
+          requirePermission(dbUser, 'canManageDocuments');
 
           const document = await this.prisma.document.findUnique({
             where: { id: input.documentId },
@@ -525,14 +506,12 @@ export class DocumentsRouter {
             },
           });
 
-          await this.prisma.log.create({
-            data: {
-              action: `Reviewed document: ${updatedDocument.title} with status ${input.status}`,
-              userId: user.id,
-              organizationId: dbUser.organizationId,
-              userRole: userRoles.map((role) => role.name).join(', '),
-            },
-          });
+          await this.logService.logAction(
+              user.id,
+              dbUser.organizationId,
+              `Reviewed document: ${updatedDocument.title} with status ${input.status}`,
+              dbUser.roles.map(r => r.name)
+          );
 
           return updatedDocument;
         }),
@@ -677,8 +656,8 @@ export class DocumentsRouter {
         })
         .input(z.void())
         .output(z.any())
-        .query(async () => {
-          return this.prisma.organization.findMany();
+        .query(async ({ ctx }) => {
+            return this.prisma.organization.findMany();
         }),
 
       getAllUsers: protectedProcedure
@@ -708,18 +687,10 @@ export class DocumentsRouter {
         .input(z.void())
         .output(z.any())
         .query(async ({ ctx }) => {
-          const userWithRoles = await ctx.prisma.user.findUnique({
-              where: { id: ctx.dbUser.id },
-              include: { roles: true }
-          });
-          const roles = userWithRoles?.roles || [];
-
-          const canManageDocuments = roles.some(
-            (role) => role.canManageDocuments
-          );
+          const canManageDocuments = checkPermission(ctx.dbUser, 'canManageDocuments');
 
           if (canManageDocuments) {
-            return this.prisma.document.findMany({
+             return this.prisma.document.findMany({
               select: {
                 id: true,
                 title: true,

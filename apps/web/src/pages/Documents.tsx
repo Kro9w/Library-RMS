@@ -30,7 +30,8 @@ const formatFileType = (fileType: string | null | undefined): string => {
 
 const Documents: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filter, setFilter] = useState("all");
+  // Type filter correctly for the TRPC input
+  const [filter, setFilter] = useState<"all" | "mine">("all");
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -91,7 +92,7 @@ const Documents: React.FC = () => {
         <div className="header-actions">
           <select
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            onChange={(e) => setFilter(e.target.value as "all" | "mine")}
             className="filter-dropdown"
           >
             <option value="all">All Organization Documents</option>
@@ -183,11 +184,6 @@ const Documents: React.FC = () => {
                         role.canManageDocuments
                     ) &&
                       doc.tags.some(
-                        // The backend still returns mapped tags: doc.tags.map(t => ({ tag: t }))
-                        // as per my DocumentsRouter getAll implementation.
-                        // So `tag.tag.name` IS STILL CORRECT for `doc.tags` if I didn't change the router mapping.
-                        // I mapped it: return docs.map(doc => ({ ...doc, tags: doc.tags.map(t => ({ tag: t })), }));
-                        // So `tag.tag` IS correct for `doc.tags`.
                         (tag: { tag: { name: string } }) =>
                           tag.tag.name === "for review"
                       ) && (

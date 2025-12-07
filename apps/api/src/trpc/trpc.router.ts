@@ -46,6 +46,18 @@ export class TrpcRouter {
         twentyFourHoursAgo.setDate(twentyFourHoursAgo.getDate() - 1);
         const orgId = ctx.dbUser.organizationId as string;
 
+        // Basic check if user belongs to org
+        if (!orgId) {
+             return {
+                totalDocuments: 0,
+                recentUploadsCount: 0,
+                recentFiles: [],
+                totalUsers: 0,
+                docsByType: [],
+                topTags: [],
+             }
+        }
+
         const docsByTypeQuery = ctx.prisma.document.groupBy({
           by: ["fileType"],
           _count: {
@@ -54,9 +66,6 @@ export class TrpcRouter {
           where: { organizationId: orgId },
         });
 
-        // Refactored to match implicit relations for tags
-        // Old: select: { tags: { include: { tag: true } } }
-        // New: select: { tags: true } (since it's implicit)
         const [
           totalDocuments,
           recentUploadsCount,
@@ -97,7 +106,6 @@ export class TrpcRouter {
 
         const tagCountMap: Record<string, number> = {};
         for (const doc of allDocumentTags) {
-          // doc.tags is now Tag[] directly
           for (const tag of doc.tags) {
             tagCountMap[tag.name] =
               (tagCountMap[tag.name] || 0) + 1;
@@ -126,7 +134,7 @@ export class TrpcRouter {
       roles: this.rolesRouter.createRouter(),
       documentTypes: this.documentTypesRouter.createRouter(),
       logs: this.logRouter.createRouter(),
-      wordDocument: this.wordDocumentRouter.wordDocumentRouter,
+      wordDocument: this.wordDocumentRouter.createRouter(), // Updated to createRouter()
     });
   }
 }

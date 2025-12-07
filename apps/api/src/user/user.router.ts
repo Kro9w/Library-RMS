@@ -5,17 +5,18 @@ import {
   protectedProcedure,
   router,
   supabaseAuthedProcedure,
+  requirePermission,
 } from '../trpc/trpc';
 import { PrismaService } from '../prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { TRPCError } from '@trpc/server';
-import { UserService } from './user.service';
+import { LogService } from '../log/log.service';
 
 @Injectable()
 export class UserRouter {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly userService: UserService,
+    private readonly logService: LogService,
   ) {}
 
   createRouter() {
@@ -43,22 +44,19 @@ export class UserRouter {
         .mutation(async ({ ctx, input }) => {
           const { user: authUser } = ctx; 
 
-          const user = await this.prisma.user.findUnique({
+          // Efficient upsert
+          return this.prisma.user.upsert({
             where: { id: authUser.id },
-          });
-
-          if (user) {
-            return user;
-          }
-
-          const newUser = await this.prisma.user.create({
-            data: {
+            update: {
+                // We might not want to overwrite name if it's already set?
+                // For now, let's keep it simple and safe.
+            },
+            create: {
               id: authUser.id,
               email: input.email,
               name: input.name,
             },
           });
-          return newUser;
         }),
 
       getMe: protectedProcedure
@@ -73,22 +71,8 @@ export class UserRouter {
         .input(z.void())
         .output(z.any())
         .query(async ({ ctx }) => {
-          const userWithOrg = await ctx.prisma.user.findUnique({
-            where: { id: ctx.dbUser.id },
-            // Select all fields, including relations
-            include: {
-              organization: true,
-              roles: true, // Implicit relation
-            },
-          });
-
-          if (!userWithOrg) {
-            throw new TRPCError({
-              code: 'NOT_FOUND',
-              message: 'User not found.',
-            });
-          }
-          return userWithOrg;
+          // ctx.dbUser already has organization and roles included
+          return ctx.dbUser;
         }),
 
       createOrganization: protectedProcedure
@@ -145,14 +129,12 @@ export class UserRouter {
             data: { organizationId: newOrg.id },
           });
 
-          await this.prisma.log.create({
-            data: {
-              action: `Created organization: ${newOrg.name}`,
-              userId: ctx.dbUser.id,
-              organizationId: newOrg.id,
-              userRole: 'Admin',
-            },
-          });
+          await this.logService.logAction(
+             ctx.dbUser.id,
+             newOrg.id,
+             `Created organization: ${newOrg.name}`,
+             ['Admin'] // They just became admin
+          );
 
           return newOrg;
         }),
@@ -187,7 +169,7 @@ export class UserRouter {
             });
           }
 
-          // Update only the organizationId on the user (there is no scalar `role` on the user model)
+          // Update only the organizationId on the user
           await this.prisma.user.update({
             where: { id: ctx.dbUser.id },
             data: {
@@ -196,7 +178,6 @@ export class UserRouter {
           });
 
           // Assign a "User" role to the joining user by creating a userRole entry.
-          // Try to find an existing role named 'User' for this organization; if none exists, create it.
           let userRoleRecord = await this.prisma.role.findFirst({
             where: {
               organizationId: org.id,
@@ -226,14 +207,12 @@ export class UserRouter {
              }
           });
 
-          await this.prisma.log.create({
-            data: {
-              action: `Joined organization: ${org.name}`,
-              userId: ctx.dbUser.id,
-              organizationId: org.id,
-              userRole: 'User',
-            },
-          });
+          await this.logService.logAction(
+             ctx.dbUser.id,
+             org.id,
+             `Joined organization: ${org.name}`,
+             ['User']
+          );
 
           return org;
         }),
@@ -251,7 +230,6 @@ export class UserRouter {
             where: { id: ctx.dbUser.id },
             data: {
               name: input.name,
-              // Only update imageUrl if a new one was provided
               ...(input.imageUrl && { imageUrl: input.imageUrl }),
             },
           });
@@ -260,32 +238,18 @@ export class UserRouter {
       deleteUser: protectedProcedure
         .input(z.object({ userId: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
-          // userRoles is now Role[]
-
-          const canManageUsers = userRoles.some(
-            (role) => role.canManageUsers
-          );
-
-          if (!canManageUsers) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'You do not have permission to delete users.',
-            });
-          }
+          requirePermission(ctx.dbUser, 'canManageUsers');
 
           const deletedUser = await ctx.prisma.user.delete({
             where: { id: input.userId },
           });
 
-          await ctx.prisma.log.create({
-            data: {
-              action: `Deleted user: ${deletedUser.email}`,
-              userId: ctx.dbUser.id,
-              organizationId: ctx.dbUser.organizationId!,
-              userRole: userRoles.map((role) => role.name).join(', '),
-            },
-          });
+          await this.logService.logAction(
+              ctx.dbUser.id,
+              ctx.dbUser.organizationId!,
+              `Deleted user: ${deletedUser.email}`,
+              ctx.dbUser.roles.map(r => r.name)
+          );
 
           return deletedUser;
         }),
@@ -302,7 +266,7 @@ export class UserRouter {
             organizationId: ctx.dbUser.organizationId,
           },
           include: {
-            roles: true, // Implicit relation
+            roles: true,
           },
         });
       }),
@@ -314,19 +278,7 @@ export class UserRouter {
       removeUserFromOrg: protectedProcedure
         .input(z.object({ userId: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          const userRoles = await this.userService.getUserRoles(ctx.dbUser.id);
-          // userRoles is now Role[]
-
-          const canManageUsers = userRoles.some(
-            (role) => role.canManageUsers
-          );
-
-          if (!canManageUsers) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'You do not have permission to remove users from the organization.',
-            });
-          }
+          requirePermission(ctx.dbUser, 'canManageUsers');
 
           const updatedUser = await ctx.prisma.user.update({
             where: { id: input.userId },
@@ -335,14 +287,12 @@ export class UserRouter {
             },
           });
 
-          await ctx.prisma.log.create({
-            data: {
-              action: `Removed user: ${updatedUser.email} from organization`,
-              userId: ctx.dbUser.id,
-              organizationId: ctx.dbUser.organizationId!,
-              userRole: userRoles.map((role) => role.name).join(', '),
-            },
-          });
+          await this.logService.logAction(
+            ctx.dbUser.id,
+            ctx.dbUser.organizationId!,
+            `Removed user: ${updatedUser.email} from organization`,
+            ctx.dbUser.roles.map(r => r.name)
+          );
 
           return updatedUser;
         }),

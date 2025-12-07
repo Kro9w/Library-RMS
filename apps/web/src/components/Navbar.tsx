@@ -58,13 +58,11 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
     reset();
   };
 
-  // --- THIS IS THE FIX ---
-  // Added the missing '=>' to define the arrow function
   const onConfirmTransfer = (formData: TransferFormData) => {
     transferMutation({
-      documentId: formData.controlNumber, // Changed from docId to documentId
-      recipientId: formData.email, // Changed from newOwnerEmail to recipientId
-      tagIds: [], // Added missing tagIds property
+      documentId: formData.controlNumber,
+      recipientId: formData.email,
+      tagIds: [],
     });
   };
 
@@ -102,8 +100,6 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
                     background: "transparent",
                     width: "50px",
                     height: "50px",
-                    marginRight: "0.4rem",
-                    marginLeft: "0.5rem",
                   }}
                 >
                   <path
@@ -111,9 +107,8 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
                     d="M119.25,44.29h-30.63c-.21-8.67,.8-19.25-3.3-24.72-3.64-5-14.23-6.25-22.15-3.77-13.27,4.93-21.94,17.44-29.95,27.78-3.32,4.28-7.25,9.8-13.43,11.07-7.05,1.45-9.54-5.24-11.05-10.11-3.94-14.68,1.31-31.7,5.63-42.44,.39,.08,.79,.16,1.18,.02v1.18c-.98,3.38-.29,7.88,.47,10.37,3.08,11.1,10.5,15.34,22.64,10.13C55.43,17.33,83.75-11.39,107.94,4.97c3.89,2.71,6.71,6.87,8.48,10.84,3.56,7.28,3.02,17.98,2.83,28.49Zm-13.19,66.68c-9.92-.16-20.05-.31-30.18-.68,.36-9.01,1.75-27.73-4.95-31.81-2.51-1.24-6.96-1.03-11.05-1.18-9.91,22.05-19.11,43.88-33.25,61.26-5.68,7.28-14.02,13.64-26.62,13.64,.08-25.99,.16-52,.24-77.99H36.05c6.36-14.14,12.72-28.28,18.87-42.62,9.01,.29,17.81,.37,26.39,.45-6.21,13.75-14.62,27.39-19.79,42.18,28.48-.25,44.98,8.54,44.53,36.76ZM1.88,118.77c16.54-.24,26.91-27.76,32.28-40.79v-.45c-10.85,.18-25.97,1.09-30.39,7.54-3.59,5.61-2,24.9-1.88,33.69Z"
                   />
                 </svg>
-                <span className="link-text" style={{ fontSize: "2.3rem" }}>
-                  Folio
-                </span>
+                {/* Wrapped text for transition */}
+                <span className="logo-text">Folio</span>
               </a>
             </div>
 
@@ -122,6 +117,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
               <button
                 className="nav-link"
                 onClick={() => setShowUploadModal(true)}
+                title={isCollapsed ? "Upload" : ""}
               >
                 <i className="bi bi-cloud-arrow-up-fill"></i>
                 <span className="link-text">Upload</span>
@@ -129,6 +125,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
               <button
                 className="nav-link"
                 onClick={() => setShowTransferModal(true)}
+                title={isCollapsed ? "Transfer" : ""}
               >
                 <i className="bi bi-box-arrow-right"></i>
                 <span className="link-text">Transfer</span>
@@ -137,30 +134,55 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
 
             {/* Main Navigation */}
             <div className="sidebar-nav-links">
-              <NavLink to="/" end className="nav-link">
+              <NavLink
+                to="/"
+                end
+                className="nav-link"
+                title={isCollapsed ? "Dashboard" : ""}
+              >
                 <i className="bi bi-grid-fill"></i>
                 <span className="link-text">Dashboard</span>
               </NavLink>
-              <NavLink to="/documents" className="nav-link">
+              <NavLink
+                to="/documents"
+                className="nav-link"
+                title={isCollapsed ? "Documents" : ""}
+              >
                 <i className="bi bi-file-earmark-text-fill"></i>
                 <span className="link-text">Documents</span>
               </NavLink>
-              <NavLink to="/tags" className="nav-link">
+              <NavLink
+                to="/tags"
+                className="nav-link"
+                title={isCollapsed ? "Tags" : ""}
+              >
                 <i className="bi bi-tags-fill"></i>
                 <span className="link-text">Tags</span>
               </NavLink>
-              <NavLink to="/graph" className="nav-link">
+              <NavLink
+                to="/graph"
+                className="nav-link"
+                title={isCollapsed ? "Graph" : ""}
+              >
                 <i className="bi bi-share-fill"></i>
                 <span className="link-text">Graph</span>
               </NavLink>
               {isAdmin && (
-                <NavLink to="/users" className="nav-link">
+                <NavLink
+                  to="/users"
+                  className="nav-link"
+                  title={isCollapsed ? "Users" : ""}
+                >
                   <i className="bi bi-people-fill"></i>
                   <span className="link-text">Users</span>
                 </NavLink>
               )}
               {isAdmin && (
-                <NavLink to="/logs" className="nav-link">
+                <NavLink
+                  to="/logs"
+                  className="nav-link"
+                  title={isCollapsed ? "Logs" : ""}
+                >
                   <i className="bi bi-journal-text"></i>
                   <span className="link-text">Logs</span>
                 </NavLink>
@@ -205,6 +227,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
                 <button
                   className="user-profile-button"
                   onClick={() => setAccountMenuOpen(!isAccountMenuOpen)}
+                  title={isCollapsed ? "Account" : ""}
                 >
                   <img src={avatarUrl} alt="User Avatar" />
                   <div className="user-info single-line">
@@ -216,7 +239,11 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
             )}
 
             {/* This is the original collapse button */}
-            <button className="collapse-btn" onClick={onToggle}>
+            <button
+              className="collapse-btn"
+              onClick={onToggle}
+              title={isCollapsed ? "Expand" : "Collapse"}
+            >
               <i
                 className={`bi ${
                   isCollapsed ? "bi-chevron-right" : "bi-chevron-left"

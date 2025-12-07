@@ -25,7 +25,6 @@ type Link = d3.SimulationLinkDatum<Node> & { isDetached?: boolean };
 
 type GraphData = { nodes: Node[]; links: Link[] };
 type AppUser = AppRouterOutputs["documents"]["getAllUsers"][0];
-type OrgDocument = AppRouterOutputs["documents"]["getAllDocs"][0];
 type Org = AppRouterOutputs["documents"]["getAllOrgs"][0];
 type UserDocument = AppRouterOutputs["documents"]["getDocumentsByUserId"][0];
 
@@ -76,7 +75,8 @@ export function OwnershipGraph() {
 
   const allOrgsQuery = trpc.documents.getAllOrgs.useQuery();
   const allUsersQuery = trpc.documents.getAllUsers.useQuery();
-  const allDocsQuery = trpc.documents.getAllDocs.useQuery();
+  // Refactored to use getAll({ filter: 'all' })
+  const allDocsQuery = trpc.documents.getAll.useQuery({ filter: "all" });
 
   const { data: documentsData, isLoading: isLoadingDocsForPanel } =
     trpc.documents.getDocumentsByUserId.useQuery(selectedUserNode?.id || "", {
@@ -127,10 +127,10 @@ export function OwnershipGraph() {
 
         if (expandedUserNode) {
           const userDocs = allDocuments.filter(
-            (d: OrgDocument) => d.uploadedById === expandedUserNodeId
+            (d: any) => d.uploadedById === expandedUserNodeId
           );
 
-          const docNodes: Node[] = userDocs.map((doc: OrgDocument) => ({
+          const docNodes: Node[] = userDocs.map((doc: any) => ({
             id: doc.id,
             name: doc.title,
             type: "document",
@@ -162,7 +162,7 @@ export function OwnershipGraph() {
         (u: { organizationId: any }) => u.organizationId === selectedOrg.id
       );
       const orgDocs = allDocuments.filter(
-        (d: OrgDocument) => d.organizationId === selectedOrg.id
+        (d: any) => d.organizationId === selectedOrg.id
       );
 
       const userNodes: Node[] = orgUsers.map((user: AppUser) => ({
@@ -172,7 +172,7 @@ export function OwnershipGraph() {
         organizationId: user.organizationId ?? undefined,
         email: user.email,
       }));
-      const docNodes: Node[] = orgDocs.map((doc: OrgDocument) => ({
+      const docNodes: Node[] = orgDocs.map((doc: any) => ({
         id: doc.id,
         name: doc.title,
         type: "document",
@@ -181,7 +181,7 @@ export function OwnershipGraph() {
 
       const nodes = [...userNodes, ...docNodes];
       const docLinks: Link[] = orgDocs
-        .map((doc: OrgDocument) => {
+        .map((doc: any) => {
           const sourceNode = nodes.find((n) => n.id === doc.id);
           const targetNode = nodes.find((n) => n.id === doc.uploadedById);
           if (sourceNode && targetNode) {

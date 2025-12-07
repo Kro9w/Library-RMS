@@ -2,11 +2,16 @@
 import { initTRPC, TRPCError } from '@trpc/server';
 import { OpenApiMeta } from 'trpc-openapi';
 import { PrismaService } from '../prisma/prisma.service';
-import { User } from '@prisma/client';
+import { User, Role, Organization } from '@prisma/client';
+
+export type UserWithRoles = User & {
+  roles: Role[];
+  organization: Organization | null;
+};
 
 export type Context = {
   user: any; // Supabase user
-  dbUser?: User;
+  dbUser?: UserWithRoles; // Updated type
   prisma: PrismaService;
 };
 
@@ -23,9 +28,13 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
     throw new TRPCError({ code: 'UNAUTHORIZED' });
   }
 
-  // Restore logic: Fetch user from DB
+  // Fetch user with roles and organization in one go
   const dbUser = await ctx.prisma.user.findUnique({
     where: { id: ctx.user.id },
+    include: {
+      roles: true,
+      organization: true,
+    },
   });
 
   if (!dbUser) {
@@ -40,7 +49,7 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
   return next({
     ctx: {
       user: ctx.user,
-      dbUser: dbUser, // Pass the DB user to the context
+      dbUser: dbUser, // Pass the enriched DB user to the context
     },
   });
 });
@@ -58,3 +67,20 @@ const isSupabaseAuthed = t.middleware(async ({ ctx, next }) => {
 
 export const protectedProcedure = t.procedure.use(isAuthed);
 export const supabaseAuthedProcedure = t.procedure.use(isSupabaseAuthed);
+
+// Helper function to check permissions
+export const checkPermission = (user: UserWithRoles | undefined, permission: keyof Role) => {
+    if (!user || !user.roles) return false;
+    // We only care if *any* role has the permission
+    return user.roles.some((role) => role[permission] === true);
+};
+
+// Helper function to enforce permissions
+export const requirePermission = (user: UserWithRoles | undefined, permission: keyof Role) => {
+    if (!checkPermission(user, permission)) {
+        throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: `You do not have permission to ${permission}.`,
+        });
+    }
+};

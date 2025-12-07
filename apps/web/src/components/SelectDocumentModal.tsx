@@ -12,7 +12,10 @@ export const SelectDocumentModal: React.FC<SelectDocumentModalProps> = ({
   onClose,
   onSelect,
 }) => {
-  const { data: documents } = trpc.documents.getMyDocuments.useQuery();
+  // Refactored to use the unified getAll procedure
+  const { data: documents } = trpc.documents.getAll.useQuery({
+    filter: "mine",
+  });
 
   if (!show) return null;
 
@@ -30,7 +33,7 @@ export const SelectDocumentModal: React.FC<SelectDocumentModalProps> = ({
           </div>
           <div className="modal-body">
             <ul className="list-group">
-              {documents?.map((doc) => (
+              {documents?.map((doc: any) => (
                 <li
                   key={doc.id}
                   className="list-group-item list-group-item-action"

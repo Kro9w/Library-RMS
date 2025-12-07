@@ -2,7 +2,7 @@
 
 /* --- 1. RESTORED: Original Layout Styles --- */
 .main-content {
-  transition: margin-left 0.3s ease;
+  transition: margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   min-height: 100vh;
   /* Add some default padding to all pages */
   padding: 1.5rem;
