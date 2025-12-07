@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabase";
 import { trpc } from "../trpc";
+import AuthLayout from '../components/AuthLayout';
+import './SignUpPage.css';
 
 const SignUpPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -64,42 +66,43 @@ const SignUpPage: React.FC = () => {
   };
 
   return (
-    <div className="signup-container">
-      <h2>Sign Up</h2>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Display Name"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          required
-          disabled={loading} // Disable inputs while loading
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          disabled={loading} // Disable inputs while loading
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          disabled={loading} // Disable inputs while loading
-        />
-        <button type="submit" disabled={loading}>
-          {loading ? "Signing up..." : "Sign Up"}
-        </button>
-        {error && <p className="error">{error}</p>}
-      </form>
-      <p>
-        Already have an account? <Link to="/login">Login</Link>
-      </p>
-    </div>
+    <AuthLayout title="Sign Up">
+      <div className="signup-container">
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            placeholder="Display Name"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            required
+            disabled={loading}
+          />
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            disabled={loading}
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={loading}
+          />
+          <button type="submit" disabled={loading}>
+            {loading ? "Signing up..." : "Sign Up"}
+          </button>
+          {error && <p className="error">{error}</p>}
+        </form>
+        <p>
+          Already have an account? <Link to="/login">Login</Link>
+        </p>
+      </div>
+    </AuthLayout>
   );
 };
 
