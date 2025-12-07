@@ -54,10 +54,11 @@ const AuthRedirectHandler: React.FC = () => {
   return null;
 };
 
-function App() {
+const AppContent: React.FC = () => {
   const session = useSession();
   const { isLoading: isLoadingSession } = useSessionContext();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const location = useLocation();
 
   const toggleNavbar = () => setIsCollapsed(!isCollapsed);
 
@@ -65,20 +66,18 @@ function App() {
     return <div>Loading...</div>;
   }
 
-  // Define the class name based on session and collapse state
-  const mainContentClass = session
+  const showNavbar = session && location.pathname !== "/join";
+
+  const mainContentClass = showNavbar
     ? `main-content ${isCollapsed ? "collapsed" : "expanded"}`
-    : "main-content-logged-out"; // Assuming you have styles for this too
+    : "main-content-logged-out";
 
   return (
-    <Router>
+    <>
       {session && <AuthRedirectHandler />}
-      {session && <Navbar isCollapsed={isCollapsed} onToggle={toggleNavbar} />}
-
-      {/* FIX: Apply the dynamic class name here */}
+      {showNavbar && <Navbar isCollapsed={isCollapsed} onToggle={toggleNavbar} />}
       <div className={mainContentClass}>
         <Routes>
-          {/* Public routes */}
           <Route
             path="/login"
             element={!session ? <LoginPage /> : <Navigate to="/" replace />}
@@ -87,8 +86,6 @@ function App() {
             path="/signup"
             element={!session ? <SignUpPage /> : <Navigate to="/" replace />}
           />
-
-          {/* Protected routes */}
           <Route
             path="/"
             element={session ? <Dashboard /> : <Navigate to="/login" replace />}
@@ -133,10 +130,17 @@ function App() {
               session ? <JoinOrganization /> : <Navigate to="/login" replace />
             }
           />
-
           {session && <Route path="*" element={<Navigate to="/" replace />} />}
         </Routes>
       </div>
+    </>
+  );
+};
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }
