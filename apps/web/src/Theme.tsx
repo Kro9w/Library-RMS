@@ -15,12 +15,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
-    // --- THIS IS THE FIX ---
-    // We will set the data-bs-theme attribute on the <body>
-    // This will make it work with all your existing component CSS.
     document.body.setAttribute("data-bs-theme", theme);
-    // --- END OF FIX ---
-    
+
     localStorage.setItem("theme", theme);
   }, [theme]);
 

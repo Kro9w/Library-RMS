@@ -1,11 +1,12 @@
-/* apps/web/src/index.css */
-
-/* --- 1. LIGHT MODE (Default) --- */
 :root {
-  /* Brand Colors (Stay the same) */
   --primary: #ba3b46;
   --accent: #ed9b40;
   --light-text: #ffffff;
+
+  --navbar: #ba3b46;
+  --navbar-logo: #ed9b40;
+  --navbar-border: #ffffff;
+  --navbar-active: #ed9b40;
 
   /* Base Theme Palette */
   --background: #ffffff;
@@ -20,14 +21,14 @@
   --card-stripe-bg: #fcfcfc; /* For zebra striping */
 
   /* Status Colors */
-  --success: #198754; /* Bootstrap success green */
-  --danger: #dc3545; /* Bootstrap danger red */
-  --secondary: #6c757d; /* Bootstrap secondary grey */
+  --success: #198754;
+  --danger: #dc3545;
+  --secondary: #6c757d;
 
   /* Form & Button Palette */
   --hover-bg: #f9f9f9;
   --input-bg: #f0f2f5;
-  --input-text: #212529; /* Text *inside* inputs */
+  --input-text: #212529;
   --badge-bg: #e9ecef;
   --badge-text: #495057;
   --shadow-primary-focus: 0 0 0 3px rgba(186, 59, 70, 0.2);
@@ -39,13 +40,16 @@
   --btn-icon-hover-red-text: #d90429;
 }
 
-/* --- 2. DARK MODE --- */
 body[data-bs-theme="dark"] {
-  /* Re-define the *same* variables with dark values */
   --background: #181a1b;
   --text: #f1f1f1;
   --text-muted: #9a9a9a;
   --link-color: #aad8ff;
+
+  --navbar: #23272b;
+  --navbar-logo: #ba3b46;
+  --navbar-border: #ba3b46;
+  --navbar-active: #ba3b46;
 
   /* Card & Modal Palette */
   --card-background: #23272b;
@@ -73,7 +77,6 @@ body[data-bs-theme="dark"] {
   --btn-icon-hover-red-text: #ff8b8b;
 }
 
-/* --- 3. GLOBAL STYLES (Unchanged) --- */
 body {
   margin: 0;
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;

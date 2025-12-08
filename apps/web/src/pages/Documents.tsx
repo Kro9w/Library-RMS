@@ -1,5 +1,3 @@
-// apps/web/src/pages/Documents.tsx
-
 import React, { useState } from "react";
 import { trpc } from "../trpc";
 import { Link } from "react-router-dom";
@@ -87,6 +85,8 @@ const Documents: React.FC = () => {
     doc.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  if (isLoading) return <LoadingAnimation />;
+
   return (
     <div className="container mt-4">
       {/* --- 1. ADD THIS WRAPPER --- */}
@@ -123,8 +123,6 @@ const Documents: React.FC = () => {
         </div>
       </div>
       {/* --------------------------- */}
-
-      {isLoading && <LoadingAnimation />}
 
       <div className="card">
         <div className="card-body">

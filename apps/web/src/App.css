@@ -1,23 +1,17 @@
-/* apps/web/src/App.css */
-
-/* --- 1. RESTORED: Original Layout Styles --- */
 .main-content {
   transition: margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   min-height: 100vh;
-  /* Add some default padding to all pages */
   padding: 1.5rem;
 }
 
 .main-content.expanded {
-  margin-left: 250px;
+  margin-left: 230px;
 }
 
 .main-content.collapsed {
   margin-left: 80px;
 }
-/* ----------------------------------------- */
 
-/* This is for your public pages like /login, /signup */
 .main-content-logged-out {
   padding: 0;
   margin: 0;

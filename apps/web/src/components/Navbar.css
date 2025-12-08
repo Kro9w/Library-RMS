@@ -20,7 +20,7 @@
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
-  background: var(--primary);
+  background: var(--navbar);
   color: var(--light-text);
   border-radius: 1rem;
   overflow: hidden;
@@ -48,7 +48,8 @@
 .logo-item {
   margin-top: 1rem;
   margin-bottom: 1.5rem;
-  padding: 0 0.5rem;
+  padding: 0 0.8rem;
+  fill: var(--navbar-logo) !important;
 }
 
 .logo-item .nav-link {
@@ -68,7 +69,7 @@
 
 .logo-item svg {
   flex-shrink: 0;
-  margin-right: 0.5rem;
+  margin-right: 0.8rem;
 }
 
 .logo-text {
@@ -143,7 +144,7 @@
 
 .sidebar-float .nav-link.active {
   opacity: 1;
-  background-color: var(--accent);
+  background-color: var(--navbar-active);
   font-weight: bold;
 }
 
@@ -189,7 +190,7 @@ a.nav-link {
 }
 
 .sidebar-float.expanded {
-  width: 260px;
+  width: 220px;
 }
 
 /* --- Footer --- */
@@ -280,6 +281,13 @@ a.nav-link {
   animation: slideUpFade 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.account-menu-dropup.portal {
+  position: fixed;
+  width: 250px;
+  margin-bottom: 0;
+  right: auto;
+}
+
 @keyframes slideUpFade {
   from {
     opacity: 0;
@@ -310,21 +318,31 @@ a.nav-link {
   height: 40px;
   border-radius: 50%;
   margin-right: 0.75rem;
+  flex-shrink: 0;
 }
 
 .dropdown-header .user-details {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .dropdown-header .user-name {
   font-weight: 600;
   color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dropdown-header .user-email {
   font-size: 0.8rem;
   color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dropdown-item {

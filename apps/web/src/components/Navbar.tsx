@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/SessionContext";
 import { supabase } from "../supabase";
@@ -27,8 +28,35 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
 
   // State for account menu
   const [isAccountMenuOpen, setAccountMenuOpen] = useState(false);
-  const accountMenuRef = useRef<HTMLDivElement>(null);
-  useOutsideClick(accountMenuRef, () => {
+
+  // Refs for tracking clicks and positioning
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // State for portal positioning
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
+
+  // Close menu when sidebar state changes to prevent visual glitches
+  useEffect(() => {
+    setAccountMenuOpen(false);
+  }, [isCollapsed]);
+
+  // Calculate position when menu opens and is collapsed
+  useLayoutEffect(() => {
+    if (isAccountMenuOpen && isCollapsed && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setMenuStyle({
+        position: "fixed",
+        left: `${rect.right + 20}px`,
+        bottom: `${window.innerHeight - rect.bottom}px`,
+        zIndex: 9999,
+      });
+    }
+  }, [isAccountMenuOpen, isCollapsed]);
+
+  // Use updated hook that supports multiple refs
+  // We pass an array of refs [triggerRef, dropdownRef] so clicks on either keep it open
+  useOutsideClick([triggerRef, dropdownRef], () => {
     setAccountMenuOpen(false);
   });
 
@@ -57,6 +85,39 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
       displayName
     )}&background=random&color=fff&size=128`;
 
+  const renderDropdownContent = () => (
+    <div
+      className={`account-menu-dropup ${isCollapsed ? "portal" : ""}`}
+      ref={dropdownRef}
+      style={isCollapsed ? menuStyle : undefined}
+    >
+      <div className="dropdown-header">
+        <img src={avatarUrl} alt="User Avatar" />
+        <div className="user-details">
+          <span className="user-name">{displayName}</span>
+          <span className="user-email">{dbUser?.email}</span>
+        </div>
+      </div>
+      <NavLink
+        to="/account"
+        className="dropdown-item"
+        onClick={() => setAccountMenuOpen(false)}
+      >
+        <i className="bi bi-person-circle"></i> My Account
+      </NavLink>
+      <NavLink
+        to="/settings"
+        className="dropdown-item"
+        onClick={() => setAccountMenuOpen(false)}
+      >
+        <i className="bi bi-gear-fill"></i> Settings
+      </NavLink>
+      <button className="dropdown-item" onClick={handleSignOut}>
+        <i className="bi bi-box-arrow-left"></i> Sign Out
+      </button>
+    </div>
+  );
+
   return (
     <>
       <div className="sidebar-wrapper">
@@ -73,10 +134,10 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
                   width="24"
                   height="24"
                   style={{
-                    fill: "var(--accent)",
+                    fill: "var(--navbar-logo)",
                     background: "transparent",
-                    width: "50px",
-                    height: "50px",
+                    width: "40px",
+                    height: "40px",
                   }}
                 >
                   <path
@@ -162,39 +223,13 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
           {/* Footer with Dropdown */}
           <div className="sidebar-float-footer">
             {user && dbUser && (
-              <div className="account-menu-wrapper" ref={accountMenuRef}>
-                {isAccountMenuOpen && (
-                  <div className="account-menu-dropup">
-                    <div className="dropdown-header">
-                      <img src={avatarUrl} alt="User Avatar" />
-                      <div className="user-details">
-                        <span className="user-name">{displayName}</span>
-                        <span className="user-email">{dbUser.email}</span>
-                      </div>
-                    </div>
-                    <NavLink
-                      to="/account"
-                      className="dropdown-item"
-                      onClick={() => setAccountMenuOpen(false)}
-                    >
-                      <i className="bi bi-person-circle"></i> My Account
-                    </NavLink>
-                    <NavLink
-                      to="/settings"
-                      className="dropdown-item"
-                      onClick={() => setAccountMenuOpen(false)}
-                    >
-                      <i className="bi bi-gear-fill"></i> Settings
-                    </NavLink>
-                    <button className="dropdown-item" onClick={handleSignOut}>
-                      <i className="bi bi-box-arrow-left"></i> Sign Out
-                    </button>
-                  </div>
-                )}
+              <div className="account-menu-wrapper">
+                {isAccountMenuOpen && !isCollapsed && renderDropdownContent()}
 
                 {/* This is the new trigger button */}
                 <button
                   className="user-profile-button"
+                  ref={triggerRef}
                   onClick={() => setAccountMenuOpen(!isAccountMenuOpen)}
                   title={isCollapsed ? "Account" : ""}
                 >
@@ -223,6 +258,11 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
           </div>
         </nav>
       </div>
+
+      {/* Render Portal content if collapsed and open */}
+      {isAccountMenuOpen &&
+        isCollapsed &&
+        createPortal(renderDropdownContent(), document.body)}
 
       {/* Modals */}
       <UploadModal
