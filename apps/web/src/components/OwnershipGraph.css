@@ -22,12 +22,6 @@
 }
 
 svg {
-  /*
-   * NOTE: Your old CSS had a special cream background here.
-   * We are now using the main var(--background) for consistency.
-   * If you want the cream color back, we can add a new
-   * --graph-background variable to index.css later.
-  */
   background-color: var(--background);
   width: 100%;
   height: 100%;
@@ -215,3 +209,53 @@ svg.grabbing {
   background-color: var(--hover-bg);
 }
 /* --- REMOVED dark mode rule --- */
+
+/* --- 9. INFO TOOLTIP STYLES (New) --- */
+.info-tooltip-container {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+  width: 32px;
+  height: 32px;
+  background-color: var(--card-background);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: help;
+  transition: all 0.2s ease;
+}
+
+.info-tooltip-container:hover {
+  background-color: var(--hover-bg);
+  color: var(--primary);
+}
+
+.info-tooltip-text {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  top: 120%;
+  right: 0;
+  width: 250px;
+  background-color: var(--card-background);
+  color: var(--text);
+  border: 1px solid var(--card-border);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  box-shadow: var(--card-shadow);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  z-index: 20;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  pointer-events: none; /* Prevent tooltip from blocking clicks if it fades out slowly */
+}
+
+.info-tooltip-container:hover .info-tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}

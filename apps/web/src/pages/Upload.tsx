@@ -1,15 +1,16 @@
 import React, { useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { supabase } from "../supabase";
-import { useUser } from "@supabase/auth-helpers-react";
 import { trpc } from "../trpc";
+import { useSession } from "../contexts/SessionContext";
 import { v4 as uuidv4 } from "uuid";
 
 const Upload: React.FC = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const user = useUser();
+  const session = useSession();
+  const user = session?.user;
   const createDocMutation = trpc.documents.createDocumentRecord.useMutation();
   // 1. FIX: Get the bucket name from environment variables
   const bucketName = import.meta.env.VITE_SUPABASE_BUCKET_NAME || "documents"; // Use env var, fallback to 'documents'

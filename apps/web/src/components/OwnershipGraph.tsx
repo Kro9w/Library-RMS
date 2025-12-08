@@ -693,6 +693,14 @@ export function OwnershipGraph() {
             <i className="bi bi-arrow-left"></i>
           </button>
         )}
+        <div className="info-tooltip-container">
+          <i className="bi bi-info-circle"></i>
+          <div className="info-tooltip-text">
+            Click on a user node to see their assigned documents. You can drag
+            nodes and pan/zoom the canvas. Drag a document node onto a user to
+            transfer ownership.
+          </div>
+        </div>
         <svg ref={svgRef}></svg>
       </div>
       <div

@@ -4,7 +4,6 @@ import { trpc } from "../trpc";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 import "../components/Roles/RolesModal.css";
 import { ConfirmModal } from "../components/ConfirmModal";
-import { RolesModal } from "../components/Roles/RolesModal";
 import { LoadingAnimation } from "../components/ui/LoadingAnimation";
 import { formatUserName, formatUserNameLastFirst } from "../utils/user";
 
@@ -152,13 +151,6 @@ export function Users() {
                             <>
                               <button
                                 className="btn btn-icon"
-                                data-bs-toggle="modal"
-                                data-bs-target="#rolesModal"
-                              >
-                                <i className="bi bi-pencil-square"></i>
-                              </button>
-                              <button
-                                className="btn btn-icon"
                                 onClick={() => setUserToRemove(user)}
                               >
                                 <i className="bi bi-trash"></i>
@@ -230,7 +222,6 @@ export function Users() {
           ))}
         </select>
       </ConfirmModal>
-      <RolesModal />
     </>
   );
 }

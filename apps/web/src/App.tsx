@@ -141,10 +141,7 @@ const AppContent: React.FC = () => {
               session ? <DocumentDetails /> : <Navigate to="/login" replace />
             }
           />
-          <Route
-            path="/graph"
-            element={session ? <GraphView /> : <Navigate to="/login" replace />}
-          />
+          <Route path="/graph" element={<GraphView />} />
           <Route
             path="/users"
             element={
@@ -161,10 +158,7 @@ const AppContent: React.FC = () => {
             path="/account"
             element={session ? <Account /> : <Navigate to="/login" replace />}
           />
-          <Route
-            path="/settings"
-            element={session ? <Settings /> : <Navigate to="/login" replace />}
-          />
+          <Route path="/settings" element={<Settings />} />
           <Route
             path="/logs"
             element={
