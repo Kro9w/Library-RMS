@@ -144,7 +144,7 @@
 
 .sidebar-float .nav-link.active {
   opacity: 1;
-  background-color: var(--navbar-active);
+  background-color: var(--state-active-bg);
   font-weight: bold;
 }
 

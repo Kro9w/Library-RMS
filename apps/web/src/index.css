@@ -6,7 +6,7 @@
   --navbar: #ba3b46;
   --navbar-logo: #ed9b40;
   --navbar-border: #ffffff;
-  --navbar-active: #ed9b40;
+  --state-active-bg: var(--accent);
 
   /* Base Theme Palette */
   --background: #ffffff;
@@ -49,7 +49,7 @@ body[data-bs-theme="dark"] {
   --navbar: #23272b;
   --navbar-logo: #ba3b46;
   --navbar-border: #ba3b46;
-  --navbar-active: #ba3b46;
+  --state-active-bg: var(--primary);
 
   /* Card & Modal Palette */
   --card-background: #23272b;
@@ -162,4 +162,10 @@ button,
   background-color: var(--badge-bg);
   color: var(--text-muted);
   border-color: transparent;
+}
+
+/* --- Global Switch Active State --- */
+.form-check-input:checked {
+  background-color: var(--state-active-bg);
+  border-color: var(--state-active-bg);
 }

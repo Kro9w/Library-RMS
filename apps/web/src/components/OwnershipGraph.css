@@ -241,7 +241,7 @@ svg.grabbing {
   position: absolute;
   top: 120%;
   right: 0;
-  width: 250px;
+  width: 300px;
   background-color: var(--card-background);
   color: var(--text);
   border: 1px solid var(--card-border);

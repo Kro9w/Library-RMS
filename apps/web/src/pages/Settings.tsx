@@ -5,6 +5,7 @@ import { AppearanceSettings } from "../components/Settings/AppearanceSettings";
 import { SystemSettings } from "../components/Settings/SystemSettings";
 import { RolesSettings } from "../components/Roles/RolesSettings";
 import { DocumentTypesPanel } from "../components/DocumentTypes/DocumentTypsPanel";
+import "./Settings.css";
 
 type SettingsTab = "appearance" | "system" | "roles" | "documentTypes";
 
@@ -14,15 +15,15 @@ export function Settings() {
 
   const { data: user } = trpc.user.getMe.useQuery();
 
-  const canManageRoles = true;
-  user?.roles.some(
-    (role: { canManageRoles: boolean }) => role.canManageRoles
-  ) || false;
+  const canManageRoles =
+    user?.roles.some(
+      (role: { canManageRoles: boolean }) => role.canManageRoles
+    ) || false;
 
-  const canManageDocuments = true;
-  user?.roles.some(
-    (role: { canManageDocuments: boolean }) => role.canManageDocuments
-  ) || false;
+  const canManageDocuments =
+    user?.roles.some(
+      (role: { canManageDocuments: boolean }) => role.canManageDocuments
+    ) || false;
 
   useEffect(() => {
     document.body.setAttribute("data-bs-theme", theme);
@@ -55,56 +56,68 @@ export function Settings() {
     }
   };
 
+  const hasAdminPermissions = canManageRoles || canManageDocuments;
+
   return (
     <div className="container mt-4">
-      <h1 className="mb-4">Settings</h1>
-      <div className="row">
-        <div className="col-md-3">
-          <div className="list-group">
-            <button
-              type="button"
-              className={`list-group-item list-group-item-action ${
-                activeTab === "appearance" ? "active" : ""
-              }`}
-              onClick={() => setActiveTab("appearance")}
-            >
-              Appearance
-            </button>
-            <button
-              type="button"
-              className={`list-group-item list-group-item-action ${
-                activeTab === "system" ? "active" : ""
-              }`}
-              onClick={() => setActiveTab("system")}
-            >
-              System
-            </button>
-            {canManageRoles && (
-              <button
-                type="button"
-                className={`list-group-item list-group-item-action ${
-                  activeTab === "roles" ? "active" : ""
-                }`}
-                onClick={() => setActiveTab("roles")}
-              >
-                Roles
-              </button>
-            )}
-            {canManageDocuments && (
-              <button
-                type="button"
-                className={`list-group-item list-group-item-action ${
-                  activeTab === "documentTypes" ? "active" : ""
-                }`}
-                onClick={() => setActiveTab("documentTypes")}
-              >
-                Document Types
-              </button>
-            )}
-          </div>
+      <div className="settings-container">
+        {/* Sidebar */}
+        <div className="settings-sidebar">
+          <div className="settings-category-header">System Settings</div>
+
+          <button
+            type="button"
+            className={`settings-nav-item ${
+              activeTab === "appearance" ? "active" : ""
+            }`}
+            onClick={() => setActiveTab("appearance")}
+          >
+            Appearance
+          </button>
+
+          <button
+            type="button"
+            className={`settings-nav-item ${
+              activeTab === "system" ? "active" : ""
+            }`}
+            onClick={() => setActiveTab("system")}
+          >
+            System
+          </button>
+
+          {hasAdminPermissions && (
+            <>
+              <div className="settings-category-header">Administration</div>
+
+              {canManageRoles && (
+                <button
+                  type="button"
+                  className={`settings-nav-item ${
+                    activeTab === "roles" ? "active" : ""
+                  }`}
+                  onClick={() => setActiveTab("roles")}
+                >
+                  Roles
+                </button>
+              )}
+
+              {canManageDocuments && (
+                <button
+                  type="button"
+                  className={`settings-nav-item ${
+                    activeTab === "documentTypes" ? "active" : ""
+                  }`}
+                  onClick={() => setActiveTab("documentTypes")}
+                >
+                  Document Types
+                </button>
+              )}
+            </>
+          )}
         </div>
 
-        <div className="col-md-9">{renderContent()}</div>
+        {/* Content */}
+        <div className="settings-content">{renderContent()}</div>
       </div>
     </div>
   );
