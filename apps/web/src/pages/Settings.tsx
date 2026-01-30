@@ -5,9 +5,15 @@ import { AppearanceSettings } from "../components/Settings/AppearanceSettings";
 import { SystemSettings } from "../components/Settings/SystemSettings";
 import { RolesSettings } from "../components/Roles/RolesSettings";
 import { DocumentTypesPanel } from "../components/DocumentTypes/DocumentTypsPanel";
+import { RetentionPolicyPanel } from "../components/Retention/RetentionPolicyPanel";
 import "./Settings.css";
 
-type SettingsTab = "appearance" | "system" | "roles" | "documentTypes";
+type SettingsTab =
+  | "appearance"
+  | "system"
+  | "roles"
+  | "documentTypes"
+  | "retention";
 
 export function Settings() {
   const { theme } = useTheme();
@@ -46,6 +52,14 @@ export function Settings() {
       case "documentTypes":
         return canManageDocuments ? (
           <DocumentTypesPanel />
+        ) : (
+          <div className="alert alert-danger">
+            You do not have permission to view this page.
+          </div>
+        );
+      case "retention":
+        return canManageDocuments ? (
+          <RetentionPolicyPanel />
         ) : (
           <div className="alert alert-danger">
             You do not have permission to view this page.
@@ -102,15 +116,26 @@ export function Settings() {
               )}
 
               {canManageDocuments && (
-                <button
-                  type="button"
-                  className={`settings-nav-item ${
-                    activeTab === "documentTypes" ? "active" : ""
-                  }`}
-                  onClick={() => setActiveTab("documentTypes")}
-                >
-                  Document Types
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className={`settings-nav-item ${
+                      activeTab === "documentTypes" ? "active" : ""
+                    }`}
+                    onClick={() => setActiveTab("documentTypes")}
+                  >
+                    Document Types
+                  </button>
+                  <button
+                    type="button"
+                    className={`settings-nav-item ${
+                      activeTab === "retention" ? "active" : ""
+                    }`}
+                    onClick={() => setActiveTab("retention")}
+                  >
+                    Records Retention
+                  </button>
+                </>
               )}
             </>
           )}

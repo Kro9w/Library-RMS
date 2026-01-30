@@ -68,8 +68,18 @@ const formatFileTypeDisplay = (
 export const DocumentDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
 
+  const { data: user } = trpc.user.getMe.useQuery();
+  const utils = trpc.useUtils();
+
   const { data: document, isLoading: isLoadingDoc } =
     trpc.documents.getById.useQuery({ id: id! }, { enabled: !!id });
+
+  const executeDispositionMutation =
+    trpc.documents.executeDisposition.useMutation({
+      onSuccess: () => {
+        utils.documents.getById.invalidate({ id: id! });
+      },
+    });
 
   const { data: urlData, isLoading: isLoadingUrl } =
     trpc.documents.getSignedDocumentUrl.useQuery(
@@ -181,6 +191,61 @@ export const DocumentDetails: React.FC = () => {
                 <strong>File Type:</strong>{" "}
                 {formatFileTypeDisplay(document.fileType, document.title)}
               </p>
+
+              <hr />
+              <p>
+                <strong>Lifecycle:</strong>{" "}
+                <span
+                  className={`badge ${
+                    document.lifecycleStatus === "Active"
+                      ? "bg-success"
+                      : document.lifecycleStatus === "Inactive"
+                      ? "bg-secondary"
+                      : document.lifecycleStatus === "Ready"
+                      ? "bg-warning text-dark"
+                      : document.lifecycleStatus === "Archived"
+                      ? "bg-info"
+                      : "bg-danger"
+                  }`}
+                >
+                  {document.lifecycleStatus}
+                </span>
+              </p>
+
+              {user?.roles.some((r: any) => r.canManageDocuments) &&
+                document.lifecycleStatus === "Ready" && (
+                  <div className="mt-3">
+                    <div className="alert alert-warning">
+                      <h6 className="alert-heading">Disposition Ready</h6>
+                      <p className="mb-2">
+                        This document has reached its retention limit.
+                      </p>
+                      <p className="mb-3">
+                        Action:{" "}
+                        <strong>{document.dispositionActionSnapshot}</strong>
+                      </p>
+                      <button
+                        className="btn btn-danger w-100"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              "Are you sure you want to execute disposition? This action is irreversible."
+                            )
+                          ) {
+                            executeDispositionMutation.mutate({
+                              documentId: document.id,
+                            });
+                          }
+                        }}
+                        disabled={executeDispositionMutation.isPending}
+                      >
+                        {executeDispositionMutation.isPending
+                          ? "Executing..."
+                          : `Execute ${document.dispositionActionSnapshot}`}
+                      </button>
+                    </div>
+                  </div>
+                )}
             </div>
           </div>
         </div>

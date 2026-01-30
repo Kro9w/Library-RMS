@@ -11,6 +11,11 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum DispositionAction {
+  ARCHIVE
+  DESTROY
+}
+
 // apps/api/prisma/schema.prisma
 
 model User {
@@ -70,6 +75,9 @@ model DocumentType {
   organization   Organization @relation(fields: [organizationId], references: [id])
   organizationId String
   documents      Document[]
+  activeRetentionDuration   Int               @default(0) // In Years
+  inactiveRetentionDuration Int               @default(0) // In Years
+  dispositionAction         DispositionAction @default(ARCHIVE)
 }
 
 model Document {
@@ -103,6 +111,11 @@ model Document {
 
   status  String? // eg. approved, returned, disapproved
   remarks Remark[]
+
+  activeRetentionSnapshot   Int?
+  inactiveRetentionSnapshot Int?
+  dispositionActionSnapshot DispositionAction?
+  dispositionStatus         String? // 'ARCHIVED', 'DESTROYED'
 }
 
 model Tag {

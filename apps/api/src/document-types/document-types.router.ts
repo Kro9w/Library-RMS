@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { protectedProcedure, router } from '../trpc/trpc';
 import { LogService } from '../log/log.service';
+import { DispositionAction } from '@prisma/client';
 
 @Injectable()
 export class DocumentTypesRouter {
@@ -28,6 +29,9 @@ export class DocumentTypesRouter {
           z.object({
             name: z.string().min(1),
             color: z.string().min(1),
+            activeRetentionDuration: z.number().min(0).default(0),
+            inactiveRetentionDuration: z.number().min(0).default(0),
+            dispositionAction: z.nativeEnum(DispositionAction).default(DispositionAction.ARCHIVE),
           }),
         )
         .mutation(async ({ ctx, input }) => {
@@ -37,6 +41,9 @@ export class DocumentTypesRouter {
               name: input.name,
               color: input.color,
               organizationId: orgId,
+              activeRetentionDuration: input.activeRetentionDuration,
+              inactiveRetentionDuration: input.inactiveRetentionDuration,
+              dispositionAction: input.dispositionAction,
             },
           });
 
@@ -57,6 +64,9 @@ export class DocumentTypesRouter {
             id: z.string(),
             name: z.string().min(1),
             color: z.string().min(1),
+            activeRetentionDuration: z.number().min(0).optional(),
+            inactiveRetentionDuration: z.number().min(0).optional(),
+            dispositionAction: z.nativeEnum(DispositionAction).optional(),
           }),
         )
         .mutation(async ({ ctx, input }) => {
@@ -65,6 +75,9 @@ export class DocumentTypesRouter {
             data: {
               name: input.name,
               color: input.color,
+              activeRetentionDuration: input.activeRetentionDuration,
+              inactiveRetentionDuration: input.inactiveRetentionDuration,
+              dispositionAction: input.dispositionAction,
             },
           });
         }),

@@ -32,6 +32,9 @@ const Documents: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   // Type filter correctly for the TRPC input
   const [filter, setFilter] = useState<"all" | "mine">("all");
+  const [lifecycleFilter, setLifecycleFilter] = useState<"all" | "ready">(
+    "all"
+  );
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -81,9 +84,14 @@ const Documents: React.FC = () => {
   };
   // ----------------------------------------------------
 
-  const filteredDocuments = documents?.filter((doc: Document) =>
-    doc.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredDocuments = documents?.filter((doc: Document) => {
+    const matchesSearch = doc.title
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+    const matchesLifecycle =
+      lifecycleFilter === "all" || doc.lifecycleStatus === "Ready";
+    return matchesSearch && matchesLifecycle;
+  });
 
   if (isLoading) return <LoadingAnimation />;
 
@@ -100,6 +108,16 @@ const Documents: React.FC = () => {
           >
             <option value="all">All Organization Documents</option>
             <option value="mine">My Documents</option>
+          </select>
+          <select
+            value={lifecycleFilter}
+            onChange={(e) =>
+              setLifecycleFilter(e.target.value as "all" | "ready")
+            }
+            className="filter-dropdown ms-2"
+          >
+            <option value="all">All Statuses</option>
+            <option value="ready">Ready for Disposition</option>
           </select>
           <input
             type="text"
@@ -132,6 +150,7 @@ const Documents: React.FC = () => {
                 <th>Type</th>
                 <th>Title</th>
                 <th>Owner</th>
+                <th>Lifecycle</th>
                 <th>Control Number</th>
                 <th>Date</th>
                 <th>Actions</th>
@@ -174,6 +193,25 @@ const Documents: React.FC = () => {
                   </td>
                   <td className="text-muted">
                     {formatUserName(doc.uploadedBy)}
+                  </td>
+                  <td>
+                    {doc.lifecycleStatus === "Active" && (
+                      <span className="badge bg-success">Active</span>
+                    )}
+                    {doc.lifecycleStatus === "Inactive" && (
+                      <span className="badge bg-secondary">Inactive</span>
+                    )}
+                    {doc.lifecycleStatus === "Ready" && (
+                      <span className="badge bg-warning text-dark">
+                        Ready for Disposition
+                      </span>
+                    )}
+                    {doc.lifecycleStatus === "Archived" && (
+                      <span className="badge bg-info">Archived</span>
+                    )}
+                    {doc.lifecycleStatus === "Destroyed" && (
+                      <span className="badge bg-danger">Destroyed</span>
+                    )}
                   </td>
                   <td className="text-muted">{doc.controlNumber || "—"}</td>
                   <td className="text-muted">
@@ -234,7 +272,7 @@ const Documents: React.FC = () => {
               ))}
               {filteredDocuments?.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center text-muted py-4">
+                  <td colSpan={7} className="text-center text-muted py-4">
                     No documents found.
                   </td>
                 </tr>

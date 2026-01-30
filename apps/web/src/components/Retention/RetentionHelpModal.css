@@ -1,0 +1,156 @@
+/* apps/web/src/components/Retention/RetentionHelpModal.css */
+
+.retention-help-modal .modal-content {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.tutorial-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 400px;
+}
+
+.step-indicator {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--bs-gray-300);
+  transition: all 0.3s ease;
+}
+
+.step-dot.active {
+  background-color: var(--primary);
+  transform: scale(1.2);
+}
+
+.step-dot.completed {
+  background-color: var(--primary);
+  opacity: 0.5;
+}
+
+.tutorial-content {
+  display: flex;
+  flex: 1;
+  gap: 24px;
+}
+
+.text-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-body {
+  margin-top: 16px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--bs-body-color);
+}
+
+.visual-section {
+  flex: 1;
+  background-color: var(--bs-gray-100); /* Or a subtle theme color */
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 250px;
+}
+
+[data-bs-theme="dark"] .visual-section {
+  background-color: var(--bs-gray-800);
+}
+
+.visual-placeholder-icon {
+  font-size: 5rem;
+  color: var(--bs-gray-400);
+}
+
+/* Specific Step Styling */
+
+/* Step 0: Lifecycle */
+.lifecycle-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 16px;
+}
+
+.lifecycle-list li {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.lifecycle-list .badge {
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+}
+
+.lifecycle-list p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--bs-secondary-color);
+}
+
+/* Step 1: Retention Periods */
+.info-block {
+  background-color: rgba(var(--bs-primary-rgb), 0.05);
+  border-left: 3px solid var(--primary);
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 0 4px 4px 0;
+}
+
+.info-block h6 {
+  margin-bottom: 4px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.info-block p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* Step 2: Disposition Actions */
+.action-card {
+  border: 1px solid var(--bs-border-color);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.action-card.archive {
+  border-left: 4px solid var(--bs-info);
+}
+
+.action-card.destroy {
+  border-left: 4px solid var(--bs-danger);
+}
+
+.action-card h6 {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+}
+
+.action-card.archive h6 {
+  color: var(--bs-info);
+}
+.action-card.destroy h6 {
+  color: var(--bs-danger);
+}
+
+.action-card p {
+  margin: 0;
+  font-size: 0.9rem;
+}

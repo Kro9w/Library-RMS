@@ -11,6 +11,11 @@ export function DocumentTypesModal() {
 
   const [name, setName] = useState("");
   const [color, setColor] = useState(colors[0]);
+  const [activeRetention, setActiveRetention] = useState(0);
+  const [inactiveRetention, setInactiveRetention] = useState(0);
+  const [dispositionAction, setDispositionAction] = useState<
+    "ARCHIVE" | "DESTROY"
+  >("ARCHIVE");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,21 +27,43 @@ export function DocumentTypesModal() {
     setError(null);
     if (editingId) {
       updateMutation.mutate(
-        { id: editingId, name, color },
+        {
+          id: editingId,
+          name,
+          color,
+          activeRetentionDuration: activeRetention,
+          inactiveRetentionDuration: inactiveRetention,
+          dispositionAction,
+        },
         { onSuccess: () => refetch() }
       );
     } else {
-      createMutation.mutate({ name, color }, { onSuccess: () => refetch() });
+      createMutation.mutate(
+        {
+          name,
+          color,
+          activeRetentionDuration: activeRetention,
+          inactiveRetentionDuration: inactiveRetention,
+          dispositionAction,
+        },
+        { onSuccess: () => refetch() }
+      );
     }
     setName("");
     setColor(colors[0]);
+    setActiveRetention(0);
+    setInactiveRetention(0);
+    setDispositionAction("ARCHIVE");
     setEditingId(null);
   };
 
-  const handleEdit = (type: { id: string; name: string; color: string }) => {
+  const handleEdit = (type: any) => {
     setEditingId(type.id);
     setName(type.name);
     setColor(type.color);
+    setActiveRetention(type.activeRetentionDuration || 0);
+    setInactiveRetention(type.inactiveRetentionDuration || 0);
+    setDispositionAction(type.dispositionAction || "ARCHIVE");
   };
 
   const handleDelete = (id: string) => {
@@ -72,6 +99,49 @@ export function DocumentTypesModal() {
                   />
                   {error && <div className="text-danger mt-1">{error}</div>}
                 </div>
+
+                <div className="mb-3">
+                  <label className="form-label">Active Retention (Years)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="form-control"
+                    value={activeRetention}
+                    onChange={(e) => setActiveRetention(Number(e.target.value))}
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label">
+                    Inactive Retention (Years)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="form-control"
+                    value={inactiveRetention}
+                    onChange={(e) =>
+                      setInactiveRetention(Number(e.target.value))
+                    }
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label">Disposition Action</label>
+                  <select
+                    className="form-select"
+                    value={dispositionAction}
+                    onChange={(e) =>
+                      setDispositionAction(
+                        e.target.value as "ARCHIVE" | "DESTROY"
+                      )
+                    }
+                  >
+                    <option value="ARCHIVE">Archive</option>
+                    <option value="DESTROY">Destroy</option>
+                  </select>
+                </div>
+
                 <div className="mb-3">
                   <label className="form-label">Color</label>
                   <div>
