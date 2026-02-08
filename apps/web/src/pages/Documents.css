@@ -52,8 +52,8 @@
 /* --- Page Header Styles (Unchanged) --- */
 .page-header {
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
-  align-items: center;
   margin-bottom: 1rem;
 }
 .page-header h2 {
@@ -63,6 +63,7 @@
 .header-actions {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 1rem;
 }
 
@@ -75,7 +76,9 @@
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
   width: 300px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
   margin-right: 0.5rem;
 }
 

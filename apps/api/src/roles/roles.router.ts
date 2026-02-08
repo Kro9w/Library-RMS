@@ -1,3 +1,4 @@
+
 // apps/api/src/roles/roles.router.ts
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
@@ -22,6 +23,8 @@ export class RolesRouter {
             canManageUsers: z.boolean().optional(),
             canManageRoles: z.boolean().optional(),
             canManageDocuments: z.boolean().optional(),
+            // Campus ID is now required to scope the role
+            campusId: z.string().min(1)
           }),
         )
         .mutation(async ({ input, ctx }) => {
@@ -34,23 +37,37 @@ export class RolesRouter {
             });
           }
 
+          // TODO: Verify that ctx.dbUser has access to this campus (e.g. is Admin of the Org or Admin of the Campus)
+          // For now, relying on 'canManageRoles' which is organization/campus scoped.
+
           return await this.rolesService.createRole(
             {
-              ...input,
-              organizationId: ctx.dbUser.organizationId,
+              name: input.name,
+              canManageUsers: input.canManageUsers,
+              canManageRoles: input.canManageRoles,
+              canManageDocuments: input.canManageDocuments,
+              campusId: input.campusId,
             },
             ctx.dbUser.id,
           );
         }),
 
-      getRoles: protectedProcedure.query(async ({ ctx }) => {
-        if (!ctx.dbUser.organizationId) {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'User does not belong to an organization.',
-          });
-        }
-        return await this.rolesService.getRoles(ctx.dbUser.organizationId);
+      getRoles: protectedProcedure
+        .input(z.object({ campusId: z.string().optional() }).optional())
+        .query(async ({ ctx, input }) => {
+            if (!ctx.dbUser.organizationId) {
+                throw new TRPCError({
+                    code: 'FORBIDDEN',
+                    message: 'User does not belong to an organization.',
+                });
+            }
+
+            if (input?.campusId) {
+                return await this.rolesService.getRolesByCampus(input.campusId);
+            } else {
+                // Return all roles in the organization (legacy behavior for Org Admins)
+                return await this.rolesService.getRolesByOrganization(ctx.dbUser.organizationId);
+            }
       }),
 
       getUserRoles: protectedProcedure
@@ -80,7 +97,12 @@ export class RolesRouter {
           
           return await this.rolesService.updateRole(
             input.id,
-            input,
+            {
+                name: input.name,
+                canManageUsers: input.canManageUsers,
+                canManageRoles: input.canManageRoles,
+                canManageDocuments: input.canManageDocuments
+            },
             ctx.dbUser.id,
           );
         }),

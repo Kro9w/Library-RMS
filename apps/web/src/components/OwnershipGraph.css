@@ -11,6 +11,7 @@
   position: relative;
   background-color: var(--card-background);
   overflow: hidden;
+  flex-direction: column; /* Allow breadcrumb to stack */
 }
 
 .graph-canvas-wrapper {
@@ -18,6 +19,7 @@
   position: relative;
   overflow: hidden;
   border-radius: 0.375rem !important;
+  /* Make sure breadcrumb doesn't overlap excessively or handle z-index */
 }
 
 svg {
@@ -47,7 +49,21 @@ svg.grabbing {
   stroke: var(--accent);
   stroke-width: 3px;
 }
+.node-circle.mother-node {
+  stroke: var(--primary);
+  stroke-width: 4px;
+  filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.2));
+}
+
 .node-circle.organization {
+  fill: var(
+    --text
+  ); /* Root org can be distinct, or primary. Using text for contrast as root. */
+}
+.node-circle.campus {
+  fill: var(--primary);
+}
+.node-circle.department {
   fill: var(--primary);
 }
 .node-circle.user {
@@ -151,7 +167,9 @@ svg.grabbing {
   padding: 0.75rem 0.25rem;
   color: inherit;
   text-decoration: none;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
   border-radius: 0.25rem;
 }
 .details-panel .list-group-item a:hover {
@@ -197,10 +215,13 @@ svg.grabbing {
 .btn-back {
   position: absolute;
   top: 1rem;
-  left: 1rem;
-  z-index: 10;
-  width: 32px;
-  height: 32px;
+  left: 1rem; /* User asked for top right? Re-read prompt */
+  /* Prompt: "back button on the top right" */
+  left: auto;
+  right: 1rem;
+  z-index: 30; /* Higher than tooltip */
+  width: 36px;
+  height: 36px;
   background-color: var(--card-background);
   border: 1px solid var(--card-border);
   box-shadow: var(--card-shadow);
@@ -214,7 +235,9 @@ svg.grabbing {
 .info-tooltip-container {
   position: absolute;
   top: 1rem;
-  right: 1rem;
+  /* Was right: 1rem, moving to left to avoid collision with back button */
+  right: auto;
+  left: 1rem;
   z-index: 10;
   width: 32px;
   height: 32px;
@@ -240,7 +263,7 @@ svg.grabbing {
   opacity: 0;
   position: absolute;
   top: 120%;
-  right: 90%;
+  left: 0; /* Align left */
   width: 300px;
   background-color: var(--card-background);
   color: var(--text);
@@ -251,11 +274,62 @@ svg.grabbing {
   font-size: 0.85rem;
   line-height: 1.4;
   z-index: 20;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
   pointer-events: none; /* Prevent tooltip from blocking clicks if it fades out slowly */
 }
 
 .info-tooltip-container:hover .info-tooltip-text {
   visibility: visible;
   opacity: 1;
+}
+
+/* --- 10. BREADCRUMB BAR (Mac Finder Style) --- */
+.breadcrumb-bar {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--card-background);
+  border: 1px solid var(--card-border);
+  padding: 0.5rem 1rem;
+  border-radius: 999px; /* Pill shape */
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: var(--card-shadow);
+  z-index: 1000; /* Increased Z-Index to fix visibility */
+  max-width: 90%;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.breadcrumb-item-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.breadcrumb-item-text {
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.breadcrumb-item-text:hover {
+  color: var(--primary);
+}
+
+.breadcrumb-item-text.active {
+  font-weight: 600;
+  color: var(--text);
+  cursor: default;
+}
+
+.breadcrumb-separator {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  opacity: 0.6;
 }

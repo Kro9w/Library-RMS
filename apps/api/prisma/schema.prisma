@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -19,31 +19,39 @@ enum DispositionAction {
 // apps/api/prisma/schema.prisma
 
 model User {
-  id        String  @id // Supabase Auth User ID
-  email     String  @unique
-  firstName String
+  id         String  @id // Supabase Auth User ID
+  email      String  @unique
+  firstName  String
   middleName String?
-  lastName  String
-  imageUrl  String? // URL for the user's profile picture
+  lastName   String
+  imageUrl   String? // URL for the user's profile picture
 
-  organization    Organization?    @relation(fields: [organizationId], references: [id])
-  organizationId  String?
-  documents       Document[]       @relation("uploadedBy")
-  roles           Role[]           // Implicit M:N
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String?
+
+  campus   Campus? @relation(fields: [campusId], references: [id])
+  campusId String?
+
+  department   Department? @relation(fields: [departmentId], references: [id])
+  departmentId String?
+
+  documents       Document[] @relation("uploadedBy")
+  roles           Role[] // Implicit M:N
   logs            Log[]
   Remark          Remark[]
-  reviewRequested Document[]       @relation("DocumentReviewRequester")
+  reviewRequested Document[] @relation("DocumentReviewRequester")
 }
 
 model Role {
-  id                 String       @id @default(cuid())
+  id                 String  @id @default(cuid())
   name               String
-  canManageUsers     Boolean      @default(false)
-  canManageRoles     Boolean      @default(false)
-  canManageDocuments Boolean      @default(false)
-  users              User[]       // Implicit M:N
-  organization       Organization @relation(fields: [organizationId], references: [id])
-  organizationId     String
+  canManageUsers     Boolean @default(false)
+  canManageRoles     Boolean @default(false)
+  canManageDocuments Boolean @default(false)
+  users              User[] // Implicit M:N
+
+  campus   Campus @relation(fields: [campusId], references: [id])
+  campusId String
 }
 
 model Organization {
@@ -51,10 +59,29 @@ model Organization {
   name          String
   acronym       String
   users         User[]
+  campuses      Campus[]
   documents     Document[]
-  roles         Role[]
   documentTypes DocumentType[]
   logs          Log[]
+}
+
+model Campus {
+  id             String       @id @default(cuid())
+  name           String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  departments    Department[]
+  users          User[]
+  roles          Role[]
+}
+
+model Department {
+  id       String @id @default(cuid())
+  name     String
+  icon     String @default("default-icon.png")
+  campus   Campus @relation(fields: [campusId], references: [id])
+  campusId String
+  users    User[]
 }
 
 model Log {
@@ -69,12 +96,12 @@ model Log {
 }
 
 model DocumentType {
-  id             String       @id @default(cuid())
-  name           String
-  color          String
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  organizationId String
-  documents      Document[]
+  id                        String            @id @default(cuid())
+  name                      String
+  color                     String
+  organization              Organization      @relation(fields: [organizationId], references: [id])
+  organizationId            String
+  documents                 Document[]
   activeRetentionDuration   Int               @default(0) // In Years
   inactiveRetentionDuration Int               @default(0) // In Years
   dispositionAction         DispositionAction @default(ARCHIVE)
@@ -119,11 +146,11 @@ model Document {
 }
 
 model Tag {
-  id        String        @id @default(cuid())
-  name      String        @unique
-  documents Document[]    // Implicit M:N
-  isGlobal  Boolean       @default(false)
-  isLocked  Boolean       @default(false)
+  id        String     @id @default(cuid())
+  name      String     @unique
+  documents Document[] // Implicit M:N
+  isGlobal  Boolean    @default(false)
+  isLocked  Boolean    @default(false)
 }
 
 model Remark {
