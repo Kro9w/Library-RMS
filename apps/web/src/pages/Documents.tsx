@@ -1,16 +1,33 @@
-import React, { useState } from "react";
+import React, { useState, Suspense, useEffect } from "react";
 import { trpc } from "../trpc";
 import { Link } from "react-router-dom";
 import { ConfirmModal } from "../components/ConfirmModal";
-import { UploadModal } from "../components/UploadModal";
-import { SendDocumentModal } from "../components/SendDocumentModal";
-import { ReviewDocumentModal } from "../components/ReviewDocumentModal";
+// Lazy loaded modals
 import { LoadingAnimation } from "../components/ui/LoadingAnimation";
-import { TagsManagementModal } from "../components/TagsManagementModal";
 import "./Documents.css";
 import { formatUserName } from "../utils/user";
 
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
+
+// Lazy imports for heavy modals
+const UploadModal = React.lazy(() =>
+  import("../components/UploadModal").then((m) => ({ default: m.UploadModal }))
+);
+const SendDocumentModal = React.lazy(() =>
+  import("../components/SendDocumentModal").then((m) => ({
+    default: m.SendDocumentModal,
+  }))
+);
+const ReviewDocumentModal = React.lazy(() =>
+  import("../components/ReviewDocumentModal").then((m) => ({
+    default: m.ReviewDocumentModal,
+  }))
+);
+const TagsManagementModal = React.lazy(() =>
+  import("../components/TagsManagementModal").then((m) => ({
+    default: m.TagsManagementModal,
+  }))
+);
 
 // This type now correctly includes fileType and fileSize
 type Document = AppRouterOutputs["documents"]["getAll"][0];
@@ -43,15 +60,48 @@ const Documents: React.FC = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showTagsModal, setShowTagsModal] = useState(false);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 25;
+
   const utils = trpc.useUtils();
 
-  const { data: documents, isLoading } = trpc.documents.getAll.useQuery({
-    filter,
-  });
+  const { data: documents, isLoading } = trpc.documents.getAll.useQuery(
+    {
+      filter,
+    },
+    {
+      staleTime: 30000, // Keep data fresh for 30 seconds to avoid rapid refetches
+    }
+  );
   const { data: currentUser } = trpc.user.getMe.useQuery();
 
   const deleteMutation = trpc.documents.deleteDocument.useMutation({
-    onSuccess: () => {
+    onMutate: async ({ id }) => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await utils.documents.getAll.cancel({ filter });
+
+      // Snapshot the previous value
+      const previousDocuments = utils.documents.getAll.getData({ filter });
+
+      // Optimistically update to the new value
+      if (previousDocuments) {
+        utils.documents.getAll.setData({ filter }, (old: any[]) => {
+          return old ? old.filter((doc) => doc.id !== id) : [];
+        });
+      }
+
+      // Return a context object with the snapshotted value
+      return { previousDocuments };
+    },
+    onError: (_err, _newTodo, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousDocuments) {
+        utils.documents.getAll.setData({ filter }, context.previousDocuments);
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success:
       utils.documents.getAll.invalidate();
     },
   });
@@ -92,6 +142,18 @@ const Documents: React.FC = () => {
       lifecycleFilter === "all" || doc.lifecycleStatus === "Ready";
     return matchesSearch && matchesLifecycle;
   });
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, lifecycleFilter, searchTerm]);
+
+  // Pagination Logic
+  const totalItems = filteredDocuments?.length || 0;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentDocuments = filteredDocuments?.slice(startIndex, endIndex);
 
   if (isLoading) return <LoadingAnimation />;
 
@@ -157,7 +219,7 @@ const Documents: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredDocuments?.map((doc: Document) => (
+              {currentDocuments?.map((doc: Document) => (
                 <tr key={doc.id}>
                   <td>
                     {doc.documentType ? (
@@ -270,7 +332,7 @@ const Documents: React.FC = () => {
                   </td>
                 </tr>
               ))}
-              {filteredDocuments?.length === 0 && (
+              {currentDocuments?.length === 0 && (
                 <tr>
                   <td colSpan={7} className="text-center text-muted py-4">
                     No documents found.
@@ -279,6 +341,100 @@ const Documents: React.FC = () => {
               )}
             </tbody>
           </table>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="d-flex justify-content-between align-items-center mt-3">
+              <span className="text-muted small">
+                Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of{" "}
+                {totalItems} entries
+              </span>
+              <nav aria-label="Documents pagination">
+                <ul className="pagination mb-0">
+                  <li
+                    className={`page-item ${
+                      currentPage === 1 ? "disabled" : ""
+                    }`}
+                  >
+                    <button
+                      className="page-link"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    >
+                      Previous
+                    </button>
+                  </li>
+                  {(() => {
+                    const pages: (number | string)[] = [];
+                    const maxVisiblePages = 7;
+
+                    if (totalPages <= maxVisiblePages) {
+                      for (let i = 1; i <= totalPages; i++) {
+                        pages.push(i);
+                      }
+                    } else {
+                      if (currentPage <= 4) {
+                        pages.push(1, 2, 3, 4, 5, "...", totalPages);
+                      } else if (currentPage >= totalPages - 3) {
+                        pages.push(
+                          1,
+                          "...",
+                          totalPages - 4,
+                          totalPages - 3,
+                          totalPages - 2,
+                          totalPages - 1,
+                          totalPages
+                        );
+                      } else {
+                        pages.push(
+                          1,
+                          "...",
+                          currentPage - 1,
+                          currentPage,
+                          currentPage + 1,
+                          "...",
+                          totalPages
+                        );
+                      }
+                    }
+
+                    return pages.map((page, index) => (
+                      <li
+                        key={index}
+                        className={`page-item ${
+                          currentPage === page ? "active" : ""
+                        } ${page === "..." ? "disabled" : ""}`}
+                      >
+                        {page === "..." ? (
+                          <span className="page-link">...</span>
+                        ) : (
+                          <button
+                            className="page-link"
+                            onClick={() => setCurrentPage(page as number)}
+                          >
+                            {page}
+                          </button>
+                        )}
+                      </li>
+                    ));
+                  })()}
+                  <li
+                    className={`page-item ${
+                      currentPage === totalPages ? "disabled" : ""
+                    }`}
+                  >
+                    <button
+                      className="page-link"
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                      }
+                    >
+                      Next
+                    </button>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+          )}
         </div>
       </div>
 
@@ -293,31 +449,37 @@ const Documents: React.FC = () => {
         "?
       </ConfirmModal>
 
-      {selectedDoc && (
-        <SendDocumentModal
-          show={showSendModal}
-          onClose={() => setShowSendModal(false)}
-          documentId={selectedDoc.id}
-        />
-      )}
+      <Suspense fallback={null}>
+        {selectedDoc && showSendModal && (
+          <SendDocumentModal
+            show={showSendModal}
+            onClose={() => setShowSendModal(false)}
+            documentId={selectedDoc.id}
+          />
+        )}
 
-      {selectedDoc && (
-        <ReviewDocumentModal
-          show={showReviewModal}
-          onClose={() => setShowReviewModal(false)}
-          documentId={selectedDoc.id}
-        />
-      )}
+        {selectedDoc && showReviewModal && (
+          <ReviewDocumentModal
+            show={showReviewModal}
+            onClose={() => setShowReviewModal(false)}
+            documentId={selectedDoc.id}
+          />
+        )}
 
-      <UploadModal
-        show={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
-      />
+        {showUploadModal && (
+          <UploadModal
+            show={showUploadModal}
+            onClose={() => setShowUploadModal(false)}
+          />
+        )}
 
-      <TagsManagementModal
-        show={showTagsModal}
-        onClose={() => setShowTagsModal(false)}
-      />
+        {showTagsModal && (
+          <TagsManagementModal
+            show={showTagsModal}
+            onClose={() => setShowTagsModal(false)}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };

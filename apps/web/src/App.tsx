@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import "./App.css";
 import {
   BrowserRouter as Router,
@@ -8,12 +8,6 @@ import {
   useNavigate,
   useLocation,
 } from "react-router-dom";
-import { Dashboard } from "./pages/Dashboard";
-import Documents from "./pages/Documents";
-import Account from "./pages/Account";
-import { Settings } from "./pages/Settings";
-import LoginPage from "./pages/LoginPage";
-import SignUpPage from "./pages/SignUpPage";
 import {
   useSession,
   useSessionContext,
@@ -21,15 +15,36 @@ import {
 } from "./contexts/SessionContext";
 
 import { Navbar } from "./components/Navbar";
-import { DocumentDetails } from "./pages/DocumentDetails";
-import { GraphView } from "./pages/GraphView";
-import JoinOrganization from "./pages/JoinOrganization";
-import { Users } from "./pages/Users";
-import LogsPage from "./pages/LogsPage";
 import { trpc } from "./trpc";
 import { TRPCClientError } from "@trpc/client";
-import WordAuth from "./pages/WordAuth";
 import { useIsAdmin } from "./hooks/usIsAdmin";
+import { LoadingAnimation } from "./components/ui/LoadingAnimation";
+
+// Lazy-loaded components
+const Dashboard = React.lazy(() =>
+  import("./pages/Dashboard").then((module) => ({ default: module.Dashboard }))
+);
+const Documents = React.lazy(() => import("./pages/Documents"));
+const Account = React.lazy(() => import("./pages/Account"));
+const Settings = React.lazy(() =>
+  import("./pages/Settings").then((module) => ({ default: module.Settings }))
+);
+const LoginPage = React.lazy(() => import("./pages/LoginPage"));
+const SignUpPage = React.lazy(() => import("./pages/SignUpPage"));
+const DocumentDetails = React.lazy(() =>
+  import("./pages/DocumentDetails").then((module) => ({
+    default: module.DocumentDetails,
+  }))
+);
+const GraphView = React.lazy(() =>
+  import("./pages/GraphView").then((module) => ({ default: module.GraphView }))
+);
+const JoinOrganization = React.lazy(() => import("./pages/JoinOrganization"));
+const Users = React.lazy(() =>
+  import("./pages/Users").then((module) => ({ default: module.Users }))
+);
+const LogsPage = React.lazy(() => import("./pages/LogsPage"));
+const WordAuth = React.lazy(() => import("./pages/WordAuth"));
 
 const AdminRoute: React.FC<{ children: React.ReactElement }> = ({
   children,
@@ -37,7 +52,7 @@ const AdminRoute: React.FC<{ children: React.ReactElement }> = ({
   const { isAdmin, isLoading } = useIsAdmin();
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <LoadingAnimation />;
   }
 
   if (!isAdmin) {
@@ -100,6 +115,7 @@ const AppContent: React.FC = () => {
   const toggleNavbar = () => setIsCollapsed(!isCollapsed);
 
   if (isLoadingSession) {
+    return <LoadingAnimation />;
   }
 
   const showNavbar = session && location.pathname !== "/join";
@@ -117,68 +133,80 @@ const AppContent: React.FC = () => {
       )}
 
       <div className={mainContentClass}>
-        <Routes>
-          <Route path="/word-auth" element={<WordAuth />} />
-          <Route
-            path="/login"
-            element={!session ? <LoginPage /> : <Navigate to="/" replace />}
-          />
-          <Route
-            path="/signup"
-            element={!session ? <SignUpPage /> : <Navigate to="/" replace />}
-          />
-          <Route
-            path="/"
-            element={session ? <Dashboard /> : <Navigate to="/login" replace />}
-          />
-          <Route
-            path="/documents"
-            element={session ? <Documents /> : <Navigate to="/login" replace />}
-          />
-          <Route
-            path="/documents/:id"
-            element={
-              session ? <DocumentDetails /> : <Navigate to="/login" replace />
-            }
-          />
-          <Route path="/graph" element={<GraphView />} />
-          <Route
-            path="/users"
-            element={
-              session ? (
-                <AdminRoute>
-                  <Users />
-                </AdminRoute>
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
-          <Route
-            path="/account"
-            element={session ? <Account /> : <Navigate to="/login" replace />}
-          />
-          <Route path="/settings" element={<Settings />} />
-          <Route
-            path="/logs"
-            element={
-              session ? (
-                <AdminRoute>
-                  <LogsPage />
-                </AdminRoute>
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
-          <Route
-            path="/join"
-            element={
-              session ? <JoinOrganization /> : <Navigate to="/login" replace />
-            }
-          />
-          {session && <Route path="*" element={<Navigate to="/" replace />} />}
-        </Routes>
+        <Suspense fallback={<LoadingAnimation />}>
+          <Routes>
+            <Route path="/word-auth" element={<WordAuth />} />
+            <Route
+              path="/login"
+              element={!session ? <LoginPage /> : <Navigate to="/" replace />}
+            />
+            <Route
+              path="/signup"
+              element={!session ? <SignUpPage /> : <Navigate to="/" replace />}
+            />
+            <Route
+              path="/"
+              element={
+                session ? <Dashboard /> : <Navigate to="/login" replace />
+              }
+            />
+            <Route
+              path="/documents"
+              element={
+                session ? <Documents /> : <Navigate to="/login" replace />
+              }
+            />
+            <Route
+              path="/documents/:id"
+              element={
+                session ? <DocumentDetails /> : <Navigate to="/login" replace />
+              }
+            />
+            <Route path="/graph" element={<GraphView />} />
+            <Route
+              path="/users"
+              element={
+                session ? (
+                  <AdminRoute>
+                    <Users />
+                  </AdminRoute>
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/account"
+              element={session ? <Account /> : <Navigate to="/login" replace />}
+            />
+            <Route path="/settings" element={<Settings />} />
+            <Route
+              path="/logs"
+              element={
+                session ? (
+                  <AdminRoute>
+                    <LogsPage />
+                  </AdminRoute>
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/join"
+              element={
+                session ? (
+                  <JoinOrganization />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            {session && (
+              <Route path="*" element={<Navigate to="/" replace />} />
+            )}
+          </Routes>
+        </Suspense>
       </div>
     </>
   );

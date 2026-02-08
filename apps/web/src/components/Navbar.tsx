@@ -1,4 +1,10 @@
-import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  Suspense,
+} from "react";
 import { createPortal } from "react-dom";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/SessionContext";
@@ -7,10 +13,20 @@ import { trpc } from "../trpc";
 import { useOutsideClick } from "../hooks/OutsideClick";
 import { useIsAdmin } from "../hooks/usIsAdmin";
 import "./Navbar.css";
-import { UploadModal } from "./UploadModal";
-import { SelectDocumentModal } from "./SelectDocumentModal";
-import { SendDocumentModal } from "./SendDocumentModal";
 import { formatUserName } from "../utils/user";
+
+// Lazy imports for heavy modals
+const UploadModal = React.lazy(() =>
+  import("./UploadModal").then((m) => ({ default: m.UploadModal }))
+);
+const SelectDocumentModal = React.lazy(() =>
+  import("./SelectDocumentModal").then((m) => ({
+    default: m.SelectDocumentModal,
+  }))
+);
+const SendDocumentModal = React.lazy(() =>
+  import("./SendDocumentModal").then((m) => ({ default: m.SendDocumentModal }))
+);
 
 interface NavbarProps {
   isCollapsed: boolean;
@@ -265,28 +281,34 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
         createPortal(renderDropdownContent(), document.body)}
 
       {/* Modals */}
-      <UploadModal
-        show={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
-      />
+      <Suspense fallback={null}>
+        {showUploadModal && (
+          <UploadModal
+            show={showUploadModal}
+            onClose={() => setShowUploadModal(false)}
+          />
+        )}
 
-      <SelectDocumentModal
-        show={showSelectDocumentModal}
-        onClose={() => setShowSelectDocumentModal(false)}
-        onSelect={(docId) => {
-          setSelectedDocId(docId);
-          setShowSelectDocumentModal(false);
-          setShowSendDocumentModal(true);
-        }}
-      />
+        {showSelectDocumentModal && (
+          <SelectDocumentModal
+            show={showSelectDocumentModal}
+            onClose={() => setShowSelectDocumentModal(false)}
+            onSelect={(docId) => {
+              setSelectedDocId(docId);
+              setShowSelectDocumentModal(false);
+              setShowSendDocumentModal(true);
+            }}
+          />
+        )}
 
-      {selectedDocId && (
-        <SendDocumentModal
-          show={showSendDocumentModal}
-          onClose={() => setShowSendDocumentModal(false)}
-          documentId={selectedDocId}
-        />
-      )}
+        {selectedDocId && showSendDocumentModal && (
+          <SendDocumentModal
+            show={showSendDocumentModal}
+            onClose={() => setShowSendDocumentModal(false)}
+            documentId={selectedDocId}
+          />
+        )}
+      </Suspense>
     </>
   );
 }
