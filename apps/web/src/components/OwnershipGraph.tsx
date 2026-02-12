@@ -70,8 +70,7 @@ export function OwnershipGraph() {
         id: orgHierarchy.id,
         name: orgHierarchy.acronym,
         type: "organization",
-        fx: 0,
-        fy: 0,
+        // Do NOT set fx/fy here, or it will be pinned to 0,0
       };
 
       let initialStack: Node[] = [orgNode];
@@ -108,21 +107,22 @@ export function OwnershipGraph() {
     const nodes: Node[] = [];
     const links: LinkData[] = [];
 
-    // Mother Node (Fixed at Center)
+    // Mother Node (Starts at Center, Movable)
     const rootNodeForGraph: Node = {
       ...currentRoot,
-      fx: 0,
-      fy: 0,
       // Important: Reset previous velocity to avoid "flinging" when switching views
       vx: 0,
       vy: 0,
+      // Explicitly remove fx/fy if they were set by previous drags or initialization
+      fx: undefined,
+      fy: undefined,
     };
     nodes.push(rootNodeForGraph);
 
     // Children Generator Helper
     const addNode = (n: Node) => {
-      // Initialize child positions randomly AROUND the center, not AT (0,0)
-      // This reduces the explosive initial force.
+      // Initialize child positions randomly AROUND (0,0).
+      // We will offset this to the center of the screen in useEffect.
       const angle = Math.random() * 2 * Math.PI;
       const radius = 50 + Math.random() * 100;
       n.x = Math.cos(angle) * radius;
@@ -243,7 +243,11 @@ export function OwnershipGraph() {
     // Normal Drill Down
     if (d.type === "campus" || d.type === "department" || d.type === "user") {
       // Drill Down
-      setViewStack((prev) => [...prev, d]);
+      setViewStack((prev) => {
+        // Prevent duplicate pushing if the node is already the last one
+        if (prev[prev.length - 1]?.id === d.id) return prev;
+        return [...prev, d];
+      });
 
       // If it's a user, also select for panel
       if (d.type === "user") {
@@ -370,43 +374,53 @@ export function OwnershipGraph() {
 
     const simulation = simulationRef.current;
 
-    // --- 2. FORCE TUNING (Reverted to standard/user provided reference) ---
-    // User requested to revert to their original physics settings.
-    // Using standard robust defaults or values from previous working version.
+    // --- 2. FORCE TUNING & INITIALIZATION ---
+
+    // Initialize positions centered on screen
+    // This ensures the graph spawns in the center without "flying in"
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    nodes.forEach((n) => {
+      // If it's the root node (first in list), force it to center
+      if (n.id === graphData.nodes[0]?.id) {
+        n.x = centerX;
+        n.y = centerY;
+      } else {
+        // Offset relative positions (calculated in addNode) by center coordinates
+        // Check if x/y are defined (they should be from addNode)
+        if (typeof n.x === "number" && typeof n.y === "number") {
+          n.x += centerX;
+          n.y += centerY;
+        } else {
+          n.x = centerX + (Math.random() - 0.5) * 50;
+          n.y = centerY + (Math.random() - 0.5) * 50;
+        }
+      }
+    });
 
     simulation
       .force<d3.ForceLink<Node, LinkData>>("link")
-      ?.distance((l: any) => {
-        if (l.target.type === "campus") return 120;
-        if (l.target.type === "department") return 100;
-        if (l.target.type === "user") return 80;
-        if (l.target.type === "document") return 50;
-        return 100;
-      })
+      ?.distance(150) // Constant distance as requested
       .strength(0.5);
 
     simulation.force<d3.ForceManyBody<Node>>("charge")?.strength((d) => {
       if ((d as any)._isDragging) return 0;
-      if (d.type === "organization") return -500;
-      if (d.type === "campus") return -300;
-      if (d.type === "department") return -200;
-      return -100;
+      return -300; // Constant repulsion for similar physics
     });
 
     simulation.force<d3.ForceCollide<Node>>("collide")?.radius((d) => {
+      // Maintain visual hierarchy in collision radius
       if (d.type === "organization") return 50;
-      if (d.type === "campus") return 40;
-      if (d.type === "department") return 35;
-      if (d.type === "user") return 30;
-      return 20;
+      if (d.type === "campus") return 45;
+      if (d.type === "department") return 40;
+      if (d.type === "user") return 35;
+      return 25; // Docs
     });
 
-    // Remove center force override if it was causing issues, rely on initial spawn position
-    // simulation.force("center", d3.forceCenter(width / 2, height / 2));
-    // Actually, keeping center force is standard for d3 to prevent drifting off screen.
     simulation.force("center", d3.forceCenter(width / 2, height / 2));
 
-    simulation.alphaDecay(0.0228); // Standard D3 default is ~0.0228. My previous 0.05 was faster settling.
+    simulation.alphaDecay(0.0228);
 
     // Render Links
     const link = gRef
@@ -536,10 +550,6 @@ export function OwnershipGraph() {
       if (!event.active) simulation?.alphaTarget(0);
       d.fx = null;
       d.fy = null;
-      if (d.id === viewStack[viewStack.length - 1]?.id) {
-        d.fx = 0;
-        d.fy = 0;
-      }
       (d as any)._isDragging = false;
       const targetUser = dropTargetNodeRef.current;
       if (targetUser && d.type === "document" && (d as any)._activeLink) {
