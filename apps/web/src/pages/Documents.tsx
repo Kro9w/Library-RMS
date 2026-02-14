@@ -6,42 +6,34 @@ import { ConfirmModal } from "../components/ConfirmModal";
 import { LoadingAnimation } from "../components/ui/LoadingAnimation";
 import "./Documents.css";
 import { formatUserName } from "../utils/user";
+import { StatusBadge } from "../components/StatusBadge";
+import { FileIcon } from "../components/FileIcon";
+import { usePermissions } from "../hooks/usePermissions";
 
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
 // Lazy imports for heavy modals
 const UploadModal = React.lazy(() =>
-  import("../components/UploadModal").then((m) => ({ default: m.UploadModal }))
+  import("../components/UploadModal").then((m) => ({ default: m.UploadModal })),
 );
 const SendDocumentModal = React.lazy(() =>
   import("../components/SendDocumentModal").then((m) => ({
     default: m.SendDocumentModal,
-  }))
+  })),
 );
 const ReviewDocumentModal = React.lazy(() =>
   import("../components/ReviewDocumentModal").then((m) => ({
     default: m.ReviewDocumentModal,
-  }))
+  })),
 );
 const TagsManagementModal = React.lazy(() =>
   import("../components/TagsManagementModal").then((m) => ({
     default: m.TagsManagementModal,
-  }))
+  })),
 );
 
 // This type now correctly includes fileType and fileSize
 type Document = AppRouterOutputs["documents"]["getAll"][0];
-
-const formatFileType = (fileType: string | null | undefined): string => {
-  if (!fileType) return "FILE";
-  if (fileType.includes("pdf")) return "PDF";
-  if (fileType.includes("word")) return "DOCX";
-  if (fileType.includes("excel") || fileType.includes("spreadsheet"))
-    return "XLSX";
-  if (fileType.includes("image")) return "IMG";
-  if (fileType.includes("text")) return "TXT";
-  return "FILE";
-};
 
 // ------------------------------
 
@@ -50,7 +42,7 @@ const Documents: React.FC = () => {
   // Type filter correctly for the TRPC input
   const [filter, setFilter] = useState<"all" | "mine">("all");
   const [lifecycleFilter, setLifecycleFilter] = useState<"all" | "ready">(
-    "all"
+    "all",
   );
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
 
@@ -66,15 +58,21 @@ const Documents: React.FC = () => {
 
   const utils = trpc.useUtils();
 
+  // Use the new custom hook
+  const {
+    user: _currentUser,
+    canManageDocuments,
+    isUploader,
+  } = usePermissions();
+
   const { data: documents, isLoading } = trpc.documents.getAll.useQuery(
     {
       filter,
     },
     {
       staleTime: 30000, // Keep data fresh for 30 seconds to avoid rapid refetches
-    }
+    },
   );
-  const { data: currentUser } = trpc.user.getMe.useQuery();
 
   const deleteMutation = trpc.documents.deleteDocument.useMutation({
     onMutate: async ({ id }) => {
@@ -222,28 +220,27 @@ const Documents: React.FC = () => {
               {currentDocuments?.map((doc: Document) => (
                 <tr key={doc.id}>
                   <td>
-                    {doc.documentType ? (
-                      <span
-                        className="doc-type-pill"
-                        style={
-                          {
-                            "--type-color": `#${doc.documentType.color}`,
-                            backgroundColor: `#${doc.documentType.color}33`,
-                            color: `#${doc.documentType.color}`,
-                          } as React.CSSProperties
-                        }
-                      >
+                    <div className="d-flex align-items-center gap-2">
+                      <FileIcon fileType={doc.fileType} fileName={doc.title} />
+                      {doc.documentType && (
                         <span
-                          className="doc-type-pill-dot"
-                          style={{ backgroundColor: `var(--type-color)` }}
-                        />
-                        {doc.documentType.name}
-                      </span>
-                    ) : (
-                      <span className="doc-type-badge">
-                        {formatFileType(doc.fileType)}
-                      </span>
-                    )}
+                          className="doc-type-pill"
+                          style={
+                            {
+                              "--type-color": `#${doc.documentType.color}`,
+                              backgroundColor: `#${doc.documentType.color}33`,
+                              color: `#${doc.documentType.color}`,
+                            } as React.CSSProperties
+                          }
+                        >
+                          <span
+                            className="doc-type-pill-dot"
+                            style={{ backgroundColor: `var(--type-color)` }}
+                          />
+                          {doc.documentType.name}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td>
                     <Link
@@ -257,23 +254,7 @@ const Documents: React.FC = () => {
                     {formatUserName(doc.uploadedBy)}
                   </td>
                   <td>
-                    {doc.lifecycleStatus === "Active" && (
-                      <span className="badge bg-success">Active</span>
-                    )}
-                    {doc.lifecycleStatus === "Inactive" && (
-                      <span className="badge bg-secondary">Inactive</span>
-                    )}
-                    {doc.lifecycleStatus === "Ready" && (
-                      <span className="badge bg-warning text-dark">
-                        Ready for Disposition
-                      </span>
-                    )}
-                    {doc.lifecycleStatus === "Archived" && (
-                      <span className="badge bg-info">Archived</span>
-                    )}
-                    {doc.lifecycleStatus === "Destroyed" && (
-                      <span className="badge bg-danger">Destroyed</span>
-                    )}
+                    <StatusBadge status={doc.lifecycleStatus} />
                   </td>
                   <td className="text-muted">{doc.controlNumber || "—"}</td>
                   <td className="text-muted">
@@ -281,7 +262,7 @@ const Documents: React.FC = () => {
                   </td>
                   <td>
                     <div className="d-flex gap-2">
-                      {currentUser && currentUser.id === doc.uploadedById ? (
+                      {isUploader(doc.uploadedById) ? (
                         <>
                           <button
                             onClick={() => handleSendClick(doc)}
@@ -290,14 +271,11 @@ const Documents: React.FC = () => {
                           >
                             <i className="bi bi-send"></i>
                           </button>
-                          {/* REFACTOR: implicit relation */}
-                          {currentUser?.roles.some(
-                            (role: { canManageDocuments: boolean }) =>
-                              role.canManageDocuments
-                          ) &&
+
+                          {canManageDocuments &&
                             doc.tags.some(
                               (tag: { tag: { name: string } }) =>
-                                tag.tag.name === "for review"
+                                tag.tag.name === "for review",
                             ) && (
                               <button
                                 onClick={() => handleReviewClick(doc)}
@@ -382,7 +360,7 @@ const Documents: React.FC = () => {
                           totalPages - 3,
                           totalPages - 2,
                           totalPages - 1,
-                          totalPages
+                          totalPages,
                         );
                       } else {
                         pages.push(
@@ -392,7 +370,7 @@ const Documents: React.FC = () => {
                           currentPage,
                           currentPage + 1,
                           "...",
-                          totalPages
+                          totalPages,
                         );
                       }
                     }

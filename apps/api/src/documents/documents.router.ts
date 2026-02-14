@@ -182,8 +182,9 @@ export class DocumentsRouter {
           await this.logService.logAction(
              user.id,
              dbUser.organizationId!,
-             `Created document: ${document.title}`,
-             dbUser.roles.map(r => r.name)
+             'Created Document',
+             dbUser.roles.map(r => r.name),
+             document.title
           );
 
           return document;
@@ -430,8 +431,9 @@ export class DocumentsRouter {
           await this.logService.logAction(
               ctx.dbUser.id,
               doc.organizationId,
-              `Deleted document: ${doc.title}`,
-              ctx.dbUser.roles.map(r => r.name)
+              'Deleted Document',
+              ctx.dbUser.roles.map(r => r.name),
+              doc.title
           );
 
           return this.prisma.document.delete({
@@ -496,8 +498,9 @@ export class DocumentsRouter {
           await this.logService.logAction(
               user.id,
               dbUser.organizationId,
-              `Sent document: ${updatedDocument.title} to ${recipient.firstName} ${recipient.lastName}`,
-              dbUser.roles.map(r => r.name)
+              `Sent Document to ${recipient.firstName} ${recipient.lastName}`,
+              dbUser.roles.map(r => r.name),
+              updatedDocument.title
           );
 
           return updatedDocument;
@@ -566,8 +569,9 @@ export class DocumentsRouter {
           await this.logService.logAction(
               user.id,
               dbUser.organizationId,
-              `Reviewed document: ${updatedDocument.title} with status ${input.status}`,
-              dbUser.roles.map(r => r.name)
+              `Reviewed Document (Status: ${input.status})`,
+              dbUser.roles.map(r => r.name),
+              updatedDocument.title
           );
 
           return updatedDocument;
@@ -864,8 +868,9 @@ export class DocumentsRouter {
                await this.logService.logAction(
                  user.id,
                  dbUser.organizationId,
-                 `Executed disposition (DESTROY) for document: ${doc.title}`,
-                 dbUser.roles.map(r => r.name)
+                 'Executed Disposition (DESTROY)',
+                 dbUser.roles.map(r => r.name),
+                 doc.title
                );
                return updatedDoc;
 
@@ -878,8 +883,9 @@ export class DocumentsRouter {
                await this.logService.logAction(
                  user.id,
                  dbUser.organizationId,
-                 `Executed disposition (ARCHIVE) for document: ${doc.title}`,
-                 dbUser.roles.map(r => r.name)
+                 'Executed Disposition (ARCHIVE)',
+                 dbUser.roles.map(r => r.name),
+                 doc.title
                );
                return updatedDoc;
            }

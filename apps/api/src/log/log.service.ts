@@ -10,12 +10,15 @@ export class LogService {
     userId: string,
     organizationId: string,
     action: string,
-    roles: string[]
+    roles: string[],
+    targetName?: string // Optional parameter for enriched logging
   ) {
     try {
+        const actionString = targetName ? `${action}: '${targetName}'` : action;
+
         await this.prisma.log.create({
         data: {
-            action,
+            action: actionString,
             userId,
             organizationId,
             userRole: roles.join(', '),
