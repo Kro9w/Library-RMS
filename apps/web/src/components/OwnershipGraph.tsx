@@ -145,6 +145,8 @@ export function OwnershipGraph() {
     let nodes: Node[] = [];
     const links: LinkData[] = [];
 
+    const bubbleDocIds = new Set(bubbleDocuments.map((d) => d.id));
+
     // Mother Node (Starts at Center, Movable)
     const rootNodeForGraph: Node = {
       ...currentRoot,
@@ -230,6 +232,7 @@ export function OwnershipGraph() {
 
       if (user) {
         user.documents.forEach((doc: any) => {
+          if (bubbleDocIds.has(doc.id)) return;
           addNode({
             id: doc.id,
             name: doc.title,
@@ -244,14 +247,29 @@ export function OwnershipGraph() {
 
     // --- Merge Bubble Node ---
     if (bubbleNode) {
+      // Create a stable bubble node reference if possible, but graphData recreates objects
+      // We must ensure position is preserved via oldNodes map later.
       nodes.push(bubbleNode);
 
       // Add contained documents (they are "floating" inside bubble, not linked to anyone)
       bubbleDocuments.forEach((doc) => {
         // Ensure the flag is preserved/set
-        const bubbleDoc = { ...doc, isContainedInBubble: true };
-        nodes.push(bubbleDoc);
-        // We DON'T link them to the bubble with a standard D3 link because we want custom containment physics
+        // Check if this document ID is already in nodes to prevent accidental double-add if logic changed elsewhere
+        if (!nodes.some((n) => n.id === doc.id)) {
+          // Explicitly set the flag here again to be safe
+          const bubbleDoc = { ...doc, isContainedInBubble: true };
+          // Ensure it has coordinates near bubble if not set (fallback)
+          if (
+            (typeof bubbleDoc.x === "undefined" ||
+              typeof bubbleDoc.y === "undefined") &&
+            bubbleNode.x &&
+            bubbleNode.y
+          ) {
+            bubbleDoc.x = bubbleNode.x;
+            bubbleDoc.y = bubbleNode.y;
+          }
+          nodes.push(bubbleDoc);
+        }
       });
     }
 
@@ -280,6 +298,7 @@ export function OwnershipGraph() {
 
       if (fullUser && fullUser.documents) {
         fullUser.documents.forEach((doc: any) => {
+          if (bubbleDocIds.has(doc.id)) return;
           // Add document nodes for temp user
           // We can initialize them near the user to avoid flying in from center
           const angle = Math.random() * 2 * Math.PI;
@@ -526,39 +545,52 @@ export function OwnershipGraph() {
           .attr("y2", (d: any) => d.target.y);
 
         // --- Custom Bubble Physics ---
-        const bubble = nodes.find((n) => n.type === "bubble");
+        // Access nodes directly from simulation to avoid stale closures
+        const currentNodes = simulationRef.current?.nodes() || [];
+        const bubble = currentNodes.find((n) => n.type === "bubble");
+
         if (bubble) {
           const bubbleRadius = 40 + bubbleDocuments.length * 5;
 
           // Find nodes that are marked as contained in bubble
-          const containedNodes = nodes.filter((n) => n.isContainedInBubble);
+          const containedNodes = currentNodes.filter(
+            (n) => n.isContainedInBubble && !(n as any)._isDragging,
+          );
 
           containedNodes.forEach((doc) => {
             const dx = (bubble.x || 0) - (doc.x || 0);
             const dy = (bubble.y || 0) - (doc.y || 0);
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            // Strong pull to center (Attract)
-            if (doc.vx !== undefined && doc.vy !== undefined) {
-              // Use a significantly stronger centering force to keep documents inside
-              const strength = 0.5;
-              doc.vx += dx * strength;
-              doc.vy += dy * strength;
+            // INTERMEDIARY STATE LOGIC: Strong Containment
+            // Treat the bubble interior like a viscous fluid with a hard boundary.
 
-              // Apply strong velocity decay to prevent orbiting/slingshotting
-              doc.vx *= 0.5;
-              doc.vy *= 0.5;
+            if (doc.vx !== undefined && doc.vy !== undefined) {
+              // 1. Friction / Viscosity: Continuously dampen velocity inside bubble
+              // This prevents documents from "bouncing" around violently
+              doc.vx *= 0.6;
+              doc.vy *= 0.6;
+
+              // 2. Centering Force: Gentle pull towards center to keep them clustered
+              const pullStrength = 0.05;
+              doc.vx += dx * pullStrength;
+              doc.vy += dy * pullStrength;
             }
 
-            // Hard constraint if too far (keep inside)
-            // Use slightly smaller radius than visual to ensure they don't clip edge too much
-            const boundaryRadius = bubbleRadius - 15;
+            // 3. Hard Boundary Constraint
+            // If a node tries to escape the bubble radius, clamp it back inside.
+            const boundaryRadius = bubbleRadius - 12; // Keep them strictly inside visual boundary
             if (dist > boundaryRadius) {
-              const angle = Math.atan2(dy, dx);
-              // Position at edge, slightly inside
-              doc.x = (bubble.x || 0) - Math.cos(angle) * boundaryRadius;
-              doc.y = (bubble.y || 0) - Math.sin(angle) * boundaryRadius;
-              // Kill velocity completely at boundary
+              // Calculate the angle towards the node from center
+              // Note: dx/dy are (bubble - doc), so vector points TO bubble center.
+              // We want vector FROM bubble center TO doc to clamp it.
+              const angle = Math.atan2(-dy, -dx);
+
+              // Teleport node to the boundary edge
+              doc.x = (bubble.x || 0) + Math.cos(angle) * boundaryRadius;
+              doc.y = (bubble.y || 0) + Math.sin(angle) * boundaryRadius;
+
+              // Kill velocity to stop it from "pushing" against the wall
               doc.vx = 0;
               doc.vy = 0;
             }
@@ -587,7 +619,23 @@ export function OwnershipGraph() {
     const centerX = width / 2;
     const centerY = height / 2;
 
+    // PRESERVE POSITIONS: Capture old positions to enable smooth transitions
+    const oldNodes = new Map<string, Node>();
+    if (simulationRef.current) {
+      simulationRef.current.nodes().forEach((n) => {
+        oldNodes.set(n.id, n);
+      });
+    }
+
     nodes.forEach((n) => {
+      const old = oldNodes.get(n.id);
+      if (old) {
+        n.x = old.x;
+        n.y = old.y;
+        n.vx = old.vx;
+        n.vy = old.vy;
+      }
+
       // Temp nodes don't need forcing to center if they have x/y already from drag
       if (n.id === graphData.nodes[0]?.id) {
         n.x = centerX;
@@ -629,15 +677,30 @@ export function OwnershipGraph() {
       return -50; // Moderate for others
     });
 
-    simulation.force<d3.ForceCollide<Node>>("collide")?.radius((d) => {
+    // CUSTOM COLLISION FORCE: Exclude contained documents entirely
+    // This prevents the bubble from being pushed by the documents inside it (drifting)
+    const collideForce = d3.forceCollide<Node>().radius((d) => {
       if (d.type === "organization") return 50;
       if (d.type === "campus") return 45;
       if (d.type === "department") return 40;
       if (d.type === "user") return 35;
       if (d.type === "bubble")
         return 40 + (bubbleDocuments ? bubbleDocuments.length * 5 : 0);
+      // Fallback (though contained docs are filtered out below)
       return 25;
     });
+
+    // Monkey-patch initialize to filter out contained documents from collision force
+    const originalCollideInit = collideForce.initialize;
+    collideForce.initialize = function (nodes, random) {
+      originalCollideInit.call(
+        this,
+        nodes.filter((n) => !n.isContainedInBubble),
+        random,
+      );
+    };
+
+    simulation.force("collide", collideForce);
 
     simulation.force("center", d3.forceCenter(width / 2, height / 2));
 
@@ -735,7 +798,10 @@ export function OwnershipGraph() {
         if (d.type === "campus") return 35;
         if (d.type === "department") return 30;
         if (d.type === "user") return 25;
-        return 12; // Docs
+        if (d.type === "document") {
+          return d.isContainedInBubble ? 8 : 12;
+        }
+        return 12; // Fallback
       })
       .style("fill", (d) => {
         if (d.type === "document" && d.color) return `#${d.color}`;
@@ -823,8 +889,13 @@ export function OwnershipGraph() {
         return;
       }
 
-      // If dragging a document owned by current user, detach link visually AND physically
-      if (
+      // If dragging a document already in bubble, detach it (allow it to be pulled out)
+      if (d.isContainedInBubble) {
+        // Temporarily allow it to move freely (physics will try to pull it back unless we drop it elsewhere)
+        // No link to detach since it's floating
+        // We do NOT return here, we proceed so physics can update fx/fy
+      } else if (
+        // If dragging a document owned by current user, detach link visually AND physically
         d.type === "document" &&
         currentUserData &&
         d.uploadedById === currentUserData.id &&
@@ -866,6 +937,10 @@ export function OwnershipGraph() {
       d.fx = event.x;
       d.fy = event.y;
 
+      // Ensure that if we drag a document OUT of the bubble, the physics doesn't instantly snap it back while dragging
+      // The tick function handles this via 'vx/vy' but since d.fx/d.fy are set, D3 overrides physics position.
+      // So visual drag is fine.
+
       const g = gRef.current;
       if (!g) return;
 
@@ -901,10 +976,12 @@ export function OwnershipGraph() {
         const dx = (bubbleNode.x || 0) - d.fx!;
         const dy = (bubbleNode.y || 0) - d.fy!;
         const dist = Math.sqrt(dx * dx + dy * dy);
+        const bubblePath = gRef.current?.select(".node.bubble path");
 
         if (dist < threshold) {
-          // Visual cue that it's entering bubble?
-          // Maybe just let drop handle it
+          bubblePath?.classed("bubble-hover", true);
+        } else {
+          bubblePath?.classed("bubble-hover", false);
         }
       }
 
@@ -1037,6 +1114,37 @@ export function OwnershipGraph() {
       const target = dropTargetNodeRef.current;
       const g = gRef.current;
 
+      // Case: Document Removed from Bubble (Dropped into Nothing)
+      if (d.isContainedInBubble && !target) {
+        // If we dragged a document OUT of the bubble and dropped it into void,
+        // it should RETURN to its original owner (i.e. remove from bubble).
+        // Check if it's far enough from bubble to be considered "removed"
+        if (bubbleNode) {
+          const dx = (bubbleNode.x || 0) - d.fx!;
+          const dy = (bubbleNode.y || 0) - d.fy!;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const bubbleRadius = 40 + bubbleDocuments.length * 5;
+
+          if (dist > bubbleRadius + 50) {
+            // Remove from bubble (will re-appear at owner due to graphData logic)
+            setBubbleDocuments((prev) => prev.filter((doc) => doc.id !== d.id));
+            d.isContainedInBubble = false;
+            // Clear position so it can fly back to owner
+            d.fx = null;
+            d.fy = null;
+            // No need to set activeLink, graphData handles re-linking
+          } else {
+            // Snapped back into bubble (didn't drag far enough)
+            d.fx = null;
+            d.fy = null;
+            // Physics will pull it back to center
+          }
+        }
+        // Cleanup and return
+        g?.select(".node.bubble path").classed("bubble-hover", false);
+        return;
+      }
+
       // Case A: Bubble Dropped onto User
       if (d.type === "bubble" && target && target.type === "user") {
         setMultiSendTargetId(target.id);
@@ -1055,13 +1163,11 @@ export function OwnershipGraph() {
         d.fy = null;
         d.isContainedInBubble = true;
 
+        // Capture current position so it doesn't jump
+        const nodeClone = { ...d, x: d.x, y: d.y, vx: 0, vy: 0 };
+
         // Add to bubble state
-        // We store the simple object, graphData will add the flag on re-render
-        setBubbleDocuments((prev) => [...prev, d]);
-        // Remove active link (it is now consumed by bubble)
-        // We need to permanently remove the link from graphData links
-        // But since graphData is derived from useMemo, we rely on setBubbleDocuments triggering re-render
-        // However, we must ensure it doesn't snap back visually first.
+        setBubbleDocuments((prev) => [...prev, nodeClone]);
       }
 
       // Case C: Document Dropped onto User (Standard)
@@ -1101,6 +1207,7 @@ export function OwnershipGraph() {
         g.select(".nodes").append(() => this as Element);
       });
       g?.select(".tether").remove();
+      g?.select(".node.bubble path").classed("bubble-hover", false);
       d3.selectAll(".node-circle.drop-magnet").classed("drop-magnet", false);
       d3.selectAll(".node-circle.armed-for-drop").classed(
         "armed-for-drop",

@@ -515,3 +515,13 @@ svg.grabbing {
   opacity: 1;
   fill: var(--danger, #dc3545);
 }
+
+/* Bubble Hover State for Drop */
+.node.bubble path.bubble-hover {
+  fill: var(--primary);
+  fill-opacity: 0.2;
+  stroke: var(--primary);
+  stroke-width: 4px;
+  filter: drop-shadow(0 0 10px var(--primary));
+  transition: all 0.2s ease-out;
+}
