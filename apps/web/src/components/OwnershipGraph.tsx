@@ -27,6 +27,7 @@ type Node = d3.SimulationNodeDatum & {
   color?: string;
   parentId?: string;
   containedNodes?: Node[];
+  isContainedInBubble?: boolean;
 };
 
 type LinkData = d3.SimulationLinkDatum<Node> & { isDetached?: boolean };
@@ -247,7 +248,9 @@ export function OwnershipGraph() {
 
       // Add contained documents (they are "floating" inside bubble, not linked to anyone)
       bubbleDocuments.forEach((doc) => {
-        nodes.push(doc);
+        // Ensure the flag is preserved/set
+        const bubbleDoc = { ...doc, isContainedInBubble: true };
+        nodes.push(bubbleDoc);
         // We DON'T link them to the bubble with a standard D3 link because we want custom containment physics
       });
     }
@@ -310,7 +313,10 @@ export function OwnershipGraph() {
       const isTempNode = tempNodes.some((tn) => tn.id === n.id);
       const isTempDoc = tempNodes.some((tn) => tn.id === n.parentId); // Doc child of temp node
       const isBubble = n.type === "bubble";
-      const isBubbleDoc = bubbleDocuments.some((bd) => bd.id === n.id);
+
+      // We check if the node is contained in the bubble using the flag we set earlier
+      // If it is, we do NOT link it to the root, so it can float freely inside the bubble
+      const isBubbleDoc = n.isContainedInBubble;
 
       if (
         n.id !== currentRoot.id &&
@@ -421,7 +427,7 @@ export function OwnershipGraph() {
 
     const newBubble: Node = {
       id: "bubble-tool",
-      name: "Drag items here",
+      name: "", // Empty name to prevent text label rendering
       type: "bubble",
       x: width / 2,
       y: height / 2,
@@ -521,27 +527,40 @@ export function OwnershipGraph() {
 
         // --- Custom Bubble Physics ---
         const bubble = nodes.find((n) => n.type === "bubble");
-        if (bubble && bubbleDocuments.length > 0) {
+        if (bubble) {
           const bubbleRadius = 40 + bubbleDocuments.length * 5;
 
-          bubbleDocuments.forEach((doc) => {
+          // Find nodes that are marked as contained in bubble
+          const containedNodes = nodes.filter((n) => n.isContainedInBubble);
+
+          containedNodes.forEach((doc) => {
             const dx = (bubble.x || 0) - (doc.x || 0);
             const dy = (bubble.y || 0) - (doc.y || 0);
             const dist = Math.sqrt(dx * dx + dy * dy);
 
             // Strong pull to center (Attract)
             if (doc.vx !== undefined && doc.vy !== undefined) {
-              // Increase strength to overcome drift (was 0.05)
-              doc.vx += dx * 0.1;
-              doc.vy += dy * 0.1;
+              // Use a significantly stronger centering force to keep documents inside
+              const strength = 0.5;
+              doc.vx += dx * strength;
+              doc.vy += dy * strength;
+
+              // Apply strong velocity decay to prevent orbiting/slingshotting
+              doc.vx *= 0.5;
+              doc.vy *= 0.5;
             }
 
             // Hard constraint if too far (keep inside)
-            if (dist > bubbleRadius - 15) {
+            // Use slightly smaller radius than visual to ensure they don't clip edge too much
+            const boundaryRadius = bubbleRadius - 15;
+            if (dist > boundaryRadius) {
               const angle = Math.atan2(dy, dx);
-              // Position at edge (minus padding)
-              doc.x = (bubble.x || 0) - Math.cos(angle) * (bubbleRadius - 15);
-              doc.y = (bubble.y || 0) - Math.sin(angle) * (bubbleRadius - 15);
+              // Position at edge, slightly inside
+              doc.x = (bubble.x || 0) - Math.cos(angle) * boundaryRadius;
+              doc.y = (bubble.y || 0) - Math.sin(angle) * boundaryRadius;
+              // Kill velocity completely at boundary
+              doc.vx = 0;
+              doc.vy = 0;
             }
           });
         }
@@ -558,14 +577,7 @@ export function OwnershipGraph() {
         }
 
         // Update Bubble Close Button Position
-        if (bubble) {
-          const r = 40 + bubbleDocuments.length * 5;
-          // Position at ~45 degrees (top-right)
-          const angle = -Math.PI / 4;
-          const x = Math.cos(angle) * r;
-          const y = Math.sin(angle) * r;
-          g.select(".close-btn").attr("dx", x).attr("dy", y);
-        }
+        // Handled in animation timer now
       });
     }
 
@@ -607,12 +619,9 @@ export function OwnershipGraph() {
     simulation.force<d3.ForceManyBody<Node>>("charge")?.strength((d) => {
       if ((d as any)._isDragging) return 0;
 
-      // If document is inside bubble, apply positive charge (attraction) or zero to keep it grouped
-      if (
-        d.type === "document" &&
-        bubbleDocuments.some((bd) => bd.id === d.id)
-      ) {
-        return 5; // Slight attraction to neighbors helps clustering
+      // If document is inside bubble, remove all repulsion/charge so they can clump naturally via custom physics
+      if (d.isContainedInBubble) {
+        return 0;
       }
 
       if (d.type === "document") return 0; // Reduce document repulsion
@@ -661,7 +670,14 @@ export function OwnershipGraph() {
 
     nodeEnter.transition().duration(200).attr("opacity", 1);
 
-    nodeEnter.append("circle");
+    // Standard nodes get circles
+    nodeEnter.filter((d) => d.type !== "bubble").append("circle");
+
+    // Bubble gets path for amoeba shape
+    nodeEnter
+      .filter((d) => d.type === "bubble")
+      .append("path")
+      .attr("class", "node-circle bubble-blob");
 
     // Close Button for Bubble (Top Right Edge)
     nodeEnter
@@ -670,15 +686,9 @@ export function OwnershipGraph() {
       .attr("class", "close-btn")
       .text("✕")
       .attr("text-anchor", "middle")
-      // Position calculation will happen in 'tick' or simplified here assuming static offset from center?
-      // Since r changes, let's position it relative to center but use dx/dy and update in tick if needed?
-      // Actually, for simplicity, let's fix it relative to the circle's top-right quadrant.
-      // 40 + length*5 is radius. Let's assume average radius for initial placement or use transform.
-      // Better: Update position in tick function or use a fixed offset if r is small.
-      // Let's use a fixed offset that looks good for the default size, or bind to data if we want dynamic.
-      // For now: dx=25, dy=-25 is roughly top-right for r=40
-      .attr("dx", 25)
-      .attr("dy", -25)
+      // Initial Position (will be updated by animation loop)
+      .attr("dx", 0)
+      .attr("dy", 0)
       .on("click", (e, _d) => {
         e.stopPropagation();
         handlePopBubble();
@@ -695,10 +705,13 @@ export function OwnershipGraph() {
     // Tooltip
     nodeEnter
       .on("mouseover", function (_e, d) {
-        d3.select(this).raise().select("text").text(d.name);
+        // Target only the label text to avoid overwriting the "X" close button
+        d3.select(this).raise().select(".node-label").text(d.name);
       })
       .on("mouseout", function (_e, d) {
-        d3.select(this).select("text").text(truncateText(d.name, d.type));
+        d3.select(this)
+          .select(".node-label")
+          .text(truncateText(d.name, d.type));
       });
 
     const nodeMerge = node.merge(nodeEnter);
@@ -713,6 +726,7 @@ export function OwnershipGraph() {
       )
       .on("click", (e, d) => handleNodeClick(e, d));
 
+    // Update Circles
     nodeMerge
       .select("circle")
       .attr("class", (d) => `node-circle ${d.type}`)
@@ -721,7 +735,6 @@ export function OwnershipGraph() {
         if (d.type === "campus") return 35;
         if (d.type === "department") return 30;
         if (d.type === "user") return 25;
-        if (d.type === "bubble") return 40 + bubbleDocuments.length * 5;
         return 12; // Docs
       })
       .style("fill", (d) => {
@@ -737,11 +750,65 @@ export function OwnershipGraph() {
         (d) => d.id === viewStack[viewStack.length - 1]?.id,
       );
 
-    nodeMerge.select("text").text((d) => truncateText(d.name, d.type));
+    // Update Bubble Path (Initial fill only, shape handled by timer)
+    nodeMerge
+      .select("path.bubble-blob")
+      .style("fill", "var(--primary)") // Or specific bubble color
+      .attr("opacity", 0.3);
+
+    nodeMerge.select(".node-label").text((d) => truncateText(d.name, d.type));
 
     simulation.nodes(nodes);
     simulation.force<d3.ForceLink<Node, LinkData>>("link")?.links(links);
     simulation.alpha(1).restart();
+
+    // --- Bubble Animation Loop ---
+    const timer = d3.timer((elapsed) => {
+      const bubble = nodes.find((n) => n.type === "bubble");
+      if (bubble) {
+        const radius = 40 + bubbleDocuments.length * 5;
+        const points: [number, number][] = [];
+        const numPoints = 12;
+
+        // Generate Amoeba Points
+        for (let i = 0; i < numPoints; i++) {
+          const angle = (i / numPoints) * Math.PI * 2;
+          // Organic oscillation
+          const offset =
+            Math.sin(angle * 3 + elapsed * 0.002) * 4 +
+            Math.cos(angle * 5 - elapsed * 0.003) * 3;
+          const r = radius + offset;
+          points.push([Math.cos(angle) * r, Math.sin(angle) * r]);
+        }
+
+        // Update Path
+        const pathData = d3.line().curve(d3.curveBasisClosed)(points);
+        const bubbleNode = gRef.current?.select(".node.bubble path");
+        if (bubbleNode && pathData) {
+          bubbleNode.attr("d", pathData);
+        }
+
+        // Update Close Button Position
+        // Find point at roughly -45 degrees (top-right)
+        // We can just calculate it using the same formula
+        const angle = -Math.PI / 4; // -45 deg
+        const offset =
+          Math.sin(angle * 3 + elapsed * 0.002) * 4 +
+          Math.cos(angle * 5 - elapsed * 0.003) * 3;
+        const r = radius + offset;
+        const x = Math.cos(angle) * r;
+        const y = Math.sin(angle) * r;
+
+        gRef.current
+          ?.select(".node.bubble .close-btn")
+          .attr("dx", x)
+          .attr("dy", y);
+      }
+    });
+
+    return () => {
+      timer.stop();
+    };
 
     // Drag Functions
     function dragstarted(event: any, d: any) {
@@ -983,7 +1050,13 @@ export function OwnershipGraph() {
         target.type === "bubble" &&
         (d as any)._activeLink
       ) {
+        // Ensure the node is free to be controlled by simulation
+        d.fx = null;
+        d.fy = null;
+        d.isContainedInBubble = true;
+
         // Add to bubble state
+        // We store the simple object, graphData will add the flag on re-render
         setBubbleDocuments((prev) => [...prev, d]);
         // Remove active link (it is now consumed by bubble)
         // We need to permanently remove the link from graphData links
