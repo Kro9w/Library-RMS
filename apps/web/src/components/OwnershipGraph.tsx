@@ -52,11 +52,6 @@ export function OwnershipGraph() {
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [targetUserId, setTargetUserId] = useState<string | null>(null);
 
-  // Track detached links separately to avoid infinite render loops with useMemo
-  const [detachedLinkIds, setDetachedLinkIds] = useState<Set<string>>(
-    new Set(),
-  );
-
   // New State for Binder
   const [activeTab, setActiveTab] = useState<"directory" | "details">(
     "directory",
@@ -99,7 +94,7 @@ export function OwnershipGraph() {
         initialExpanded.add(currentUserData.campusId);
 
         const campus = orgHierarchy.campuses.find(
-          (c) => c.id === currentUserData.campusId,
+          (c: any) => c.id === currentUserData.campusId,
         );
         if (campus) {
           const campusNode: Node = {
@@ -147,7 +142,7 @@ export function OwnershipGraph() {
     };
 
     if (currentRoot.type === "organization") {
-      orgHierarchy.campuses.forEach((c) => {
+      orgHierarchy.campuses.forEach((c: any) => {
         addNode({
           id: c.id,
           name: c.name,
@@ -157,9 +152,11 @@ export function OwnershipGraph() {
         });
       });
     } else if (currentRoot.type === "campus") {
-      const campus = orgHierarchy.campuses.find((c) => c.id === currentRoot.id);
+      const campus = orgHierarchy.campuses.find(
+        (c: any) => c.id === currentRoot.id,
+      );
       if (campus) {
-        campus.departments.forEach((d) => {
+        campus.departments.forEach((d: any) => {
           addNode({
             id: d.id,
             name: d.name,
@@ -172,7 +169,7 @@ export function OwnershipGraph() {
     } else if (currentRoot.type === "department") {
       let dept: any = null;
       for (const c of orgHierarchy.campuses) {
-        const d = c.departments.find((dep) => dep.id === currentRoot.id);
+        const d = c.departments.find((dep: any) => dep.id === currentRoot.id);
         if (d) {
           dept = d;
           break;
@@ -199,7 +196,7 @@ export function OwnershipGraph() {
       let user: any = null;
       for (const c of orgHierarchy.campuses) {
         for (const d of c.departments) {
-          const u = d.users.find((usr) => usr.id === currentRoot.id);
+          const u = d.users.find((usr: any) => usr.id === currentRoot.id);
           if (u) {
             user = u;
             break;
@@ -235,18 +232,17 @@ export function OwnershipGraph() {
       // Only link natural nodes to root. Temp nodes float independently.
       // Also exclude root node itself from linking to itself
       if (n.id !== currentRoot.id && !tempNodes.find((tn) => tn.id === n.id)) {
-        const linkId = `${rootNodeForGraph.id}-${n.id}`;
         // Apply detached state if link is dragged
         links.push({
           source: rootNodeForGraph.id,
           target: n.id,
-          isDetached: detachedLinkIds.has(linkId),
+          isDetached: false, // Initial state, physics handles dynamic detachment
         });
       }
     });
 
     return { nodes, links };
-  }, [orgHierarchy, viewStack, tempNodes, detachedLinkIds]);
+  }, [orgHierarchy, viewStack, tempNodes]);
 
   // --- Event Handlers ---
   const handleNodeClick = (event: MouseEvent, d: Node) => {
@@ -416,8 +412,7 @@ export function OwnershipGraph() {
         // Update Tether Line if exists
         const tether = g.select(".tether");
         if (!tether.empty()) {
-          const dragNodeId = tether.attr("data-source-id");
-          const targetNodeId = tether.attr("data-target-id");
+          // Tether update logic is handled in dragged()
         }
       });
     }
@@ -550,12 +545,13 @@ export function OwnershipGraph() {
 
     // Drag Functions
     function dragstarted(event: any, d: any) {
+      if (event.sourceEvent) event.sourceEvent.stopPropagation(); // Stop propagation to container
       if (!event.active) simulation?.alphaTarget(0.3).restart();
       d.fx = d.x;
       d.fy = d.y;
       (d as any)._isDragging = true;
 
-      // If dragging a document owned by current user, detach link visually
+      // If dragging a document owned by current user, detach link visually AND physically
       if (
         d.type === "document" &&
         currentUserData &&
@@ -567,15 +563,18 @@ export function OwnershipGraph() {
             (lnk.target as Node).id === d.id,
         );
         if (l) {
-          // Mark as detached
+          // 1. Mark as detached
           l.isDetached = true;
           (d as any)._activeLink = l;
 
-          // Robustly find line element using ID selector
+          // 2. Update Simulation Physics: Remove this link temporarily
+          simulation
+            ?.force<d3.ForceLink<Node, LinkData>>("link")
+            ?.links(links.filter((lnk) => !lnk.isDetached));
+
+          // 3. Visual Update (CSS)
           const sourceId = (l.source as Node).id;
           const targetId = (l.target as Node).id;
-
-          // D3 Data binding uses object identity or ID, we filter by node IDs
           d3.select(svgRef.current!)
             .selectAll("line.link")
             .filter(
@@ -583,6 +582,9 @@ export function OwnershipGraph() {
                 ld.source.id === sourceId && ld.target.id === targetId,
             )
             .classed("link-detached", true);
+
+          // Restart sim slightly to apply new forces
+          simulation?.alpha(0.1).restart();
         }
       }
     }
@@ -600,6 +602,7 @@ export function OwnershipGraph() {
             ? (activeLink.source as Node).id
             : (activeLink.target as Node).id;
 
+        // Find potential target
         for (const u of nodes) {
           if (u.type !== "user" || u.id === originalOwnerId) continue;
           // Calculate distance
@@ -628,15 +631,15 @@ export function OwnershipGraph() {
           targetNodeElement &&
           !targetNodeElement.empty()
         ) {
+          const gooeyContainer = g.select(".gooey-container");
+
           // 1. Move elements to gooey container if not already there
           if (g.select(".tether").empty()) {
-            d3.select(".gooey-container").append(() => docNodeElement.node()!);
-            d3.select(".gooey-container").append(
-              () => targetNodeElement.node()!,
-            );
+            gooeyContainer.append(() => docNodeElement.node()!);
+            gooeyContainer.append(() => targetNodeElement.node()!);
 
             // Add tether
-            d3.select(".gooey-container")
+            gooeyContainer
               .append("line")
               .attr("class", "tether")
               .attr("data-source-id", d.id)
@@ -668,12 +671,14 @@ export function OwnershipGraph() {
               .forceLink<Node, LinkData>([
                 { source: d, target: target! } as any,
               ])
-              .strength(1.0) // Increased from 0.8
-              .distance(0), // Decreased from 20 to allow merger
+              .strength(2.0) // Increased strength to overcome charge
+              .distance(0),
           );
+          simulation?.alpha(0.3).restart();
         } else {
           // Cleanup if moved away
-          g.selectAll(".gooey-container g.node").each(function () {
+          const gooeyContainer = g.select(".gooey-container");
+          gooeyContainer.selectAll("g.node").each(function () {
             g.select(".nodes").append(() => this as Element);
           });
           g.select(".tether").remove();
@@ -706,13 +711,17 @@ export function OwnershipGraph() {
         setSelectedDocId(d.id);
         setTargetUserId(targetUser.id);
         setIsSendModalOpen(true);
+        // Note: We keep the link detached until the modal action completes or is cancelled
       } else if ((d as any)._activeLink) {
+        // Drop cancelled: Re-attach
         (d as any)._activeLink.isDetached = false;
 
-        // Re-attach visual explicitly if dropped (discontinued)
+        // 1. Update Simulation Physics: Restore link
+        simulation?.force<d3.ForceLink<Node, LinkData>>("link")?.links(links);
+
+        // 2. Visual Update (CSS)
         const sourceId = ((d as any)._activeLink.source as Node).id;
         const targetId = ((d as any)._activeLink.target as Node).id;
-
         d3.select(svgRef.current!)
           .selectAll("line.link")
           .filter(
@@ -723,7 +732,7 @@ export function OwnershipGraph() {
         simulation?.alpha(0.1).restart();
       }
 
-      // Cleanup DOM
+      // Cleanup DOM (Always move nodes back to main group)
       g?.selectAll(".gooey-container g.node").each(function () {
         g.select(".nodes").append(() => this as Element);
       });
@@ -816,7 +825,7 @@ export function OwnershipGraph() {
               {activeTab === "directory" && orgHierarchy && (
                 <div className="directory-tree">
                   {/* Campus Level */}
-                  {orgHierarchy.campuses.map((campus) => (
+                  {orgHierarchy.campuses.map((campus: any) => (
                     <div key={campus.id} className="tree-item">
                       <div
                         className={`tree-header ${expandedIds.has(campus.id) ? "expanded" : ""}`}
@@ -829,7 +838,7 @@ export function OwnershipGraph() {
 
                       {expandedIds.has(campus.id) && (
                         <div className="tree-children">
-                          {campus.departments.map((dept) => (
+                          {campus.departments.map((dept: any) => (
                             <div key={dept.id} className="tree-item">
                               <div
                                 className={`tree-header ${expandedIds.has(dept.id) ? "expanded" : ""}`}
@@ -979,9 +988,30 @@ export function OwnershipGraph() {
             setIsSendModalOpen(false);
             setTargetUserId(null);
             const l = graphData.links.find(
-              (lnk) => (lnk.source as Node).id === selectedDocId,
+              (lnk) =>
+                (lnk.source as Node).id === selectedDocId ||
+                (lnk.target as Node).id === selectedDocId,
             );
-            if (l) l.isDetached = false;
+            if (l) {
+              l.isDetached = false;
+              // Restore Physics
+              simulationRef.current
+                ?.force<d3.ForceLink<Node, LinkData>>("link")
+                ?.links(graphData.links);
+
+              // Restore Visuals
+              const sourceId = (l.source as Node).id;
+              const targetId = (l.target as Node).id;
+              d3.select(svgRef.current!)
+                .selectAll("line.link")
+                .filter(
+                  (ld: any) =>
+                    ld.source.id === sourceId && ld.target.id === targetId,
+                )
+                .classed("link-detached", false);
+
+              simulationRef.current?.alpha(0.1).restart();
+            }
           }}
           documentId={selectedDocId}
           initialRecipientId={targetUserId}
