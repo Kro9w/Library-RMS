@@ -42,6 +42,7 @@ export function OwnershipGraph() {
 
   const dropTargetNodeRef = useRef<Node | null>(null);
 
+  // --- State ---
   const [viewStack, setViewStack] = useState<Node[]>([]);
   const [_expandedUserId, _setExpandedUserId] = useState<string | null>(null);
   const [selectedUserNode, setSelectedUserNode] = useState<Node | null>(null);
@@ -50,6 +51,19 @@ export function OwnershipGraph() {
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [targetUserId, setTargetUserId] = useState<string | null>(null);
+
+  // Track detached links separately to avoid infinite render loops with useMemo
+  const [detachedLinkIds, setDetachedLinkIds] = useState<Set<string>>(
+    new Set(),
+  );
+
+  // New State for Binder
+  const [activeTab, setActiveTab] = useState<"directory" | "details">(
+    "directory",
+  );
+  const [isBinderOpen, setIsBinderOpen] = useState(true);
+  const [tempNodes, setTempNodes] = useState<Node[]>([]);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const { data: currentUserData, isLoading: isLoadingCurrentUser } =
     trpc.user.getMe.useQuery();
@@ -62,7 +76,11 @@ export function OwnershipGraph() {
     staleTime: 60000,
   });
 
-  // --- 1. INITIAL STATE: Start at User's Campus ---
+  // Check if we are in "Document View" (User is root)
+  const isDocumentView =
+    viewStack.length > 0 && viewStack[viewStack.length - 1].type === "user";
+
+  // --- 1. INITIAL STATE: Start at User's Campus & Expand Accordion ---
   useEffect(() => {
     if (orgHierarchy && currentUserData && viewStack.length === 0) {
       // Construct Org Node
@@ -74,9 +92,12 @@ export function OwnershipGraph() {
       };
 
       let initialStack: Node[] = [orgNode];
+      const initialExpanded = new Set<string>();
 
       // Find User's Campus
       if (currentUserData.campusId) {
+        initialExpanded.add(currentUserData.campusId);
+
         const campus = orgHierarchy.campuses.find(
           (c) => c.id === currentUserData.campusId,
         );
@@ -91,10 +112,9 @@ export function OwnershipGraph() {
           initialStack.push(campusNode);
         }
       }
-      // Note: Not auto-drilling to Department, as per "default view is the campus level only"
-      // (which implies seeing the Campus and its departments).
 
       setViewStack(initialStack);
+      setExpandedIds(initialExpanded);
     }
   }, [orgHierarchy, currentUserData]);
 
@@ -104,16 +124,14 @@ export function OwnershipGraph() {
       return { nodes: [], links: [] };
 
     const currentRoot = viewStack[viewStack.length - 1];
-    const nodes: Node[] = [];
+    let nodes: Node[] = [];
     const links: LinkData[] = [];
 
     // Mother Node (Starts at Center, Movable)
     const rootNodeForGraph: Node = {
       ...currentRoot,
-      // Important: Reset previous velocity to avoid "flinging" when switching views
       vx: 0,
       vy: 0,
-      // Explicitly remove fx/fy if they were set by previous drags or initialization
       fx: undefined,
       fy: undefined,
     };
@@ -121,8 +139,6 @@ export function OwnershipGraph() {
 
     // Children Generator Helper
     const addNode = (n: Node) => {
-      // Initialize child positions randomly AROUND (0,0).
-      // We will offset this to the center of the screen in useEffect.
       const angle = Math.random() * 2 * Math.PI;
       const radius = 50 + Math.random() * 100;
       n.x = Math.cos(angle) * radius;
@@ -176,14 +192,11 @@ export function OwnershipGraph() {
             parentId: currentRoot.id,
             email: u.email,
           });
-          // Users don't expand docs here unless clicked (handled by viewStack push below)
         });
       }
     } else if (currentRoot.type === "user") {
-      // --- NEW: User as Root View ---
       // Find user
       let user: any = null;
-      // Efficient lookup map would be better but this works for now
       for (const c of orgHierarchy.campuses) {
         for (const d of c.departments) {
           const u = d.users.find((usr) => usr.id === currentRoot.id);
@@ -209,49 +222,57 @@ export function OwnershipGraph() {
       }
     }
 
+    // --- Merge Temp Nodes ---
+    // Filter out temp nodes that are already present in the natural view to avoid duplicates
+    const existingIds = new Set(nodes.map((n) => n.id));
+    const validTempNodes = tempNodes.filter((n) => !existingIds.has(n.id));
+
+    // Add valid temp nodes
+    nodes = [...nodes, ...validTempNodes];
+
     // Links
     nodes.forEach((n) => {
-      if (n.id !== currentRoot.id) {
-        links.push({ source: rootNodeForGraph.id, target: n.id });
+      // Only link natural nodes to root. Temp nodes float independently.
+      // Also exclude root node itself from linking to itself
+      if (n.id !== currentRoot.id && !tempNodes.find((tn) => tn.id === n.id)) {
+        const linkId = `${rootNodeForGraph.id}-${n.id}`;
+        // Apply detached state if link is dragged
+        links.push({
+          source: rootNodeForGraph.id,
+          target: n.id,
+          isDetached: detachedLinkIds.has(linkId),
+        });
       }
     });
 
     return { nodes, links };
-  }, [orgHierarchy, viewStack]);
+  }, [orgHierarchy, viewStack, tempNodes, detachedLinkIds]);
 
   // --- Event Handlers ---
   const handleNodeClick = (event: MouseEvent, d: Node) => {
     if (event.defaultPrevented) return;
     event.stopPropagation();
 
-    // Check if clicked node is already in the stack (anywhere)
+    // Check if clicked node is already in the stack
     const stackIndex = viewStack.findIndex((n) => n.id === d.id);
     if (stackIndex !== -1) {
-      // If it's the current root (last item), do nothing (or maybe refresh?)
       if (stackIndex === viewStack.length - 1) return;
-
-      // If it's higher up in the stack, navigate back to it
-      // This handles "repeatedly clicking... keep on appending"
       const newStack = viewStack.slice(0, stackIndex + 1);
       setViewStack(newStack);
-
-      // Reset selections if we went up
       if (d.type !== "user") setSelectedUserNode(null);
       return;
     }
 
-    // Normal Drill Down
     if (d.type === "campus" || d.type === "department" || d.type === "user") {
-      // Drill Down
       setViewStack((prev) => {
-        // Prevent duplicate pushing if the node is already the last one
         if (prev[prev.length - 1]?.id === d.id) return prev;
         return [...prev, d];
       });
 
-      // If it's a user, also select for panel
       if (d.type === "user") {
         setSelectedUserNode(d);
+        setActiveTab("details"); // Switch to Details tab
+        setIsBinderOpen(true); // Open panel on drill down to user
       } else {
         setSelectedUserNode(null);
       }
@@ -262,11 +283,10 @@ export function OwnershipGraph() {
     if (viewStack.length > 1) {
       const newStack = viewStack.slice(0, viewStack.length - 1);
       setViewStack(newStack);
-
-      // If we went back from User, clear selection? Or keep?
-      // Clearing for cleaner state
       const newRoot = newStack[newStack.length - 1];
-      if (newRoot.type !== "user") setSelectedUserNode(null);
+      if (newRoot.type !== "user") {
+        setSelectedUserNode(null);
+      }
     }
   };
 
@@ -275,6 +295,27 @@ export function OwnershipGraph() {
     setViewStack(newStack);
     const newRoot = newStack[newStack.length - 1];
     if (newRoot.type !== "user") setSelectedUserNode(null);
+  };
+
+  const toggleAccordion = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleTabClick = (tab: "directory" | "details") => {
+    if (activeTab === tab) {
+      setIsBinderOpen(!isBinderOpen);
+    } else {
+      setActiveTab(tab);
+      setIsBinderOpen(true);
+    }
   };
 
   // --- Document Details Panel Data ---
@@ -313,6 +354,7 @@ export function OwnershipGraph() {
     const svg = d3.select(svgElement);
 
     if (!gRef.current) {
+      // ... (SVG Initialization same as before) ...
       svg.attr("width", width).attr("height", height);
       const defs = svg.append("defs");
       const filter = defs.append("filter").attr("id", "gooey");
@@ -365,57 +407,59 @@ export function OwnershipGraph() {
           .attr("y1", (d: any) => d.source.y)
           .attr("x2", (d: any) => d.target.x)
           .attr("y2", (d: any) => d.target.y);
+
         g.selectAll<SVGGElement, Node>(".node").attr(
           "transform",
           (d: any) => `translate(${d.x},${d.y})`,
         );
+
+        // Update Tether Line if exists
+        const tether = g.select(".tether");
+        if (!tether.empty()) {
+          const dragNodeId = tether.attr("data-source-id");
+          const targetNodeId = tether.attr("data-target-id");
+        }
       });
     }
 
     const simulation = simulationRef.current;
 
     // --- 2. FORCE TUNING & INITIALIZATION ---
-
-    // Initialize positions centered on screen
-    // This ensures the graph spawns in the center without "flying in"
     const centerX = width / 2;
     const centerY = height / 2;
 
     nodes.forEach((n) => {
-      // If it's the root node (first in list), force it to center
+      // Temp nodes don't need forcing to center if they have x/y already from drag
       if (n.id === graphData.nodes[0]?.id) {
         n.x = centerX;
         n.y = centerY;
-      } else {
-        // Offset relative positions (calculated in addNode) by center coordinates
-        // Check if x/y are defined (they should be from addNode)
-        if (typeof n.x === "number" && typeof n.y === "number") {
-          n.x += centerX;
-          n.y += centerY;
-        } else {
-          n.x = centerX + (Math.random() - 0.5) * 50;
-          n.y = centerY + (Math.random() - 0.5) * 50;
-        }
+      } else if (typeof n.x === "undefined" || typeof n.y === "undefined") {
+        // Initialize unknown positions
+        n.x = centerX + (Math.random() - 0.5) * 50;
+        n.y = centerY + (Math.random() - 0.5) * 50;
       }
+      // If x/y are defined (from drag or previous tick), keep them.
     });
 
     simulation
       .force<d3.ForceLink<Node, LinkData>>("link")
-      ?.distance(150) // Constant distance as requested
+      ?.distance(150)
       .strength(0.5);
 
+    // TUNED CHARGE FORCE FOR DOCUMENT DRAGGING
     simulation.force<d3.ForceManyBody<Node>>("charge")?.strength((d) => {
       if ((d as any)._isDragging) return 0;
-      return -300; // Constant repulsion for similar physics
+      if (d.type === "document") return 0; // Reduce document repulsion
+      if (d.type === "user") return -30; // Further reduce user repulsion (was -50, originally -300)
+      return -50; // Moderate for others
     });
 
     simulation.force<d3.ForceCollide<Node>>("collide")?.radius((d) => {
-      // Maintain visual hierarchy in collision radius
       if (d.type === "organization") return 50;
       if (d.type === "campus") return 45;
       if (d.type === "department") return 40;
       if (d.type === "user") return 35;
-      return 25; // Docs
+      return 25;
     });
 
     simulation.force("center", d3.forceCenter(width / 2, height / 2));
@@ -502,72 +546,261 @@ export function OwnershipGraph() {
 
     simulation.nodes(nodes);
     simulation.force<d3.ForceLink<Node, LinkData>>("link")?.links(links);
-    simulation.alpha(1).restart(); // Full restart on data change
+    simulation.alpha(1).restart();
 
-    // Drag Functions (Same as before)
+    // Drag Functions
     function dragstarted(event: any, d: any) {
       if (!event.active) simulation?.alphaTarget(0.3).restart();
       d.fx = d.x;
       d.fy = d.y;
       (d as any)._isDragging = true;
+
+      // If dragging a document owned by current user, detach link visually
       if (
         d.type === "document" &&
         currentUserData &&
         d.uploadedById === currentUserData.id
       ) {
-        const l = links.find((lnk) => (lnk.source as Node).id === d.id);
+        const l = links.find(
+          (lnk) =>
+            (lnk.source as Node).id === d.id ||
+            (lnk.target as Node).id === d.id,
+        );
         if (l) {
+          // Mark as detached
           l.isDetached = true;
           (d as any)._activeLink = l;
+
+          // Robustly find line element using ID selector
+          const sourceId = (l.source as Node).id;
+          const targetId = (l.target as Node).id;
+
+          // D3 Data binding uses object identity or ID, we filter by node IDs
           d3.select(svgRef.current!)
             .selectAll("line.link")
-            .filter((ld: any) => ld === l)
+            .filter(
+              (ld: any) =>
+                ld.source.id === sourceId && ld.target.id === targetId,
+            )
             .classed("link-detached", true);
         }
       }
     }
+
     function dragged(event: any, d: any) {
       d.fx = event.x;
       d.fy = event.y;
       const activeLink = (d as any)._activeLink;
+
       if (activeLink) {
         let target: Node | null = null;
-        const originalOwnerId = (activeLink.target as Node).id;
+        const threshold = 80;
+        const originalOwnerId =
+          (activeLink.target as Node).id === d.id
+            ? (activeLink.source as Node).id
+            : (activeLink.target as Node).id;
+
         for (const u of nodes) {
           if (u.type !== "user" || u.id === originalOwnerId) continue;
-          const dx = u.x! - d.fx!;
-          const dy = u.y! - d.fy!;
-          if (Math.sqrt(dx * dx + dy * dy) < 60) {
+          // Calculate distance
+          const dx = (u.x || 0) - d.fx!;
+          const dy = (u.y || 0) - d.fy!;
+          if (Math.sqrt(dx * dx + dy * dy) < threshold) {
             target = u;
             break;
           }
         }
+
+        const g = gRef.current;
+        if (!g) return;
+
+        const isNearTarget = target !== null;
+        const docNodeElement = g.selectAll<SVGGElement, Node>(
+          `g.node[data-id='${d.id}']`,
+        );
+        const targetNodeElement = target
+          ? g.selectAll<SVGGElement, Node>(`g.node[data-id='${target.id}']`)
+          : null;
+
+        if (
+          isNearTarget &&
+          !docNodeElement.empty() &&
+          targetNodeElement &&
+          !targetNodeElement.empty()
+        ) {
+          // 1. Move elements to gooey container if not already there
+          if (g.select(".tether").empty()) {
+            d3.select(".gooey-container").append(() => docNodeElement.node()!);
+            d3.select(".gooey-container").append(
+              () => targetNodeElement.node()!,
+            );
+
+            // Add tether
+            d3.select(".gooey-container")
+              .append("line")
+              .attr("class", "tether")
+              .attr("data-source-id", d.id)
+              .attr("data-target-id", target!.id)
+              .attr("x1", d.fx!)
+              .attr("y1", d.fy!)
+              .attr("x2", target!.x!)
+              .attr("y2", target!.y!);
+          } else {
+            // Update tether
+            g.select(".tether")
+              .attr("x1", d.fx!)
+              .attr("y1", d.fy!)
+              .attr("x2", target!.x!)
+              .attr("y2", target!.y!);
+          }
+
+          // 2. Add classes
+          docNodeElement
+            .select(".node-circle")
+            .classed("armed-for-drop", true)
+            .classed("drop-magnet", true);
+          targetNodeElement.select(".node-circle").classed("drop-magnet", true);
+
+          // 3. Apply Magnet Force with Stronger Pull
+          simulation!.force(
+            "magnet",
+            d3
+              .forceLink<Node, LinkData>([
+                { source: d, target: target! } as any,
+              ])
+              .strength(1.0) // Increased from 0.8
+              .distance(0), // Decreased from 20 to allow merger
+          );
+        } else {
+          // Cleanup if moved away
+          g.selectAll(".gooey-container g.node").each(function () {
+            g.select(".nodes").append(() => this as Element);
+          });
+          g.select(".tether").remove();
+          d3.selectAll(".node-circle.drop-magnet").classed(
+            "drop-magnet",
+            false,
+          );
+          d3.selectAll(".node-circle.armed-for-drop").classed(
+            "armed-for-drop",
+            false,
+          );
+          simulation!.force("magnet", null);
+        }
+
         dropTargetNodeRef.current = target;
         setDropTargetNode(target);
       }
     }
+
     function dragended(event: any, d: any) {
       if (!event.active) simulation?.alphaTarget(0);
       d.fx = null;
       d.fy = null;
       (d as any)._isDragging = false;
+
       const targetUser = dropTargetNodeRef.current;
+      const g = gRef.current;
+
       if (targetUser && d.type === "document" && (d as any)._activeLink) {
         setSelectedDocId(d.id);
         setTargetUserId(targetUser.id);
         setIsSendModalOpen(true);
       } else if ((d as any)._activeLink) {
         (d as any)._activeLink.isDetached = false;
+
+        // Re-attach visual explicitly if dropped (discontinued)
+        const sourceId = ((d as any)._activeLink.source as Node).id;
+        const targetId = ((d as any)._activeLink.target as Node).id;
+
         d3.select(svgRef.current!)
           .selectAll("line.link")
-          .filter((ld: any) => ld === (d as any)._activeLink)
+          .filter(
+            (ld: any) => ld.source.id === sourceId && ld.target.id === targetId,
+          )
           .classed("link-detached", false);
+
+        simulation?.alpha(0.1).restart();
       }
+
+      // Cleanup DOM
+      g?.selectAll(".gooey-container g.node").each(function () {
+        g.select(".nodes").append(() => this as Element);
+      });
+      g?.select(".tether").remove();
+      d3.selectAll(".node-circle.drop-magnet").classed("drop-magnet", false);
+      d3.selectAll(".node-circle.armed-for-drop").classed(
+        "armed-for-drop",
+        false,
+      );
+      simulation?.force("magnet", null);
+
       (d as any)._activeLink = null;
       dropTargetNodeRef.current = null;
       setDropTargetNode(null);
     }
   }, [graphData]);
+
+  // Drag & Drop Handlers
+  const handleDragStart = (e: React.DragEvent, user: any) => {
+    e.dataTransfer.setData(
+      "application/folio-user-node",
+      JSON.stringify({
+        id: user.id,
+        name: `${user.firstName}, ${user.lastName ? user.lastName.charAt(0) : ""}.`,
+        type: "user",
+        email: user.email,
+      }),
+    );
+    e.dataTransfer.effectAllowed = "copy";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const data = e.dataTransfer.getData("application/folio-user-node");
+    if (!data) return;
+
+    const userNode = JSON.parse(data);
+
+    // Check duplicate
+    const allNodes = graphData.nodes;
+    if (allNodes.some((n) => n.id === userNode.id)) {
+      const status = document.createElement("div");
+      status.className = "graph-status-message error";
+      status.innerText = "User is already in view";
+      status.style.top = "10%";
+      status.style.zIndex = "1000";
+      svgRef.current?.parentElement?.appendChild(status);
+      setTimeout(() => status.remove(), 2000);
+      return;
+    }
+
+    // Calculate Coords
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const zoomTransform = d3.zoomTransform(svg);
+
+    // Mouse client coords relative to SVG
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    // Invert zoom to get graph coords
+    const [x, y] = zoomTransform.invert([mouseX, mouseY]);
+
+    const newNode: Node = {
+      ...userNode,
+      x,
+      y,
+    };
+
+    setTempNodes((prev) => [...prev, newNode]);
+  };
 
   if (isLoadingCurrentUser || isLoadingHierarchy) return <LoadingAnimation />;
   if (isError)
@@ -575,7 +808,131 @@ export function OwnershipGraph() {
 
   return (
     <div className="graph-container">
-      <div className="graph-canvas-wrapper">
+      {/* Binder Panel - Only visible in Document View (User node) */}
+      {isDocumentView && (
+        <div className={`binder-wrapper ${!isBinderOpen ? "collapsed" : ""}`}>
+          <div className="binder-body">
+            <div className="binder-content">
+              {activeTab === "directory" && orgHierarchy && (
+                <div className="directory-tree">
+                  {/* Campus Level */}
+                  {orgHierarchy.campuses.map((campus) => (
+                    <div key={campus.id} className="tree-item">
+                      <div
+                        className={`tree-header ${expandedIds.has(campus.id) ? "expanded" : ""}`}
+                        onClick={() => toggleAccordion(campus.id)}
+                      >
+                        <i className="bi bi-caret-right-fill caret"></i>
+                        <i className="bi bi-bank icon-type"></i>
+                        <span>{campus.name}</span>
+                      </div>
+
+                      {expandedIds.has(campus.id) && (
+                        <div className="tree-children">
+                          {campus.departments.map((dept) => (
+                            <div key={dept.id} className="tree-item">
+                              <div
+                                className={`tree-header ${expandedIds.has(dept.id) ? "expanded" : ""}`}
+                                onClick={() => toggleAccordion(dept.id)}
+                              >
+                                <i className="bi bi-caret-right-fill caret"></i>
+                                <i className="bi bi-building icon-type"></i>
+                                <span>{dept.name}</span>
+                              </div>
+
+                              {expandedIds.has(dept.id) && (
+                                <div className="tree-children">
+                                  {dept.users.map((u: any) => (
+                                    <div
+                                      key={u.id}
+                                      className="user-draggable"
+                                      draggable={true}
+                                      onDragStart={(e) => handleDragStart(e, u)}
+                                    >
+                                      <div className="user-avatar-small">
+                                        {u.firstName
+                                          ? u.firstName.charAt(0)
+                                          : u.email
+                                            ? u.email.charAt(0).toUpperCase()
+                                            : "U"}
+                                      </div>
+                                      <span>
+                                        {u.firstName} {u.lastName}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {activeTab === "details" && (
+                <div className="details-content">
+                  {selectedUserNode ? (
+                    <>
+                      <div className="d-flex justify-content-between align-items-center">
+                        <h4>{selectedUserNode.name}</h4>
+                        <span className="badge bg-secondary">User</span>
+                      </div>
+                      <p className="text-muted small mb-3">
+                        {selectedUserNode.email}
+                      </p>
+                      <hr />
+                      <h5>Documents</h5>
+                      {userDocuments.length > 0 ? (
+                        <ul className="list-group">
+                          {userDocuments.map((doc: any) => (
+                            <li key={doc.id} className="list-group-item">
+                              {doc.title}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-muted">No documents found.</p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center text-muted mt-5">
+                      <i className="bi bi-cursor display-4"></i>
+                      <p className="mt-3">
+                        Select a user node to view details.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="binder-tabs">
+            <div
+              className={`binder-tab ${activeTab === "directory" ? "active" : ""}`}
+              onClick={() => handleTabClick("directory")}
+              title="Directory"
+            >
+              <i className="bi bi-list-ul"></i> Directory
+            </div>
+            <div
+              className={`binder-tab ${activeTab === "details" ? "active" : ""}`}
+              onClick={() => handleTabClick("details")}
+              title="Details"
+            >
+              <i className="bi bi-card-text"></i> Details
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div
+        className="graph-canvas-wrapper"
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
         {viewStack.length > 1 && (
           <button
             className="btn-icon btn-back"
@@ -589,7 +946,8 @@ export function OwnershipGraph() {
           <i className="bi bi-info-circle"></i>
           <div className="info-tooltip-text">
             Navigation: Click nodes to drill down. Click Users to see documents.
-            Drag documents to transfer.
+            Drag documents to transfer. Drag users from Directory to add them to
+            view.
           </div>
         </div>
         <svg ref={svgRef}></svg>
@@ -612,32 +970,6 @@ export function OwnershipGraph() {
             </span>
           ))}
         </div>
-      </div>
-
-      <div className={`details-panel ${selectedUserNode ? "visible" : ""}`}>
-        {selectedUserNode && (
-          <>
-            <div className="d-flex justify-content-between align-items-center">
-              <h4>Documents for {selectedUserNode.name}</h4>
-              <button
-                className="btn-close"
-                onClick={() => setSelectedUserNode(null)}
-              ></button>
-            </div>
-            <hr />
-            {userDocuments.length > 0 ? (
-              <ul className="list-group">
-                {userDocuments.map((doc: any) => (
-                  <li key={doc.id} className="list-group-item">
-                    {doc.title}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-muted">No documents.</p>
-            )}
-          </>
-        )}
       </div>
 
       {selectedDocId && (
