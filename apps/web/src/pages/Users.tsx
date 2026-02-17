@@ -1,5 +1,5 @@
 // apps/web/src/pages/Users.tsx
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { trpc } from "../trpc";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 import "../components/Roles/RolesModal.css";
@@ -29,10 +29,56 @@ export function Users() {
   const [userToSendTo, setUserToSendTo] = useState<User | null>(null);
   const [documentToSend, setDocumentToSend] = useState<string>("");
 
+  // State for collapsible departments
+  const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>(
+    {},
+  );
+
+  // Group users by department
+  const groupedUsers = useMemo(() => {
+    if (!users) return {};
+    const groups: Record<string, User[]> = {};
+    users.forEach((user) => {
+      const deptName = user.department?.name || "Unassigned";
+      if (!groups[deptName]) {
+        groups[deptName] = [];
+      }
+      groups[deptName].push(user);
+    });
+    return groups;
+  }, [users]);
+
+  // Sort department names alphabetically
+  const sortedDepts = useMemo(() => {
+    return Object.keys(groupedUsers).sort((a, b) => a.localeCompare(b));
+  }, [groupedUsers]);
+
+  // Set initial expanded state: Open current user's department, close others
+  useEffect(() => {
+    if (currentUser?.department?.name && sortedDepts.length > 0) {
+      setExpandedDepts((prev) => {
+        // Only initialize if we haven't set any state yet (or if we want to force reset on load)
+        // Given the requirement "only one open is the same department", we set it here.
+        // We check if keys exist to avoid overwriting user interaction if this effect re-runs.
+        if (Object.keys(prev).length === 0) {
+          return { [currentUser.department!.name]: true };
+        }
+        return prev;
+      });
+    }
+  }, [currentUser, sortedDepts]);
+
+  const toggleDept = (deptName: string) => {
+    setExpandedDepts((prev) => ({
+      ...prev,
+      [deptName]: !prev[deptName],
+    }));
+  };
+
   // REFACTOR: currentUser.roles is now Role[] (implicit relation)
   const canManageUsers =
     currentUser?.roles.some(
-      (role: { canManageUsers: boolean }) => role.canManageUsers
+      (role: { canManageUsers: boolean }) => role.canManageUsers,
     ) || false;
 
   const handleRemoveFromOrg = () => {
@@ -44,7 +90,7 @@ export function Users() {
             utils.user.getUsersWithRoles.invalidate();
             setUserToRemove(null);
           },
-        }
+        },
       );
     }
   };
@@ -62,7 +108,7 @@ export function Users() {
             setUserToSendTo(null);
             setDocumentToSend("");
           },
-        }
+        },
       );
     }
   };
@@ -80,99 +126,131 @@ export function Users() {
       <div className="container mt-4">
         <h2 className="mb-4">
           Users
-          {currentUser?.organization && (
+          {currentUser?.campus && (
             <small className="text-muted">
               {" "}
-              - {currentUser.organization.name} (
-              {currentUser.organization.acronym})
+              -{" "}
+              {currentUser.campus.name === "University Administration"
+                ? currentUser.campus.name
+                : `${currentUser.campus.name} Campus`}
             </small>
           )}
         </h2>
-        <div className="card">
-          <div className="card-body">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Roles</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users && users.length > 0 ? (
-                  users.map((user: User) => (
-                    <tr key={user.id}>
-                      <td>
-                        <div className="d-flex align-items-center">
-                          <img
-                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                              formatUserName(user)
-                            )}&background=ED9B40&color=fff`}
-                            alt={formatUserName(user)}
-                            className="rounded-circle me-3"
-                            style={{
-                              width: "48px",
-                              height: "48px",
-                              objectFit: "cover",
-                            }}
-                          />
-                          <div>
-                            <h6 className="fw-bold mb-0">
-                              {formatUserNameLastFirst(user)}
-                            </h6>
-                            <small className="text-muted">{user.email}</small>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="align-middle">
-                        <div className="role-pills-container">
-                          {/* REFACTOR: user.roles is now Role[] */}
-                          {user.roles.map((role: any) => (
-                            <div
-                              key={role.id}
-                              className="role-pill"
-                              data-role-name={role.name}
-                            >
-                              <span className="role-dot"></span>
-                              {role.name}
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="d-flex">
-                          <button
-                            className="btn btn-icon"
-                            onClick={() => setUserToSendTo(user)}
-                          >
-                            <i className="bi bi-send"></i>
-                          </button>
-                          {canManageUsers && (
-                            <>
-                              <button
-                                className="btn btn-icon"
-                                onClick={() => setUserToRemove(user)}
-                              >
-                                <i className="bi bi-trash"></i>
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={3} className="text-center text-muted py-4">
-                      No users found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+
+        {sortedDepts.length > 0 ? (
+          <div className="accordion" id="departmentsAccordion">
+            {sortedDepts.map((deptName) => (
+              <div className="accordion-item" key={deptName}>
+                <h2 className="accordion-header">
+                  <button
+                    className={`accordion-button ${
+                      expandedDepts[deptName] ? "" : "collapsed"
+                    }`}
+                    type="button"
+                    onClick={() => toggleDept(deptName)}
+                    aria-expanded={expandedDepts[deptName]}
+                  >
+                    <span className="fw-bold me-2">{deptName}</span>
+                    <span className="badge bg-secondary rounded-pill">
+                      {groupedUsers[deptName].length}
+                    </span>
+                  </button>
+                </h2>
+                <div
+                  className={`accordion-collapse collapse ${
+                    expandedDepts[deptName] ? "show" : ""
+                  }`}
+                >
+                  <div className="accordion-body p-0">
+                    <table className="table table-hover mb-0">
+                      <thead>
+                        <tr>
+                          <th style={{ width: "40%" }}>User</th>
+                          <th style={{ width: "40%" }}>Roles</th>
+                          <th style={{ width: "20%" }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {groupedUsers[deptName].map((user: User) => (
+                          <tr key={user.id}>
+                            <td>
+                              <div className="d-flex align-items-center">
+                                <img
+                                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                    formatUserName(user),
+                                  )}&background=ED9B40&color=fff`}
+                                  alt={formatUserName(user)}
+                                  className="rounded-circle me-3"
+                                  style={{
+                                    width: "48px",
+                                    height: "48px",
+                                    objectFit: "cover",
+                                  }}
+                                />
+                                <div>
+                                  <h6 className="fw-bold mb-0">
+                                    {formatUserNameLastFirst(user)}
+                                  </h6>
+                                  <small className="text-muted">
+                                    {user.email}
+                                  </small>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="align-middle">
+                              <div className="role-pills-container">
+                                {user.roles.map((role: any) => (
+                                  <div
+                                    key={role.id}
+                                    className="role-pill"
+                                    data-role-name={role.name}
+                                  >
+                                    <span className="role-dot"></span>
+                                    {role.name}
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="align-middle">
+                              <div className="d-flex">
+                                <button
+                                  className="btn btn-icon"
+                                  onClick={() => setUserToSendTo(user)}
+                                  title="Send Document"
+                                >
+                                  <i className="bi bi-send"></i>
+                                </button>
+                                {canManageUsers && (
+                                  <>
+                                    <button
+                                      className="btn btn-icon"
+                                      onClick={() => setUserToRemove(user)}
+                                      title="Remove User"
+                                    >
+                                      <i className="bi bi-trash"></i>
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        ) : (
+          <div className="card">
+            <div className="card-body text-center text-muted py-4">
+              No users found in this campus.
+            </div>
+          </div>
+        )}
       </div>
+
       <ConfirmModal
         show={!!userToRemove}
         onClose={() => setUserToRemove(null)}

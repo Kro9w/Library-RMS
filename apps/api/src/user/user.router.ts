@@ -394,15 +394,15 @@ export class UserRouter {
         }),
       
       getUsersWithRoles: protectedProcedure.query(async ({ ctx }) => {
-        if (!ctx.dbUser.organizationId) {
+        if (!ctx.dbUser.campusId) {
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: 'User does not belong to an organization.',
+            message: 'User does not belong to a campus.',
           });
         }
         return ctx.prisma.user.findMany({
           where: {
-            organizationId: ctx.dbUser.organizationId,
+            campusId: ctx.dbUser.campusId,
           },
           include: {
             roles: true,
