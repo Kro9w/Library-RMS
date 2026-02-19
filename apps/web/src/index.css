@@ -3,6 +3,12 @@
   --accent: #ed9b40;
   --light-text: #ffffff;
 
+  /* Bootstrap Overrides */
+  --bs-primary: var(--primary);
+  --bs-secondary: var(--accent);
+  --bs-link-color: var(--primary);
+  --bs-link-hover-color: var(--accent);
+
   --navbar: #ba3b46;
   --navbar-logo: #ed9b40;
   --navbar-border: #ffffff;
@@ -34,8 +40,6 @@
   --shadow-primary-focus: 0 0 0 3px rgba(186, 59, 70, 0.2);
 
   /* Specific Icon Button Hovers */
-  --btn-icon-hover-blue-bg: #e6f0ff;
-  --btn-icon-hover-blue-text: #0056b3;
   --btn-icon-hover-red-bg: #fff0f0;
   --btn-icon-hover-red-text: #d90429;
 }
@@ -44,7 +48,7 @@ body[data-bs-theme="dark"] {
   --background: #181a1b;
   --text: #f1f1f1;
   --text-muted: #9a9a9a;
-  --link-color: #aad8ff;
+  --link-color: var(--accent);
 
   --navbar: #23272b;
   --navbar-logo: #ba3b46;
@@ -67,12 +71,10 @@ body[data-bs-theme="dark"] {
   --input-bg: #2c3034;
   --input-text: #f1f1f1;
   --badge-bg: #343a40;
-  --badge-text: #aad8ff;
+  --badge-text: var(--accent);
   --shadow-primary-focus: 0 0 0 3px rgba(186, 59, 70, 0.3);
 
   /* Specific Icon Button Hovers */
-  --btn-icon-hover-blue-bg: #343a40;
-  --btn-icon-hover-blue-text: #aad8ff;
   --btn-icon-hover-red-bg: #4a1e22;
   --btn-icon-hover-red-text: #ff8b8b;
 }
@@ -115,7 +117,9 @@ button,
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: border-color 0.25s, background-color 0.25s;
+  transition:
+    border-color 0.25s,
+    background-color 0.25s;
 }
 
 /* --- 4. NEW: Global Form Control Styles --- */
@@ -127,7 +131,9 @@ button,
   border-radius: 0.375rem;
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 .form-control:focus {
   outline: none;
@@ -168,4 +174,35 @@ button,
 .form-check-input:checked {
   background-color: var(--state-active-bg);
   border-color: var(--state-active-bg);
+}
+
+/* --- Global Overrides for Motif --- */
+.btn-outline-primary {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+.btn-outline-primary:hover,
+.btn-outline-primary:active,
+.btn-outline-primary.active {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: var(--light-text);
+}
+
+.btn-outline-secondary {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.btn-outline-secondary:hover,
+.btn-outline-secondary:active,
+.btn-outline-secondary.active {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: var(--light-text);
+}
+
+.list-group-item.active {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: var(--light-text);
 }

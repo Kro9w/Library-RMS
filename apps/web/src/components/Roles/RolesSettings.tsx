@@ -171,7 +171,7 @@ export const RolesSettings: React.FC = () => {
             <div className="d-flex justify-content-between align-items-center mb-3">
               <h6 className="fw-bold mb-0">Roles</h6>
               <button
-                className="btn btn-sm btn-outline-primary"
+                className="btn btn-sm btn-outline-secondary"
                 onClick={resetForm}
               >
                 + New

@@ -525,3 +525,56 @@ svg.grabbing {
   filter: drop-shadow(0 0 10px var(--primary));
   transition: all 0.2s ease-out;
 }
+
+/* --- Document List in Details Panel --- */
+.document-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem; /* Space between items */
+  padding-bottom: 2rem;
+}
+
+.document-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background-color: var(--card-background);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.document-list-item:hover {
+  background-color: var(--hover-bg);
+  border-color: var(--primary);
+  transform: translateX(2px);
+  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.doc-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background-color: var(--background); /* Fallback */
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.doc-info {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.doc-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

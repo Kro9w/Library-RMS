@@ -68,6 +68,10 @@
   cursor: pointer;
 }
 
+.active {
+  display: none;
+}
+
 .role-dropdown-item:hover {
   background-color: #f8f9fa;
 }

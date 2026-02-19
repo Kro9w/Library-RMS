@@ -40,8 +40,8 @@
 }
 
 .btn-icon.btn-send:hover {
-  background-color: var(--btn-icon-hover-blue-bg);
-  color: var(--btn-icon-hover-blue-text);
+  background-color: var(--hover-bg);
+  color: var(--accent);
 }
 
 .btn-icon.btn-delete:hover {

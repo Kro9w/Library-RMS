@@ -6,6 +6,7 @@ import "./OwnershipGraph.css";
 import { SendDocumentModal } from "./SendDocumentModal";
 import { SendMultipleDocumentsModal } from "./SendMultipleDocumentsModal";
 import { LoadingAnimation } from "./ui/LoadingAnimation";
+import { FileIcon } from "./FileIcon";
 
 type NodeType =
   | "organization"
@@ -122,6 +123,49 @@ export function OwnershipGraph() {
             color: "var(--primary)",
           };
           initialStack.push(campusNode);
+
+          // Find User's Department
+          if (currentUserData.departmentId) {
+            initialExpanded.add(currentUserData.departmentId);
+
+            const dept = campus.departments.find(
+              (d: any) => d.id === currentUserData.departmentId,
+            );
+
+            if (dept) {
+              const deptNode: Node = {
+                id: dept.id,
+                name: dept.name,
+                type: "department",
+                parentId: campus.id,
+                color: "var(--primary)",
+              };
+              initialStack.push(deptNode);
+
+              // Find User Node
+              const user = dept.users.find(
+                (u: any) => u.id === currentUserData.id,
+              );
+
+              if (user) {
+                const name = !user.firstName
+                  ? user.email || "User"
+                  : `${user.firstName}, ${user.lastName ? user.lastName.charAt(0) : ""}.`;
+
+                const userNode: Node = {
+                  id: user.id,
+                  name: name,
+                  type: "user",
+                  parentId: dept.id,
+                  email: user.email,
+                };
+                initialStack.push(userNode);
+                setSelectedUserNode(userNode);
+                setActiveTab("details");
+                setIsBinderOpen(true);
+              }
+            }
+          }
         }
       }
 
@@ -1377,13 +1421,21 @@ export function OwnershipGraph() {
                       <hr />
                       <h5>Documents</h5>
                       {userDocuments.length > 0 ? (
-                        <ul className="list-group">
+                        <div className="document-list">
                           {userDocuments.map((doc: any) => (
-                            <li key={doc.id} className="list-group-item">
-                              {doc.title}
-                            </li>
+                            <div key={doc.id} className="document-list-item">
+                              <div className="doc-icon-wrapper">
+                                <FileIcon
+                                  fileType={doc.documentType?.name}
+                                  fileName={doc.title}
+                                />
+                              </div>
+                              <div className="doc-info">
+                                <span className="doc-title">{doc.title}</span>
+                              </div>
+                            </div>
                           ))}
-                        </ul>
+                        </div>
                       ) : (
                         <p className="text-muted">No documents found.</p>
                       )}

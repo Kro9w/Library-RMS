@@ -17,8 +17,8 @@ export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
   ) {
     return (
       <i
-        className="bi bi-file-earmark-image-fill"
-        style={{ color: "#6f42c1", fontSize: "1.2rem" }}
+        className="bi bi-file-earmark-image-fill text-primary"
+        style={{ fontSize: "1.2rem" }}
         title="Master Copy"
         aria-label="Master Copy"
       ></i>
@@ -29,8 +29,8 @@ export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
   if (fType.includes("csv") || fName.endsWith(".csv")) {
     return (
       <i
-        className="bi bi-file-earmark-spreadsheet-fill"
-        style={{ color: "#20c997", fontSize: "1.2rem" }}
+        className="bi bi-file-earmark-spreadsheet-fill text-secondary"
+        style={{ fontSize: "1.2rem" }}
         title="Data Set"
         aria-label="Data Set"
       ></i>
@@ -41,7 +41,7 @@ export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
   if (fType.includes("pdf") || fName.endsWith(".pdf")) {
     return (
       <i
-        className="bi bi-file-earmark-pdf-fill text-danger"
+        className="bi bi-file-earmark-pdf-fill text-primary"
         style={{ fontSize: "1.2rem" }}
         title="PDF Document"
         aria-label="PDF Document"
@@ -74,7 +74,7 @@ export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
   ) {
     return (
       <i
-        className="bi bi-file-earmark-excel-fill text-success"
+        className="bi bi-file-earmark-excel-fill text-secondary"
         style={{ fontSize: "1.2rem" }}
         title="Spreadsheet"
         aria-label="Spreadsheet"
