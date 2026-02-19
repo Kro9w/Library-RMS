@@ -45,6 +45,7 @@ model User {
 model Role {
   id                 String  @id @default(cuid())
   name               String
+  level              Int     @default(4) // 1: Leader, 2: Co-Leader, 3: Elder, 4: Member
   canManageUsers     Boolean @default(false)
   canManageRoles     Boolean @default(false)
   canManageDocuments Boolean @default(false)

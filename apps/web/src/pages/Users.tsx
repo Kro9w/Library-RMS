@@ -34,7 +34,13 @@ export function Users() {
     {},
   );
 
-  // Group users by department
+  // Helper to get highest role level (1 is highest priority)
+  const getUserLevel = (user: User): number => {
+    if (!user.roles || user.roles.length === 0) return 4;
+    return Math.min(...user.roles.map((r: any) => r.level ?? 4));
+  };
+
+  // Group users by department AND sort them by level
   const groupedUsers = useMemo(() => {
     if (!users) return {};
     const groups: Record<string, User[]> = {};
@@ -45,6 +51,22 @@ export function Users() {
       }
       groups[deptName].push(user);
     });
+
+    // Sort users within each group: Level 1 -> Level 4
+    Object.keys(groups).forEach((dept) => {
+      groups[dept].sort((a, b) => {
+        const levelA = getUserLevel(a);
+        const levelB = getUserLevel(b);
+        if (levelA !== levelB) {
+          return levelA - levelB; // Ascending: 1 is top
+        }
+        // Tie-breaker: Name
+        return formatUserNameLastFirst(a).localeCompare(
+          formatUserNameLastFirst(b),
+        );
+      });
+    });
+
     return groups;
   }, [users]);
 
@@ -57,9 +79,6 @@ export function Users() {
   useEffect(() => {
     if (currentUser?.department?.name && sortedDepts.length > 0) {
       setExpandedDepts((prev) => {
-        // Only initialize if we haven't set any state yet (or if we want to force reset on load)
-        // Given the requirement "only one open is the same department", we set it here.
-        // We check if keys exist to avoid overwriting user interaction if this effect re-runs.
         if (Object.keys(prev).length === 0) {
           return { [currentUser.department!.name]: true };
         }
@@ -75,7 +94,6 @@ export function Users() {
     }));
   };
 
-  // REFACTOR: currentUser.roles is now Role[] (implicit relation)
   const canManageUsers =
     currentUser?.roles.some(
       (role: { canManageUsers: boolean }) => role.canManageUsers,
@@ -123,6 +141,55 @@ export function Users() {
 
   return (
     <>
+      <style>{`
+        /* Override Accordion Active State */
+        .accordion-button:not(.collapsed) {
+          background-color: #ED9B40 !important;
+          color: white !important; /* Changed to white for better contrast, or black if user prefers */
+          font-weight: bold;
+          box-shadow: none !important; /* Remove focus ring */
+        }
+        .accordion-button:focus {
+            box-shadow: none !important;
+            border-color: rgba(0,0,0,.125);
+        }
+        
+        /* Custom Shield with Star Icon */
+        .shield-icon-wrapper {
+            position: absolute;
+            bottom: -5px; /* Adjust vertical position */
+            left: -5px;   /* Adjust horizontal position */
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        
+        .shield-base {
+            font-size: 20px;
+            color: #ED9B40; /* Using Theme Yellow/Orange for the shield itself, or grey? User said "same shield icon". Let's use Theme. */
+            /* Or maybe a dark grey shield looks more "Leadership"? Let's try Theme Yellow since user mentioned yellow for active state. */
+            color: #495057; /* Let's stick to a professional dark grey base for the shield */
+        }
+        
+        .shield-star {
+            font-size: 8px; /* Small star inside */
+            color: #FFD700; /* Gold star */
+            position: absolute;
+            top: 55%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 11;
+        }
+
+        /* Adjust Table Padding */
+        .table > :not(caption) > * > * {
+            padding: 1rem 1rem; /* Increased padding (p-3 equivalent) */
+        }
+      `}</style>
+
       <div className="container mt-4">
         <h2 className="mb-4">
           Users
@@ -150,8 +217,17 @@ export function Users() {
                     onClick={() => toggleDept(deptName)}
                     aria-expanded={expandedDepts[deptName]}
                   >
-                    <span className="fw-bold me-2">{deptName}</span>
-                    <span className="badge bg-secondary rounded-pill">
+                    <span
+                      className="fw-bold me-2"
+                      style={{
+                        color: expandedDepts[deptName] ? "white" : "inherit",
+                      }}
+                    >
+                      {deptName}
+                    </span>
+                    <span
+                      className={`badge rounded-pill ${expandedDepts[deptName] ? "bg-white text-dark" : "bg-secondary"}`}
+                    >
                       {groupedUsers[deptName].length}
                     </span>
                   </button>
@@ -162,79 +238,107 @@ export function Users() {
                   }`}
                 >
                   <div className="accordion-body p-0">
-                    <table className="table table-hover mb-0">
+                    <table className="table table-hover mb-0 align-middle">
                       <thead>
                         <tr>
-                          <th style={{ width: "40%" }}>User</th>
+                          <th style={{ width: "45%" }}>User</th>
                           <th style={{ width: "40%" }}>Roles</th>
-                          <th style={{ width: "20%" }}>Actions</th>
+                          <th style={{ width: "15%" }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {groupedUsers[deptName].map((user: User) => (
-                          <tr key={user.id}>
-                            <td>
-                              <div className="d-flex align-items-center">
-                                <img
-                                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                    formatUserName(user),
-                                  )}&background=ED9B40&color=fff`}
-                                  alt={formatUserName(user)}
-                                  className="rounded-circle me-3"
-                                  style={{
-                                    width: "48px",
-                                    height: "48px",
-                                    objectFit: "cover",
-                                  }}
-                                />
-                                <div>
-                                  <h6 className="fw-bold mb-0">
-                                    {formatUserNameLastFirst(user)}
-                                  </h6>
-                                  <small className="text-muted">
-                                    {user.email}
-                                  </small>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="align-middle">
-                              <div className="role-pills-container">
-                                {user.roles.map((role: any) => (
-                                  <div
-                                    key={role.id}
-                                    className="role-pill"
-                                    data-role-name={role.name}
-                                  >
-                                    <span className="role-dot"></span>
-                                    {role.name}
+                        {groupedUsers[deptName].map((user: User) => {
+                          const level = getUserLevel(user);
+
+                          return (
+                            <tr key={user.id}>
+                              <td>
+                                <div className="d-flex align-items-center">
+                                  <div className="position-relative me-3">
+                                    <img
+                                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                        formatUserName(user),
+                                      )}&background=ED9B40&color=fff`}
+                                      alt={formatUserName(user)}
+                                      className="rounded-circle"
+                                      style={{
+                                        width: "48px",
+                                        height: "48px",
+                                        objectFit: "cover",
+                                        // Removed border
+                                      }}
+                                    />
+
+                                    {/* Badge logic: Bottom-Left */}
+                                    {level === 1 && (
+                                      <div
+                                        className="shield-icon-wrapper"
+                                        title="Department Head"
+                                      >
+                                        {/* Stacked Icon: Shield base + Star overlay */}
+                                        <i className="bi bi-shield-fill shield-base"></i>
+                                        <i className="bi bi-star-fill shield-star"></i>
+                                      </div>
+                                    )}
+                                    {level === 2 && (
+                                      <div
+                                        className="shield-icon-wrapper"
+                                        title="Officer"
+                                      >
+                                        {/* Plain Shield */}
+                                        <i className="bi bi-shield-fill shield-base"></i>
+                                      </div>
+                                    )}
                                   </div>
-                                ))}
-                              </div>
-                            </td>
-                            <td className="align-middle">
-                              <div className="d-flex">
-                                <button
-                                  className="btn btn-icon"
-                                  onClick={() => setUserToSendTo(user)}
-                                  title="Send Document"
-                                >
-                                  <i className="bi bi-send"></i>
-                                </button>
-                                {canManageUsers && (
-                                  <>
-                                    <button
-                                      className="btn btn-icon"
-                                      onClick={() => setUserToRemove(user)}
-                                      title="Remove User"
+                                  <div>
+                                    <h6 className="fw-bold mb-0">
+                                      {formatUserNameLastFirst(user)}
+                                    </h6>
+                                    <small className="text-muted">
+                                      {user.email}
+                                    </small>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>
+                                <div className="role-pills-container">
+                                  {user.roles.map((role: any) => (
+                                    <div
+                                      key={role.id}
+                                      className="role-pill" // Removed bg-warning logic
+                                      data-role-name={role.name}
                                     >
-                                      <i className="bi bi-trash"></i>
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                                      <span className="role-dot"></span>
+                                      {role.name}
+                                    </div>
+                                  ))}
+                                </div>
+                              </td>
+                              <td>
+                                <div className="d-flex gap-2">
+                                  <button
+                                    className="btn btn-sm btn-outline-primary border-0"
+                                    onClick={() => setUserToSendTo(user)}
+                                    title="Send Document"
+                                  >
+                                    <i className="bi bi-send fs-5"></i>
+                                  </button>
+                                  {canManageUsers && (
+                                    <>
+                                      <button
+                                        className="btn btn-sm btn-outline-danger border-0"
+                                        onClick={() => setUserToRemove(user)}
+                                        title="Remove User"
+                                      >
+                                        <i className="bi bi-trash fs-5"></i>
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

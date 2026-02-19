@@ -11,12 +11,14 @@ type Role = AppRouterOutputs["roles"]["getRoles"][0];
 export const RolesModal: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [roleName, setRoleName] = useState("");
+  const [level, setLevel] = useState<number>(4);
   const [permissions, setPermissions] = useState({
     canManageUsers: false,
     canManageRoles: false,
     canManageDocuments: false,
   });
   const [selectedUser, setSelectedUser] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { data: roles, refetch: refetchRoles } = trpc.roles.getRoles.useQuery();
   const { data: users, refetch: refetchUsers } =
@@ -40,36 +42,72 @@ export const RolesModal: React.FC = () => {
   const resetForm = () => {
     setSelectedRole(null);
     setRoleName("");
+    setLevel(4);
     setPermissions({
       canManageUsers: false,
       canManageRoles: false,
       canManageDocuments: false,
     });
     setSelectedUser("");
+    setErrorMessage(null);
+  };
+
+  const handleLevelChange = (newLevel: number) => {
+    setLevel(newLevel);
+    // Auto-set permissions based on level (Client-side mirror of backend default)
+    switch (newLevel) {
+      case 1: // Leader
+        setPermissions({
+          canManageUsers: true,
+          canManageRoles: true,
+          canManageDocuments: true,
+        });
+        break;
+      case 2: // Co-Leader
+        setPermissions({
+          canManageUsers: false,
+          canManageRoles: false,
+          canManageDocuments: true,
+        });
+        break;
+      default:
+        setPermissions({
+          canManageUsers: false,
+          canManageRoles: false,
+          canManageDocuments: false,
+        });
+        break;
+    }
   };
 
   const handleCreateOrUpdateRole = async () => {
     if (!roleName) return;
+    setErrorMessage(null);
 
-    if (selectedRole) {
-      await updateRoleMutation.mutateAsync({
-        id: selectedRole.id,
-        name: roleName,
-        canManageUsers: permissions.canManageUsers,
-        canManageRoles: permissions.canManageRoles,
-        canManageDocuments: permissions.canManageDocuments,
-      });
-    } else {
-      await createRoleMutation.mutateAsync({
-        name: roleName,
-        canManageUsers: permissions.canManageUsers,
-        canManageRoles: permissions.canManageRoles,
-        canManageDocuments: permissions.canManageDocuments,
-      });
+    try {
+      if (selectedRole) {
+        await updateRoleMutation.mutateAsync({
+          id: selectedRole.id,
+          name: roleName,
+          level,
+          canManageUsers: permissions.canManageUsers,
+          canManageRoles: permissions.canManageRoles,
+          canManageDocuments: permissions.canManageDocuments,
+        });
+      } else {
+        await createRoleMutation.mutateAsync({
+          name: roleName,
+          level,
+          canManageUsers: permissions.canManageUsers,
+          canManageRoles: permissions.canManageRoles,
+          canManageDocuments: permissions.canManageDocuments,
+        });
+      }
+      refetchRoles();
+      resetForm();
+    } catch (error: any) {
+      setErrorMessage(error.message || "Failed to save role.");
     }
-
-    refetchRoles();
-    resetForm();
   };
 
   const handleDeleteRole = async (roleId: string) => {
@@ -85,6 +123,7 @@ export const RolesModal: React.FC = () => {
   const handleEditRole = (role: Role) => {
     setSelectedRole(role);
     setRoleName(role.name);
+    setLevel(role.level || 4);
     setPermissions({
       canManageUsers: role.canManageUsers,
       canManageRoles: role.canManageRoles,
@@ -94,20 +133,30 @@ export const RolesModal: React.FC = () => {
 
   const handleAssignRole = async (userId: string) => {
     if (!selectedRole) return;
-    await assignRoleMutation.mutateAsync({
-      userId,
-      roleId: selectedRole.id,
-    });
-    refetchUsers();
+    setErrorMessage(null);
+    try {
+      await assignRoleMutation.mutateAsync({
+        userId,
+        roleId: selectedRole.id,
+      });
+      refetchUsers();
+      setSelectedUser("");
+    } catch (error: any) {
+      setErrorMessage(error.message || "Failed to assign role.");
+    }
   };
 
   const handleRemoveRole = async (userId: string) => {
     if (!selectedRole) return;
-    await removeRoleMutation.mutateAsync({
-      userId,
-      roleId: selectedRole.id,
-    });
-    refetchUsers();
+    try {
+      await removeRoleMutation.mutateAsync({
+        userId,
+        roleId: selectedRole.id,
+      });
+      refetchUsers();
+    } catch (error: any) {
+      setErrorMessage(error.message || "Failed to remove role.");
+    }
   };
 
   return (
@@ -131,6 +180,12 @@ export const RolesModal: React.FC = () => {
             ></button>
           </div>
           <div className="modal-body">
+            {errorMessage && (
+              <div className="alert alert-danger" role="alert">
+                {errorMessage}
+              </div>
+            )}
+
             <div className="row">
               {/* Left Column: Role List */}
               <div className="col-md-4 border-end">
@@ -153,7 +208,15 @@ export const RolesModal: React.FC = () => {
                       }`}
                       onClick={() => handleEditRole(role)}
                     >
-                      {role.name}
+                      <div className="d-flex align-items-center gap-2">
+                        {role.level === 1 && (
+                          <i className="bi bi-shield-shaded text-warning"></i>
+                        )}
+                        {role.level === 2 && (
+                          <i className="bi bi-shield text-secondary"></i>
+                        )}
+                        {role.name}
+                      </div>
                       <span
                         onClick={(e) => {
                           e.stopPropagation();
@@ -184,12 +247,39 @@ export const RolesModal: React.FC = () => {
                     className="form-control"
                     value={roleName}
                     onChange={(e) => setRoleName(e.target.value)}
-                    placeholder="e.g. Moderator"
+                    placeholder="e.g. Director, Officer, Staff"
                   />
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label d-block">Permissions</label>
+                  <label className="form-label">Authority Level</label>
+                  <select
+                    className="form-select"
+                    value={level}
+                    onChange={(e) =>
+                      handleLevelChange(parseInt(e.target.value))
+                    }
+                  >
+                    <option value={1}>
+                      Level 1 - Administrator (Head/Director) - Full Admin
+                    </option>
+                    <option value={2}>
+                      Level 2 - Coordinator (Manager/Coordinator)
+                    </option>
+                    <option value={3}>
+                      Level 3 - Secretary (Senior Officer)
+                    </option>
+                    <option value={4}>Level 4 - Staff (Staff/Faculty)</option>
+                  </select>
+                  <small className="text-muted">
+                    Sets default permissions and hierarchy position.
+                  </small>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label d-block">
+                    Permissions (Override Defaults)
+                  </label>
                   <div className="form-check form-check-inline">
                     <input
                       className="form-check-input"
@@ -246,8 +336,16 @@ export const RolesModal: React.FC = () => {
                 <button
                   className="btn btn-primary mb-4"
                   onClick={handleCreateOrUpdateRole}
-                  disabled={!roleName}
+                  disabled={
+                    !roleName ||
+                    createRoleMutation.isPending ||
+                    updateRoleMutation.isPending
+                  }
                 >
+                  {createRoleMutation.isPending ||
+                  updateRoleMutation.isPending ? (
+                    <span className="spinner-border spinner-border-sm me-2"></span>
+                  ) : null}
                   {selectedRole ? "Update Role" : "Create Role"}
                 </button>
 
@@ -268,12 +366,13 @@ export const RolesModal: React.FC = () => {
                           ?.filter(
                             (u: User) =>
                               !u.roles.some(
-                                (r: any) => r.id === selectedRole.id
-                              )
+                                (r: any) => r.id === selectedRole.id,
+                              ),
                           )
                           .map((u: User) => (
                             <option key={u.id} value={u.id}>
-                              {formatUserName(u)}
+                              {formatUserName(u)} (
+                              {u.department?.name || "Unassigned"})
                             </option>
                           ))}
                       </select>
@@ -283,12 +382,11 @@ export const RolesModal: React.FC = () => {
                         onClick={() => {
                           if (selectedUser) {
                             handleAssignRole(selectedUser);
-                            setSelectedUser("");
                           }
                         }}
-                        disabled={!selectedUser}
+                        disabled={!selectedUser || assignRoleMutation.isPending}
                       >
-                        Add
+                        {assignRoleMutation.isPending ? "Adding..." : "Add"}
                       </button>
                     </div>
 
@@ -296,14 +394,19 @@ export const RolesModal: React.FC = () => {
                     <ul className="list-group">
                       {users
                         ?.filter((u: User) =>
-                          u.roles.some((r: any) => r.id === selectedRole.id)
+                          u.roles.some((r: any) => r.id === selectedRole.id),
                         )
                         .map((u: User) => (
                           <li
                             key={u.id}
                             className="list-group-item d-flex justify-content-between align-items-center"
                           >
-                            {formatUserName(u)}
+                            <div>
+                              {formatUserName(u)}
+                              <small className="text-muted ms-2">
+                                ({u.department?.name})
+                              </small>
+                            </div>
                             <button
                               className="btn btn-sm btn-outline-danger"
                               onClick={() => handleRemoveRole(u.id)}
@@ -313,7 +416,7 @@ export const RolesModal: React.FC = () => {
                           </li>
                         ))}
                       {users?.filter((u: User) =>
-                        u.roles.some((r: any) => r.id === selectedRole.id)
+                        u.roles.some((r: any) => r.id === selectedRole.id),
                       ).length === 0 && (
                         <li className="list-group-item text-muted">
                           No users assigned to this role.
