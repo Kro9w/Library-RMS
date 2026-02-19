@@ -5,16 +5,25 @@ interface FileIconProps {
   fileName: string | null | undefined;
 }
 
+const RE_TIFF_TYPE = /tiff/i;
+const RE_TIFF_EXT = /\.(tiff|tif)$/i;
+const RE_CSV_TYPE = /csv/i;
+const RE_CSV_EXT = /\.csv$/i;
+const RE_PDF_TYPE = /pdf/i;
+const RE_PDF_EXT = /\.pdf$/i;
+const RE_WORD_TYPE = /word/i;
+const RE_WORD_EXT = /\.(doc|docx)$/i;
+const RE_EXCEL_TYPE = /excel|spreadsheet/i;
+const RE_EXCEL_EXT = /\.(xls|xlsx)$/i;
+const RE_IMAGE_TYPE = /image/i;
+const RE_TEXT_TYPE = /text/i;
+
 export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
-  const fType = (fileType || "").toLowerCase();
-  const fName = (fileName || "").toLowerCase();
+  const fType = fileType || "";
+  const fName = fileName || "";
 
   // TIFF (Master Copy)
-  if (
-    fType.includes("tiff") ||
-    fName.endsWith(".tiff") ||
-    fName.endsWith(".tif")
-  ) {
+  if (RE_TIFF_TYPE.test(fType) || RE_TIFF_EXT.test(fName)) {
     return (
       <i
         className="bi bi-file-earmark-image-fill text-primary"
@@ -26,7 +35,7 @@ export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
   }
 
   // CSV (Data Set)
-  if (fType.includes("csv") || fName.endsWith(".csv")) {
+  if (RE_CSV_TYPE.test(fType) || RE_CSV_EXT.test(fName)) {
     return (
       <i
         className="bi bi-file-earmark-spreadsheet-fill text-secondary"
@@ -38,7 +47,7 @@ export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
   }
 
   // PDF
-  if (fType.includes("pdf") || fName.endsWith(".pdf")) {
+  if (RE_PDF_TYPE.test(fType) || RE_PDF_EXT.test(fName)) {
     return (
       <i
         className="bi bi-file-earmark-pdf-fill text-primary"
@@ -50,11 +59,7 @@ export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
   }
 
   // Word (DOCX)
-  if (
-    fType.includes("word") ||
-    fName.endsWith(".doc") ||
-    fName.endsWith(".docx")
-  ) {
+  if (RE_WORD_TYPE.test(fType) || RE_WORD_EXT.test(fName)) {
     return (
       <i
         className="bi bi-file-earmark-word-fill text-primary"
@@ -66,12 +71,7 @@ export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
   }
 
   // Excel (Spreadsheet)
-  if (
-    fType.includes("excel") ||
-    fType.includes("spreadsheet") ||
-    fName.endsWith(".xls") ||
-    fName.endsWith(".xlsx")
-  ) {
+  if (RE_EXCEL_TYPE.test(fType) || RE_EXCEL_EXT.test(fName)) {
     return (
       <i
         className="bi bi-file-earmark-excel-fill text-secondary"
@@ -83,7 +83,7 @@ export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
   }
 
   // Image
-  if (fType.includes("image")) {
+  if (RE_IMAGE_TYPE.test(fType)) {
     return (
       <i
         className="bi bi-file-earmark-image-fill text-secondary"
@@ -95,7 +95,7 @@ export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
   }
 
   // Text
-  if (fType.includes("text")) {
+  if (RE_TEXT_TYPE.test(fType)) {
     return (
       <i
         className="bi bi-file-earmark-text-fill text-secondary"

@@ -127,39 +127,63 @@ export class RolesRouter {
         .input(z.object({ userId: z.string(), roleId: z.string() }))
         .mutation(async ({ ctx, input }) => {
           requirePermission(ctx.dbUser, 'canManageRoles');
-          
-          const role = await ctx.prisma.role.findUnique({ where: { id: input.roleId } });
-          if (!role) throw new TRPCError({ code: 'NOT_FOUND', message: 'Role not found' });
-          
+
+          if (!ctx.dbUser.campusId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to a campus.',
+            });
+          }
+
+          const role = await ctx.prisma.role.findUnique({
+            where: { id: input.roleId },
+          });
+          if (!role || role.campusId !== ctx.dbUser.campusId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Role not found or access denied.',
+            });
+          }
+
+          const targetUser = await ctx.prisma.user.findUnique({
+            where: { id: input.userId },
+            include: { department: true },
+          });
+
+          if (!targetUser || targetUser.campusId !== ctx.dbUser.campusId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Target user not found or access denied.',
+            });
+          }
+
           // 1. Check if trying to assign Level 1
           if (role.level === 1) {
-             // 2. Get target user's department
-             const targetUser = await ctx.prisma.user.findUnique({ 
-                 where: { id: input.userId },
-                 include: { department: true } 
-             });
-             
-             if (!targetUser || !targetUser.departmentId) {
-                  throw new TRPCError({ code: 'BAD_REQUEST', message: 'User must belong to a department to be a leader.' });
-             }
+            // 2. Get target user's department
+            if (!targetUser.departmentId) {
+              throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'User must belong to a department to be a leader.',
+              });
+            }
 
-             // 3. Check if this Department already has a Level 1 leader
-             const existingLeader = await ctx.prisma.user.findFirst({
-                 where: {
-                     departmentId: targetUser.departmentId,
-                     roles: {
-                         some: { level: 1 }
-                     },
-                     id: { not: targetUser.id } // Exclude self (re-assignment is fine)
-                 }
-             });
+            // 3. Check if this Department already has a Level 1 leader
+            const existingLeader = await ctx.prisma.user.findFirst({
+              where: {
+                departmentId: targetUser.departmentId,
+                roles: {
+                  some: { level: 1 },
+                },
+                id: { not: targetUser.id }, // Exclude self (re-assignment is fine)
+              },
+            });
 
-             if (existingLeader) {
-                 throw new TRPCError({ 
-                     code: 'PRECONDITION_FAILED', 
-                     message: `Department '${targetUser.department?.name}' already has a leader (${existingLeader.firstName} ${existingLeader.lastName}). Please demote them first.` 
-                 });
-             }
+            if (existingLeader) {
+              throw new TRPCError({
+                code: 'PRECONDITION_FAILED',
+                message: `Department '${targetUser.department?.name}' already has a leader (${existingLeader.firstName} ${existingLeader.lastName}). Please demote them first.`,
+              });
+            }
           }
 
           return ctx.prisma.user.update({
@@ -174,6 +198,36 @@ export class RolesRouter {
         .input(z.object({ userId: z.string(), roleId: z.string() }))
         .mutation(async ({ ctx, input }) => {
           requirePermission(ctx.dbUser, 'canManageRoles');
+
+          if (!ctx.dbUser.campusId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to a campus.',
+            });
+          }
+
+          const targetUser = await ctx.prisma.user.findUnique({
+            where: { id: input.userId },
+          });
+
+          if (!targetUser || targetUser.campusId !== ctx.dbUser.campusId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Target user not found or access denied.',
+            });
+          }
+
+          const role = await ctx.prisma.role.findUnique({
+            where: { id: input.roleId },
+          });
+
+          if (!role || role.campusId !== ctx.dbUser.campusId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Role not found or access denied.',
+            });
+          }
+
           return ctx.prisma.user.update({
             where: { id: input.userId },
             data: {

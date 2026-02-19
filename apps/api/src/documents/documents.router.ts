@@ -471,6 +471,21 @@ export class DocumentsRouter {
             });
           }
 
+          // Verify ownership of all documents to prevent unauthorized access
+          const documents = await this.prisma.document.findMany({
+            where: {
+              id: input.documentId,
+              organizationId: dbUser.organizationId,
+            },
+          });
+
+          if (documents.length === 0) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'One or more documents not found or access denied.',
+            });
+          }
+
           const tags = await this.prisma.tag.findMany({
             where: {
               id: {
@@ -504,6 +519,75 @@ export class DocumentsRouter {
           );
 
           return updatedDocument;
+        }),
+
+      sendMultipleDocuments: protectedProcedure
+        .input(
+          z.object({
+            documentIds: z.array(z.string()),
+            recipientId: z.string(),
+            tagIds: z.array(z.string()),
+          }),
+        )
+        .mutation(async ({ ctx, input }) => {
+          const { user, dbUser } = ctx;
+
+          if (!dbUser.organizationId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to an organization.',
+            });
+          }
+
+          const recipient = await this.prisma.user.findUnique({
+            where: { id: input.recipientId },
+          });
+
+          if (!recipient) {
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Recipient not found.',
+            });
+          }
+
+          const tags = await this.prisma.tag.findMany({
+            where: {
+              id: {
+                in: input.tagIds,
+              },
+            },
+          });
+
+          const isReview = tags.some((tag) => tag.name === 'for review');
+
+          // Use transaction for atomicity: all documents are sent or none
+          const results = await this.prisma.$transaction(
+            input.documentIds.map((documentId) =>
+              this.prisma.document.update({
+                where: { id: documentId },
+                data: {
+                  uploadedById: recipient.id,
+                  reviewRequesterId: isReview ? user.id : null,
+                  tags: {
+                    set: input.tagIds.map((id) => ({ id })),
+                  },
+                },
+              }),
+            ),
+          );
+
+          // Log actions after successful transaction
+          for (const updatedDocument of results) {
+            await this.logService.logAction(
+              user.id,
+              dbUser.organizationId,
+              `Sent Document to ${recipient.firstName} ${recipient.lastName}`,
+              dbUser.roles.map((r) => r.name),
+              updatedDocument.title,
+            );
+          }
+
+          return results;
         }),
 
       reviewDocument: protectedProcedure

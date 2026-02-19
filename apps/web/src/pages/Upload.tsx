@@ -11,6 +11,7 @@ const Upload: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const session = useSession();
   const user = session?.user;
+  const utils = trpc.useUtils();
   const createDocMutation = trpc.documents.createDocumentRecord.useMutation();
   // 1. FIX: Get the bucket name from environment variables
   const bucketName = import.meta.env.VITE_SUPABASE_BUCKET_NAME || "documents"; // Use env var, fallback to 'documents'
@@ -31,7 +32,7 @@ const Upload: React.FC = () => {
     // 2. FIX: Check if bucketName is actually set
     if (!bucketName) {
       setError(
-        "Supabase bucket name is not configured in environment variables."
+        "Supabase bucket name is not configured in environment variables.",
       );
       return;
     }
@@ -62,7 +63,10 @@ const Upload: React.FC = () => {
 
       setFiles([]);
       alert("Upload successful!");
-      // TODO: Invalidate queries to refetch document list (e.g., utils.documents.getAll.invalidate())
+
+      // Invalidate queries to refetch document list and dashboard stats
+      await utils.documents.invalidate();
+      await utils.getDashboardStats.invalidate();
     } catch (err: any) {
       console.error(err);
       // Display Supabase error directly if available

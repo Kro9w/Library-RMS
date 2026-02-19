@@ -26,7 +26,8 @@ export function SendMultipleDocumentsModal({
   );
 
   const utils = trpc.useContext();
-  const sendMutation = trpc.documents.sendDocument.useMutation();
+  const sendMultipleMutation =
+    trpc.documents.sendMultipleDocuments.useMutation();
   const { data: users } = trpc.documents.getAppUsers.useQuery();
   const { data: tags } = trpc.documents.getTags.useQuery();
   const { data: globalTags } = trpc.documents.getGlobalTags.useQuery();
@@ -74,16 +75,12 @@ export function SendMultipleDocumentsModal({
     if (!recipientId || documentIds.length === 0) return;
 
     try {
-      // Send all documents sequentially (or in parallel)
-      await Promise.all(
-        documentIds.map((docId) =>
-          sendMutation.mutateAsync({
-            documentId: docId,
-            recipientId: recipientId,
-            tagIds: selectedTagIds,
-          }),
-        ),
-      );
+      // Send all documents in a single bulk request
+      await sendMultipleMutation.mutateAsync({
+        documentIds: documentIds,
+        recipientId: recipientId,
+        tagIds: selectedTagIds,
+      });
 
       utils.documents.getAll.invalidate();
       utils.user.getOrgHierarchy.invalidate(); // Refresh graph data
@@ -148,7 +145,7 @@ export function SendMultipleDocumentsModal({
               </div>
             </div>
 
-            {sendMutation.isPending && (
+            {sendMultipleMutation.isPending && (
               <div className="text-center">
                 <div className="spinner-border text-primary" role="status">
                   <span className="visually-hidden">Sending...</span>
@@ -162,7 +159,7 @@ export function SendMultipleDocumentsModal({
               type="button"
               className="btn btn-secondary"
               onClick={onClose}
-              disabled={sendMutation.isPending}
+              disabled={sendMultipleMutation.isPending}
             >
               Cancel
             </button>
@@ -170,7 +167,7 @@ export function SendMultipleDocumentsModal({
               type="button"
               className="btn btn-primary"
               onClick={handleSend}
-              disabled={!recipientId || sendMutation.isPending}
+              disabled={!recipientId || sendMultipleMutation.isPending}
             >
               Send All
             </button>

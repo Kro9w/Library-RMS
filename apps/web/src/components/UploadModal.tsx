@@ -23,6 +23,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
   >();
   const [controlNumber, setControlNumber] = useState<string | null>(null);
   const user = useUser();
+  const utils = trpc.useUtils();
   const createDocMutation = trpc.documents.createDocumentRecord.useMutation();
   const { data: documentTypes } = trpc.documentTypes.getAll.useQuery();
   const bucketName = import.meta.env.VITE_SUPABASE_BUCKET_NAME || "documents";
@@ -91,7 +92,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
     if (files.length === 0 || !user) return;
     if (!bucketName) {
       setError(
-        "Supabase bucket name is not configured in environment variables."
+        "Supabase bucket name is not configured in environment variables.",
       );
       return;
     }
@@ -128,6 +129,10 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
       setFiles([]);
       onClose();
       alert("Upload successful!");
+
+      // Invalidate queries to refetch document list and dashboard stats
+      await utils.documents.invalidate();
+      await utils.getDashboardStats.invalidate();
     } catch (err: any) {
       console.error(err);
       setError(err.message || "An error occurred during upload.");
