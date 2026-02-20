@@ -136,7 +136,7 @@ const Account: React.FC = () => {
     dbUser.imageUrl || // 2. The URL from our database (this now exists)
     authUser.user_metadata?.avatar_url || // 3. The URL from Supabase auth
     `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      formatUserName(dbUser)
+      formatUserName(dbUser),
     )}`;
 
   return (
@@ -219,7 +219,7 @@ const Account: React.FC = () => {
               id="role"
               type="text"
               className="form-control"
-              value={dbUser.role || "User"}
+              value={dbUser.roles?.map((r) => r.name).join(", ") || "User"}
               disabled
             />
           </div>

@@ -6,7 +6,7 @@ export function useIsAdmin() {
 
   const isAdmin =
     user?.roles.some(
-      (role: { canManageRoles: boolean }) =>
+      (role) =>
         role.canManageRoles
     ) || false;
 

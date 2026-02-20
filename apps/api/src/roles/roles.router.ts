@@ -2,11 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { protectedProcedure, requirePermission, router } from '../trpc/trpc';
 import { TRPCError } from '@trpc/server';
-import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class RolesRouter {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor() {}
 
   createRouter() {
     return router({
@@ -87,7 +86,7 @@ export class RolesRouter {
           // BUT the prompt says "level dictates default permissions". 
           // Let's adopt a safe approach: If level changes, only update defaults if permissions are NOT provided in input.
           
-          let permissionsUpdate = {};
+          let permissionsUpdate: any = {};
           if (input.level) {
               const defaults = this.getPermissionsForLevel(input.level);
               permissionsUpdate = {

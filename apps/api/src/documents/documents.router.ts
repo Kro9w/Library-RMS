@@ -7,7 +7,6 @@ import { Injectable } from '@nestjs/common';
 import { TRPCError } from '@trpc/server';
 import { SupabaseService } from '../supabase/supabase.service';
 import { LogService } from '../log/log.service';
-import { DispositionAction } from '@prisma/client';
 
 function computeLifecycleStatus(doc: {
   createdAt: Date;

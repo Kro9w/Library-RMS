@@ -72,7 +72,6 @@ export class UserRouter {
           },
         })
         .input(z.void())
-        .output(z.any())
         .query(async ({ ctx }) => {
           // ctx.dbUser already has organization and roles included
           // We fetch the full user with campus and department relations

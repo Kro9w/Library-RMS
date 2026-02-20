@@ -23,17 +23,22 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
 }) => {
   const [recipientId, setRecipientId] = useState(initialRecipientId || "");
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const { data: users } = trpc.documents.getAppUsers.useQuery();
   const { data: orgs } = trpc.documents.getAllOrgs.useQuery();
   const { data: tags } = trpc.documents.getTags.useQuery();
   const { data: globalTags } = trpc.documents.getGlobalTags.useQuery();
-  const { data: recipientRoles } = trpc.roles.getUserRoles.useQuery(
-    recipientId,
+  // Fallback to fetch all users in campus to check roles since getUserRoles doesn't exist
+  const { data: usersWithRoles } = trpc.user.getUsersWithRoles.useQuery(
+    undefined,
     {
       enabled: !!recipientId,
-    }
+    },
   );
+  const recipientRoles = usersWithRoles?.find(
+    (u) => u.id === recipientId,
+  )?.roles;
+
   const sendDocumentMutation = trpc.documents.sendDocument.useMutation();
 
   const modalRef = useRef<HTMLDivElement>(null);
@@ -64,7 +69,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
       setRecipientId(initialRecipientId || "");
       if (initialRecipientId && users) {
         const initialRecipient = users.find(
-          (u: { id: string }) => u.id === initialRecipientId
+          (u: { id: string }) => u.id === initialRecipientId,
         );
         if (initialRecipient) {
           setSelectedOrgId(initialRecipient.organizationId);
@@ -81,18 +86,22 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
     await sendDocumentMutation.mutateAsync({
       documentId,
       recipientId,
-      tagIds: selectedTags,
+      tagIds: Array.from(selectedTags),
     });
 
     onClose();
   };
 
   const handleTagChange = (tagId: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tagId)
-        ? prev.filter((id) => id !== tagId)
-        : [...prev, tagId]
-    );
+    setSelectedTags((prev) => {
+      const next = new Set(prev);
+      if (next.has(tagId)) {
+        next.delete(tagId);
+      } else {
+        next.add(tagId);
+      }
+      return next;
+    });
   };
 
   return (
@@ -152,7 +161,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
                   {users
                     ?.filter(
                       (user: { organizationId: string | null }) =>
-                        user.organizationId === selectedOrgId
+                        user.organizationId === selectedOrgId,
                     )
                     .map((user: User) => (
                       <option key={user.id} value={user.id}>
@@ -172,7 +181,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
                       type="checkbox"
                       value={tag.id}
                       id={`tag-${tag.id}`}
-                      checked={selectedTags.includes(tag.id)}
+                      checked={selectedTags.has(tag.id)}
                       onChange={() => handleTagChange(tag.id)}
                     />
                     <label
@@ -191,7 +200,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
                 {globalTags
                   ?.filter((tag: Tag) => {
                     const canManageDocuments = recipientRoles?.some(
-                      (role) => role.canManageDocuments
+                      (role) => role.canManageDocuments,
                     );
 
                     if (canManageDocuments) {
@@ -206,7 +215,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
                         type="checkbox"
                         value={tag.id}
                         id={`global-tag-${tag.id}`}
-                        checked={selectedTags.includes(tag.id)}
+                        checked={selectedTags.has(tag.id)}
                         onChange={() => handleTagChange(tag.id)}
                       />
                       <label
