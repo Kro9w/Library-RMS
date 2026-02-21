@@ -10,22 +10,22 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/SessionContext";
 import { supabase } from "../supabase";
 import { trpc } from "../trpc";
-import { useOutsideClick } from "../hooks/OutsideClick";
-import { useIsAdmin } from "../hooks/usIsAdmin";
+import { useOutsideClick } from "../hooks/useOutsideClick";
+import { useIsAdmin } from "../hooks/useIsAdmin";
 import "./Navbar.css";
 import { formatUserName } from "../utils/user";
 
 // Lazy imports for heavy modals
 const UploadModal = React.lazy(() =>
-  import("./UploadModal").then((m) => ({ default: m.UploadModal }))
+  import("./UploadModal").then((m) => ({ default: m.UploadModal })),
 );
 const SelectDocumentModal = React.lazy(() =>
   import("./SelectDocumentModal").then((m) => ({
     default: m.SelectDocumentModal,
-  }))
+  })),
 );
 const SendDocumentModal = React.lazy(() =>
-  import("./SendDocumentModal").then((m) => ({ default: m.SendDocumentModal }))
+  import("./SendDocumentModal").then((m) => ({ default: m.SendDocumentModal })),
 );
 
 interface NavbarProps {
@@ -98,7 +98,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
     dbUser?.imageUrl ||
     user?.user_metadata?.avatar_url ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      displayName
+      displayName,
     )}&background=random&color=fff&size=128`;
 
   const renderDropdownContent = () => (

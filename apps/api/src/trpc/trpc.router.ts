@@ -24,14 +24,14 @@ export class TrpcRouter {
 
   get appRouter() {
     const formatFileType = (fileType: string | null | undefined): string => {
-      if (!fileType) return "Other";
-      if (fileType.includes("pdf")) return "PDF";
-      if (fileType.includes("word")) return "DOCX";
-      if (fileType.includes("excel") || fileType.includes("spreadsheet"))
-        return "XLSX";
-      if (fileType.includes("image")) return "Image";
-      if (fileType.includes("text")) return "Text";
-      return "Other";
+      if (!fileType) return 'Other';
+      if (fileType.includes('pdf')) return 'PDF';
+      if (fileType.includes('word')) return 'DOCX';
+      if (fileType.includes('excel') || fileType.includes('spreadsheet'))
+        return 'XLSX';
+      if (fileType.includes('image')) return 'Image';
+      if (fileType.includes('text')) return 'Text';
+      return 'Other';
     };
 
     return router({
@@ -48,18 +48,18 @@ export class TrpcRouter {
 
         // Basic check if user belongs to org
         if (!orgId) {
-             return {
-                totalDocuments: 0,
-                recentUploadsCount: 0,
-                recentFiles: [],
-                totalUsers: 0,
-                docsByType: [],
-                topTags: [],
-             }
+          return {
+            totalDocuments: 0,
+            recentUploadsCount: 0,
+            recentFiles: [],
+            totalUsers: 0,
+            docsByType: [],
+            topTags: [],
+          };
         }
 
         const docsByTypeQuery = ctx.prisma.document.groupBy({
-          by: ["fileType"],
+          by: ['fileType'],
           _count: {
             fileType: true,
           },
@@ -83,18 +83,20 @@ export class TrpcRouter {
           }),
           ctx.prisma.document.findMany({
             where: { organizationId: orgId },
-            orderBy: { createdAt: "desc" },
+            orderBy: { createdAt: 'desc' },
             take: 5,
             select: {
               id: true,
               title: true,
-              uploadedBy: { select: { firstName: true, middleName: true, lastName: true } },
+              uploadedBy: {
+                select: { firstName: true, middleName: true, lastName: true },
+              },
             },
           }),
           ctx.prisma.user.count({ where: { organizationId: orgId } }),
           ctx.prisma.document.findMany({
             where: { organizationId: orgId },
-            select: { tags: true }, 
+            select: { tags: true },
           }),
           docsByTypeQuery,
         ]);
@@ -107,8 +109,7 @@ export class TrpcRouter {
         const tagCountMap: Record<string, number> = {};
         for (const doc of allDocumentTags) {
           for (const tag of doc.tags) {
-            tagCountMap[tag.name] =
-              (tagCountMap[tag.name] || 0) + 1;
+            tagCountMap[tag.name] = (tagCountMap[tag.name] || 0) + 1;
           }
         }
         const topTags = Object.entries(tagCountMap)
@@ -120,15 +121,17 @@ export class TrpcRouter {
           totalDocuments,
           recentUploadsCount,
           recentFiles: recentFiles.map((f) => {
-             // Format name here: First Middle Last
-             const u = f.uploadedBy;
-             const nameParts = [u.firstName, u.middleName, u.lastName].filter(Boolean);
-             const formattedName = nameParts.join(" ");
+            // Format name here: First Middle Last
+            const u = f.uploadedBy;
+            const nameParts = [u.firstName, u.middleName, u.lastName].filter(
+              Boolean,
+            );
+            const formattedName = nameParts.join(' ');
 
-             return {
-                ...f,
-                uploadedBy: formattedName,
-             };
+            return {
+              ...f,
+              uploadedBy: formattedName,
+            };
           }),
           totalUsers,
           docsByType: docsByType,

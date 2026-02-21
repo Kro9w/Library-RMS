@@ -1,4 +1,4 @@
-// apps/web/src/hooks/usIsAdmin.ts
+// apps/web/src/hooks/useIsAdmin.ts
 import { trpc } from "../trpc";
 
 export function useIsAdmin() {

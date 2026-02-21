@@ -17,31 +17,31 @@ import {
 import { Navbar } from "./components/Navbar";
 import { trpc } from "./trpc";
 import { TRPCClientError } from "@trpc/client";
-import { useIsAdmin } from "./hooks/usIsAdmin";
+import { useIsAdmin } from "./hooks/useIsAdmin";
 import { LoadingAnimation } from "./components/ui/LoadingAnimation";
 
 // Lazy-loaded components
 const Dashboard = React.lazy(() =>
-  import("./pages/Dashboard").then((module) => ({ default: module.Dashboard }))
+  import("./pages/Dashboard").then((module) => ({ default: module.Dashboard })),
 );
 const Documents = React.lazy(() => import("./pages/Documents"));
 const Account = React.lazy(() => import("./pages/Account"));
 const Settings = React.lazy(() =>
-  import("./pages/Settings").then((module) => ({ default: module.Settings }))
+  import("./pages/Settings").then((module) => ({ default: module.Settings })),
 );
 const LoginPage = React.lazy(() => import("./pages/LoginPage"));
 const SignUpPage = React.lazy(() => import("./pages/SignUpPage"));
 const DocumentDetails = React.lazy(() =>
   import("./pages/DocumentDetails").then((module) => ({
     default: module.DocumentDetails,
-  }))
+  })),
 );
 const GraphView = React.lazy(() =>
-  import("./pages/GraphView").then((module) => ({ default: module.GraphView }))
+  import("./pages/GraphView").then((module) => ({ default: module.GraphView })),
 );
 const JoinOrganization = React.lazy(() => import("./pages/JoinOrganization"));
 const Users = React.lazy(() =>
-  import("./pages/Users").then((module) => ({ default: module.Users }))
+  import("./pages/Users").then((module) => ({ default: module.Users })),
 );
 const LogsPage = React.lazy(() => import("./pages/LogsPage"));
 const WordAuth = React.lazy(() => import("./pages/WordAuth"));

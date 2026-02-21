@@ -20,7 +20,7 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
-    "typeRoots": ["./node_modules/@types", "../../node_modules/@types"]
-
+    "typeRoots": ["./node_modules/@types", "../../node_modules/@types"],
+    "types": ["node", "jest", "express", "supertest"]
   }
 }

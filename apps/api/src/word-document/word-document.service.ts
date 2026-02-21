@@ -20,7 +20,10 @@ export class WordDocumentService {
     const s3Bucket = 'documents'; // Replace with your actual bucket name
 
     // Upload to Supabase Storage
-    await this.supabase.getAdminClient().storage.from(s3Bucket).upload(s3Key, file);
+    await this.supabase
+      .getAdminClient()
+      .storage.from(s3Bucket)
+      .upload(s3Key, file);
 
     // Create a new document record in the database
     const document = await this.prisma.document.create({

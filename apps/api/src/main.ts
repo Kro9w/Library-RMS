@@ -10,15 +10,13 @@ import { TrpcRouter, AppRouter } from './trpc/trpc.router';
 // FIX: Import the class 'TrpcContextFactory' (uppercase T)
 import { TrpcContextFactory } from './trpc/trpc.context';
 import { INestApplication } from '@nestjs/common';
+import { configureApp } from '../app.config';
 
 async function bootstrap() {
   const app: INestApplication = await NestFactory.create(AppModule, {
     bodyParser: true,
   });
-  app.enableCors({
-    origin: ['http://localhost:5173', 'https://localhost:5173', 'https://localhost:3000'],
-    credentials: true,
-  });
+  configureApp(app);
 
   // Mount tRPC by getting the router and context from the Nest app
   const trpcRouter = app.get(TrpcRouter);

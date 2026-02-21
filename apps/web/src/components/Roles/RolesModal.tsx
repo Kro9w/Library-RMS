@@ -4,6 +4,7 @@ import { Modal } from "bootstrap";
 import type { AppRouterOutputs } from "../../../../api/src/trpc/trpc.router";
 import "./RolesModal.css";
 import { formatUserName } from "../../utils/user";
+import { getErrorMessage } from "../../utils/error";
 
 type User = AppRouterOutputs["user"]["getUsersWithRoles"][0];
 type Role = AppRouterOutputs["roles"]["getRoles"][0];
@@ -105,8 +106,8 @@ export const RolesModal: React.FC = () => {
       }
       refetchRoles();
       resetForm();
-    } catch (error: any) {
-      setErrorMessage(error.message || "Failed to save role.");
+    } catch (error: unknown) {
+      setErrorMessage(getErrorMessage(error, "Failed to save role."));
     }
   };
 
@@ -141,8 +142,8 @@ export const RolesModal: React.FC = () => {
       });
       refetchUsers();
       setSelectedUser("");
-    } catch (error: any) {
-      setErrorMessage(error.message || "Failed to assign role.");
+    } catch (error: unknown) {
+      setErrorMessage(getErrorMessage(error, "Failed to assign role."));
     }
   };
 
@@ -154,8 +155,8 @@ export const RolesModal: React.FC = () => {
         roleId: selectedRole.id,
       });
       refetchUsers();
-    } catch (error: any) {
-      setErrorMessage(error.message || "Failed to remove role.");
+    } catch (error: unknown) {
+      setErrorMessage(getErrorMessage(error, "Failed to remove role."));
     }
   };
 

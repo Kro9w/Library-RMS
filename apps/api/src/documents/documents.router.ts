@@ -1,7 +1,12 @@
 // apps/api/src/documents/documents.router.ts
 
 import { z } from 'zod';
-import { protectedProcedure, router, requirePermission, checkPermission } from '../trpc/trpc';
+import {
+  protectedProcedure,
+  router,
+  requirePermission,
+  checkPermission,
+} from '../trpc/trpc';
 import { PrismaService } from '../prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { TRPCError } from '@trpc/server';
@@ -16,22 +21,29 @@ function computeLifecycleStatus(doc: {
 }): 'Active' | 'Inactive' | 'Ready' | 'Archived' | 'Destroyed' | null {
   if (doc.dispositionStatus === 'DESTROYED') return 'Destroyed';
   if (doc.dispositionStatus === 'ARCHIVED') return 'Archived';
-  
+
   // If no retention schedule, treat as Active
-  if (doc.activeRetentionSnapshot === null || doc.activeRetentionSnapshot === undefined) {
-      return 'Active'; 
+  if (
+    doc.activeRetentionSnapshot === null ||
+    doc.activeRetentionSnapshot === undefined
+  ) {
+    return 'Active';
   }
 
   const now = new Date();
   const created = new Date(doc.createdAt);
-  
+
   const activeUntil = new Date(created);
-  activeUntil.setFullYear(activeUntil.getFullYear() + doc.activeRetentionSnapshot);
+  activeUntil.setFullYear(
+    activeUntil.getFullYear() + doc.activeRetentionSnapshot,
+  );
 
   if (now < activeUntil) return 'Active';
 
   const inactiveUntil = new Date(activeUntil);
-  inactiveUntil.setFullYear(inactiveUntil.getFullYear() + (doc.inactiveRetentionSnapshot || 0));
+  inactiveUntil.setFullYear(
+    inactiveUntil.getFullYear() + (doc.inactiveRetentionSnapshot || 0),
+  );
 
   if (now < inactiveUntil) return 'Inactive';
 
@@ -69,7 +81,7 @@ export class DocumentsRouter {
               message: 'User does not belong to an organization.',
             });
           }
-          
+
           const doc = await this.prisma.document.findFirst({
             where: {
               id: input.id,
@@ -97,7 +109,7 @@ export class DocumentsRouter {
                   lastName: true,
                 },
               },
-              tags: true, 
+              tags: true,
               activeRetentionSnapshot: true,
               inactiveRetentionSnapshot: true,
               dispositionActionSnapshot: true,
@@ -169,7 +181,7 @@ export class DocumentsRouter {
               s3Bucket: input.storageBucket,
               content: '',
               uploadedById: user.id,
-              organizationId: dbUser.organizationId!,
+              organizationId: dbUser.organizationId,
               fileType: input.fileType,
               fileSize: input.fileSize,
               documentTypeId: input.documentTypeId,
@@ -179,11 +191,11 @@ export class DocumentsRouter {
           });
 
           await this.logService.logAction(
-             user.id,
-             dbUser.organizationId!,
-             'Created Document',
-             dbUser.roles.map(r => r.name),
-             document.title
+            user.id,
+            dbUser.organizationId,
+            'Created Document',
+            dbUser.roles.map((r) => r.name),
+            document.title,
           );
 
           return document;
@@ -210,7 +222,7 @@ export class DocumentsRouter {
               message: 'User does not belong to an organization.',
             });
           }
-          
+
           const doc = await this.prisma.document.findFirst({
             where: {
               id: input.documentId,
@@ -230,7 +242,7 @@ export class DocumentsRouter {
           }
 
           if (!doc.s3Key || !doc.s3Bucket) {
-             throw new TRPCError({
+            throw new TRPCError({
               code: 'INTERNAL_SERVER_ERROR',
               message: 'Document record is missing storage key or bucket.',
             });
@@ -269,7 +281,7 @@ export class DocumentsRouter {
             });
           }
           return this.prisma.user.findMany({
-             where: { organizationId: ctx.dbUser.organizationId }
+            where: { organizationId: ctx.dbUser.organizationId },
           });
         }),
 
@@ -283,9 +295,11 @@ export class DocumentsRouter {
             summary: 'Get all documents in the organization',
           },
         })
-        .input(z.object({ 
+        .input(
+          z.object({
             filter: z.enum(['mine', 'all']).optional(),
-        }))
+          }),
+        )
         .output(z.any())
         .query(async ({ ctx, input }) => {
           if (!ctx.dbUser.organizationId) {
@@ -309,7 +323,9 @@ export class DocumentsRouter {
               id: true,
               title: true,
               createdAt: true,
-              uploadedBy: { select: { firstName: true, middleName: true, lastName: true } },
+              uploadedBy: {
+                select: { firstName: true, middleName: true, lastName: true },
+              },
               fileType: true,
               fileSize: true,
               uploadedById: true,
@@ -331,10 +347,10 @@ export class DocumentsRouter {
               createdAt: 'desc',
             },
           });
-          
-          return docs.map(doc => ({
+
+          return docs.map((doc) => ({
             ...doc,
-            tags: doc.tags.map(t => ({ tag: t })),
+            tags: doc.tags.map((t) => ({ tag: t })),
             lifecycleStatus: computeLifecycleStatus(doc),
           }));
         }),
@@ -346,7 +362,7 @@ export class DocumentsRouter {
             method: 'GET',
             path: '/documents.getDocumentsByUserId',
             tags: ['documents'],
-            summary: "Get all documents for a specific user",
+            summary: 'Get all documents for a specific user',
           },
         })
         .input(z.string())
@@ -410,7 +426,7 @@ export class DocumentsRouter {
               s3Key: true,
               s3Bucket: true,
               title: true,
-              organizationId: true
+              organizationId: true,
             },
           });
           if (!doc) {
@@ -426,13 +442,13 @@ export class DocumentsRouter {
           if (storageError) {
             console.error('Failed to delete file from storage:', storageError);
           }
-          
+
           await this.logService.logAction(
-              ctx.dbUser.id,
-              doc.organizationId,
-              'Deleted Document',
-              ctx.dbUser.roles.map(r => r.name),
-              doc.title
+            ctx.dbUser.id,
+            doc.organizationId,
+            'Deleted Document',
+            ctx.dbUser.roles.map((r) => r.name),
+            doc.title,
           );
 
           return this.prisma.document.delete({
@@ -502,19 +518,19 @@ export class DocumentsRouter {
               reviewRequesterId: isReview ? user.id : null,
               tags: {
                 set: [
-                    ...input.tagIds.map(id => ({ id })),
-                    ...(input.tagsToKeep || []).map(id => ({ id }))
-                ]
+                  ...input.tagIds.map((id) => ({ id })),
+                  ...(input.tagsToKeep || []).map((id) => ({ id })),
+                ],
               },
             },
           });
 
           await this.logService.logAction(
-              user.id,
-              dbUser.organizationId,
-              `Sent Document to ${recipient.firstName} ${recipient.lastName}`,
-              dbUser.roles.map(r => r.name),
-              updatedDocument.title
+            user.id,
+            dbUser.organizationId,
+            `Sent Document to ${recipient.firstName} ${recipient.lastName}`,
+            dbUser.roles.map((r) => r.name),
+            updatedDocument.title,
           );
 
           return updatedDocument;
@@ -633,11 +649,11 @@ export class DocumentsRouter {
           const forReviewTag = await this.prisma.tag.findUnique({
             where: { name: 'for review' },
           });
-          
+
           const statusTag = await this.prisma.tag.findUnique({
-             where: { name: input.status }
+            where: { name: input.status },
           });
-          
+
           const updatedDocument = await this.prisma.document.update({
             where: { id: input.documentId },
             data: {
@@ -650,11 +666,11 @@ export class DocumentsRouter {
           });
 
           await this.logService.logAction(
-              user.id,
-              dbUser.organizationId,
-              `Reviewed Document (Status: ${input.status})`,
-              dbUser.roles.map(r => r.name),
-              updatedDocument.title
+            user.id,
+            dbUser.organizationId,
+            `Reviewed Document (Status: ${input.status})`,
+            dbUser.roles.map((r) => r.name),
+            updatedDocument.title,
           );
 
           return updatedDocument;
@@ -683,7 +699,7 @@ export class DocumentsRouter {
             },
           });
         }),
-      
+
       getGlobalTags: protectedProcedure
         .meta({
           openapi: {
@@ -790,7 +806,7 @@ export class DocumentsRouter {
             },
           });
         }),
-      
+
       getAllOrgs: protectedProcedure
         .meta({
           openapi: {
@@ -803,7 +819,7 @@ export class DocumentsRouter {
         .input(z.void())
         .output(z.any())
         .query(async () => {
-            return this.prisma.organization.findMany();
+          return this.prisma.organization.findMany();
         }),
 
       getAllUsers: protectedProcedure
@@ -820,7 +836,7 @@ export class DocumentsRouter {
         .query(async () => {
           return this.prisma.user.findMany();
         }),
-      
+
       getAllDocs: protectedProcedure
         .meta({
           openapi: {
@@ -833,16 +849,21 @@ export class DocumentsRouter {
         .input(z.void())
         .output(z.any())
         .query(async ({ ctx }) => {
-          const canManageDocuments = checkPermission(ctx.dbUser, 'canManageDocuments');
+          const canManageDocuments = checkPermission(
+            ctx.dbUser,
+            'canManageDocuments',
+          );
 
           let docs;
           if (canManageDocuments) {
-             docs = await this.prisma.document.findMany({
+            docs = await this.prisma.document.findMany({
               select: {
                 id: true,
                 title: true,
                 createdAt: true,
-                uploadedBy: { select: { firstName: true, middleName: true, lastName: true } },
+                uploadedBy: {
+                  select: { firstName: true, middleName: true, lastName: true },
+                },
                 fileType: true,
                 fileSize: true,
                 uploadedById: true,
@@ -855,30 +876,32 @@ export class DocumentsRouter {
               },
             });
           } else if (ctx.dbUser.organizationId) {
-             docs = await this.prisma.document.findMany({
-               where: {
-                 organizationId: ctx.dbUser.organizationId,
-               },
-                select: {
-                 id: true,
-                 title: true,
-                 createdAt: true,
-                 uploadedBy: { select: { firstName: true, middleName: true, lastName: true } },
-                 fileType: true,
-                 fileSize: true,
-                 uploadedById: true,
-                 organizationId: true,
-                 activeRetentionSnapshot: true,
-                 inactiveRetentionSnapshot: true,
-                 dispositionActionSnapshot: true,
-                 dispositionStatus: true,
-               },
-             });
+            docs = await this.prisma.document.findMany({
+              where: {
+                organizationId: ctx.dbUser.organizationId,
+              },
+              select: {
+                id: true,
+                title: true,
+                createdAt: true,
+                uploadedBy: {
+                  select: { firstName: true, middleName: true, lastName: true },
+                },
+                fileType: true,
+                fileSize: true,
+                uploadedById: true,
+                organizationId: true,
+                activeRetentionSnapshot: true,
+                inactiveRetentionSnapshot: true,
+                dispositionActionSnapshot: true,
+                dispositionStatus: true,
+              },
+            });
           } else {
-             return [];
+            return [];
           }
-          
-          return docs.map(doc => ({
+
+          return docs.map((doc) => ({
             ...doc,
             lifecycleStatus: computeLifecycleStatus(doc),
           }));
@@ -902,78 +925,80 @@ export class DocumentsRouter {
       executeDisposition: protectedProcedure
         .input(z.object({ documentId: z.string() }))
         .mutation(async ({ ctx, input }) => {
-           const { user, dbUser } = ctx;
-           if (!dbUser.organizationId) {
-             throw new TRPCError({
-               code: 'FORBIDDEN',
-               message: 'User does not belong to an organization.',
-             });
-           }
+          const { user, dbUser } = ctx;
+          if (!dbUser.organizationId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to an organization.',
+            });
+          }
 
-           requirePermission(dbUser, 'canManageDocuments');
-           
-           const doc = await ctx.prisma.document.findUnique({ 
-             where: { id: input.documentId }
-           });
-           
-           if (!doc) throw new TRPCError({ code: 'NOT_FOUND' });
-           
-           const status = computeLifecycleStatus(doc);
-           if (status !== 'Ready') {
-              throw new TRPCError({ 
-                code: 'BAD_REQUEST', 
-                message: 'Document is not ready for disposition' 
-              });
-           }
+          requirePermission(dbUser, 'canManageDocuments');
 
-           const action = doc.dispositionActionSnapshot;
-           
-           if (action === 'DESTROY') {
-               // Delete from S3
-               if (doc.s3Key && doc.s3Bucket) {
-                 const { error: storageError } = await this.supabase
-                   .getAdminClient()
-                   .storage.from(doc.s3Bucket)
-                   .remove([doc.s3Key]);
-                   
-                 if (storageError) {
-                    console.error('Failed to delete file from storage during disposition:', storageError);
-                    // We might still want to proceed with DB update or throw?
-                    // Proceeding ensures DB reflects intent, but file remains orphan.
-                 }
-               }
-               
-               const updatedDoc = await this.prisma.document.update({
-                 where: { id: doc.id },
-                 data: { dispositionStatus: 'DESTROYED' }
-               });
+          const doc = await ctx.prisma.document.findUnique({
+            where: { id: input.documentId },
+          });
 
-               await this.logService.logAction(
-                 user.id,
-                 dbUser.organizationId,
-                 'Executed Disposition (DESTROY)',
-                 dbUser.roles.map(r => r.name),
-                 doc.title
-               );
-               return updatedDoc;
+          if (!doc) throw new TRPCError({ code: 'NOT_FOUND' });
 
-           } else if (action === 'ARCHIVE') {
-               const updatedDoc = await this.prisma.document.update({
-                 where: { id: doc.id },
-                 data: { dispositionStatus: 'ARCHIVED' }
-               });
-               
-               await this.logService.logAction(
-                 user.id,
-                 dbUser.organizationId,
-                 'Executed Disposition (ARCHIVE)',
-                 dbUser.roles.map(r => r.name),
-                 doc.title
-               );
-               return updatedDoc;
-           }
-           
-           return doc;
+          const status = computeLifecycleStatus(doc);
+          if (status !== 'Ready') {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Document is not ready for disposition',
+            });
+          }
+
+          const action = doc.dispositionActionSnapshot;
+
+          if (action === 'DESTROY') {
+            // Delete from S3
+            if (doc.s3Key && doc.s3Bucket) {
+              const { error: storageError } = await this.supabase
+                .getAdminClient()
+                .storage.from(doc.s3Bucket)
+                .remove([doc.s3Key]);
+
+              if (storageError) {
+                console.error(
+                  'Failed to delete file from storage during disposition:',
+                  storageError,
+                );
+                // We might still want to proceed with DB update or throw?
+                // Proceeding ensures DB reflects intent, but file remains orphan.
+              }
+            }
+
+            const updatedDoc = await this.prisma.document.update({
+              where: { id: doc.id },
+              data: { dispositionStatus: 'DESTROYED' },
+            });
+
+            await this.logService.logAction(
+              user.id,
+              dbUser.organizationId,
+              'Executed Disposition (DESTROY)',
+              dbUser.roles.map((r) => r.name),
+              doc.title,
+            );
+            return updatedDoc;
+          } else if (action === 'ARCHIVE') {
+            const updatedDoc = await this.prisma.document.update({
+              where: { id: doc.id },
+              data: { dispositionStatus: 'ARCHIVED' },
+            });
+
+            await this.logService.logAction(
+              user.id,
+              dbUser.organizationId,
+              'Executed Disposition (ARCHIVE)',
+              dbUser.roles.map((r) => r.name),
+              doc.title,
+            );
+            return updatedDoc;
+          }
+
+          return doc;
         }),
     });
   }

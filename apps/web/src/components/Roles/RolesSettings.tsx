@@ -3,6 +3,7 @@ import { trpc } from "../../trpc";
 import type { AppRouterOutputs } from "../../../../api/src/trpc/trpc.router";
 import "./RolesModal.css";
 import { formatUserName } from "../../utils/user";
+import { getErrorMessage } from "../../utils/error";
 
 type User = AppRouterOutputs["user"]["getUsersWithRoles"][0];
 type Role = AppRouterOutputs["roles"]["getRoles"][0];
@@ -96,8 +97,8 @@ export const RolesSettings: React.FC = () => {
 
       refetchRoles();
       resetForm();
-    } catch (error: any) {
-      setErrorMessage(error.message || "Failed to save role.");
+    } catch (error: unknown) {
+      setErrorMessage(getErrorMessage(error, "Failed to save role."));
     }
   };
 
@@ -109,8 +110,8 @@ export const RolesSettings: React.FC = () => {
         if (selectedRole?.id === roleId) {
           resetForm();
         }
-      } catch (error: any) {
-        setErrorMessage(error.message || "Failed to delete role.");
+      } catch (error: unknown) {
+        setErrorMessage(getErrorMessage(error, "Failed to delete role."));
       }
     }
   };
@@ -137,8 +138,8 @@ export const RolesSettings: React.FC = () => {
       });
       refetchUsers();
       setSelectedUser("");
-    } catch (error: any) {
-      setErrorMessage(error.message || "Failed to assign role.");
+    } catch (error: unknown) {
+      setErrorMessage(getErrorMessage(error, "Failed to assign role."));
     }
   };
 
@@ -150,8 +151,8 @@ export const RolesSettings: React.FC = () => {
         roleId: selectedRole.id,
       });
       refetchUsers();
-    } catch (error: any) {
-      setErrorMessage(error.message || "Failed to remove role.");
+    } catch (error: unknown) {
+      setErrorMessage(getErrorMessage(error, "Failed to remove role."));
     }
   };
 

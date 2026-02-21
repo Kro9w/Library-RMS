@@ -89,6 +89,24 @@ export function OwnershipGraph() {
     staleTime: 60000,
   });
 
+  // O(1) Lookup Maps
+  const { userMap, deptMap } = useMemo(() => {
+    const uMap = new Map<string, any>();
+    const dMap = new Map<string, any>();
+
+    if (orgHierarchy) {
+      for (const c of orgHierarchy.campuses) {
+        for (const d of c.departments) {
+          dMap.set(d.id, d);
+          for (const u of d.users) {
+            uMap.set(u.id, u);
+          }
+        }
+      }
+    }
+    return { userMap: uMap, deptMap: dMap };
+  }, [orgHierarchy]);
+
   // Check if we are in "Document View" (User is root)
   const isDocumentView =
     viewStack.length > 0 && viewStack[viewStack.length - 1].type === "user";
@@ -236,14 +254,7 @@ export function OwnershipGraph() {
         });
       }
     } else if (currentRoot.type === "department") {
-      let dept: any = null;
-      for (const c of orgHierarchy.campuses) {
-        const d = c.departments.find((dep: any) => dep.id === currentRoot.id);
-        if (d) {
-          dept = d;
-          break;
-        }
-      }
+      const dept = deptMap.get(currentRoot.id);
       if (dept) {
         dept.users.forEach((u: any) => {
           const first = u.firstName;
@@ -262,17 +273,7 @@ export function OwnershipGraph() {
       }
     } else if (currentRoot.type === "user") {
       // Find user
-      let user: any = null;
-      for (const c of orgHierarchy.campuses) {
-        for (const d of c.departments) {
-          const u = d.users.find((usr: any) => usr.id === currentRoot.id);
-          if (u) {
-            user = u;
-            break;
-          }
-        }
-        if (user) break;
-      }
+      const user = userMap.get(currentRoot.id);
 
       if (user) {
         user.documents.forEach((doc: any) => {
@@ -328,17 +329,7 @@ export function OwnershipGraph() {
       nodes.push(tn);
 
       // Find full user details to get documents
-      let fullUser: any = null;
-      for (const c of orgHierarchy.campuses) {
-        for (const d of c.departments) {
-          const u = d.users.find((usr: any) => usr.id === tn.id);
-          if (u) {
-            fullUser = u;
-            break;
-          }
-        }
-        if (fullUser) break;
-      }
+      const fullUser = userMap.get(tn.id);
 
       if (fullUser && fullUser.documents) {
         fullUser.documents.forEach((doc: any) => {
@@ -398,7 +389,15 @@ export function OwnershipGraph() {
     });
 
     return { nodes, links };
-  }, [orgHierarchy, viewStack, tempNodes, bubbleNode, bubbleDocuments]);
+  }, [
+    orgHierarchy,
+    viewStack,
+    tempNodes,
+    bubbleNode,
+    bubbleDocuments,
+    userMap,
+    deptMap,
+  ]);
 
   // --- Event Handlers ---
   const handleNodeClick = (event: MouseEvent, d: Node) => {
@@ -500,23 +499,13 @@ export function OwnershipGraph() {
 
   // --- Document Details Panel Data ---
   useEffect(() => {
-    if (selectedUserNode && orgHierarchy) {
-      let foundDocs: any[] = [];
-      for (const c of orgHierarchy.campuses) {
-        for (const d of c.departments) {
-          const u = d.users.find((u: any) => u.id === selectedUserNode.id);
-          if (u) {
-            foundDocs = u.documents;
-            break;
-          }
-        }
-        if (foundDocs.length) break;
-      }
-      setUserDocuments(foundDocs);
+    if (selectedUserNode && userMap.size > 0) {
+      const u = userMap.get(selectedUserNode.id);
+      setUserDocuments(u ? u.documents : []);
     } else {
       setUserDocuments([]);
     }
-  }, [selectedUserNode, orgHierarchy]);
+  }, [selectedUserNode, userMap]);
 
   // --- D3 Simulation ---
   useEffect(() => {

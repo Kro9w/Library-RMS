@@ -1,4 +1,3 @@
-
 // apps/api/src/roles/roles.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -8,16 +7,27 @@ import { Role } from '@prisma/client';
 export class RolesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createRole(data: { name: string; canManageUsers?: boolean; canManageRoles?: boolean; canManageDocuments?: boolean, campusId: string }, userId: string): Promise<Role> {
+  async createRole(
+    data: {
+      name: string;
+      canManageUsers?: boolean;
+      canManageRoles?: boolean;
+      canManageDocuments?: boolean;
+      campusId: string;
+    },
+    userId: string,
+  ): Promise<Role> {
     const newRole = await this.prisma.role.create({ data });
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { roles: true },
     });
-    
+
     // Retrieve org id via campus
-    const campus = await this.prisma.campus.findUnique({ where: { id: data.campusId } });
+    const campus = await this.prisma.campus.findUnique({
+      where: { id: data.campusId },
+    });
 
     await this.prisma.log.create({
       data: {
@@ -38,24 +48,40 @@ export class RolesService {
 
   // Get all roles for an ORGANIZATION (traversing campuses)
   async getRolesByOrganization(organizationId: string): Promise<Role[]> {
-     return await this.prisma.role.findMany({
-         where: {
-             campus: {
-                 organizationId: organizationId
-             }
-         },
-         include: {
-             campus: true // useful for frontend to see which campus it belongs to
-         }
-     });
+    return await this.prisma.role.findMany({
+      where: {
+        campus: {
+          organizationId: organizationId,
+        },
+      },
+      include: {
+        campus: true, // useful for frontend to see which campus it belongs to
+      },
+    });
   }
 
   async getRoleById(id: string): Promise<Role | null> {
-    return await this.prisma.role.findUnique({ where: { id }, include: { campus: true } });
+    return await this.prisma.role.findUnique({
+      where: { id },
+      include: { campus: true },
+    });
   }
 
-  async updateRole(id: string, data: { name?: string; canManageUsers?: boolean; canManageRoles?: boolean; canManageDocuments?: boolean }, userId: string): Promise<Role> {
-    const updatedRole = await this.prisma.role.update({ where: { id }, data, include: { campus: true } });
+  async updateRole(
+    id: string,
+    data: {
+      name?: string;
+      canManageUsers?: boolean;
+      canManageRoles?: boolean;
+      canManageDocuments?: boolean;
+    },
+    userId: string,
+  ): Promise<Role> {
+    const updatedRole = await this.prisma.role.update({
+      where: { id },
+      data,
+      include: { campus: true },
+    });
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -76,10 +102,13 @@ export class RolesService {
 
   async deleteRole(id: string, userId: string): Promise<Role> {
     // Need to fetch campus info before deletion for logging (or assume cascade delete handles relations, but we need orgId for log)
-    const roleToDelete = await this.prisma.role.findUnique({ where: { id }, include: { campus: true } });
-    
-    if(!roleToDelete) {
-        throw new Error("Role not found");
+    const roleToDelete = await this.prisma.role.findUnique({
+      where: { id },
+      include: { campus: true },
+    });
+
+    if (!roleToDelete) {
+      throw new Error('Role not found');
     }
 
     const deletedRole = await this.prisma.role.delete({ where: { id } });
@@ -101,7 +130,11 @@ export class RolesService {
     return deletedRole;
   }
 
-  async assignRoleToUser(userId: string, roleId: string, currentUserId: string): Promise<void> {
+  async assignRoleToUser(
+    userId: string,
+    roleId: string,
+    currentUserId: string,
+  ): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -111,10 +144,15 @@ export class RolesService {
       },
     });
 
-    const role = await this.prisma.role.findUnique({ where: { id: roleId }, include: { campus: true } });
-    if (!role) throw new Error("Role not found");
+    const role = await this.prisma.role.findUnique({
+      where: { id: roleId },
+      include: { campus: true },
+    });
+    if (!role) throw new Error('Role not found');
 
-    const targetUser = await this.prisma.user.findUnique({ where: { id: userId } });
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
     const currentUser = await this.prisma.user.findUnique({
       where: { id: currentUserId },
       include: { roles: true },
@@ -130,7 +168,11 @@ export class RolesService {
     });
   }
 
-  async unassignRoleFromUser(userId: string, roleId: string, currentUserId: string): Promise<void> {
+  async unassignRoleFromUser(
+    userId: string,
+    roleId: string,
+    currentUserId: string,
+  ): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -140,10 +182,15 @@ export class RolesService {
       },
     });
 
-    const role = await this.prisma.role.findUnique({ where: { id: roleId }, include: { campus: true } });
-    if (!role) throw new Error("Role not found");
-    
-    const targetUser = await this.prisma.user.findUnique({ where: { id: userId } });
+    const role = await this.prisma.role.findUnique({
+      where: { id: roleId },
+      include: { campus: true },
+    });
+    if (!role) throw new Error('Role not found');
+
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
     const currentUser = await this.prisma.user.findUnique({
       where: { id: currentUserId },
       include: { roles: true },

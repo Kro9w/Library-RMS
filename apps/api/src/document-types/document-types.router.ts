@@ -31,7 +31,9 @@ export class DocumentTypesRouter {
             color: z.string().min(1),
             activeRetentionDuration: z.number().min(0).default(0),
             inactiveRetentionDuration: z.number().min(0).default(0),
-            dispositionAction: z.nativeEnum(DispositionAction).default(DispositionAction.ARCHIVE),
+            dispositionAction: z
+              .nativeEnum(DispositionAction)
+              .default(DispositionAction.ARCHIVE),
           }),
         )
         .mutation(async ({ ctx, input }) => {
@@ -48,10 +50,10 @@ export class DocumentTypesRouter {
           });
 
           await this.logService.logAction(
-              ctx.dbUser.id,
-              orgId,
-              `Created document type: ${newDocType.name}`,
-              ctx.dbUser.roles.map(r => r.name)
+            ctx.dbUser.id,
+            orgId,
+            `Created document type: ${newDocType.name}`,
+            ctx.dbUser.roles.map((r) => r.name),
           );
 
           return newDocType;
@@ -91,10 +93,10 @@ export class DocumentTypesRouter {
           });
 
           await this.logService.logAction(
-              ctx.dbUser.id,
-              deletedDocType.organizationId,
-              `Deleted document type: ${deletedDocType.name}`,
-              ctx.dbUser.roles.map(r => r.name)
+            ctx.dbUser.id,
+            deletedDocType.organizationId,
+            `Deleted document type: ${deletedDocType.name}`,
+            ctx.dbUser.roles.map((r) => r.name),
           );
 
           return deletedDocType;

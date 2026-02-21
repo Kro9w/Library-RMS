@@ -13,8 +13,7 @@ const Upload: React.FC = () => {
   const user = session?.user;
   const utils = trpc.useUtils();
   const createDocMutation = trpc.documents.createDocumentRecord.useMutation();
-  // 1. FIX: Get the bucket name from environment variables
-  const bucketName = import.meta.env.VITE_SUPABASE_BUCKET_NAME || "documents"; // Use env var, fallback to 'documents'
+  const bucketName = import.meta.env.VITE_SUPABASE_BUCKET_NAME;
 
   const { getRootProps, getInputProps } = useDropzone({
     onDrop: (acceptedFiles) => {
@@ -29,7 +28,6 @@ const Upload: React.FC = () => {
 
   const handleUpload = async () => {
     if (files.length === 0 || !user) return;
-    // 2. FIX: Check if bucketName is actually set
     if (!bucketName) {
       setError(
         "Supabase bucket name is not configured in environment variables.",
@@ -45,7 +43,6 @@ const Upload: React.FC = () => {
     const storageKey = `${user.id}/${uuidv4()}.${fileExtension}`;
 
     try {
-      // 3. FIX: Use the bucketName variable from env/fallback
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(bucketName) // Use the correct variable here
         .upload(storageKey, file);
@@ -54,7 +51,6 @@ const Upload: React.FC = () => {
         throw uploadError; // Supabase errors are often detailed enough
       }
 
-      // 4. FIX: Use the bucketName variable from env/fallback
       await createDocMutation.mutateAsync({
         title: file.name,
         storageKey: uploadData.path,

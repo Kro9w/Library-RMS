@@ -1,4 +1,4 @@
-import React, { useState, Suspense, useEffect } from "react";
+import React, { useState, Suspense, useEffect, useMemo } from "react";
 import { trpc } from "../trpc";
 import { Link } from "react-router-dom";
 import { ConfirmModal } from "../components/ConfirmModal";
@@ -132,14 +132,15 @@ const Documents: React.FC = () => {
   };
   // ----------------------------------------------------
 
-  const filteredDocuments = documents?.filter((doc: Document) => {
-    const matchesSearch = doc.title
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    const matchesLifecycle =
-      lifecycleFilter === "all" || doc.lifecycleStatus === "Ready";
-    return matchesSearch && matchesLifecycle;
-  });
+  const filteredDocuments = useMemo(() => {
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    return documents?.filter((doc: Document) => {
+      const matchesSearch = doc.title.toLowerCase().includes(lowerSearchTerm);
+      const matchesLifecycle =
+        lifecycleFilter === "all" || doc.lifecycleStatus === "Ready";
+      return matchesSearch && matchesLifecycle;
+    });
+  }, [documents, searchTerm, lifecycleFilter]);
 
   // Reset pagination when filters change
   useEffect(() => {

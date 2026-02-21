@@ -35,17 +35,20 @@ export class RolesRouter {
             canManageUsers: z.boolean().optional(),
             canManageRoles: z.boolean().optional(),
             canManageDocuments: z.boolean().optional(),
-          })
+          }),
         )
         .mutation(async ({ ctx, input }) => {
           requirePermission(ctx.dbUser, 'canManageRoles');
           if (!ctx.dbUser.campusId) {
-             throw new TRPCError({ code: 'BAD_REQUEST', message: 'No Campus ID found for user.' });
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'No Campus ID found for user.',
+            });
           }
 
           // Determine permissions based on level if not provided
           const defaults = this.getPermissionsForLevel(input.level);
-          
+
           return ctx.prisma.role.create({
             data: {
               name: input.name,
@@ -53,7 +56,8 @@ export class RolesRouter {
               campusId: ctx.dbUser.campusId,
               canManageUsers: input.canManageUsers ?? defaults.canManageUsers,
               canManageRoles: input.canManageRoles ?? defaults.canManageRoles,
-              canManageDocuments: input.canManageDocuments ?? defaults.canManageDocuments,
+              canManageDocuments:
+                input.canManageDocuments ?? defaults.canManageDocuments,
             },
           });
         }),
@@ -67,38 +71,46 @@ export class RolesRouter {
             canManageUsers: z.boolean().optional(),
             canManageRoles: z.boolean().optional(),
             canManageDocuments: z.boolean().optional(),
-          })
+          }),
         )
         .mutation(async ({ ctx, input }) => {
           requirePermission(ctx.dbUser, 'canManageRoles');
-          
+
           // Fetch existing role to check ownership
           const existingRole = await ctx.prisma.role.findUnique({
-             where: { id: input.id }
+            where: { id: input.id },
           });
-          
+
           if (!existingRole || existingRole.campusId !== ctx.dbUser.campusId) {
-             throw new TRPCError({ code: 'FORBIDDEN', message: 'Role not found or access denied.' });
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Role not found or access denied.',
+            });
           }
 
-          // If level changes, update permissions if they are not explicitly set? 
+          // If level changes, update permissions if they are not explicitly set?
           // Logic: "Base Authority Level" sets defaults. If user changes level, we might want to update permissions too.
-          // BUT the prompt says "level dictates default permissions". 
+          // BUT the prompt says "level dictates default permissions".
           // Let's adopt a safe approach: If level changes, only update defaults if permissions are NOT provided in input.
-          
+
           let permissionsUpdate: any = {};
           if (input.level) {
-              const defaults = this.getPermissionsForLevel(input.level);
-              permissionsUpdate = {
-                  canManageUsers: input.canManageUsers ?? defaults.canManageUsers,
-                  canManageRoles: input.canManageRoles ?? defaults.canManageRoles,
-                  canManageDocuments: input.canManageDocuments ?? defaults.canManageDocuments,
-              };
+            const defaults = this.getPermissionsForLevel(input.level);
+            permissionsUpdate = {
+              canManageUsers: input.canManageUsers ?? defaults.canManageUsers,
+              canManageRoles: input.canManageRoles ?? defaults.canManageRoles,
+              canManageDocuments:
+                input.canManageDocuments ?? defaults.canManageDocuments,
+            };
           } else {
-              // Level not changing, just update explicit permissions if present
-               if (input.canManageUsers !== undefined) permissionsUpdate['canManageUsers'] = input.canManageUsers;
-               if (input.canManageRoles !== undefined) permissionsUpdate['canManageRoles'] = input.canManageRoles;
-               if (input.canManageDocuments !== undefined) permissionsUpdate['canManageDocuments'] = input.canManageDocuments;
+            // Level not changing, just update explicit permissions if present
+            if (input.canManageUsers !== undefined)
+              permissionsUpdate['canManageUsers'] = input.canManageUsers;
+            if (input.canManageRoles !== undefined)
+              permissionsUpdate['canManageRoles'] = input.canManageRoles;
+            if (input.canManageDocuments !== undefined)
+              permissionsUpdate['canManageDocuments'] =
+                input.canManageDocuments;
           }
 
           return ctx.prisma.role.update({
@@ -106,7 +118,7 @@ export class RolesRouter {
             data: {
               name: input.name,
               level: input.level,
-              ...permissionsUpdate
+              ...permissionsUpdate,
             },
           });
         }),
@@ -115,9 +127,14 @@ export class RolesRouter {
         .input(z.string())
         .mutation(async ({ ctx, input }) => {
           requirePermission(ctx.dbUser, 'canManageRoles');
-          const role = await ctx.prisma.role.findUnique({ where: { id: input } });
-           if (!role || role.campusId !== ctx.dbUser.campusId) {
-             throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied.' });
+          const role = await ctx.prisma.role.findUnique({
+            where: { id: input },
+          });
+          if (!role || role.campusId !== ctx.dbUser.campusId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Access denied.',
+            });
           }
           return ctx.prisma.role.delete({ where: { id: input } });
         }),
@@ -238,16 +255,32 @@ export class RolesRouter {
   }
 
   private getPermissionsForLevel(level: number) {
-      switch (level) {
-          case 1: // Leader
-              return { canManageUsers: true, canManageRoles: true, canManageDocuments: true };
-          case 2: // Co-Leader
-              return { canManageUsers: false, canManageRoles: false, canManageDocuments: true };
-          case 3: // Elder
-              return { canManageUsers: false, canManageRoles: false, canManageDocuments: false };
-          case 4: // Member
-          default:
-              return { canManageUsers: false, canManageRoles: false, canManageDocuments: false };
-      }
+    switch (level) {
+      case 1: // Leader
+        return {
+          canManageUsers: true,
+          canManageRoles: true,
+          canManageDocuments: true,
+        };
+      case 2: // Co-Leader
+        return {
+          canManageUsers: false,
+          canManageRoles: false,
+          canManageDocuments: true,
+        };
+      case 3: // Elder
+        return {
+          canManageUsers: false,
+          canManageRoles: false,
+          canManageDocuments: false,
+        };
+      case 4: // Member
+      default:
+        return {
+          canManageUsers: false,
+          canManageRoles: false,
+          canManageDocuments: false,
+        };
+    }
   }
 }

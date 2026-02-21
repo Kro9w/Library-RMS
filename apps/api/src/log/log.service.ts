@@ -1,4 +1,3 @@
-
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -11,21 +10,21 @@ export class LogService {
     organizationId: string,
     action: string,
     roles: string[],
-    targetName?: string // Optional parameter for enriched logging
+    targetName?: string, // Optional parameter for enriched logging
   ) {
     try {
-        const actionString = targetName ? `${action}: '${targetName}'` : action;
+      const actionString = targetName ? `${action}: '${targetName}'` : action;
 
-        await this.prisma.log.create({
+      await this.prisma.log.create({
         data: {
-            action: actionString,
-            userId,
-            organizationId,
-            userRole: roles.join(', '),
+          action: actionString,
+          userId,
+          organizationId,
+          userRole: roles.join(', '),
         },
-        });
+      });
     } catch (e) {
-        console.error("Failed to create log entry", e);
+      console.error('Failed to create log entry', e);
     }
   }
 }
