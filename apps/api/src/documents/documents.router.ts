@@ -12,6 +12,7 @@ import { Injectable } from '@nestjs/common';
 import { TRPCError } from '@trpc/server';
 import { SupabaseService } from '../supabase/supabase.service';
 import { LogService } from '../log/log.service';
+import { env } from '../env';
 
 function computeLifecycleStatus(doc: {
   createdAt: Date;
@@ -156,6 +157,20 @@ export class DocumentsRouter {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'User does not belong to an organization.',
+            });
+          }
+
+          if (input.storageBucket !== env.SUPABASE_BUCKET_NAME) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Invalid storage bucket.',
+            });
+          }
+
+          if (!input.storageKey.startsWith(`${user.id}/`)) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Invalid storage key. Must start with your user ID.',
             });
           }
 
@@ -856,7 +871,13 @@ export class DocumentsRouter {
 
           let docs;
           if (canManageDocuments) {
+            if (!ctx.dbUser.organizationId) {
+              return [];
+            }
             docs = await this.prisma.document.findMany({
+              where: {
+                organizationId: ctx.dbUser.organizationId,
+              },
               select: {
                 id: true,
                 title: true,

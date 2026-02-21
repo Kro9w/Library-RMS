@@ -13,6 +13,7 @@ jest.mock('../src/env', () => ({
     DIRECT_URL: 'postgresql://mock:5432/mock',
     SUPABASE_URL: 'https://mock.supabase.co',
     SUPABASE_SERVICE_ROLE_KEY: 'mock-key',
+    SUPABASE_BUCKET_NAME: 'documents',
     NODE_ENV: 'test',
   },
 }));

@@ -30,7 +30,7 @@ async function bootstrap() {
   expressApp.use(
     '/trpc',
     trpcExpress.createExpressMiddleware({
-      router: router as AppRouter, // Use the router instance
+      router: router, // Use the router instance
       createContext, // Use the bound context factory method
     }),
   );
