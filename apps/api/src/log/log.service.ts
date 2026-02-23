@@ -39,7 +39,9 @@ export class LogService {
   ) {
     try {
       const data = logs.map((log) => ({
-        action: log.targetName ? `${log.action}: '${log.targetName}'` : log.action,
+        action: log.targetName
+          ? `${log.action}: '${log.targetName}'`
+          : log.action,
         userId: log.userId,
         organizationId: log.organizationId,
         userRole: log.roles.join(', '),

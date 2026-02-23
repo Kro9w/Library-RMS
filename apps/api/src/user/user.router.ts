@@ -74,17 +74,20 @@ export class UserRouter {
         .input(z.void())
         .query(async ({ ctx }) => {
           // ctx.dbUser already has organization and roles included
-          // We fetch the full user with campus and department relations
-          const user = await this.prisma.user.findUnique({
+          // Optimization: fetch only campus and department instead of full user
+          const userDetails = await this.prisma.user.findUnique({
             where: { id: ctx.dbUser.id },
-            include: {
-              organization: true,
-              roles: true,
+            select: {
               campus: true,
               department: true,
             },
           });
-          return user;
+
+          return {
+            ...ctx.dbUser,
+            campus: userDetails?.campus ?? null,
+            department: userDetails?.department ?? null,
+          };
         }),
 
       createOrganization: protectedProcedure

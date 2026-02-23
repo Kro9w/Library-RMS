@@ -7,31 +7,7 @@ import { SendDocumentModal } from "./SendDocumentModal";
 import { SendMultipleDocumentsModal } from "./SendMultipleDocumentsModal";
 import { LoadingAnimation } from "./ui/LoadingAnimation";
 import { FileIcon } from "./FileIcon";
-
-type NodeType =
-  | "organization"
-  | "campus"
-  | "department"
-  | "user"
-  | "document"
-  | "bubble";
-
-type Node = d3.SimulationNodeDatum & {
-  id: string;
-  name: string;
-  type: NodeType;
-  organizationId?: string;
-  campusId?: string;
-  departmentId?: string;
-  uploadedById?: string;
-  email?: string;
-  color?: string;
-  parentId?: string;
-  containedNodes?: Node[];
-  isContainedInBubble?: boolean;
-};
-
-type LinkData = d3.SimulationLinkDatum<Node> & { isDetached?: boolean };
+import type { Node, LinkData, NodeType, WorkerResponse } from "../types/graph";
 
 const truncateText = (name: string, type: NodeType, maxLength = 15) => {
   if (type !== "document" && name.length > maxLength) {
@@ -51,8 +27,13 @@ export function OwnershipGraph() {
   > | null>(null);
 
   const dropTargetNodeRef = useRef<Node | null>(null);
+  const workerRef = useRef<Worker | null>(null);
 
   // --- State ---
+  const [graphData, setGraphData] = useState<{
+    nodes: Node[];
+    links: LinkData[];
+  }>({ nodes: [], links: [] });
   const [viewStack, setViewStack] = useState<Node[]>([]);
   const [_expandedUserId, _setExpandedUserId] = useState<string | null>(null);
   const [selectedUserNode, setSelectedUserNode] = useState<Node | null>(null);
@@ -90,7 +71,7 @@ export function OwnershipGraph() {
   });
 
   // O(1) Lookup Maps
-  const { userMap, deptMap } = useMemo(() => {
+  const { userMap } = useMemo(() => {
     const uMap = new Map<string, any>();
     const dMap = new Map<string, any>();
 
@@ -198,206 +179,53 @@ export function OwnershipGraph() {
     setTempNodes([]);
   }, [viewStack]);
 
-  // --- Derived Graph Data ---
-  const graphData = useMemo(() => {
-    if (!orgHierarchy || viewStack.length === 0)
-      return { nodes: [], links: [] };
+  // --- Derived Graph Data via Web Worker ---
+  useEffect(() => {
+    workerRef.current = new Worker(
+      new URL("../workers/graph.worker.ts", import.meta.url),
+      { type: "module" },
+    );
 
-    const currentRoot = viewStack[viewStack.length - 1];
-    let nodes: Node[] = [];
-    const links: LinkData[] = [];
-
-    const bubbleDocIds = new Set(bubbleDocuments.map((d) => d.id));
-
-    // Mother Node (Starts at Center, Movable)
-    const rootNodeForGraph: Node = {
-      ...currentRoot,
-      vx: 0,
-      vy: 0,
-      fx: undefined,
-      fy: undefined,
-    };
-    nodes.push(rootNodeForGraph);
-
-    // Children Generator Helper
-    const addNode = (n: Node) => {
-      const angle = Math.random() * 2 * Math.PI;
-      const radius = 50 + Math.random() * 100;
-      n.x = Math.cos(angle) * radius;
-      n.y = Math.sin(angle) * radius;
-      nodes.push(n);
+    workerRef.current.onmessage = (e: MessageEvent<WorkerResponse>) => {
+      const { type, payload } = e.data;
+      if (type === "GRAPH_DATA") {
+        setGraphData(payload);
+      } else if (type === "ERROR") {
+        console.error("Worker Error:", payload);
+      }
     };
 
-    if (currentRoot.type === "organization") {
-      orgHierarchy.campuses.forEach((c: any) => {
-        addNode({
-          id: c.id,
-          name: c.name,
-          type: "campus",
-          parentId: currentRoot.id,
-          color: "var(--primary)",
-        });
-      });
-    } else if (currentRoot.type === "campus") {
-      const campus = orgHierarchy.campuses.find(
-        (c: any) => c.id === currentRoot.id,
-      );
-      if (campus) {
-        campus.departments.forEach((d: any) => {
-          addNode({
-            id: d.id,
-            name: d.name,
-            type: "department",
-            parentId: currentRoot.id,
-            color: "var(--primary)",
-          });
-        });
-      }
-    } else if (currentRoot.type === "department") {
-      const dept = deptMap.get(currentRoot.id);
-      if (dept) {
-        dept.users.forEach((u: any) => {
-          const first = u.firstName;
-          const last = u.lastName;
-          const name = !first
-            ? u.email || "User"
-            : `${first}, ${last ? last.charAt(0) : ""}.`;
-          addNode({
-            id: u.id,
-            name: name,
-            type: "user",
-            parentId: currentRoot.id,
-            email: u.email,
-          });
-        });
-      }
-    } else if (currentRoot.type === "user") {
-      // Find user
-      const user = userMap.get(currentRoot.id);
+    return () => {
+      workerRef.current?.terminate();
+    };
+  }, []);
 
-      if (user) {
-        user.documents.forEach((doc: any) => {
-          if (bubbleDocIds.has(doc.id)) return;
-          addNode({
-            id: doc.id,
-            name: doc.title,
-            type: "document",
-            parentId: user.id,
-            uploadedById: user.id,
-            color: doc.documentType?.color,
-          });
-        });
-      }
-    }
-
-    // --- Merge Bubble Node ---
-    if (bubbleNode) {
-      // Create a stable bubble node reference if possible, but graphData recreates objects
-      // We must ensure position is preserved via oldNodes map later.
-      nodes.push(bubbleNode);
-
-      // Add contained documents (they are "floating" inside bubble, not linked to anyone)
-      bubbleDocuments.forEach((doc) => {
-        // Ensure the flag is preserved/set
-        // Check if this document ID is already in nodes to prevent accidental double-add if logic changed elsewhere
-        if (!nodes.some((n) => n.id === doc.id)) {
-          // Explicitly set the flag here again to be safe
-          const bubbleDoc = { ...doc, isContainedInBubble: true };
-          // Ensure it has coordinates near bubble if not set (fallback)
-          if (
-            (typeof bubbleDoc.x === "undefined" ||
-              typeof bubbleDoc.y === "undefined") &&
-            bubbleNode.x &&
-            bubbleNode.y
-          ) {
-            bubbleDoc.x = bubbleNode.x;
-            bubbleDoc.y = bubbleNode.y;
-          }
-          nodes.push(bubbleDoc);
-        }
+  // Sync Hierarchy to Worker
+  useEffect(() => {
+    if (orgHierarchy && workerRef.current) {
+      workerRef.current.postMessage({
+        type: "INIT_DATA",
+        payload: orgHierarchy,
       });
     }
+  }, [orgHierarchy]);
 
-    // --- Merge Temp Nodes ---
-    // Filter out temp nodes that are already present in the natural view to avoid duplicates
-    const existingIds = new Set(nodes.map((n) => n.id));
-    const validTempNodes = tempNodes.filter((n) => !existingIds.has(n.id));
-
-    // Add valid temp nodes and their documents
-    validTempNodes.forEach((tn) => {
-      // Add the temp user node itself (preserving dragged position)
-      nodes.push(tn);
-
-      // Find full user details to get documents
-      const fullUser = userMap.get(tn.id);
-
-      if (fullUser && fullUser.documents) {
-        fullUser.documents.forEach((doc: any) => {
-          if (bubbleDocIds.has(doc.id)) return;
-          // Add document nodes for temp user
-          // We can initialize them near the user to avoid flying in from center
-          const angle = Math.random() * 2 * Math.PI;
-          const radius = 30; // Close to user
-          nodes.push({
-            id: doc.id,
-            name: doc.title,
-            type: "document",
-            parentId: tn.id,
-            uploadedById: fullUser.id,
-            color: doc.documentType?.color,
-            x: (tn.x || 0) + Math.cos(angle) * radius,
-            y: (tn.y || 0) + Math.sin(angle) * radius,
-          });
-
-          // Link document to temp user
-          links.push({
-            source: tn.id,
-            target: doc.id,
-            isDetached: false,
-          });
-        });
-      }
-    });
-
-    // Links for Natural Nodes
-    nodes.forEach((n) => {
-      // Only link natural nodes to root. Temp nodes float independently.
-      // Also exclude root node itself from linking to itself
-      // AND exclude documents that belong to temp users (they are already linked above)
-      const isTempNode = tempNodes.some((tn) => tn.id === n.id);
-      const isTempDoc = tempNodes.some((tn) => tn.id === n.parentId); // Doc child of temp node
-      const isBubble = n.type === "bubble";
-
-      // We check if the node is contained in the bubble using the flag we set earlier
-      // If it is, we do NOT link it to the root, so it can float freely inside the bubble
-      const isBubbleDoc = n.isContainedInBubble;
-
-      if (
-        n.id !== currentRoot.id &&
-        !isTempNode &&
-        !isTempDoc &&
-        !isBubble &&
-        !isBubbleDoc
-      ) {
-        // Apply detached state if link is dragged
-        links.push({
-          source: rootNodeForGraph.id,
-          target: n.id,
-          isDetached: false, // Initial state, physics handles dynamic detachment
-        });
-      }
-    });
-
-    return { nodes, links };
-  }, [
-    orgHierarchy,
-    viewStack,
-    tempNodes,
-    bubbleNode,
-    bubbleDocuments,
-    userMap,
-    deptMap,
-  ]);
+  // Request Graph Calculation from Worker
+  useEffect(() => {
+    if (orgHierarchy && viewStack.length > 0 && workerRef.current) {
+      workerRef.current.postMessage({
+        type: "CALCULATE_GRAPH",
+        payload: {
+          viewStack,
+          tempNodes,
+          bubbleNode,
+          bubbleDocuments,
+        },
+      });
+    } else {
+      setGraphData({ nodes: [], links: [] });
+    }
+  }, [orgHierarchy, viewStack, tempNodes, bubbleNode, bubbleDocuments]);
 
   // --- Event Handlers ---
   const handleNodeClick = (event: MouseEvent, d: Node) => {

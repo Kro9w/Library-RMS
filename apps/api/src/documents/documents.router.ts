@@ -580,6 +580,21 @@ export class DocumentsRouter {
             });
           }
 
+          // Verify ownership of all documents to prevent unauthorized access
+          const documents = await this.prisma.document.findMany({
+            where: {
+              id: { in: input.documentIds },
+              organizationId: dbUser.organizationId,
+            },
+          });
+
+          if (documents.length !== input.documentIds.length) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'One or more documents not found or access denied.',
+            });
+          }
+
           const tags = await this.prisma.tag.findMany({
             where: {
               id: {

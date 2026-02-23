@@ -65,7 +65,7 @@ describe('DocumentsRouter (e2e)', () => {
     // Manually mount tRPC middleware, similar to main.ts
     const trpcRouter = app.get(TrpcRouter);
     const router = trpcRouter.appRouter;
-    
+
     // Custom context creation to bypass auth and inject mock user
     const createContext = async () => ({
       user: mockUser,
@@ -103,7 +103,9 @@ describe('DocumentsRouter (e2e)', () => {
       .expect(200);
 
     // tRPC returns result wrapped in "result": { "data": ... }
-    expect(response.body.result.data).toEqual(expect.objectContaining({ id: 'doc-123' }));
+    expect(response.body.result.data).toEqual(
+      expect.objectContaining({ id: 'doc-123' }),
+    );
   });
 
   it('should fail with invalid bucket', async () => {
