@@ -606,16 +606,17 @@ export class DocumentsRouter {
             ),
           );
 
-          // Log actions after successful transaction
-          for (const updatedDocument of results) {
-            await this.logService.logAction(
-              user.id,
-              dbUser.organizationId,
-              `Sent Document to ${recipient.firstName} ${recipient.lastName}`,
-              dbUser.roles.map((r) => r.name),
-              updatedDocument.title,
-            );
-          }
+          // Log actions after successful transaction using batch logging
+          const userRoles = dbUser.roles.map((r) => r.name);
+          await this.logService.logActions(
+            results.map((updatedDocument) => ({
+              userId: user.id,
+              organizationId: dbUser.organizationId!,
+              action: `Sent Document to ${recipient.firstName} ${recipient.lastName}`,
+              roles: userRoles,
+              targetName: updatedDocument.title,
+            })),
+          );
 
           return results;
         }),
@@ -833,8 +834,18 @@ export class DocumentsRouter {
         })
         .input(z.void())
         .output(z.any())
-        .query(async () => {
-          return this.prisma.organization.findMany();
+        .query(async ({ ctx }) => {
+          requirePermission(ctx.dbUser, 'canManageDocuments');
+
+          if (!ctx.dbUser.organizationId) {
+            return [];
+          }
+
+          return this.prisma.organization.findMany({
+            where: {
+              id: ctx.dbUser.organizationId,
+            },
+          });
         }),
 
       getAllUsers: protectedProcedure
@@ -848,8 +859,18 @@ export class DocumentsRouter {
         })
         .input(z.void())
         .output(z.any())
-        .query(async () => {
-          return this.prisma.user.findMany();
+        .query(async ({ ctx }) => {
+          requirePermission(ctx.dbUser, 'canManageUsers');
+
+          if (!ctx.dbUser.organizationId) {
+            return [];
+          }
+
+          return this.prisma.user.findMany({
+            where: {
+              organizationId: ctx.dbUser.organizationId,
+            },
+          });
         }),
 
       getAllDocs: protectedProcedure

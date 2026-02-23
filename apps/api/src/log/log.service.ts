@@ -27,4 +27,29 @@ export class LogService {
       console.error('Failed to create log entry', e);
     }
   }
+
+  async logActions(
+    logs: {
+      userId: string;
+      organizationId: string;
+      action: string;
+      roles: string[];
+      targetName?: string;
+    }[],
+  ) {
+    try {
+      const data = logs.map((log) => ({
+        action: log.targetName ? `${log.action}: '${log.targetName}'` : log.action,
+        userId: log.userId,
+        organizationId: log.organizationId,
+        userRole: log.roles.join(', '),
+      }));
+
+      await this.prisma.log.createMany({
+        data,
+      });
+    } catch (e) {
+      console.error('Failed to create multiple log entries', e);
+    }
+  }
 }
