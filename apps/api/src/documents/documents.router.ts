@@ -502,11 +502,17 @@ export class DocumentsRouter {
           }
 
           // Verify ownership of all documents to prevent unauthorized access
+          const whereClause: any = {
+            id: input.documentId,
+            organizationId: dbUser.organizationId,
+          };
+
+          if (!checkPermission(dbUser, 'canManageDocuments')) {
+            whereClause.uploadedById = user.id;
+          }
+
           const documents = await this.prisma.document.findMany({
-            where: {
-              id: input.documentId,
-              organizationId: dbUser.organizationId,
-            },
+            where: whereClause,
           });
 
           if (documents.length === 0) {
@@ -581,11 +587,17 @@ export class DocumentsRouter {
           }
 
           // Verify ownership of all documents to prevent unauthorized access
+          const whereClause: any = {
+            id: { in: input.documentIds },
+            organizationId: dbUser.organizationId,
+          };
+
+          if (!checkPermission(dbUser, 'canManageDocuments')) {
+            whereClause.uploadedById = user.id;
+          }
+
           const documents = await this.prisma.document.findMany({
-            where: {
-              id: { in: input.documentIds },
-              organizationId: dbUser.organizationId,
-            },
+            where: whereClause,
           });
 
           if (documents.length !== input.documentIds.length) {
@@ -803,7 +815,51 @@ export class DocumentsRouter {
         })
         .input(z.string())
         .output(z.any())
-        .mutation(async ({ input: tagId }) => {
+        .mutation(async ({ ctx, input: tagId }) => {
+          const { dbUser } = ctx;
+
+          if (!dbUser.organizationId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to an organization.',
+            });
+          }
+
+          requirePermission(dbUser, 'canManageDocuments');
+
+          const tag = await this.prisma.tag.findUnique({
+            where: { id: tagId },
+          });
+
+          if (!tag) {
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Tag not found.',
+            });
+          }
+
+          if (tag.isGlobal || tag.isLocked) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Cannot delete global or locked tags.',
+            });
+          }
+
+          // Check if tag is used by other organizations
+          const isUsedByOthers = await this.prisma.document.findFirst({
+            where: {
+              tags: { some: { id: tagId } },
+              organizationId: { not: dbUser.organizationId },
+            },
+          });
+
+          if (isUsedByOthers) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Tag is in use by other organizations.',
+            });
+          }
+          
           return this.prisma.tag.delete({
             where: { id: tagId },
           });
