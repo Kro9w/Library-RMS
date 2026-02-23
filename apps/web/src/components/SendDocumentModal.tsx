@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { trpc } from "../trpc";
 import { Modal } from "bootstrap";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
@@ -35,9 +35,31 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
       enabled: !!recipientId,
     },
   );
-  const recipientRoles = usersWithRoles?.find(
-    (u) => u.id === recipientId,
-  )?.roles;
+  const recipientRoles = useMemo(
+    () => usersWithRoles?.find((u) => u.id === recipientId)?.roles,
+    [usersWithRoles, recipientId],
+  );
+
+  const filteredUsers = useMemo(
+    () =>
+      users?.filter(
+        (user: { organizationId: string | null }) =>
+          user.organizationId === selectedOrgId,
+      ),
+    [users, selectedOrgId],
+  );
+
+  const filteredGlobalTags = useMemo(() => {
+    const canManageDocuments = recipientRoles?.some(
+      (role) => role.canManageDocuments,
+    );
+    return globalTags?.filter((tag: Tag) => {
+      if (canManageDocuments) {
+        return ["for review", "communication"].includes(tag.name);
+      }
+      return tag.name === "communication";
+    });
+  }, [globalTags, recipientRoles]);
 
   const sendDocumentMutation = trpc.documents.sendDocument.useMutation();
 
@@ -158,16 +180,11 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
                   disabled={!selectedOrgId}
                 >
                   <option value="">Select a recipient...</option>
-                  {users
-                    ?.filter(
-                      (user: { organizationId: string | null }) =>
-                        user.organizationId === selectedOrgId,
-                    )
-                    .map((user: User) => (
-                      <option key={user.id} value={user.id}>
-                        {formatUserName(user)}
-                      </option>
-                    ))}
+                  {filteredUsers?.map((user: User) => (
+                    <option key={user.id} value={user.id}>
+                      {formatUserName(user)}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -197,35 +214,24 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
             <div className="mb-3">
               <label className="form-label">Global Tags</label>
               <div className="d-flex flex-wrap">
-                {globalTags
-                  ?.filter((tag: Tag) => {
-                    const canManageDocuments = recipientRoles?.some(
-                      (role) => role.canManageDocuments,
-                    );
-
-                    if (canManageDocuments) {
-                      return ["for review", "communication"].includes(tag.name);
-                    }
-                    return tag.name === "communication";
-                  })
-                  .map((tag: Tag) => (
-                    <div key={tag.id} className="form-check me-3">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        value={tag.id}
-                        id={`global-tag-${tag.id}`}
-                        checked={selectedTags.has(tag.id)}
-                        onChange={() => handleTagChange(tag.id)}
-                      />
-                      <label
-                        className="form-check-label"
-                        htmlFor={`global-tag-${tag.id}`}
-                      >
-                        {tag.name}
-                      </label>
-                    </div>
-                  ))}
+                {filteredGlobalTags?.map((tag: Tag) => (
+                  <div key={tag.id} className="form-check me-3">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      value={tag.id}
+                      id={`global-tag-${tag.id}`}
+                      checked={selectedTags.has(tag.id)}
+                      onChange={() => handleTagChange(tag.id)}
+                    />
+                    <label
+                      className="form-check-label"
+                      htmlFor={`global-tag-${tag.id}`}
+                    >
+                      {tag.name}
+                    </label>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

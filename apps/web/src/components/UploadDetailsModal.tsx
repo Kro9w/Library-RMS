@@ -28,25 +28,35 @@ export function UploadDetailsModal({
   availableTags = [],
 }: UploadDetailsModalProps) {
   const [fileDetailsMap, setFileDetailsMap] = useState<Map<File, FileDetails>>(
-    new Map()
+    new Map(),
   );
   const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     setShowSuccess(false);
-    const newMap = new Map<File, FileDetails>();
-    files.forEach((file) => {
-      const existingDetails = Array.from(fileDetailsMap.keys()).find(
-        (f) => f.name === file.name
-      );
-      if (existingDetails) {
-        newMap.set(file, fileDetailsMap.get(existingDetails)!);
-      } else {
-        // 2. UPDATED: Default details no longer include 'docType'
-        newMap.set(file, { tags: [] });
+
+    setFileDetailsMap((prevFileDetailsMap) => {
+      const newMap = new Map<File, FileDetails>();
+
+      // Optimize lookup by creating a name -> details map
+      const existingDetailsByName = new Map<string, FileDetails>();
+      for (const [existingFile, details] of prevFileDetailsMap.entries()) {
+        if (!existingDetailsByName.has(existingFile.name)) {
+          existingDetailsByName.set(existingFile.name, details);
+        }
       }
+
+      files.forEach((file) => {
+        const existingDetails = existingDetailsByName.get(file.name);
+        if (existingDetails) {
+          newMap.set(file, existingDetails);
+        } else {
+          // 2. UPDATED: Default details no longer include 'docType'
+          newMap.set(file, { tags: [] });
+        }
+      });
+      return newMap;
     });
-    setFileDetailsMap(newMap);
   }, [files, isOpen]);
 
   if (!isOpen) {

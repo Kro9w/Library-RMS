@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { performance } from "perf_hooks";
 import type { Node, LinkData } from "../../src/types/graph";
 
@@ -75,7 +76,7 @@ function computeGraphData(
       return { nodes: [], links: [] };
 
     const currentRoot = viewStack[viewStack.length - 1];
-    let nodes: Node[] = [];
+    const nodes: Node[] = [];
     const links: LinkData[] = [];
 
     const bubbleDocIds = new Set(bubbleDocuments.map((d) => d.id));
@@ -161,10 +162,6 @@ function computeGraphData(
       }
     }
     
-    // ... (rest of logic: bubble, temp nodes, links) ...
-    // Since this is a benchmark for "graph calculation", the most expensive part is iterating users/docs.
-    // I will include the rest of the logic for completeness.
-    
     // --- Merge Bubble Node ---
     if (bubbleNode) {
       nodes.push(bubbleNode);
@@ -218,9 +215,11 @@ function computeGraphData(
       }
     });
 
+    const tempNodeIds = new Set(tempNodes.map((tn) => tn.id));
+
     nodes.forEach((n) => {
-      const isTempNode = tempNodes.some((tn) => tn.id === n.id);
-      const isTempDoc = tempNodes.some((tn) => tn.id === n.parentId); 
+      const isTempNode = tempNodeIds.has(n.id);
+      const isTempDoc = n.parentId ? tempNodeIds.has(n.parentId) : false;
       const isBubble = n.type === "bubble";
       const isBubbleDoc = n.isContainedInBubble;
 
@@ -296,3 +295,23 @@ for(let i=0; i<ITERATIONS; i++) {
 }
 const endCalcUser = performance.now();
 console.log(`Avg Calculation Time (User View): ${((endCalcUser - startCalcUser)/ITERATIONS).toFixed(4)}ms`);
+
+// Test Case 3: Department View with Temp Nodes (Simulating O(N*M))
+console.log(`Benchmarking Graph Calculation (Dept View - ${MODERATE_SIZE.users} users + 1000 Temp Nodes)...`);
+const tempNodes: Node[] = [];
+for(let i=0; i<1000; i++) {
+    tempNodes.push({
+        id: `temp-node-${i}`,
+        name: `Temp Node ${i}`,
+        type: "document",
+        parentId: "some-parent"
+    });
+}
+
+const startCalcTemp = performance.now();
+for(let i=0; i<ITERATIONS; i++) {
+    computeGraphData(hierarchy, userMap, deptMap, viewStackDept, tempNodes);
+}
+const endCalcTemp = performance.now();
+console.log(`Avg Calculation Time (Dept View + Temp Nodes): ${((endCalcTemp - startCalcTemp)/ITERATIONS).toFixed(4)}ms`);
+console.log(`Total Time for ${ITERATIONS} runs: ${(endCalcTemp - startCalcTemp).toFixed(2)}ms`);

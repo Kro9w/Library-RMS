@@ -71,7 +71,7 @@ export class TrpcRouter {
           recentUploadsCount,
           recentFiles,
           totalUsers,
-          allDocumentTags,
+          topTagsRaw,
           docsByTypeRaw,
         ] = await Promise.all([
           ctx.prisma.document.count({ where: { organizationId: orgId } }),
@@ -94,10 +94,16 @@ export class TrpcRouter {
             },
           }),
           ctx.prisma.user.count({ where: { organizationId: orgId } }),
-          ctx.prisma.document.findMany({
-            where: { organizationId: orgId },
-            select: { tags: true },
-          }),
+          ctx.prisma.$queryRaw<{ name: string; count: bigint }[]>`
+            SELECT t.name, COUNT(dt."B")::int as count
+            FROM "_DocumentToTag" dt
+            JOIN "Document" d ON dt."A" = d.id
+            JOIN "Tag" t ON dt."B" = t.id
+            WHERE d."organizationId" = ${orgId}
+            GROUP BY t.name
+            ORDER BY count DESC
+            LIMIT 5;
+          `,
           docsByTypeQuery,
         ]);
 
@@ -106,16 +112,10 @@ export class TrpcRouter {
           value: group._count.fileType,
         }));
 
-        const tagCountMap: Record<string, number> = {};
-        for (const doc of allDocumentTags) {
-          for (const tag of doc.tags) {
-            tagCountMap[tag.name] = (tagCountMap[tag.name] || 0) + 1;
-          }
-        }
-        const topTags = Object.entries(tagCountMap)
-          .sort(([, a], [, b]) => b - a)
-          .slice(0, 5)
-          .map(([name, count]) => ({ name, count }));
+        const topTags = topTagsRaw.map((tag) => ({
+          name: tag.name,
+          count: Number(tag.count),
+        }));
 
         return {
           totalDocuments,

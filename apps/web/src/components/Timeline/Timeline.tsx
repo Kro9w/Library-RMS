@@ -19,19 +19,24 @@ interface TimelineProps {
   logs: Log[];
 }
 
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
+
 const Timeline: React.FC<TimelineProps> = ({ logs }) => {
-  const groupedLogs = logs.reduce((acc, log) => {
-    const date = new Date(log.createdAt).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-    if (!acc[date]) {
-      acc[date] = [];
-    }
-    acc[date].push(log);
-    return acc;
-  }, {} as Record<string, Log[]>);
+  const groupedLogs = logs.reduce(
+    (acc, log) => {
+      const date = dateFormatter.format(new Date(log.createdAt));
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+      acc[date].push(log);
+      return acc;
+    },
+    {} as Record<string, Log[]>,
+  );
 
   return (
     <div className="timeline-container">

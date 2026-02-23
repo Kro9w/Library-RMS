@@ -232,14 +232,14 @@ export class UserRouter {
             });
           }
 
-          // Check if this user is the FIRST user in this Campus
-          // Actually, we need to check if ANY user is in this Campus.
-          const existingUserInCampus = await this.prisma.user.findFirst({
-            where: { campusId: input.campusId },
+          // Check if this user is the FIRST user in this Department
+          // Actually, we need to check if ANY user is in this Department.
+          const existingUserInDepartment = await this.prisma.user.findFirst({
+            where: { departmentId: input.departmentId },
           });
-          const isFirstUserInCampus = !existingUserInCampus;
+          const isFirstUserInDepartment = !existingUserInDepartment;
 
-          const roleName = isFirstUserInCampus ? 'Admin' : 'User';
+          const roleName = isFirstUserInDepartment ? 'Admin' : 'User';
 
           // Find or Create Role for this Campus
           let roleRecord = await this.prisma.role.findFirst({
@@ -332,12 +332,12 @@ export class UserRouter {
             });
           }
 
-          // Role Logic (First in Campus?)
-          const existingUserInCampus = await ctx.prisma.user.findFirst({
-            where: { campusId: input.campusId },
+          // Role Logic (First in Department?)
+          const existingUserInDepartment = await ctx.prisma.user.findFirst({
+            where: { departmentId: dept.id },
           });
-          const isFirstUserInCampus = !existingUserInCampus;
-          const roleName = isFirstUserInCampus ? 'Admin' : 'User';
+          const isFirstUserInDepartment = !existingUserInDepartment;
+          const roleName = isFirstUserInDepartment ? 'Admin' : 'User';
 
           let roleRecord = await ctx.prisma.role.findFirst({
             where: { campusId: input.campusId, name: roleName },

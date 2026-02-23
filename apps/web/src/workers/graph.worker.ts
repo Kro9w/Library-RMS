@@ -173,9 +173,11 @@ function computeGraphData(
       }
     });
 
+    const tempNodeIds = new Set(tempNodes.map((tn) => tn.id));
+
     nodes.forEach((n) => {
-      const isTempNode = tempNodes.some((tn) => tn.id === n.id);
-      const isTempDoc = tempNodes.some((tn) => tn.id === n.parentId); 
+      const isTempNode = tempNodeIds.has(n.id);
+      const isTempDoc = n.parentId ? tempNodeIds.has(n.parentId) : false;
       const isBubble = n.type === "bubble";
       const isBubbleDoc = n.isContainedInBubble;
 
