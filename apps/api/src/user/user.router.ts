@@ -6,6 +6,7 @@ import {
   router,
   supabaseAuthedProcedure,
   requirePermission,
+  checkPermission,
 } from '../trpc/trpc';
 import { PrismaService } from '../prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
@@ -577,6 +578,8 @@ export class UserRouter {
           });
         }
 
+        const canSeeAllDocs = checkPermission(ctx.dbUser, 'canManageDocuments');
+
         const org = await ctx.prisma.organization.findUnique({
           where: { id: ctx.dbUser.organizationId },
           include: {
@@ -587,6 +590,10 @@ export class UserRouter {
                     users: {
                       include: {
                         documents: {
+                          // If user cannot manage documents, they can only see their own
+                          where: canSeeAllDocs
+                            ? undefined
+                            : { uploadedById: ctx.dbUser.id },
                           select: {
                             id: true,
                             title: true,
