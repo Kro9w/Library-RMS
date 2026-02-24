@@ -1,4 +1,4 @@
-import React, { useState, Suspense, useEffect, useMemo } from "react";
+import React, { useState, Suspense, useEffect } from "react";
 import { trpc } from "../trpc";
 import { Link } from "react-router-dom";
 import { ConfirmModal } from "../components/ConfirmModal";
@@ -33,7 +33,7 @@ const TagsManagementModal = React.lazy(() =>
 );
 
 // This type now correctly includes fileType and fileSize
-type Document = AppRouterOutputs["documents"]["getAll"][0];
+type Document = AppRouterOutputs["documents"]["getAll"]["documents"][0];
 
 // ------------------------------
 
@@ -65,37 +65,49 @@ const Documents: React.FC = () => {
     isUploader,
   } = usePermissions();
 
-  const { data: documents, isLoading } = trpc.documents.getAll.useQuery(
-    {
-      filter,
-    },
-    {
-      staleTime: 30000, // Keep data fresh for 30 seconds to avoid rapid refetches
-    },
-  );
+  const queryInput = {
+    filter,
+    page: currentPage,
+    perPage: itemsPerPage,
+    search: searchTerm || undefined,
+    lifecycleFilter: lifecycleFilter === "all" ? undefined : lifecycleFilter,
+  };
+
+  const { data, isLoading } = trpc.documents.getAll.useQuery(queryInput, {
+    staleTime: 30000,
+    placeholderData: (previousData) => previousData, // Keep previous data while fetching new page
+  });
+
+  const documents = data?.documents || [];
+  const totalItems = data?.totalCount || 0;
 
   const deleteMutation = trpc.documents.deleteDocument.useMutation({
     onMutate: async ({ id }) => {
       // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-      await utils.documents.getAll.cancel({ filter });
+      await utils.documents.getAll.cancel(queryInput);
 
       // Snapshot the previous value
-      const previousDocuments = utils.documents.getAll.getData({ filter });
+      const previousData = utils.documents.getAll.getData(queryInput);
 
       // Optimistically update to the new value
-      if (previousDocuments) {
-        utils.documents.getAll.setData({ filter }, (old: any[]) => {
-          return old ? old.filter((doc) => doc.id !== id) : [];
+      if (previousData) {
+        utils.documents.getAll.setData(queryInput, (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            documents: old.documents.filter((doc) => doc.id !== id),
+            totalCount: old.totalCount - 1,
+          };
         });
       }
 
       // Return a context object with the snapshotted value
-      return { previousDocuments };
+      return { previousData };
     },
     onError: (_err, _newTodo, context) => {
       // If the mutation fails, use the context returned from onMutate to roll back
-      if (context?.previousDocuments) {
-        utils.documents.getAll.setData({ filter }, context.previousDocuments);
+      if (context?.previousData) {
+        utils.documents.getAll.setData(queryInput, context.previousData);
       }
     },
     onSettled: () => {
@@ -106,6 +118,7 @@ const Documents: React.FC = () => {
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reset to page 1 on search
   };
 
   const handleDeleteClick = (doc: Document) => {
@@ -132,33 +145,23 @@ const Documents: React.FC = () => {
   };
   // ----------------------------------------------------
 
-  const filteredDocuments = useMemo(() => {
-    const lowerSearchTerm = searchTerm.toLowerCase();
-    return documents?.filter((doc: Document) => {
-      const matchesSearch = doc.title.toLowerCase().includes(lowerSearchTerm);
-      const matchesLifecycle =
-        lifecycleFilter === "all" || doc.lifecycleStatus === "Ready";
-      return matchesSearch && matchesLifecycle;
-    });
-  }, [documents, searchTerm, lifecycleFilter]);
-
-  // Reset pagination when filters change
+  // Reset pagination when filters change (lifecycle or filter)
   useEffect(() => {
     setCurrentPage(1);
-  }, [filter, lifecycleFilter, searchTerm]);
+  }, [filter, lifecycleFilter]);
 
   // Pagination Logic
-  const totalItems = filteredDocuments?.length || 0;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentDocuments = filteredDocuments?.slice(startIndex, endIndex);
 
-  if (isLoading) return <LoadingAnimation />;
+  // We are now fetching paginated data, so documents IS the current page
+  const currentDocuments = documents;
+
+  if (isLoading && !data) return <LoadingAnimation />;
 
   return (
     <div className="container mt-4">
-      {/* --- 1. ADD THIS WRAPPER --- */}
       <div className="page-header">
         <h2>Documents</h2>
         <div className="header-actions">
@@ -201,7 +204,6 @@ const Documents: React.FC = () => {
           </button>
         </div>
       </div>
-      {/* --------------------------- */}
 
       <div className="card">
         <div className="card-body">

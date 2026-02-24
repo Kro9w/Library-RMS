@@ -12,20 +12,20 @@ export class LogService {
     roles: string[],
     targetName?: string, // Optional parameter for enriched logging
   ) {
-    try {
-      const actionString = targetName ? `${action}: '${targetName}'` : action;
+    const actionString = targetName ? `${action}: '${targetName}'` : action;
 
-      await this.prisma.log.create({
+    this.prisma.log
+      .create({
         data: {
           action: actionString,
           userId,
           organizationId,
           userRole: roles.join(', '),
         },
+      })
+      .catch((e) => {
+        console.error('Failed to create log entry', e);
       });
-    } catch (e) {
-      console.error('Failed to create log entry', e);
-    }
   }
 
   async logActions(
@@ -37,21 +37,21 @@ export class LogService {
       targetName?: string;
     }[],
   ) {
-    try {
-      const data = logs.map((log) => ({
-        action: log.targetName
-          ? `${log.action}: '${log.targetName}'`
-          : log.action,
-        userId: log.userId,
-        organizationId: log.organizationId,
-        userRole: log.roles.join(', '),
-      }));
+    const data = logs.map((log) => ({
+      action: log.targetName
+        ? `${log.action}: '${log.targetName}'`
+        : log.action,
+      userId: log.userId,
+      organizationId: log.organizationId,
+      userRole: log.roles.join(', '),
+    }));
 
-      await this.prisma.log.createMany({
+    this.prisma.log
+      .createMany({
         data,
+      })
+      .catch((e) => {
+        console.error('Failed to create multiple log entries', e);
       });
-    } catch (e) {
-      console.error('Failed to create multiple log entries', e);
-    }
   }
 }

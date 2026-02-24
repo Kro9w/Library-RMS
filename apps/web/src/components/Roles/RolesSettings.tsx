@@ -338,7 +338,7 @@ export const RolesSettings: React.FC = () => {
                     {users
                       ?.filter(
                         (u: User) =>
-                          !u.roles.some((r: any) => r.id === selectedRole.id),
+                          !u.roles.some((r: Role) => r.id === selectedRole.id),
                       )
                       .map((u: User) => (
                         <option key={u.id} value={u.id}>
@@ -365,7 +365,7 @@ export const RolesSettings: React.FC = () => {
                 <ul className="list-group">
                   {users
                     ?.filter((u: User) =>
-                      u.roles.some((r: any) => r.id === selectedRole.id),
+                      u.roles.some((r: Role) => r.id === selectedRole.id),
                     )
                     .map((u: User) => (
                       <li
@@ -387,7 +387,7 @@ export const RolesSettings: React.FC = () => {
                       </li>
                     ))}
                   {users?.filter((u: User) =>
-                    u.roles.some((r: any) => r.id === selectedRole.id),
+                    u.roles.some((r: Role) => r.id === selectedRole.id),
                   ).length === 0 && (
                     <li className="list-group-item text-muted">
                       No users assigned to this role.

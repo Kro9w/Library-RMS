@@ -1,4 +1,3 @@
-
 import { Test, TestingModule } from '@nestjs/testing';
 import { UserRouter } from '../src/user/user.router';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -19,7 +18,7 @@ jest.mock('../src/env', () => ({
 describe('UserRouter Performance', () => {
   let userRouter: UserRouter;
   let prismaService: PrismaService;
-  
+
   const mockDbUser = {
     id: 'user-123',
     organizationId: 'org-123',
@@ -60,10 +59,11 @@ describe('UserRouter Performance', () => {
 
   it('getMe should fetch only missing relations', async () => {
     // Setup mocks
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
     (prismaService.user.findUnique as jest.Mock)
       .mockResolvedValueOnce(mockDbUser) // For isAuthed middleware
-      .mockResolvedValueOnce({ // For getMe query - only returns requested fields
+      .mockResolvedValueOnce({
+        // For getMe query - only returns requested fields
         campus: mockFullUser.campus,
         department: mockFullUser.department,
       });
@@ -72,22 +72,22 @@ describe('UserRouter Performance', () => {
     const caller = router.createCaller({
       user: { id: 'user-123' },
       prisma: prismaService,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     const result = await caller.getMe();
 
     // The result should still be the full user object (composed)
     expect(result).toEqual(mockFullUser);
-    
+
     // Check call counts
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(prismaService.user.findUnique).toHaveBeenCalledTimes(2);
 
     // Check arguments of the second call (the one in getMe)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
-    const secondCallArgs = (prismaService.user.findUnique as jest.Mock).mock.calls[1][0];
-    
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const secondCallArgs = (prismaService.user.findUnique as jest.Mock).mock
+      .calls[1][0];
+
     // Expect optimized query
     expect(secondCallArgs).toEqual({
       where: { id: 'user-123' },

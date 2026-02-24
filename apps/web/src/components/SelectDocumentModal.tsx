@@ -13,10 +13,13 @@ export const SelectDocumentModal: React.FC<SelectDocumentModalProps> = ({
   onClose,
   onSelect,
 }) => {
-  // Refactored to use the unified getAll procedure
-  const { data: documents } = trpc.documents.getAll.useQuery({
+  // Refactored to use the unified getAll procedure with pagination
+  const { data } = trpc.documents.getAll.useQuery({
     filter: "mine",
+    perPage: 50,
   });
+
+  const documents = data?.documents;
 
   const modalRef = useRef<HTMLDivElement>(null);
   const modalInstanceRef = useRef<Modal | null>(null);
@@ -72,6 +75,11 @@ export const SelectDocumentModal: React.FC<SelectDocumentModalProps> = ({
                   {doc.title}
                 </li>
               ))}
+              {!documents || documents.length === 0 ? (
+                <li className="list-group-item text-muted">
+                  No documents found.
+                </li>
+              ) : null}
             </ul>
           </div>
         </div>

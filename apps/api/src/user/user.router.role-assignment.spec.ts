@@ -1,4 +1,3 @@
-
 import { Test, TestingModule } from '@nestjs/testing';
 import { UserRouter } from './user.router';
 import { PrismaService } from '../prisma/prisma.service';
@@ -62,14 +61,18 @@ describe('UserRouter - createDepartmentAndJoin', () => {
 
   it('Scenario 3 (Fixed): User is NOT first in Campus, but IS first in Department. Should become Admin', async () => {
     const trpcRouter = router.createRouter();
-    
+
     // Mock Data
     const mockUser = { id: 'user-current', organizationId: null, roles: [] }; // User joining
-    const mockCampus = { id: 'campus-1', organizationId: 'org-1', name: 'Main Campus' };
+    const mockCampus = {
+      id: 'campus-1',
+      organizationId: 'org-1',
+      name: 'Main Campus',
+    };
     const mockDept = { id: 'dept-new', name: 'New Dept', campusId: 'campus-1' };
-    
+
     // Setup Mocks
-    
+
     // Mock for Auth Middleware
     prismaService.user.findUnique.mockResolvedValue(mockUser);
 
@@ -92,8 +95,10 @@ describe('UserRouter - createDepartmentAndJoin', () => {
 
     // Mock Roles
     prismaService.role.findFirst.mockImplementation((args: any) => {
-      if (args.where.name === 'User') return Promise.resolve({ id: 'role-user-id', name: 'User' });
-      if (args.where.name === 'Admin') return Promise.resolve({ id: 'role-admin-id', name: 'Admin' });
+      if (args.where.name === 'User')
+        return Promise.resolve({ id: 'role-user-id', name: 'User' });
+      if (args.where.name === 'Admin')
+        return Promise.resolve({ id: 'role-admin-id', name: 'Admin' });
       return Promise.resolve(null);
     });
 
@@ -120,12 +125,21 @@ describe('UserRouter - createDepartmentAndJoin', () => {
 
   it('Scenario 4 (Fixed): User joins existing empty Department in populated Campus. Should become Admin', async () => {
     const trpcRouter = router.createRouter();
-    
+
     const mockUser = { id: 'user-current', organizationId: null, roles: [] };
-    const mockCampus = { id: 'campus-1', organizationId: 'org-1', name: 'Main Campus' };
-    const mockDept = { id: 'dept-existing', name: 'Existing Dept', campusId: 'campus-1', campus: mockCampus };
+    const mockCampus = {
+      id: 'campus-1',
+      organizationId: 'org-1',
+      name: 'Main Campus',
+    };
+    const mockDept = {
+      id: 'dept-existing',
+      name: 'Existing Dept',
+      campusId: 'campus-1',
+      campus: mockCampus,
+    };
     const mockOrg = { id: 'org-1', name: 'Org 1' };
-    
+
     prismaService.user.findUnique.mockResolvedValue(mockUser);
     prismaService.organization.findUnique.mockResolvedValue(mockOrg);
     prismaService.department.findUnique.mockResolvedValue(mockDept);
@@ -146,8 +160,10 @@ describe('UserRouter - createDepartmentAndJoin', () => {
 
     // Mock Roles
     prismaService.role.findFirst.mockImplementation((args: any) => {
-      if (args.where.name === 'User') return Promise.resolve({ id: 'role-user-id', name: 'User' });
-      if (args.where.name === 'Admin') return Promise.resolve({ id: 'role-admin-id', name: 'Admin' });
+      if (args.where.name === 'User')
+        return Promise.resolve({ id: 'role-user-id', name: 'User' });
+      if (args.where.name === 'Admin')
+        return Promise.resolve({ id: 'role-admin-id', name: 'Admin' });
       return Promise.resolve(null);
     });
 

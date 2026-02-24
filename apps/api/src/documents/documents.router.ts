@@ -1,6 +1,7 @@
 // apps/api/src/documents/documents.router.ts
 
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import {
   protectedProcedure,
   router,
@@ -313,9 +314,18 @@ export class DocumentsRouter {
         .input(
           z.object({
             filter: z.enum(['mine', 'all']).optional(),
+            page: z.number().min(1).default(1),
+            perPage: z.number().min(1).max(100).default(25),
+            search: z.string().optional(),
+            lifecycleFilter: z.enum(['all', 'ready']).optional(),
           }),
         )
-        .output(z.any())
+        .output(
+          z.object({
+            documents: z.array(z.any()),
+            totalCount: z.number(),
+          }),
+        )
         .query(async ({ ctx, input }) => {
           if (!ctx.dbUser.organizationId) {
             throw new TRPCError({
@@ -324,50 +334,139 @@ export class DocumentsRouter {
             });
           }
 
-          const whereClause: any = {
+          const { page, perPage, search, filter, lifecycleFilter } = input;
+          const skip = (page - 1) * perPage;
+
+          // Helper to map and compute status
+          const mapDocuments = (documents: any[]) => {
+            return documents.map((doc) => ({
+              ...doc,
+              tags: doc.tags.map((t: any) => ({ tag: t })),
+              lifecycleStatus: computeLifecycleStatus(doc),
+            }));
+          };
+
+          const selectFields = {
+            id: true,
+            title: true,
+            createdAt: true,
+            uploadedBy: {
+              select: { firstName: true, middleName: true, lastName: true },
+            },
+            fileType: true,
+            fileSize: true,
+            uploadedById: true,
+            organizationId: true,
+            documentType: true,
+            controlNumber: true,
+            tags: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            activeRetentionSnapshot: true,
+            inactiveRetentionSnapshot: true,
+            dispositionActionSnapshot: true,
+            dispositionStatus: true,
+          };
+
+          // Optimized path for "Ready for Disposition"
+          if (lifecycleFilter === 'ready') {
+            const orgId = ctx.dbUser.organizationId;
+            const userId = ctx.user.id;
+            const searchPattern = search ? `%${search}%` : null;
+
+            // Base query for IDs and count
+            // We use Prisma.sql to compose the query safely
+            const conditions: Prisma.Sql[] = [
+              Prisma.sql`d."organizationId" = ${orgId}`,
+              Prisma.sql`d."dispositionStatus" NOT IN ('DESTROYED', 'ARCHIVED')`,
+              Prisma.sql`d."activeRetentionSnapshot" IS NOT NULL`,
+              // Check active retention
+              Prisma.sql`(d."createdAt" + make_interval(years => d."activeRetentionSnapshot")) <= NOW()`,
+              // Check inactive retention
+              Prisma.sql`(d."createdAt" + make_interval(years => d."activeRetentionSnapshot") + make_interval(years => COALESCE(d."inactiveRetentionSnapshot", 0))) <= NOW()`,
+            ];
+
+            if (filter === 'mine') {
+              conditions.push(Prisma.sql`d."uploadedById" = ${userId}`);
+            }
+
+            if (searchPattern) {
+              conditions.push(Prisma.sql`d."title" ILIKE ${searchPattern}`);
+            }
+
+            const whereSql =
+              conditions.length > 0
+                ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`
+                : Prisma.empty;
+
+            // Fetch IDs and total count in one go using window function
+            const rawQuery = Prisma.sql`
+              SELECT d.id, COUNT(*) OVER() as full_count
+              FROM "Document" d
+              ${whereSql}
+              ORDER BY d."createdAt" DESC
+              LIMIT ${perPage} OFFSET ${skip}
+            `;
+
+            const rawResults = await this.prisma.$queryRaw<any[]>(rawQuery);
+            const totalCount =
+              rawResults.length > 0 ? Number(rawResults[0].full_count) : 0;
+
+            if (rawResults.length === 0) {
+              return { documents: [], totalCount: 0 };
+            }
+
+            const ids = rawResults.map((r) => r.id);
+
+            const documents = await this.prisma.document.findMany({
+              where: { id: { in: ids } },
+              select: selectFields,
+              orderBy: { createdAt: 'desc' },
+            });
+
+            // Re-order documents to match the raw query order (if needed, but sort by created desc is same)
+            return {
+              documents: mapDocuments(documents),
+              totalCount,
+            };
+          }
+
+          // Standard path (No lifecycle filter or 'all')
+          const whereClause: Prisma.DocumentWhereInput = {
             organizationId: ctx.dbUser.organizationId,
           };
 
-          if (input.filter === 'mine') {
+          if (filter === 'mine') {
             whereClause.uploadedById = ctx.user.id;
           }
 
-          const docs = await this.prisma.document.findMany({
-            where: whereClause,
-            select: {
-              id: true,
-              title: true,
-              createdAt: true,
-              uploadedBy: {
-                select: { firstName: true, middleName: true, lastName: true },
-              },
-              fileType: true,
-              fileSize: true,
-              uploadedById: true,
-              organizationId: true,
-              documentType: true,
-              controlNumber: true,
-              tags: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-              activeRetentionSnapshot: true,
-              inactiveRetentionSnapshot: true,
-              dispositionActionSnapshot: true,
-              dispositionStatus: true,
-            },
-            orderBy: {
-              createdAt: 'desc',
-            },
-          });
+          if (search) {
+            whereClause.title = {
+              contains: search,
+              mode: 'insensitive',
+            };
+          }
 
-          return docs.map((doc) => ({
-            ...doc,
-            tags: doc.tags.map((t) => ({ tag: t })),
-            lifecycleStatus: computeLifecycleStatus(doc),
-          }));
+          const [totalCount, documents] = await this.prisma.$transaction([
+            this.prisma.document.count({ where: whereClause }),
+            this.prisma.document.findMany({
+              where: whereClause,
+              select: selectFields,
+              orderBy: {
+                createdAt: 'desc',
+              },
+              skip,
+              take: perPage,
+            }),
+          ]);
+
+          return {
+            documents: mapDocuments(documents),
+            totalCount,
+          };
         }),
 
       // Preserved for backward compatibility but implemented efficiently
@@ -859,7 +958,7 @@ export class DocumentsRouter {
               message: 'Tag is in use by other organizations.',
             });
           }
-          
+
           return this.prisma.tag.delete({
             where: { id: tagId },
           });

@@ -17,10 +17,14 @@ export function Users() {
     error,
   } = trpc.user.getUsersWithRoles.useQuery();
   const { data: currentUser } = trpc.user.getMe.useQuery();
-  // Refactored to use getAll({ filter: 'mine' })
-  const { data: myDocuments } = trpc.documents.getAll.useQuery({
+
+  // Refactored to use getAll with pagination
+  const { data } = trpc.documents.getAll.useQuery({
     filter: "mine",
+    perPage: 100, // Fetch up to 100 documents for the dropdown
   });
+  const myDocuments = data?.documents;
+
   const removeUserFromOrg = trpc.user.removeUserFromOrg.useMutation();
   const transferDocument = trpc.documents.sendDocument.useMutation();
   const utils = trpc.useUtils();
