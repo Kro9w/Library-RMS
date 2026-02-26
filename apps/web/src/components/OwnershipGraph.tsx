@@ -1,5 +1,6 @@
 // apps/web/src/components/OwnershipGraph.tsx
 import { useRef, useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import * as d3 from "d3";
 import { trpc } from "../trpc";
 import "./OwnershipGraph.css";
@@ -17,6 +18,8 @@ const truncateText = (name: string, type: NodeType, maxLength = 15) => {
 };
 
 export function OwnershipGraph() {
+  const [searchParams] = useSearchParams();
+  const targetUserIdParam = searchParams.get("targetUserId");
   const svgRef = useRef<SVGSVGElement>(null);
   const simulationRef = useRef<d3.Simulation<Node, LinkData> | null>(null);
   const gRef = useRef<d3.Selection<
@@ -92,7 +95,7 @@ export function OwnershipGraph() {
   const isDocumentView =
     viewStack.length > 0 && viewStack[viewStack.length - 1].type === "user";
 
-  // --- 1. INITIAL STATE: Start at User's Campus & Expand Accordion ---
+  // --- 1. INITIAL STATE: Start at User's Campus or Target User ---
   useEffect(() => {
     if (orgHierarchy && currentUserData && viewStack.length === 0) {
       // Construct Org Node
@@ -105,9 +108,63 @@ export function OwnershipGraph() {
 
       let initialStack: Node[] = [orgNode];
       const initialExpanded = new Set<string>();
+      let targetFound = false;
 
-      // Find User's Campus
-      if (currentUserData.campusId) {
+      // Priority: Check Target User Param first
+      if (targetUserIdParam) {
+        for (const campus of orgHierarchy.campuses) {
+          for (const dept of campus.departments) {
+            const user = dept.users.find(
+              (u: any) => u.id === targetUserIdParam,
+            );
+            if (user) {
+              targetFound = true;
+
+              initialExpanded.add(campus.id);
+              initialExpanded.add(dept.id);
+
+              const campusNode: Node = {
+                id: campus.id,
+                name: campus.name,
+                type: "campus",
+                parentId: orgHierarchy.id,
+                color: "var(--primary)",
+              };
+              initialStack.push(campusNode);
+
+              const deptNode: Node = {
+                id: dept.id,
+                name: dept.name,
+                type: "department",
+                parentId: campus.id,
+                color: "var(--primary)",
+              };
+              initialStack.push(deptNode);
+
+              const name = !user.firstName
+                ? user.email || "User"
+                : `${user.firstName}, ${user.lastName ? user.lastName.charAt(0) : ""}.`;
+
+              const userNode: Node = {
+                id: user.id,
+                name: name,
+                type: "user",
+                parentId: dept.id,
+                email: user.email,
+              };
+              initialStack.push(userNode);
+              setSelectedUserNode(userNode);
+              setActiveTab("details");
+              setIsBinderOpen(true);
+              break;
+            }
+          }
+          if (targetFound) break;
+        }
+      }
+
+      // Find User's Campus (Fallback if no target or target not found)
+      if (!targetFound && currentUserData.campusId) {
         initialExpanded.add(currentUserData.campusId);
 
         const campus = orgHierarchy.campuses.find(
@@ -171,7 +228,7 @@ export function OwnershipGraph() {
       setViewStack(initialStack);
       setExpandedIds(initialExpanded);
     }
-  }, [orgHierarchy, currentUserData]);
+  }, [orgHierarchy, currentUserData, targetUserIdParam]);
 
   // --- Reset Temp Nodes on View Change ---
   useEffect(() => {

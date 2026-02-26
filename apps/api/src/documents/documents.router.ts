@@ -120,6 +120,16 @@ export class DocumentsRouter {
                   firstName: true,
                   middleName: true,
                   lastName: true,
+                  department: {
+                    select: {
+                      name: true,
+                      campus: {
+                        select: {
+                          name: true,
+                        },
+                      },
+                    },
+                  },
                 },
               },
               reviewRequester: {

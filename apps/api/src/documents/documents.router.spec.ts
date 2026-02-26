@@ -23,6 +23,7 @@ describe('DocumentsRouter', () => {
   const mockPrismaService = {
     document: {
       findMany: jest.fn(),
+      findFirst: jest.fn(),
     },
     user: {
       findUnique: jest.fn(),
@@ -134,6 +135,88 @@ describe('DocumentsRouter', () => {
 
       expect(result).toEqual([]);
       expect(mockPrismaService.document.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getById', () => {
+    it('should fetch document with nested location data', async () => {
+      const trpcRouter = router.createRouter();
+      const dbUser = {
+        id: 'user-1',
+        organizationId: 'org-1',
+        roles: [{ canManageDocuments: true, name: 'Admin' }],
+      };
+
+      // Mock user context
+      (mockPrismaService.user.findUnique as jest.Mock).mockResolvedValue(dbUser);
+
+      const caller = trpcRouter.createCaller({
+        user: { id: 'user-1' },
+        prisma: mockPrismaService as any,
+      });
+
+      const mockDoc = {
+        id: 'doc-1',
+        title: 'Test Doc',
+        createdAt: new Date(),
+        activeRetentionSnapshot: null,
+        inactiveRetentionSnapshot: null,
+        dispositionStatus: null,
+        uploadedBy: {
+          firstName: 'John',
+          lastName: 'Doe',
+          department: {
+            name: 'HR',
+            campus: {
+              name: 'Main Campus',
+            },
+          },
+        },
+      };
+
+      (mockPrismaService.document.findFirst as jest.Mock).mockResolvedValue(mockDoc);
+
+      const result = await caller.getById({ id: 'doc-1' });
+
+      expect(mockPrismaService.document.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            id: 'doc-1',
+            organizationId: 'org-1',
+          },
+          select: expect.objectContaining({
+            uploadedBy: {
+              select: {
+                firstName: true,
+                middleName: true,
+                lastName: true,
+                department: {
+                  select: {
+                    name: true,
+                    campus: {
+                      select: {
+                        name: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          }),
+        }),
+      );
+
+      expect(result).toMatchObject({
+        title: 'Test Doc',
+        uploadedBy: {
+          department: {
+            name: 'HR',
+            campus: {
+              name: 'Main Campus',
+            },
+          },
+        },
+      });
     });
   });
 });

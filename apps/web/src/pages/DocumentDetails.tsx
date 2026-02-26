@@ -1,6 +1,6 @@
 // apps/web/src/pages/DocumentDetails.tsx
 import React from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { trpc } from "../trpc";
 import "./DocumentDetails.css";
 import { LoadingAnimation } from "../components/ui/LoadingAnimation";
@@ -30,7 +30,7 @@ const SUPPORTED_PREVIEW_TYPES = {
 // replaces the old buggy version.
 const formatFileTypeDisplay = (
   fileType: string | null | undefined,
-  title: string
+  title: string,
 ): string => {
   // First, try to read the explicit fileType (for new documents)
   if (fileType) {
@@ -67,6 +67,7 @@ const formatFileTypeDisplay = (
 
 export const DocumentDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
   const { data: user } = trpc.user.getMe.useQuery();
   const utils = trpc.useUtils();
@@ -88,7 +89,7 @@ export const DocumentDetails: React.FC = () => {
         enabled: !!id,
         staleTime: 1000 * 60 * 4, // Cache URL for 4 minutes
         refetchOnWindowFocus: false,
-      }
+      },
     );
 
   if (isLoadingDoc || isLoadingUrl) {
@@ -131,7 +132,7 @@ export const DocumentDetails: React.FC = () => {
       url = urlData.signedUrl;
     } else if (previewType === "office") {
       url = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(
-        urlData.signedUrl
+        urlData.signedUrl,
       )}`;
     }
     return url;
@@ -143,15 +144,6 @@ export const DocumentDetails: React.FC = () => {
     <div className="container mt-4">
       <div className="page-header">
         <h2>{document.title}</h2>
-        <a
-          href={urlData.signedUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn btn-primary"
-        >
-          <i className="bi bi-download me-2"></i>
-          Download
-        </a>
       </div>
 
       <div className="document-details-container">
@@ -179,6 +171,11 @@ export const DocumentDetails: React.FC = () => {
               <h4 className="card-title">Details</h4>
               <hr />
               <p>
+                <strong>Location:</strong>{" "}
+                {document.uploadedBy.department?.campus?.name} /{" "}
+                {document.uploadedBy.department?.name}
+              </p>
+              <p>
                 <strong>Owner:</strong> {formatUserName(document.uploadedBy)}
               </p>
               <p>
@@ -192,6 +189,27 @@ export const DocumentDetails: React.FC = () => {
                 {formatFileTypeDisplay(document.fileType, document.title)}
               </p>
 
+              <div className="d-grid gap-2 mt-4 mb-3">
+                <a
+                  href={urlData.signedUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-primary"
+                >
+                  <i className="bi bi-download me-2"></i>
+                  Download
+                </a>
+                <button
+                  className="btn btn-outline-secondary"
+                  onClick={() =>
+                    navigate(`/graph?targetUserId=${document.uploadedById}`)
+                  }
+                >
+                  <i className="bi bi-diagram-3 me-2"></i>
+                  Show in Graph
+                </button>
+              </div>
+
               <hr />
               <p>
                 <strong>Lifecycle:</strong>{" "}
@@ -200,12 +218,12 @@ export const DocumentDetails: React.FC = () => {
                     document.lifecycleStatus === "Active"
                       ? "bg-success"
                       : document.lifecycleStatus === "Inactive"
-                      ? "bg-secondary"
-                      : document.lifecycleStatus === "Ready"
-                      ? "bg-warning text-dark"
-                      : document.lifecycleStatus === "Archived"
-                      ? "bg-info"
-                      : "bg-danger"
+                        ? "bg-secondary"
+                        : document.lifecycleStatus === "Ready"
+                          ? "bg-warning text-dark"
+                          : document.lifecycleStatus === "Archived"
+                            ? "bg-info"
+                            : "bg-danger"
                   }`}
                 >
                   {document.lifecycleStatus}
@@ -229,7 +247,7 @@ export const DocumentDetails: React.FC = () => {
                         onClick={() => {
                           if (
                             window.confirm(
-                              "Are you sure you want to execute disposition? This action is irreversible."
+                              "Are you sure you want to execute disposition? This action is irreversible.",
                             )
                           ) {
                             executeDispositionMutation.mutate({

@@ -1,8 +1,5 @@
 /* apps/web/src/pages/DocumentDetails.css */
 
-/* We import this in Documents.tsx, so the style is available */
-/* .document-table-card { ... } */
-
 .document-details-container {
   display: flex;
   flex-direction: row;
@@ -20,6 +17,18 @@
   min-width: 280px;
 }
 
+.document-table-card {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e9ecef;
+  overflow: hidden;
+}
+
+.document-table-card .card-body {
+  padding: 1.5rem;
+}
+
 /* Style for the new iframe */
 .pdf-preview-iframe {
   width: 100%;
@@ -30,7 +39,6 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   border: 1px solid #e9ecef;
 }
-
 
 /* Style for the fallback message */
 .preview-fallback {
