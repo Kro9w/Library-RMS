@@ -36,25 +36,8 @@ export type WorkerMessage =
         bubbleNode: Node | null;
         bubbleDocuments: Node[];
       };
-    }
-  | { type: "START_SIMULATION" }
-  | { type: "STOP_SIMULATION" }
-  | { type: "UPDATE_DIMENSIONS"; payload: { width: number; height: number } }
-  | {
-      type: "DRAG_START";
-      payload: { id: string; x: number; y: number; active?: boolean };
-    }
-  | { type: "DRAG"; payload: { id: string; x: number; y: number } }
-  | { type: "DRAG_END"; payload: { id: string } }
-  | {
-      type: "SET_MAGNET";
-      payload: { sourceId: string; targetId: string | null };
     };
 
 export type WorkerResponse =
   | { type: "GRAPH_DATA"; payload: { nodes: Node[]; links: LinkData[] } }
-  | {
-      type: "TICK";
-      payload: { nodes: Float32Array; links: LinkData[] };
-    }
   | { type: "ERROR"; payload: string };

@@ -144,6 +144,10 @@ model Document {
   inactiveRetentionSnapshot Int?
   dispositionActionSnapshot DispositionAction?
   dispositionStatus         String? // 'ARCHIVED', 'DESTROYED'
+
+  @@index([organizationId])
+  @@index([uploadedById])
+  @@index([documentTypeId])
 }
 
 model Tag {
