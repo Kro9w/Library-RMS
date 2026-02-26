@@ -89,6 +89,16 @@ describe('DocumentsRouter (e2e)', () => {
     await app.close();
   });
 
+  it('should return storage configuration', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/trpc/documents.getStorageConfig')
+      .expect(200);
+
+    expect(response.body.result.data).toEqual({
+      bucketName: 'documents',
+    });
+  });
+
   it('should allow upload with valid storage key and bucket', async () => {
     // Expected storageKey prefix: user-123/
     const input = {

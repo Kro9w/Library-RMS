@@ -26,7 +26,9 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
   const utils = trpc.useUtils();
   const createDocMutation = trpc.documents.createDocumentRecord.useMutation();
   const { data: documentTypes } = trpc.documentTypes.getAll.useQuery();
-  const bucketName = import.meta.env.VITE_SUPABASE_BUCKET_NAME || "documents";
+  const { data: storageConfig, isLoading: isConfigLoading } =
+    trpc.documents.getStorageConfig.useQuery();
+  const bucketName = storageConfig?.bucketName;
 
   const modalRef = useRef<HTMLDivElement>(null);
   const modalInstanceRef = useRef<Modal | null>(null);
@@ -91,9 +93,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
   const handleUpload = async () => {
     if (files.length === 0 || !user) return;
     if (!bucketName) {
-      setError(
-        "Supabase bucket name is not configured in environment variables.",
-      );
+      setError("Supabase bucket name is not configured.");
       return;
     }
 
@@ -221,7 +221,12 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
               type="button"
               className="btn btn-primary"
               onClick={handleUpload}
-              disabled={uploading || files.length === 0}
+              disabled={
+                uploading ||
+                files.length === 0 ||
+                isConfigLoading ||
+                !bucketName
+              }
             >
               {uploading ? "Uploading..." : "Upload"}
             </button>

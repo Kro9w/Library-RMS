@@ -63,6 +63,24 @@ export class DocumentsRouter {
   createRouter() {
     return router({
       /**
+       * Get storage configuration (bucket name)
+       */
+      getStorageConfig: protectedProcedure
+        .meta({
+          openapi: {
+            method: 'GET',
+            path: '/documents.getStorageConfig',
+            tags: ['documents', 'config'],
+            summary: 'Get storage configuration',
+          },
+        })
+        .input(z.void())
+        .output(z.object({ bucketName: z.string() }))
+        .query(() => {
+          return { bucketName: env.SUPABASE_BUCKET_NAME };
+        }),
+
+      /**
        * Gets a single document by its ID.
        */
       getById: protectedProcedure

@@ -9,6 +9,7 @@ import { formatUserName } from "../utils/user";
 import { StatusBadge } from "../components/StatusBadge";
 import { FileIcon } from "../components/FileIcon";
 import { usePermissions } from "../hooks/usePermissions";
+import { usePagination } from "../hooks/usePagination";
 
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
@@ -152,6 +153,7 @@ const Documents: React.FC = () => {
 
   // Pagination Logic
   const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const paginationRange = usePagination(currentPage, totalPages);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
 
@@ -344,60 +346,25 @@ const Documents: React.FC = () => {
                       Previous
                     </button>
                   </li>
-                  {(() => {
-                    const pages: (number | string)[] = [];
-                    const maxVisiblePages = 7;
-
-                    if (totalPages <= maxVisiblePages) {
-                      for (let i = 1; i <= totalPages; i++) {
-                        pages.push(i);
-                      }
-                    } else {
-                      if (currentPage <= 4) {
-                        pages.push(1, 2, 3, 4, 5, "...", totalPages);
-                      } else if (currentPage >= totalPages - 3) {
-                        pages.push(
-                          1,
-                          "...",
-                          totalPages - 4,
-                          totalPages - 3,
-                          totalPages - 2,
-                          totalPages - 1,
-                          totalPages,
-                        );
-                      } else {
-                        pages.push(
-                          1,
-                          "...",
-                          currentPage - 1,
-                          currentPage,
-                          currentPage + 1,
-                          "...",
-                          totalPages,
-                        );
-                      }
-                    }
-
-                    return pages.map((page, index) => (
-                      <li
-                        key={index}
-                        className={`page-item ${
-                          currentPage === page ? "active" : ""
-                        } ${page === "..." ? "disabled" : ""}`}
-                      >
-                        {page === "..." ? (
-                          <span className="page-link">...</span>
-                        ) : (
-                          <button
-                            className="page-link"
-                            onClick={() => setCurrentPage(page as number)}
-                          >
-                            {page}
-                          </button>
-                        )}
-                      </li>
-                    ));
-                  })()}
+                  {paginationRange.map((page, index) => (
+                    <li
+                      key={index}
+                      className={`page-item ${
+                        currentPage === page ? "active" : ""
+                      } ${page === "..." ? "disabled" : ""}`}
+                    >
+                      {page === "..." ? (
+                        <span className="page-link">...</span>
+                      ) : (
+                        <button
+                          className="page-link"
+                          onClick={() => setCurrentPage(page as number)}
+                        >
+                          {page}
+                        </button>
+                      )}
+                    </li>
+                  ))}
                   <li
                     className={`page-item ${
                       currentPage === totalPages ? "disabled" : ""
