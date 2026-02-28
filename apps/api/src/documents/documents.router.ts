@@ -343,7 +343,7 @@ export class DocumentsRouter {
           z.object({
             filter: z.enum(['mine', 'all']).optional(),
             page: z.number().min(1).default(1),
-            perPage: z.number().min(1).max(100).default(25),
+            perPage: z.number().min(1).max(1000).default(25),
             search: z.string().optional(),
             lifecycleFilter: z.enum(['all', 'ready']).optional(),
           }),

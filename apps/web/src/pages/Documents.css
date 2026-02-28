@@ -109,3 +109,50 @@
   border-radius: 50%;
   margin-right: 6px;
 }
+
+/* Accordion & Layout Styles */
+.section-title {
+  margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.accordion-item {
+  border: 1px solid var(--card-border);
+  border-radius: 0.75rem;
+  background-color: var(--card-background);
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.accordion-header {
+  background: var(--card-background);
+  border: none;
+  padding: 1rem 1.25rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.accordion-header:hover {
+  background-color: var(--hover-bg);
+}
+
+.accordion-header i {
+  transition: transform 0.3s ease;
+  color: var(--text-muted);
+}
+
+.accordion-content {
+  border-top: 1px solid var(--card-border);
+  background-color: var(--background);
+}
+
+.accordion-content .document-table-card {
+  margin-top: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
