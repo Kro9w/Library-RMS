@@ -237,13 +237,11 @@ export const RolesSettings: React.FC = () => {
                 onChange={(e) => handleLevelChange(parseInt(e.target.value))}
               >
                 <option value={1}>
-                  Level 1 - Leader (Head/Director) - Full Admin
+                  Level 1 - (Head/Director) - Full Admin
                 </option>
-                <option value={2}>
-                  Level 2 - Co-Leader (Manager/Coordinator)
-                </option>
-                <option value={3}>Level 3 - Elder (Senior Officer)</option>
-                <option value={4}>Level 4 - Member (Staff/Faculty)</option>
+                <option value={2}>Level 2 - (Manager/Coordinator)</option>
+                <option value={3}>Level 3 - (Senior Officer)</option>
+                <option value={4}>Level 4 - (Staff/Faculty)</option>
               </select>
               <small className="text-muted">
                 Sets default permissions and hierarchy position.

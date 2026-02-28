@@ -589,6 +589,7 @@ export class UserRouter {
                   include: {
                     users: {
                       include: {
+                        roles: true,
                         documents: {
                           // If user cannot manage documents, they can only see their own
                           where: canSeeAllDocs

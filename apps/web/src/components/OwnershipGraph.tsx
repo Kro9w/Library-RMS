@@ -45,6 +45,7 @@ export function OwnershipGraph() {
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [targetUserId, setTargetUserId] = useState<string | null>(null);
+  const [targetUser, setTargetUser] = useState<any | null>(null);
 
   // Bubble State
   const [bubbleNode, setBubbleNode] = useState<Node | null>(null);
@@ -73,10 +74,15 @@ export function OwnershipGraph() {
     staleTime: 60000,
   });
 
+  // Prefetch tags
+  const { data: tags } = trpc.documents.getTags.useQuery();
+  const { data: globalTags } = trpc.documents.getGlobalTags.useQuery();
+
   // O(1) Lookup Maps
-  const { userMap } = useMemo(() => {
+  const { userMap, allUsers } = useMemo(() => {
     const uMap = new Map<string, any>();
     const dMap = new Map<string, any>();
+    const users: any[] = [];
 
     if (orgHierarchy) {
       for (const c of orgHierarchy.campuses) {
@@ -84,11 +90,16 @@ export function OwnershipGraph() {
           dMap.set(d.id, d);
           for (const u of d.users) {
             uMap.set(u.id, u);
+            users.push({ ...u, organizationId: orgHierarchy.id }); // Ensure orgId is present
           }
         }
       }
     }
-    return { userMap: uMap, deptMap: dMap };
+    return { userMap: uMap, deptMap: dMap, allUsers: users };
+  }, [orgHierarchy]);
+
+  const allCampuses = useMemo(() => {
+    return orgHierarchy?.campuses || [];
   }, [orgHierarchy]);
 
   // Check if we are in "Document View" (User is root)
@@ -1065,7 +1076,9 @@ export function OwnershipGraph() {
 
       // Case A: Bubble Dropped onto User
       if (d.type === "bubble" && target && target.type === "user") {
+        const fullUser = userMap.get(target.id);
         setMultiSendTargetId(target.id);
+        setTargetUser(fullUser || null);
         setIsMultiSendModalOpen(true);
       }
 
@@ -1095,8 +1108,10 @@ export function OwnershipGraph() {
         d.type === "document" &&
         (d as any)._activeLink
       ) {
+        const fullUser = userMap.get(target.id);
         setSelectedDocId(d.id);
         setTargetUserId(target.id);
+        setTargetUser(fullUser || null);
         setIsSendModalOpen(true);
       }
 
@@ -1419,6 +1434,7 @@ export function OwnershipGraph() {
           onClose={() => {
             setIsSendModalOpen(false);
             setTargetUserId(null);
+            setTargetUser(null);
             const l = graphData.links.find(
               (lnk) =>
                 (lnk.source as Node).id === selectedDocId ||
@@ -1447,6 +1463,11 @@ export function OwnershipGraph() {
           }}
           documentId={selectedDocId}
           initialRecipientId={targetUserId}
+          users={allUsers}
+          campuses={allCampuses}
+          tags={tags}
+          globalTags={globalTags}
+          recipient={targetUser}
         />
       )}
 
@@ -1457,9 +1478,14 @@ export function OwnershipGraph() {
           onClose={() => {
             setIsMultiSendModalOpen(false);
             setMultiSendTargetId(null);
+            setTargetUser(null);
           }}
           documentIds={bubbleDocuments.map((d) => d.id)}
           initialRecipientId={multiSendTargetId}
+          users={allUsers}
+          campuses={allCampuses}
+          tags={tags}
+          globalTags={globalTags}
           onSuccess={() => {
             // Success: clear bubble
             setBubbleDocuments([]);

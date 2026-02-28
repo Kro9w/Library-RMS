@@ -315,3 +315,18 @@ for(let i=0; i<ITERATIONS; i++) {
 const endCalcTemp = performance.now();
 console.log(`Avg Calculation Time (Dept View + Temp Nodes): ${((endCalcTemp - startCalcTemp)/ITERATIONS).toFixed(4)}ms`);
 console.log(`Total Time for ${ITERATIONS} runs: ${(endCalcTemp - startCalcTemp).toFixed(2)}ms`);
+
+
+// Test Case 4: Modal Data Prep (Target Lookup Time)
+console.log(`Benchmarking Drop Target Lookup (User Map O(1))...`);
+const targetId = `user-3-5-25`; // Random user in middle of structure
+
+const startLookup = performance.now();
+const LOOKUP_ITERATIONS = 10000;
+for(let i=0; i<LOOKUP_ITERATIONS; i++) {
+    const user = userMap.get(targetId);
+    if (!user) throw new Error("User not found in benchmark");
+}
+const endLookup = performance.now();
+console.log(`Avg Lookup Time: ${((endLookup - startLookup)/LOOKUP_ITERATIONS).toFixed(6)}ms`);
+console.log(`Total Time for ${LOOKUP_ITERATIONS} lookups: ${(endLookup - startLookup).toFixed(3)}ms`);
