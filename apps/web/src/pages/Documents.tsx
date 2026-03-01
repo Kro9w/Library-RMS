@@ -9,6 +9,8 @@ import { formatUserName } from "../utils/user";
 import { StatusBadge } from "../components/StatusBadge";
 import { FileIcon } from "../components/FileIcon";
 import { usePermissions } from "../hooks/usePermissions";
+import { DocumentTypePill } from "./DocumentTypePill";
+import { DocumentActionsMenu } from "./DocumentActionsMenu";
 
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
@@ -274,24 +276,7 @@ const Documents: React.FC = () => {
                           fileType={doc.fileType}
                           fileName={doc.title}
                         />
-                        {doc.documentType && (
-                          <span
-                            className="doc-type-pill"
-                            style={
-                              {
-                                "--type-color": `#${doc.documentType.color}`,
-                                backgroundColor: `#${doc.documentType.color}33`,
-                                color: `#${doc.documentType.color}`,
-                              } as React.CSSProperties
-                            }
-                          >
-                            <span
-                              className="doc-type-pill-dot"
-                              style={{ backgroundColor: `var(--type-color)` }}
-                            />
-                            {doc.documentType.name}
-                          </span>
-                        )}
+                        <DocumentTypePill documentType={doc.documentType} />
                       </div>
                     </td>
                     <td>
@@ -313,52 +298,14 @@ const Documents: React.FC = () => {
                       {new Date(doc.createdAt).toLocaleDateString()}
                     </td>
                     <td>
-                      <div className="d-flex gap-2">
-                        {isUploader(doc.uploadedById) ? (
-                          <>
-                            <button
-                              onClick={() => handleSendClick(doc)}
-                              className="btn btn-icon btn-send"
-                              title="Send Document"
-                            >
-                              <i className="bi bi-send"></i>
-                            </button>
-
-                            {canManageDocuments &&
-                              doc.tags.some(
-                                (tag: { tag: { name: string } }) =>
-                                  tag.tag.name === "for review",
-                              ) && (
-                                <button
-                                  onClick={() => handleReviewClick(doc)}
-                                  className="btn btn-icon btn-review"
-                                  title="Review Document"
-                                >
-                                  <i className="bi bi-eye"></i>
-                                </button>
-                              )}
-                            <button
-                              onClick={() => handleDeleteClick(doc)}
-                              className="btn btn-icon btn-delete"
-                              title="Delete Document"
-                            >
-                              <i className="bi bi-trash"></i>
-                            </button>
-                          </>
-                        ) : (
-                          <span
-                            title="No access"
-                            className="no-access-icon text-muted"
-                          >
-                            <i
-                              className="bi bi-lock-fill"
-                              style={{
-                                fontSize: "1.1rem",
-                              }}
-                            ></i>
-                          </span>
-                        )}
-                      </div>
+                      <DocumentActionsMenu
+                        doc={doc}
+                        isUploader={isUploader}
+                        canManageDocuments={canManageDocuments}
+                        onSendClick={handleSendClick}
+                        onReviewClick={handleReviewClick}
+                        onDeleteClick={handleDeleteClick}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -435,26 +382,9 @@ const Documents: React.FC = () => {
                                         fileType={doc.fileType}
                                         fileName={doc.title}
                                       />
-                                      {doc.documentType && (
-                                        <span
-                                          className="doc-type-pill"
-                                          style={
-                                            {
-                                              "--type-color": `#${doc.documentType.color}`,
-                                              backgroundColor: `#${doc.documentType.color}33`,
-                                              color: `#${doc.documentType.color}`,
-                                            } as React.CSSProperties
-                                          }
-                                        >
-                                          <span
-                                            className="doc-type-pill-dot"
-                                            style={{
-                                              backgroundColor: `var(--type-color)`,
-                                            }}
-                                          />
-                                          {doc.documentType.name}
-                                        </span>
-                                      )}
+                                      <DocumentTypePill
+                                        documentType={doc.documentType}
+                                      />
                                     </div>
                                   </td>
                                   <td>
@@ -480,58 +410,14 @@ const Documents: React.FC = () => {
                                     ).toLocaleDateString()}
                                   </td>
                                   <td>
-                                    <div className="d-flex gap-2">
-                                      {isUploader(doc.uploadedById) ? (
-                                        <>
-                                          <button
-                                            onClick={() => handleSendClick(doc)}
-                                            className="btn btn-icon btn-send"
-                                            title="Send Document"
-                                          >
-                                            <i className="bi bi-send"></i>
-                                          </button>
-
-                                          {canManageDocuments &&
-                                            doc.tags.some(
-                                              (tag: {
-                                                tag: { name: string };
-                                              }) =>
-                                                tag.tag.name === "for review",
-                                            ) && (
-                                              <button
-                                                onClick={() =>
-                                                  handleReviewClick(doc)
-                                                }
-                                                className="btn btn-icon btn-review"
-                                                title="Review Document"
-                                              >
-                                                <i className="bi bi-eye"></i>
-                                              </button>
-                                            )}
-                                          <button
-                                            onClick={() =>
-                                              handleDeleteClick(doc)
-                                            }
-                                            className="btn btn-icon btn-delete"
-                                            title="Delete Document"
-                                          >
-                                            <i className="bi bi-trash"></i>
-                                          </button>
-                                        </>
-                                      ) : (
-                                        <span
-                                          title="No access"
-                                          className="no-access-icon text-muted"
-                                        >
-                                          <i
-                                            className="bi bi-lock-fill"
-                                            style={{
-                                              fontSize: "1.1rem",
-                                            }}
-                                          ></i>
-                                        </span>
-                                      )}
-                                    </div>
+                                    <DocumentActionsMenu
+                                      doc={doc}
+                                      isUploader={isUploader}
+                                      canManageDocuments={canManageDocuments}
+                                      onSendClick={handleSendClick}
+                                      onReviewClick={handleReviewClick}
+                                      onDeleteClick={handleDeleteClick}
+                                    />
                                   </td>
                                 </tr>
                               ))
