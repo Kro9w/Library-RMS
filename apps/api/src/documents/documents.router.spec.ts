@@ -190,9 +190,12 @@ describe('DocumentsRouter', () => {
                 firstName: true,
                 middleName: true,
                 lastName: true,
+                departmentId: true,
+                campusId: true,
                 department: {
                   select: {
                     name: true,
+                    campusId: true,
                     campus: {
                       select: {
                         name: true,

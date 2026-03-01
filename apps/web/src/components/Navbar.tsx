@@ -14,6 +14,7 @@ import { useOutsideClick } from "../hooks/useOutsideClick";
 import { useIsAdmin } from "../hooks/useIsAdmin";
 import "./Navbar.css";
 import { formatUserName } from "../utils/user";
+import { NotificationsDropdown } from "./NotificationsDropdown";
 
 // Lazy imports for heavy modals
 const UploadModal = React.lazy(() =>
@@ -90,6 +91,13 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
   };
 
   const { isAdmin } = useIsAdmin();
+
+  const { data: unreadCount } = trpc.notifications.getUnreadCount.useQuery(
+    undefined,
+    { enabled: !!user },
+  );
+  const [isNotificationsOpen, setNotificationsOpen] = useState(false);
+  const notifTriggerRef = useRef<HTMLButtonElement>(null);
 
   // Use the utility to format the name for the avatar
   const displayName = dbUser ? formatUserName(dbUser) : user?.email || "User";
@@ -168,6 +176,37 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
 
             {/* Action Buttons */}
             <div className="sidebar-actions">
+              <button
+                className="nav-link"
+                ref={notifTriggerRef}
+                onClick={() => setNotificationsOpen(!isNotificationsOpen)}
+                title={isCollapsed ? "Notifications" : ""}
+                style={{ position: "relative" }}
+              >
+                <i className="bi bi-bell-fill"></i>
+                <span className="link-text">Notifications</span>
+                {unreadCount ? (
+                  <span
+                    className="position-absolute badge rounded-pill bg-danger"
+                    style={{
+                      fontSize: "0.6rem",
+                      top: "2px",
+                      right: isCollapsed ? "10px" : "auto",
+                      left: isCollapsed ? "auto" : "30px",
+                    }}
+                  >
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                ) : null}
+              </button>
+
+              <NotificationsDropdown
+                isCollapsed={isCollapsed}
+                anchorRef={notifTriggerRef}
+                isOpen={isNotificationsOpen}
+                onClose={() => setNotificationsOpen(false)}
+              />
+
               <button
                 className="nav-link"
                 onClick={() => setShowUploadModal(true)}

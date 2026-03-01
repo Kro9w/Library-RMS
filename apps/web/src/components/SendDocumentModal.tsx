@@ -122,12 +122,15 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
       (role: any) => role.canManageDocuments,
     );
     return globalTags?.filter((tag: Tag) => {
-      if (canManageDocuments) {
-        return ["for review", "communication"].includes(tag.name);
+      if (tag.name === "for review") {
+        return (
+          canManageDocuments &&
+          (document as any)?.classification === "CONFIDENTIAL"
+        );
       }
       return tag.name === "communication";
     });
-  }, [globalTags, recipientRoles]);
+  }, [globalTags, recipientRoles, (document as any)?.classification]);
 
   const sendDocumentMutation = trpc.documents.sendDocument.useMutation();
 

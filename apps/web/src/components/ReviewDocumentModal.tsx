@@ -16,7 +16,7 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
   documentId,
 }) => {
   const [status, setStatus] = useState<"approved" | "returned" | "disapproved">(
-    "approved"
+    "approved",
   );
   const [remarks, setRemarks] = useState("");
   const [showSendModal, setShowSendModal] = useState(false);
@@ -61,7 +61,7 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
     });
 
     const statusTag = globalTags?.find(
-      (tag: { name: string }) => tag.name === status
+      (tag: { name: string }) => tag.name === status,
     );
 
     await sendDocumentMutation.mutateAsync({
@@ -83,6 +83,50 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
     setShowSendModal(true);
   };
 
+  // --- Inline Styles for Theme Compliance ---
+  const modalHeaderStyle = {
+    backgroundColor: "var(--background)",
+    borderBottom: "1px solid var(--card-border)",
+    color: "var(--primary)",
+  };
+
+  const modalBodyStyle = {
+    backgroundColor: "var(--background)",
+    color: "var(--text)",
+  };
+
+  const modalFooterStyle = {
+    backgroundColor: "var(--background)",
+    borderTop: "1px solid var(--card-border)",
+  };
+
+  const labelStyle = {
+    color: "var(--text-muted)",
+    fontSize: "0.8rem",
+    textTransform: "uppercase" as const,
+    fontWeight: "bold" as const,
+    marginBottom: "0.5rem",
+  };
+
+  const inputGroupTextStyle = {
+    backgroundColor: "var(--input-bg)",
+    borderColor: "var(--card-border)",
+    color: "var(--text-muted)",
+  };
+
+  const getStatusIcon = (currentStatus: string) => {
+    switch (currentStatus) {
+      case "approved":
+        return <i className="bi bi-check-circle-fill text-success"></i>;
+      case "returned":
+        return <i className="bi bi-arrow-return-left text-warning"></i>;
+      case "disapproved":
+        return <i className="bi bi-x-circle-fill text-danger"></i>;
+      default:
+        return <i className="bi bi-info-circle-fill text-secondary"></i>;
+    }
+  };
+
   return (
     <>
       <div
@@ -93,9 +137,18 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
         aria-hidden="true"
       >
         <div className="modal-dialog modal-dialog-centered">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title">Review Document</h5>
+          <div
+            className="modal-content"
+            style={{
+              backgroundColor: "var(--card-background)",
+              border: "1px solid var(--card-border)",
+              boxShadow: "var(--card-shadow)",
+            }}
+          >
+            <div className="modal-header" style={modalHeaderStyle}>
+              <h5 className="modal-title">
+                <i className="bi bi-clipboard-check me-2"></i>Review Document
+              </h5>
               <button
                 type="button"
                 className="btn-close"
@@ -103,60 +156,85 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
                 aria-label="Close"
               ></button>
             </div>
-            <div className="modal-body">
-              <div className="mb-3">
-                <label htmlFor="status" className="form-label">
-                  Status
-                </label>
-                <select
-                  id="status"
-                  className="form-select"
-                  value={status}
-                  onChange={(e) =>
-                    setStatus(
-                      e.target.value as "approved" | "returned" | "disapproved"
-                    )
-                  }
-                >
-                  <option value="approved">Approved</option>
-                  <option value="returned">Returned</option>
-                  <option value="disapproved">Disapproved</option>
-                </select>
-              </div>
-              <div className="mb-3">
-                <label htmlFor="remarks" className="form-label">
-                  Remarks
-                </label>
-                <textarea
-                  id="remarks"
-                  className="form-control"
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                ></textarea>
+            <div className="modal-body p-4" style={modalBodyStyle}>
+              <div className="row g-3">
+                <div className="col-12">
+                  <label htmlFor="status" style={labelStyle}>
+                    Status
+                  </label>
+                  <div className="input-group">
+                    <span
+                      className="input-group-text border-end-0"
+                      style={inputGroupTextStyle}
+                    >
+                      {getStatusIcon(status)}
+                    </span>
+                    <select
+                      id="status"
+                      className="form-select border-start-0 ps-0"
+                      value={status}
+                      onChange={(e) =>
+                        setStatus(
+                          e.target.value as
+                            | "approved"
+                            | "returned"
+                            | "disapproved",
+                        )
+                      }
+                    >
+                      <option value="approved">Approved</option>
+                      <option value="returned">Returned</option>
+                      <option value="disapproved">Disapproved</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="col-12 mt-4">
+                  <label htmlFor="remarks" style={labelStyle}>
+                    Remarks
+                  </label>
+                  <textarea
+                    id="remarks"
+                    className="form-control"
+                    rows={4}
+                    placeholder="Enter any feedback or notes..."
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                  ></textarea>
+                </div>
               </div>
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer" style={modalFooterStyle}>
               <button
                 type="button"
-                className="btn btn-secondary"
+                className="btn btn-outline-secondary px-4"
                 onClick={onClose}
               >
-                Close
+                Cancel
               </button>
               {document && document.reviewRequesterId && (
                 <button
                   type="button"
-                  className="btn btn-info"
+                  className="btn btn-primary px-4"
                   onClick={handleSendBack}
+                  disabled={
+                    reviewDocumentMutation.isPending ||
+                    sendDocumentMutation.isPending
+                  }
                 >
-                  Send to {formatUserName(document.reviewRequester)}
+                  <i className="bi bi-send-fill me-2"></i>
+                  Send back to {formatUserName(document.reviewRequester)}
                 </button>
               )}
               <button
                 type="button"
-                className="btn btn-info"
+                className="btn btn-secondary px-4"
                 onClick={handleSendToSomeoneElse}
+                disabled={
+                  reviewDocumentMutation.isPending ||
+                  sendDocumentMutation.isPending
+                }
               >
+                <i className="bi bi-people-fill me-2"></i>
                 Send to someone else
               </button>
             </div>

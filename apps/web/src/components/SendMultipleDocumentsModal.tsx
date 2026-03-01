@@ -81,10 +81,29 @@ export function SendMultipleDocumentsModal({
   const tags = propTags || fetchedTags;
   const globalTags = propGlobalTags || fetchedGlobalTags;
 
-  const allTags = useMemo(
-    () => [...(tags || []), ...(globalTags || [])],
-    [tags, globalTags],
+  const { data: multipleDocuments } = trpc.documents.getAll.useQuery(
+    { filter: "all" },
+    { enabled: show },
   );
+
+  const allTags = useMemo(() => {
+    const docs =
+      (multipleDocuments?.documents as any[])?.filter((d) =>
+        documentIds.includes(d.id),
+      ) || [];
+    const hasNonConfidential = docs.some(
+      (d) => d.classification !== "CONFIDENTIAL",
+    );
+
+    const filteredGlobalTags = (globalTags || []).filter((tag: Tag) => {
+      if (tag.name === "for review") {
+        return !hasNonConfidential;
+      }
+      return true;
+    });
+
+    return [...(tags || []), ...filteredGlobalTags];
+  }, [tags, globalTags, multipleDocuments, documentIds]);
 
   // Derive Dropdowns Options
   const departments = useMemo(() => {

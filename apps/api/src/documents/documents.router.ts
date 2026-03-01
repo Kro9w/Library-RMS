@@ -826,6 +826,13 @@ export class DocumentsRouter {
 
           const isReview = tags.some((tag) => tag.name === 'for review');
 
+          if (isReview && documents[0].classification !== 'CONFIDENTIAL') {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Only confidential documents can be sent for review.',
+            });
+          }
+
           const updatedDocument = await this.prisma.document.update({
             where: { id: input.documentId },
             data: {
@@ -847,6 +854,28 @@ export class DocumentsRouter {
             dbUser.roles.map((r) => r.name),
             updatedDocument.title,
           );
+
+          // Notifications
+          const senderName = `${dbUser.firstName} ${dbUser.lastName}`.trim();
+          if (isReview) {
+            await this.prisma.notification.create({
+              data: {
+                userId: recipient.id,
+                title: 'Review Requested',
+                message: `${senderName} has sent you a confidential document for review: "${updatedDocument.title}".`,
+                documentId: updatedDocument.id,
+              },
+            });
+          } else {
+            await this.prisma.notification.create({
+              data: {
+                userId: recipient.id,
+                title: 'Document Received',
+                message: `${senderName} sent you a document: "${updatedDocument.title}".`,
+                documentId: updatedDocument.id,
+              },
+            });
+          }
 
           return updatedDocument;
         }),
@@ -911,6 +940,18 @@ export class DocumentsRouter {
 
           const isReview = tags.some((tag) => tag.name === 'for review');
 
+          if (isReview) {
+            const hasNonConfidential = documents.some(
+              (doc) => doc.classification !== 'CONFIDENTIAL',
+            );
+            if (hasNonConfidential) {
+              throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'Only confidential documents can be sent for review.',
+              });
+            }
+          }
+
           // Use transaction for atomicity: all documents are sent or none
           const results = await this.prisma.$transaction(
             input.documentIds.map((documentId) =>
@@ -938,6 +979,19 @@ export class DocumentsRouter {
               targetName: updatedDocument.title,
             })),
           );
+
+          // Notifications
+          const senderName = `${dbUser.firstName} ${dbUser.lastName}`.trim();
+          await this.prisma.notification.createMany({
+            data: results.map((doc) => ({
+              userId: recipient.id,
+              title: isReview ? 'Review Requested' : 'Document Received',
+              message: isReview 
+                ? `${senderName} has sent you a confidential document for review: "${doc.title}".`
+                : `${senderName} sent you a document: "${doc.title}".`,
+              documentId: doc.id,
+            })),
+          });
 
           return results;
         }),
@@ -1009,6 +1063,19 @@ export class DocumentsRouter {
             dbUser.roles.map((r) => r.name),
             updatedDocument.title,
           );
+
+          // Notification to the requester
+          if (document.reviewRequesterId) {
+            const reviewerName = `${dbUser.firstName} ${dbUser.lastName}`.trim();
+            await this.prisma.notification.create({
+              data: {
+                userId: document.reviewRequesterId,
+                title: 'Review Completed',
+                message: `${reviewerName} has marked your document "${updatedDocument.title}" as ${input.status}.`,
+                documentId: updatedDocument.id,
+              },
+            });
+          }
 
           return updatedDocument;
         }),

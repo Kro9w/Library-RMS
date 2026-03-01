@@ -34,6 +34,9 @@ describe('DocumentsRouter Performance', () => {
     tag: {
       findMany: jest.fn(),
     },
+    notification: {
+      createMany: jest.fn(),
+    },
     $transaction: jest.fn((promises) => Promise.all(promises)),
   };
 
@@ -101,6 +104,7 @@ describe('DocumentsRouter Performance', () => {
         title: `Doc ${where.id}`,
       });
     });
+    mockPrismaService.notification.createMany.mockResolvedValue({ count: 3 });
 
     const caller = trpcRouter.createCaller({
       user: { id: 'user-1' },

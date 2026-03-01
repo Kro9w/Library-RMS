@@ -9,6 +9,7 @@ import { RolesModule } from '../roles/roles.module';
 import { DocumentTypesModule } from '../document-types/document-types.module';
 import { LogModule } from '../log/log.module';
 import { WordDocumentModule } from '../word-document/word-document.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   // 3. Add PrismaModule and SupabaseModule here
@@ -21,6 +22,7 @@ import { WordDocumentModule } from '../word-document/word-document.module';
     DocumentTypesModule,
     LogModule,
     WordDocumentModule,
+    NotificationsModule,
   ],
   providers: [TrpcRouter, TrpcContextFactory],
   exports: [TrpcRouter, TrpcContextFactory],

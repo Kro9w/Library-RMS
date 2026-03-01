@@ -5,6 +5,7 @@ import { TrpcModule } from './trpc/trpc.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UserModule } from './user/user.module';
 import { DocumentsModule } from './documents/documents.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { RolesModule } from './roles/roles.module';
 import { SupabaseModule } from './supabase/supabase.module';
 
@@ -16,6 +17,7 @@ import { SupabaseModule } from './supabase/supabase.module';
     DocumentsModule,
     SupabaseModule,
     RolesModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
