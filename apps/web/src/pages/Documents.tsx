@@ -280,7 +280,14 @@ const Documents: React.FC = () => {
                           fileType={doc.fileType}
                           fileName={doc.title}
                         />
-                        <DocumentTypePill documentType={doc.documentType} />
+                        <div className="d-flex flex-column gap-1 align-items-start">
+                          <DocumentTypePill documentType={doc.documentType} />
+                          <ClassificationBadge
+                            classification={
+                              doc.classification as ClassificationType
+                            }
+                          />
+                        </div>
                       </div>
                     </td>
                     <td>
@@ -290,11 +297,6 @@ const Documents: React.FC = () => {
                       >
                         {doc.title}
                       </Link>
-                      <ClassificationBadge
-                        classification={
-                          doc.classification as ClassificationType
-                        }
-                      />
                     </td>
                     <td className="text-muted">
                       {formatUserName(doc.uploadedBy)}
@@ -391,9 +393,16 @@ const Documents: React.FC = () => {
                                         fileType={doc.fileType}
                                         fileName={doc.title}
                                       />
-                                      <DocumentTypePill
-                                        documentType={doc.documentType}
-                                      />
+                                      <div className="d-flex flex-column gap-1 align-items-start">
+                                        <DocumentTypePill
+                                          documentType={doc.documentType}
+                                        />
+                                        <ClassificationBadge
+                                          classification={
+                                            doc.classification as ClassificationType
+                                          }
+                                        />
+                                      </div>
                                     </div>
                                   </td>
                                   <td>
@@ -403,11 +412,6 @@ const Documents: React.FC = () => {
                                     >
                                       {doc.title}
                                     </Link>
-                                    <ClassificationBadge
-                                      classification={
-                                        doc.classification as ClassificationType
-                                      }
-                                    />
                                   </td>
                                   <td className="text-muted">
                                     {formatUserName(doc.uploadedBy)}
