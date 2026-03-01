@@ -479,12 +479,40 @@ export function OwnershipGraph() {
         const bubble = currentNodes.find((n) => n.type === "bubble");
 
         if (bubble) {
-          const bubbleRadius = 40 + bubbleDocuments.length * 5;
+          const bubbleRadius = 30 + bubbleDocuments.length * 3;
 
           // Find nodes that are marked as contained in bubble
           const containedNodes = currentNodes.filter(
             (n) => n.isContainedInBubble && !(n as any)._isDragging,
           );
+
+          // Custom internal collision to prevent stacking
+          for (let i = 0; i < containedNodes.length; i++) {
+            for (let j = i + 1; j < containedNodes.length; j++) {
+              const nodeA = containedNodes[i];
+              const nodeB = containedNodes[j];
+              const dx = (nodeA.x || 0) - (nodeB.x || 0);
+              const dy = (nodeA.y || 0) - (nodeB.y || 0);
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              const minDistance = 18; // Document radius + padding
+
+              if (dist < minDistance && dist > 0) {
+                // Apply repulsive force
+                const force = ((minDistance - dist) / dist) * 0.5; // Tuning factor
+                const fX = dx * force;
+                const fY = dy * force;
+
+                if (nodeA.vx !== undefined && nodeA.vy !== undefined) {
+                  nodeA.vx += fX;
+                  nodeA.vy += fY;
+                }
+                if (nodeB.vx !== undefined && nodeB.vy !== undefined) {
+                  nodeB.vx -= fX;
+                  nodeB.vy -= fY;
+                }
+              }
+            }
+          }
 
           containedNodes.forEach((doc) => {
             const dx = (bubble.x || 0) - (doc.x || 0);
@@ -614,20 +642,27 @@ export function OwnershipGraph() {
       if (d.type === "department") return 40;
       if (d.type === "user") return 35;
       if (d.type === "bubble")
-        return 40 + (bubbleDocuments ? bubbleDocuments.length * 5 : 0);
+        return 30 + (bubbleDocuments ? bubbleDocuments.length * 3 : 0);
       // Fallback (though contained docs are filtered out below)
       return 25;
     });
 
-    // Monkey-patch initialize to filter out contained documents from collision force
+    // Monkey-patch initialize to filter out contained documents AND dragging nodes from collision force
     const originalCollideInit = collideForce.initialize;
     collideForce.initialize = function (nodes, random) {
       originalCollideInit.call(
         this,
-        nodes.filter((n) => !n.isContainedInBubble),
+        nodes.filter((n) => !n.isContainedInBubble && !(n as any)._isDragging),
         random,
       );
     };
+
+    // Since we monkey-patched initialize, we need to re-initialize on drag start/end so the array updates
+    // We can handle this by re-applying the nodes array to the collision force inside dragstarted/dragended,
+    // or by just ensuring the monkey patch handles dynamic checks. Wait, initialize is only called when nodes change.
+    // Instead of filtering at initialize, we can override the radius to 0 if dragging, but that won't stop
+    // it from affecting others if they aren't 0. Filtering the array is better. We'll update the simulation
+    // nodes in dragstarted/dragended to trigger re-initialization.
 
     simulation.force("collide", collideForce);
 
@@ -761,7 +796,7 @@ export function OwnershipGraph() {
     const timer = d3.timer((elapsed) => {
       const bubble = nodes.find((n) => n.type === "bubble");
       if (bubble) {
-        const radius = 40 + bubbleDocuments.length * 5;
+        const radius = 30 + bubbleDocuments.length * 3;
         const points: [number, number][] = [];
         const numPoints = 12;
 
@@ -812,6 +847,12 @@ export function OwnershipGraph() {
       d.fx = d.x;
       d.fy = d.y;
       (d as any)._isDragging = true;
+
+      // Re-initialize collision force so dragging node is removed
+      const currentNodes = simulation?.nodes() || [];
+      simulation
+        ?.force<d3.ForceCollide<Node>>("collide")
+        ?.initialize(currentNodes, Math.random);
 
       // If dragging a bubble, we want to allow it to "connect" to users for dropping
       if (d.type === "bubble") {
@@ -894,16 +935,20 @@ export function OwnershipGraph() {
         return;
       }
 
+      // Find the LIVE bubble node from the simulation, as its coordinates change!
+      const currentNodes = simulation?.nodes() || [];
+      const liveBubbleNode = currentNodes.find((n) => n.type === "bubble");
+
       // --- 2. Document Drag Logic (Dropping Document into Bubble) ---
       // If we are dragging a document and a bubble exists
       if (
         d.type === "document" &&
-        bubbleNode &&
+        liveBubbleNode &&
         !bubbleDocuments.some((bd) => bd.id === d.id)
       ) {
-        const threshold = (40 + bubbleDocuments.length * 5) * 1.5; // Bubble radius + padding
-        const dx = (bubbleNode.x || 0) - d.fx!;
-        const dy = (bubbleNode.y || 0) - d.fy!;
+        const threshold = (30 + bubbleDocuments.length * 3) * 1.5 + 20; // Bubble radius + larger padding
+        const dx = (liveBubbleNode.x || 0) - d.fx!;
+        const dy = (liveBubbleNode.y || 0) - d.fy!;
         const dist = Math.sqrt(dx * dx + dy * dy);
         const bubblePath = gRef.current?.select(".node.bubble path");
 
@@ -925,13 +970,13 @@ export function OwnershipGraph() {
             : (activeLink.target as Node).id;
 
         // Check Bubble Intersection First
-        if (bubbleNode) {
-          const dx = (bubbleNode.x || 0) - d.fx!;
-          const dy = (bubbleNode.y || 0) - d.fy!;
-          // Use bubble radius
-          const r = 40 + bubbleDocuments.length * 5;
-          if (Math.sqrt(dx * dx + dy * dy) < r + 20) {
-            target = bubbleNode;
+        if (liveBubbleNode && !bubbleDocuments.some((bd) => bd.id === d.id)) {
+          const dx = (liveBubbleNode.x || 0) - d.fx!;
+          const dy = (liveBubbleNode.y || 0) - d.fy!;
+          // Use generous bubble threshold
+          const bubbleThreshold = (30 + bubbleDocuments.length * 3) * 1.5 + 20;
+          if (Math.sqrt(dx * dx + dy * dy) < bubbleThreshold) {
+            target = liveBubbleNode;
           }
         }
 
@@ -1040,21 +1085,31 @@ export function OwnershipGraph() {
       d.fy = null;
       (d as any)._isDragging = false;
 
+      // Re-initialize collision force so node is added back
+      const currentNodes = simulation?.nodes() || [];
+      simulation
+        ?.force<d3.ForceCollide<Node>>("collide")
+        ?.initialize(currentNodes, Math.random);
+
       const target = dropTargetNodeRef.current;
       const g = gRef.current;
 
       // Case: Document Removed from Bubble (Dropped into Nothing)
       if (d.isContainedInBubble && !target) {
+        // Find the LIVE bubble node from the simulation
+        const currentNodes = simulation?.nodes() || [];
+        const liveBubbleNode = currentNodes.find((n) => n.type === "bubble");
+
         // If we dragged a document OUT of the bubble and dropped it into void,
         // it should RETURN to its original owner (i.e. remove from bubble).
         // Check if it's far enough from bubble to be considered "removed"
-        if (bubbleNode) {
-          const dx = (bubbleNode.x || 0) - d.fx!;
-          const dy = (bubbleNode.y || 0) - d.fy!;
+        if (liveBubbleNode) {
+          const dx = (liveBubbleNode.x || 0) - d.fx!;
+          const dy = (liveBubbleNode.y || 0) - d.fy!;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          const bubbleRadius = 40 + bubbleDocuments.length * 5;
+          const bubbleThreshold = (30 + bubbleDocuments.length * 3) * 1.5 + 20;
 
-          if (dist > bubbleRadius + 50) {
+          if (dist > bubbleThreshold + 30) {
             // Remove from bubble (will re-appear at owner due to graphData logic)
             setBubbleDocuments((prev) => prev.filter((doc) => doc.id !== d.id));
             d.isContainedInBubble = false;
