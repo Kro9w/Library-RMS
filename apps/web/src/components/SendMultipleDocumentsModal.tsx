@@ -25,6 +25,7 @@ interface SendMultipleDocumentsModalProps {
   onClose: () => void;
   documentIds: string[];
   initialRecipientId: string | null;
+  forceRecipientLock?: boolean; // If true, disable the dropdowns
   onSuccess?: () => void;
   users?: User[]; // Kept for fallback if needed, but primary path is campuses
   campuses?: Campus[];
@@ -37,6 +38,7 @@ export function SendMultipleDocumentsModal({
   onClose,
   documentIds,
   initialRecipientId,
+  forceRecipientLock = false,
   onSuccess,
   users: propUsers,
   campuses: propCampuses,
@@ -92,11 +94,14 @@ export function SendMultipleDocumentsModal({
         documentIds.includes(d.id),
       ) || [];
     const hasNonConfidential = docs.some(
-      (d) => d.classification !== "CONFIDENTIAL",
+      (d) =>
+        d.classification !== "CONFIDENTIAL" &&
+        d.classification?.toUpperCase() !== "CONFIDENTIAL",
     );
 
     const filteredGlobalTags = (globalTags || []).filter((tag: Tag) => {
-      if (tag.name === "for review") {
+      const tagName = tag.name.toLowerCase();
+      if (tagName === "for review") {
         return !hasNonConfidential;
       }
       return true;
@@ -311,6 +316,7 @@ export function SendMultipleDocumentsModal({
                       setSelectedDeptId("");
                       setRecipientId("");
                     }}
+                    disabled={forceRecipientLock}
                   >
                     <option value="">Select Campus...</option>
                     {campuses.map((campus: Campus) => (
@@ -342,7 +348,7 @@ export function SendMultipleDocumentsModal({
                       setSelectedDeptId(e.target.value);
                       setRecipientId("");
                     }}
-                    disabled={!selectedCampusId}
+                    disabled={!selectedCampusId || forceRecipientLock}
                   >
                     <option value="">Select Department...</option>
                     {departments.map((dept: Department) => (
@@ -371,7 +377,7 @@ export function SendMultipleDocumentsModal({
                     className="form-select border-start-0 ps-0"
                     value={recipientId}
                     onChange={(e) => setRecipientId(e.target.value)}
-                    disabled={!selectedDeptId}
+                    disabled={!selectedDeptId || forceRecipientLock}
                   >
                     <option value="">Select User...</option>
                     {filteredUsers?.map((user: User) => (

@@ -46,10 +46,12 @@ export class TrpcRouter {
       getDashboardStats: protectedProcedure.query(async ({ ctx }) => {
         const twentyFourHoursAgo = new Date();
         twentyFourHoursAgo.setDate(twentyFourHoursAgo.getDate() - 1);
-        const orgId = ctx.dbUser.organizationId as string;
+        const departmentId = ctx.dbUser.departmentId;
+        const organizationId = ctx.dbUser.organizationId;
+        const campusId = ctx.dbUser.campusId;
 
-        // Basic check if user belongs to org
-        if (!orgId) {
+        // Basic check if user belongs to a department
+        if (!departmentId || !organizationId || !campusId) {
           return {
             totalDocuments: 0,
             recentUploadsCount: 0,
@@ -60,12 +62,20 @@ export class TrpcRouter {
           };
         }
 
+        const documentWhere = {
+          OR: [
+            { departmentId },
+            { classification: 'INSTITUTIONAL' as const, organizationId },
+            { classification: 'CAMPUS' as const, campusId },
+          ],
+        };
+
         const docsByTypeQuery = ctx.prisma.document.groupBy({
           by: ['fileType'],
           _count: {
             fileType: true,
           },
-          where: { organizationId: orgId },
+          where: documentWhere,
         });
 
         const [
@@ -76,15 +86,15 @@ export class TrpcRouter {
           topTagsRaw,
           docsByTypeRaw,
         ] = await Promise.all([
-          ctx.prisma.document.count({ where: { organizationId: orgId } }),
+          ctx.prisma.document.count({ where: documentWhere }),
           ctx.prisma.document.count({
             where: {
-              organizationId: orgId,
+              ...documentWhere,
               createdAt: { gte: twentyFourHoursAgo },
             },
           }),
           ctx.prisma.document.findMany({
-            where: { organizationId: orgId },
+            where: documentWhere,
             orderBy: { createdAt: 'desc' },
             take: 5,
             select: {
@@ -95,13 +105,15 @@ export class TrpcRouter {
               },
             },
           }),
-          ctx.prisma.user.count({ where: { organizationId: orgId } }),
+          ctx.prisma.user.count({ where: { departmentId } }),
           ctx.prisma.$queryRaw<{ name: string; count: bigint }[]>`
             SELECT t.name, COUNT(dt."B")::int as count
             FROM "_DocumentToTag" dt
             JOIN "Document" d ON dt."A" = d.id
             JOIN "Tag" t ON dt."B" = t.id
-            WHERE d."organizationId" = ${orgId}
+            WHERE d."departmentId" = ${departmentId}
+               OR (d."classification" = 'INSTITUTIONAL'::"Classification" AND d."organizationId" = ${organizationId})
+               OR (d."classification" = 'CAMPUS'::"Classification" AND d."campusId" = ${campusId})
             GROUP BY t.name
             ORDER BY count DESC
             LIMIT 5;

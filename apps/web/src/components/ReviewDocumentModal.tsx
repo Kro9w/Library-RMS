@@ -222,7 +222,8 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
                   }
                 >
                   <i className="bi bi-send-fill me-2"></i>
-                  Send back to {formatUserName(document.reviewRequester)}
+                  Return to Originator (
+                  {formatUserName(document.reviewRequester)})
                 </button>
               )}
               <button
@@ -235,7 +236,7 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
                 }
               >
                 <i className="bi bi-people-fill me-2"></i>
-                Send to someone else
+                Forward to Reviewer
               </button>
             </div>
           </div>

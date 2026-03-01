@@ -25,6 +25,7 @@ interface SendDocumentModalProps {
   onClose: () => void;
   documentId: string;
   initialRecipientId?: string | null;
+  forceRecipientLock?: boolean; // If true, disable the dropdowns
   users?: User[]; // Optional: if provided, we skip fetch
   campuses?: Campus[]; // Replacing flat orgs with hierarchical campuses
   tags?: Tag[];
@@ -37,6 +38,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
   onClose,
   documentId,
   initialRecipientId,
+  forceRecipientLock = false,
   users: propUsers,
   campuses: propCampuses,
   tags: propTags,
@@ -62,6 +64,11 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
   const { data: fetchedTags } = trpc.documents.getTags.useQuery(undefined, {
     enabled: !propTags && show,
   });
+
+  const { data: document } = trpc.documents.getById.useQuery(
+    { id: documentId },
+    { enabled: !!documentId && show },
+  );
   const { data: fetchedGlobalTags } = trpc.documents.getGlobalTags.useQuery(
     undefined,
     { enabled: !propGlobalTags && show },
@@ -118,19 +125,28 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
   }, [currentRecipient, usersWithRoles, recipientId]);
 
   const filteredGlobalTags = useMemo(() => {
-    const canManageDocuments = recipientRoles?.some(
-      (role: any) => role.canManageDocuments,
-    );
+    // If no recipient is selected, we still want to show the tag if it's valid for the document,
+    // or we might decide to hide it. Let's show it by default if the document is confidential,
+    // but the actual backend will throw if they try to send to an invalid recipient anyway.
+    // Actually, to make it not disappear when switching recipients, let's relax the client-side
+    // canManageDocuments check slightly, or ensure we default to true if roles aren't loaded yet.
+    const hasManagePerms = recipientRoles
+      ? recipientRoles.some((role: any) => role.canManageDocuments)
+      : true; // Default to true so it doesn't flicker/vanish before recipient is picked.
+
+    const isConfidential =
+      (document as any)?.classification === "CONFIDENTIAL" ||
+      (document as any)?.classification?.toUpperCase() === "CONFIDENTIAL";
+
     return globalTags?.filter((tag: Tag) => {
-      if (tag.name === "for review") {
-        return (
-          canManageDocuments &&
-          (document as any)?.classification === "CONFIDENTIAL"
-        );
+      // In some environments, the tags might be capitalized or differently named
+      const tagName = tag.name.toLowerCase();
+      if (tagName === "for review") {
+        return hasManagePerms && isConfidential;
       }
-      return tag.name === "communication";
+      return tagName === "communication";
     });
-  }, [globalTags, recipientRoles, (document as any)?.classification]);
+  }, [globalTags, recipientRoles, document]);
 
   const sendDocumentMutation = trpc.documents.sendDocument.useMutation();
 
@@ -302,6 +318,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
                       setSelectedDeptId("");
                       setRecipientId("");
                     }}
+                    disabled={forceRecipientLock}
                   >
                     <option value="">Select Campus...</option>
                     {campuses.map((campus: Campus) => (
@@ -333,7 +350,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
                       setSelectedDeptId(e.target.value);
                       setRecipientId("");
                     }}
-                    disabled={!selectedCampusId}
+                    disabled={!selectedCampusId || forceRecipientLock}
                   >
                     <option value="">Select Department...</option>
                     {departments.map((dept: Department) => (
@@ -362,7 +379,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
                     className="form-select border-start-0 ps-0"
                     value={recipientId}
                     onChange={(e) => setRecipientId(e.target.value)}
-                    disabled={!selectedDeptId}
+                    disabled={!selectedDeptId || forceRecipientLock}
                   >
                     <option value="">Select Recipient...</option>
                     {filteredUsers?.map((user: User) => (

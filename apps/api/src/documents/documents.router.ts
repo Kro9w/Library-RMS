@@ -143,6 +143,20 @@ export class DocumentsRouter {
                 },
               },
               tags: true,
+              status: true,
+              remarks: {
+                include: {
+                  author: {
+                    select: {
+                      firstName: true,
+                      lastName: true,
+                    },
+                  },
+                },
+                orderBy: {
+                  createdAt: 'desc',
+                },
+              },
               activeRetentionSnapshot: true,
               inactiveRetentionSnapshot: true,
               dispositionActionSnapshot: true,
@@ -838,6 +852,7 @@ export class DocumentsRouter {
             data: {
               uploadedById: recipient.id,
               reviewRequesterId: isReview ? user.id : null,
+              status: isReview ? null : undefined, // Clear status if re-submitting for review
               tags: {
                 set: [
                   ...input.tagIds.map((id) => ({ id })),
@@ -960,6 +975,7 @@ export class DocumentsRouter {
                 data: {
                   uploadedById: recipient.id,
                   reviewRequesterId: isReview ? user.id : null,
+                  status: isReview ? null : undefined, // Clear status if re-submitting for review
                   tags: {
                     set: input.tagIds.map((id) => ({ id })),
                   },

@@ -1486,6 +1486,8 @@ export function OwnershipGraph() {
       {selectedDocId && (
         <SendDocumentModal
           show={isSendModalOpen}
+          initialRecipientId={targetUserId}
+          forceRecipientLock={true}
           onClose={() => {
             setIsSendModalOpen(false);
             setTargetUserId(null);
@@ -1517,7 +1519,6 @@ export function OwnershipGraph() {
             }
           }}
           documentId={selectedDocId}
-          initialRecipientId={targetUserId}
           users={allUsers}
           campuses={allCampuses}
           tags={tags}
@@ -1530,13 +1531,14 @@ export function OwnershipGraph() {
       {isMultiSendModalOpen && (
         <SendMultipleDocumentsModal
           show={isMultiSendModalOpen}
+          initialRecipientId={multiSendTargetId}
+          forceRecipientLock={true}
           onClose={() => {
             setIsMultiSendModalOpen(false);
             setMultiSendTargetId(null);
             setTargetUser(null);
           }}
           documentIds={bubbleDocuments.map((d) => d.id)}
-          initialRecipientId={multiSendTargetId}
           users={allUsers}
           campuses={allCampuses}
           tags={tags}

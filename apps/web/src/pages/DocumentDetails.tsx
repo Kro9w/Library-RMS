@@ -66,9 +66,12 @@ const formatFileTypeDisplay = (
 };
 // ------------------------------
 
+import { SendDocumentModal } from "../components/SendDocumentModal";
+
 export const DocumentDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [showResubmitModal, setShowResubmitModal] = React.useState(false);
 
   const { data: user } = trpc.user.getMe.useQuery();
   const utils = trpc.useUtils();
@@ -272,8 +275,116 @@ export const DocumentDetails: React.FC = () => {
                 )}
             </div>
           </div>
+
+          {/* Review Status Section */}
+          {document.status && (
+            <div className="document-table-card mt-4">
+              <div className="card-body">
+                <h5 className="card-title d-flex align-items-center">
+                  <i className="bi bi-clipboard-check me-2"></i>
+                  Review Details
+                </h5>
+                <hr />
+                <div className="mb-3">
+                  <span className="text-muted fw-bold me-2">Status:</span>
+                  <span
+                    className={`badge ${
+                      document.status === "approved"
+                        ? "bg-success"
+                        : document.status === "returned"
+                          ? "bg-warning text-dark"
+                          : document.status === "disapproved"
+                            ? "bg-danger"
+                            : "bg-secondary"
+                    }`}
+                    style={{ fontSize: "0.9rem", padding: "0.5em 0.8em" }}
+                  >
+                    {document.status.toUpperCase()}
+                  </span>
+                </div>
+
+                {document.remarks && document.remarks.length > 0 ? (
+                  <div>
+                    <span className="text-muted fw-bold d-block mb-2">
+                      Remarks:
+                    </span>
+                    <div className="d-flex flex-column gap-2">
+                      {document.remarks.map((remark: any) => (
+                        <div
+                          key={remark.id}
+                          className="p-3 bg-light border rounded"
+                        >
+                          <div className="d-flex justify-content-between mb-1">
+                            <strong
+                              style={{
+                                fontSize: "0.85rem",
+                                color: "var(--primary)",
+                              }}
+                            >
+                              {formatUserName(remark.author)}
+                            </strong>
+                            <small
+                              className="text-muted"
+                              style={{ fontSize: "0.75rem" }}
+                            >
+                              {new Date(remark.createdAt).toLocaleString()}
+                            </small>
+                          </div>
+                          <p
+                            className="mb-0 text-dark"
+                            style={{
+                              fontSize: "0.9rem",
+                              whiteSpace: "pre-wrap",
+                            }}
+                          >
+                            {remark.message}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-muted fst-italic mb-0 mt-3">
+                    No remarks were left during the review.
+                  </p>
+                )}
+
+                {document.status === "returned" &&
+                  (document.uploadedById === user?.id ||
+                    document.originalSenderId === user?.id) && (
+                    <div className="d-flex justify-content-end mt-4">
+                      <button
+                        className="btn btn-outline-primary"
+                        style={{
+                          fontSize: "0.85rem",
+                          padding: "0.4rem 0.8rem",
+                        }}
+                        onClick={() => setShowResubmitModal(true)}
+                      >
+                        <i className="bi bi-arrow-repeat me-1"></i> Resubmit for
+                        Review
+                      </button>
+                    </div>
+                  )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {showResubmitModal && (
+        <SendDocumentModal
+          show={showResubmitModal}
+          onClose={() => setShowResubmitModal(false)}
+          documentId={document.id}
+          initialRecipientId={
+            document.remarks && document.remarks.length > 0
+              ? document.remarks[0].authorId
+              : undefined
+          }
+          forceRecipientLock={true}
+        />
+      )}
     </div>
   );
 };
