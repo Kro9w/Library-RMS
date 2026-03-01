@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { performance } from "perf_hooks";
 import type { Node, LinkData } from "../../src/types/graph";
 

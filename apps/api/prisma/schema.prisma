@@ -16,6 +16,13 @@ enum DispositionAction {
   DESTROY
 }
 
+enum Classification {
+  INSTITUTIONAL
+  CAMPUS
+  INTERNAL
+  CONFIDENTIAL
+}
+
 // apps/api/prisma/schema.prisma
 
 model User {
@@ -74,15 +81,17 @@ model Campus {
   departments    Department[]
   users          User[]
   roles          Role[]
+  documents      Document[]
 }
 
 model Department {
-  id       String @id @default(cuid())
-  name     String
-  icon     String @default("default-icon.png")
-  campus   Campus @relation(fields: [campusId], references: [id])
-  campusId String
-  users    User[]
+  id        String     @id @default(cuid())
+  name      String
+  icon      String     @default("default-icon.png")
+  campus    Campus     @relation(fields: [campusId], references: [id])
+  campusId  String
+  users     User[]
+  documents Document[]
 }
 
 model Log {
@@ -123,8 +132,19 @@ model Document {
   uploadedBy   User   @relation("uploadedBy", fields: [uploadedById], references: [id])
   uploadedById String
 
+  originalSenderId String?
+
+  classification Classification @default(INTERNAL)
+
   organization   Organization @relation(fields: [organizationId], references: [id])
   organizationId String
+
+  // Optional relations to quickly filter by campus or department
+  campus   Campus? @relation(fields: [campusId], references: [id])
+  campusId String?
+
+  department   Department? @relation(fields: [departmentId], references: [id])
+  departmentId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -148,6 +168,10 @@ model Document {
   @@index([organizationId])
   @@index([uploadedById])
   @@index([documentTypeId])
+  @@index([classification])
+  @@index([originalSenderId])
+  @@index([campusId])
+  @@index([departmentId])
 }
 
 model Tag {

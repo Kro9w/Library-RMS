@@ -22,7 +22,20 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
     string | undefined
   >();
   const [controlNumber, setControlNumber] = useState<string | null>(null);
+  const [classification, setClassification] = useState<
+    "INSTITUTIONAL" | "CAMPUS" | "INTERNAL" | "CONFIDENTIAL"
+  >("CONFIDENTIAL");
   const user = useUser();
+  const { data: me } = trpc.user.getMe.useQuery();
+  const highestRoleLevel =
+    me?.roles && me.roles.length > 0
+      ? me.roles.reduce(
+          (min: number, role: any) => Math.min(min, role.level),
+          Infinity,
+        )
+      : 4; // Default to Level 4 (lowest privilege) if no roles found
+  const canManageDocs =
+    me?.roles?.some((r: any) => r.canManageDocuments) ?? false;
   const utils = trpc.useUtils();
   const createDocMutation = trpc.documents.createDocumentRecord.useMutation();
   const { data: documentTypes } = trpc.documentTypes.getAll.useQuery();
@@ -120,6 +133,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
         documentTypeId: selectedDocumentType,
         fileType: file.type,
         fileSize: file.size,
+        classification: classification,
         controlNumber:
           controlNumber !== "No control number found in this document"
             ? controlNumber
@@ -206,6 +220,38 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
                   </option>
                 ))}
               </select>
+            </div>
+            <div className="mb-3">
+              <label htmlFor="classification" className="form-label">
+                Classification / Visibility
+              </label>
+              <select
+                id="classification"
+                className="form-select"
+                value={classification}
+                onChange={(e) => setClassification(e.target.value as any)}
+              >
+                {(highestRoleLevel <= 1 || canManageDocs) && (
+                  <>
+                    <option value="INSTITUTIONAL">
+                      Institutional (Organization-wide)
+                    </option>
+                    <option value="CAMPUS">Campus (Campus-wide)</option>
+                  </>
+                )}
+                {(highestRoleLevel <= 2 || canManageDocs) && (
+                  <option value="INTERNAL">
+                    Internal (Department/Office only)
+                  </option>
+                )}
+                <option value="CONFIDENTIAL">
+                  Confidential (Sender and Recipient only)
+                </option>
+              </select>
+              <div className="form-text">
+                Controls who can view this document based on standard access
+                controls.
+              </div>
             </div>
             {error && <p className="error">{error}</p>}
           </div>

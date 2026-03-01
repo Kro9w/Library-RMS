@@ -104,7 +104,7 @@ const CAMPUS_DATA = [
   },
   {
     name: 'University Administration',
-    departments: [], // No default departments as per new instruction
+    departments: [],
   }
 ];
 

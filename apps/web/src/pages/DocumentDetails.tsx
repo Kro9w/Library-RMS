@@ -5,6 +5,10 @@ import { trpc } from "../trpc";
 import "./DocumentDetails.css";
 import { LoadingAnimation } from "../components/ui/LoadingAnimation";
 import { formatUserName } from "../utils/user";
+import {
+  ClassificationBadge,
+  ClassificationType,
+} from "../components/ClassificationBadge";
 
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 type Document = AppRouterOutputs["documents"]["getById"];
@@ -25,9 +29,6 @@ const SUPPORTED_PREVIEW_TYPES = {
   "application/vnd.ms-powerpoint": "office",
 };
 
-// --- 1. THIS IS THE FIX ---
-// This new, simpler function is 100% type-safe and
-// replaces the old buggy version.
 const formatFileTypeDisplay = (
   fileType: string | null | undefined,
   title: string,
@@ -143,7 +144,12 @@ export const DocumentDetails: React.FC = () => {
   return (
     <div className="container mt-4">
       <div className="page-header">
-        <h2>{document.title}</h2>
+        <h2>
+          {document.title}
+          <ClassificationBadge
+            classification={document.classification as ClassificationType}
+          />
+        </h2>
       </div>
 
       <div className="document-details-container">

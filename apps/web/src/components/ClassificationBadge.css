@@ -1,0 +1,65 @@
+.classification-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25em 0.6em;
+  font-size: 0.75em;
+  font-weight: 600;
+  border-radius: 50rem;
+  margin-left: 0.5rem;
+  line-height: 1;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.classification-badge i {
+  margin-right: 0.25rem;
+  font-size: 0.9em;
+}
+
+/* PUBLIC: Using --success color */
+.classification-badge-public {
+  background-color: rgba(25, 135, 84, 0.15); /* var(--success) with opacity */
+  color: var(--success);
+  border: 1px solid rgba(25, 135, 84, 0.2);
+}
+[data-bs-theme="dark"] .classification-badge-public {
+  background-color: rgba(46, 160, 67, 0.2);
+  color: #2ea043;
+  border-color: rgba(46, 160, 67, 0.3);
+}
+
+/* CAMPUS: Using blue/indigo logic (or your --primary if you prefer, but let's use a standard blue for campus) */
+.classification-badge-campus {
+  background-color: rgba(13, 110, 253, 0.15); /* bs-primary blue */
+  color: #0d6efd;
+  border: 1px solid rgba(13, 110, 253, 0.2);
+}
+[data-bs-theme="dark"] .classification-badge-campus {
+  background-color: rgba(61, 139, 255, 0.2);
+  color: #3d8bff;
+  border-color: rgba(61, 139, 255, 0.3);
+}
+
+/* INTERNAL: Using --accent color (orange) */
+.classification-badge-internal {
+  background-color: rgba(237, 155, 64, 0.15); /* var(--accent) with opacity */
+  color: var(--accent);
+  border: 1px solid rgba(237, 155, 64, 0.2);
+}
+[data-bs-theme="dark"] .classification-badge-confidential {
+  background-color: rgba(237, 155, 64, 0.2);
+  color: #ed9b40;
+  border-color: rgba(237, 155, 64, 0.3);
+}
+
+/* CONFIDENTIAL: Using --primary color (maroon/red) */
+.classification-badge-restricted {
+  background-color: rgba(186, 59, 70, 0.15); /* var(--primary) with opacity */
+  color: var(--primary);
+  border: 1px solid rgba(186, 59, 70, 0.2);
+}
+[data-bs-theme="dark"] .classification-badge-restricted {
+  background-color: rgba(186, 59, 70, 0.2);
+  color: #ff8b8b; /* Brighter red for dark mode readability */
+  border-color: rgba(186, 59, 70, 0.3);
+}

@@ -102,7 +102,7 @@ export class DocumentsRouter {
             });
           }
 
-          const doc = await this.prisma.document.findFirst({
+          let doc = await this.prisma.document.findFirst({
             where: {
               id: input.id,
               organizationId: ctx.dbUser.organizationId,
@@ -120,9 +120,12 @@ export class DocumentsRouter {
                   firstName: true,
                   middleName: true,
                   lastName: true,
+                  campusId: true,
+                  departmentId: true,
                   department: {
                     select: {
                       name: true,
+                      campusId: true,
                       campus: {
                         select: {
                           name: true,
@@ -144,12 +147,50 @@ export class DocumentsRouter {
               inactiveRetentionSnapshot: true,
               dispositionActionSnapshot: true,
               dispositionStatus: true,
+              classification: true,
+              originalSenderId: true,
+              uploadedById: true,
             },
           });
 
           if (!doc) {
             throw new TRPCError({ code: 'NOT_FOUND' });
           }
+
+          // Enforce Classification Rules
+          if (doc.classification === 'CONFIDENTIAL') {
+            if (
+              doc.uploadedById !== ctx.user.id &&
+              doc.originalSenderId !== ctx.user.id
+            ) {
+              throw new TRPCError({
+                code: 'FORBIDDEN',
+                message: 'You do not have permission to view this CONFIDENTIAL document.',
+              });
+            }
+          } else if (doc.classification === 'INTERNAL') {
+            if (ctx.dbUser.departmentId !== doc.uploadedBy.departmentId) {
+              throw new TRPCError({
+                code: 'FORBIDDEN',
+                message: 'You do not have permission to view this INTERNAL (Department) document.',
+              });
+            }
+          } else if (doc.classification === 'CAMPUS') {
+            if (
+              ctx.dbUser.campusId !== doc.uploadedBy.department?.campusId &&
+              ctx.dbUser.campusId !== doc.uploadedBy.campusId // robust check depending on user schema usage
+            ) {
+               // Need to ensure robust user campus mapping
+               const ownerCampusId = doc.uploadedBy.campusId || doc.uploadedBy.department?.campusId;
+               if (ctx.dbUser.campusId !== ownerCampusId) {
+                 throw new TRPCError({
+                  code: 'FORBIDDEN',
+                  message: 'You do not have permission to view this CAMPUS document.',
+                });
+               }
+            }
+          }
+
           return {
             ...doc,
             lifecycleStatus: computeLifecycleStatus(doc),
@@ -177,6 +218,7 @@ export class DocumentsRouter {
             fileSize: z.number().optional(),
             documentTypeId: z.string().optional(),
             controlNumber: z.string().optional().nullable(),
+            classification: z.enum(['INSTITUTIONAL', 'CAMPUS', 'INTERNAL', 'CONFIDENTIAL']).optional().default('CONFIDENTIAL'),
           }),
         )
         .output(z.any())
@@ -187,6 +229,31 @@ export class DocumentsRouter {
               code: 'FORBIDDEN',
               message: 'User does not belong to an organization.',
             });
+          }
+
+          const highestRoleLevel = dbUser.roles.length > 0 
+            ? dbUser.roles.reduce((min, role) => Math.min(min, role.level), Infinity) 
+            : 4; // Default to lowest privilege if no roles are assigned
+            
+          const canManageDocs = checkPermission(dbUser, 'canManageDocuments');
+          
+          // Allow Level 1 users OR Admin equivalents (canManageDocuments) to broadcast wide
+          if (input.classification === 'INSTITUTIONAL' || input.classification === 'CAMPUS') {
+            if (highestRoleLevel > 1 && !canManageDocs) {
+              throw new TRPCError({
+                code: 'FORBIDDEN',
+                message: 'Only Level 1 users or Admins can broadcast Institutional or Campus documents.',
+              });
+            }
+          }
+          // Allow Level 1 & 2 users OR Admin equivalents to broadcast internally
+          if (input.classification === 'INTERNAL') {
+            if (highestRoleLevel > 2 && !canManageDocs) {
+              throw new TRPCError({
+                code: 'FORBIDDEN',
+                message: 'Only Level 1 and 2 users or Admins can broadcast Internal department documents.',
+              });
+            }
           }
 
           if (input.storageBucket !== env.SUPABASE_BUCKET_NAME) {
@@ -225,11 +292,15 @@ export class DocumentsRouter {
               s3Bucket: input.storageBucket,
               content: '',
               uploadedById: user.id,
+              originalSenderId: user.id,
               organizationId: dbUser.organizationId,
+              campusId: dbUser.campusId,
+              departmentId: dbUser.departmentId,
               fileType: input.fileType,
               fileSize: input.fileSize,
               documentTypeId: input.documentTypeId,
               controlNumber: input.controlNumber,
+              classification: input.classification,
               ...retentionSnapshot,
             },
           });
@@ -275,6 +346,9 @@ export class DocumentsRouter {
             select: {
               s3Key: true,
               s3Bucket: true,
+              classification: true,
+              uploadedById: true,
+              originalSenderId: true,
             },
           });
 
@@ -283,6 +357,42 @@ export class DocumentsRouter {
               code: 'NOT_FOUND',
               message: 'Document not found in getSignedDocumentUrl',
             });
+          }
+
+          // Strict access control for viewing content
+          if (doc.classification === 'CONFIDENTIAL') {
+            if (
+              doc.uploadedById !== ctx.user.id &&
+              doc.originalSenderId !== ctx.user.id
+            ) {
+              throw new TRPCError({
+                code: 'FORBIDDEN',
+                message: 'You do not have permission to access the contents of this CONFIDENTIAL document.',
+              });
+            }
+          } else if (doc.classification === 'INTERNAL') {
+            const documentOwner = await this.prisma.user.findUnique({
+              where: { id: doc.uploadedById },
+              select: { departmentId: true },
+            });
+            if (ctx.dbUser.departmentId !== documentOwner?.departmentId) {
+               throw new TRPCError({
+                code: 'FORBIDDEN',
+                message: 'You do not have permission to access the contents of this INTERNAL document.',
+              });
+            }
+          } else if (doc.classification === 'CAMPUS') {
+            const documentOwner = await this.prisma.user.findUnique({
+              where: { id: doc.uploadedById },
+              select: { campusId: true, department: { select: { campusId: true } } },
+            });
+            const ownerCampusId = documentOwner?.campusId || documentOwner?.department?.campusId;
+            if (ctx.dbUser.campusId !== ownerCampusId) {
+               throw new TRPCError({
+                code: 'FORBIDDEN',
+                message: 'You do not have permission to access the contents of this CAMPUS document.',
+              });
+            }
           }
 
           if (!doc.s3Key || !doc.s3Bucket) {
@@ -379,7 +489,7 @@ export class DocumentsRouter {
             title: true,
             createdAt: true,
             uploadedBy: {
-              select: { firstName: true, middleName: true, lastName: true },
+              select: { firstName: true, middleName: true, lastName: true, departmentId: true },
             },
             fileType: true,
             fileSize: true,
@@ -397,6 +507,8 @@ export class DocumentsRouter {
             inactiveRetentionSnapshot: true,
             dispositionActionSnapshot: true,
             dispositionStatus: true,
+            classification: true,
+            originalSenderId: true,
           };
 
           // Optimized path for "Ready for Disposition"
@@ -425,12 +537,38 @@ export class DocumentsRouter {
               conditions.push(Prisma.sql`d."title" ILIKE ${searchPattern}`);
             }
 
+            // Classification filtering in raw SQL
+            const userDeptId = ctx.dbUser.departmentId;
+            const userCampusId = ctx.dbUser.campusId; // might need to fallback to department.campusId if null
+            
+            const visibilityConditions: Prisma.Sql[] = [
+              Prisma.sql`d."classification" = 'INSTITUTIONAL'`,
+              Prisma.sql`(d."classification" = 'CONFIDENTIAL' AND (d."uploadedById" = ${userId} OR d."originalSenderId" = ${userId}))`,
+            ];
+
+            if (userDeptId) {
+              visibilityConditions.push(
+                Prisma.sql`(d."classification" = 'INTERNAL' AND d."departmentId" = ${userDeptId})`
+              );
+            }
+            if (userCampusId) {
+              visibilityConditions.push(
+                Prisma.sql`(d."classification" = 'CAMPUS' AND d."campusId" = ${userCampusId})`
+              );
+            }
+
+            conditions.push(
+              Prisma.sql`(${Prisma.join(visibilityConditions, ' OR ')})`
+            );
+
             const whereSql =
               conditions.length > 0
                 ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`
                 : Prisma.empty;
 
             // Fetch IDs and total count in one go using window function
+            // Because we added campusId and departmentId directly to the Document table,
+            // we don't strictly need to join the User table anymore for these checks!
             const rawQuery = Prisma.sql`
               SELECT d.id, COUNT(*) OVER() as full_count
               FROM "Document" d
@@ -477,6 +615,35 @@ export class DocumentsRouter {
               mode: 'insensitive',
             };
           }
+
+          const userDeptId = ctx.dbUser.departmentId;
+          const userCampusId = ctx.dbUser.campusId;
+
+          const baseOrConditions: Prisma.DocumentWhereInput[] = [
+            { classification: 'INSTITUTIONAL' },
+            {
+              classification: 'CONFIDENTIAL',
+              OR: [
+                { uploadedById: ctx.user.id },
+                { originalSenderId: ctx.user.id },
+              ],
+            },
+          ];
+
+          if (userDeptId) {
+            baseOrConditions.push({
+              classification: 'INTERNAL',
+              departmentId: userDeptId,
+            });
+          }
+          if (userCampusId) {
+            baseOrConditions.push({
+              classification: 'CAMPUS',
+              campusId: userCampusId,
+            });
+          }
+
+          whereClause.OR = baseOrConditions;
 
           const [totalCount, documents] = await this.prisma.$transaction([
             this.prisma.document.count({ where: whereClause }),
@@ -1089,14 +1256,46 @@ export class DocumentsRouter {
           );
 
           let docs;
+          
+          const userDeptId = ctx.dbUser.departmentId;
+          const userCampusId = ctx.dbUser.campusId;
+
+          const adminOrConditions: Prisma.DocumentWhereInput[] = [
+            { classification: 'INSTITUTIONAL' },
+            {
+              classification: 'CONFIDENTIAL',
+              OR: [
+                { uploadedById: ctx.user.id },
+                { originalSenderId: ctx.user.id },
+              ],
+            },
+          ];
+
+          if (userDeptId) {
+            adminOrConditions.push({
+              classification: 'INTERNAL',
+              departmentId: userDeptId,
+            });
+          }
+          if (userCampusId) {
+            adminOrConditions.push({
+              classification: 'CAMPUS',
+              campusId: userCampusId,
+            });
+          }
+
+          const adminWhereClause: Prisma.DocumentWhereInput = {
+            organizationId: ctx.dbUser.organizationId!,
+            OR: adminOrConditions,
+          };
+
+
           if (canManageDocuments) {
             if (!ctx.dbUser.organizationId) {
               return [];
             }
             docs = await this.prisma.document.findMany({
-              where: {
-                organizationId: ctx.dbUser.organizationId,
-              },
+              where: adminWhereClause,
               select: {
                 id: true,
                 title: true,
@@ -1107,19 +1306,19 @@ export class DocumentsRouter {
                 fileType: true,
                 fileSize: true,
                 uploadedById: true,
+                originalSenderId: true,
                 organizationId: true,
                 documentType: true,
                 activeRetentionSnapshot: true,
                 inactiveRetentionSnapshot: true,
                 dispositionActionSnapshot: true,
                 dispositionStatus: true,
+                classification: true,
               },
             });
           } else if (ctx.dbUser.organizationId) {
             docs = await this.prisma.document.findMany({
-              where: {
-                organizationId: ctx.dbUser.organizationId,
-              },
+              where: adminWhereClause,
               select: {
                 id: true,
                 title: true,
@@ -1130,11 +1329,13 @@ export class DocumentsRouter {
                 fileType: true,
                 fileSize: true,
                 uploadedById: true,
+                originalSenderId: true,
                 organizationId: true,
                 activeRetentionSnapshot: true,
                 inactiveRetentionSnapshot: true,
                 dispositionActionSnapshot: true,
                 dispositionStatus: true,
+                classification: true,
               },
             });
           } else {
@@ -1156,7 +1357,10 @@ export class DocumentsRouter {
         }
         return ctx.prisma.document.findMany({
           where: {
-            uploadedById: ctx.dbUser.id,
+            OR: [
+              { uploadedById: ctx.dbUser.id },
+              { originalSenderId: ctx.dbUser.id },
+            ],
             organizationId: ctx.dbUser.organizationId,
           },
         });

@@ -11,6 +11,10 @@ import { FileIcon } from "../components/FileIcon";
 import { usePermissions } from "../hooks/usePermissions";
 import { DocumentTypePill } from "./DocumentTypePill";
 import { DocumentActionsMenu } from "./DocumentActionsMenu";
+import {
+  ClassificationBadge,
+  ClassificationType,
+} from "../components/ClassificationBadge";
 
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
@@ -286,6 +290,11 @@ const Documents: React.FC = () => {
                       >
                         {doc.title}
                       </Link>
+                      <ClassificationBadge
+                        classification={
+                          doc.classification as ClassificationType
+                        }
+                      />
                     </td>
                     <td className="text-muted">
                       {formatUserName(doc.uploadedBy)}
@@ -394,6 +403,11 @@ const Documents: React.FC = () => {
                                     >
                                       {doc.title}
                                     </Link>
+                                    <ClassificationBadge
+                                      classification={
+                                        doc.classification as ClassificationType
+                                      }
+                                    />
                                   </td>
                                   <td className="text-muted">
                                     {formatUserName(doc.uploadedBy)}
