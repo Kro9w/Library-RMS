@@ -1,11 +1,10 @@
 // apps/web/src/components/UploadModal.tsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { supabase } from "../supabase";
 import { useUser } from "../contexts/SessionContext.tsx";
 import { trpc } from "../trpc";
 import { v4 as uuidv4 } from "uuid";
-import { Modal } from "bootstrap";
 import mammoth from "mammoth";
 import "./UploadModal.css";
 
@@ -42,26 +41,6 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
   const { data: storageConfig, isLoading: isConfigLoading } =
     trpc.documents.getStorageConfig.useQuery();
   const bucketName = storageConfig?.bucketName;
-
-  const modalRef = useRef<HTMLDivElement>(null);
-  const modalInstanceRef = useRef<Modal | null>(null);
-
-  useEffect(() => {
-    if (modalRef.current) {
-      modalInstanceRef.current = new Modal(modalRef.current);
-      modalRef.current.addEventListener("hidden.bs.modal", () => {
-        onClose();
-      });
-    }
-  }, []);
-
-  useEffect(() => {
-    if (show) {
-      modalInstanceRef.current?.show();
-    } else {
-      modalInstanceRef.current?.hide();
-    }
-  }, [show]);
 
   const scanForControlNumber = async (file: File) => {
     if (!file) return;
@@ -155,128 +134,130 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
     }
   };
 
+  if (!show) {
+    return null;
+  }
+
   return (
-    <div className="modal fade" ref={modalRef} id="uploadModal" tabIndex={-1}>
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">Upload Document</h5>
-            <button
-              type="button"
-              className="btn-close"
-              onClick={onClose}
-            ></button>
+    <div className="custom-modal-backdrop" onClick={onClose}>
+      <div
+        className="custom-modal-content upload-modal-content"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="custom-modal-title">
+          <h5 style={{ margin: 0, fontSize: "1.25rem", color: "inherit" }}>
+            Upload Document
+          </h5>
+          <button
+            type="button"
+            className="btn-close"
+            onClick={onClose}
+          ></button>
+        </div>
+        <div
+          style={{ padding: "1.5rem", maxHeight: "70vh", overflowY: "auto" }}
+        >
+          <div
+            {...getRootProps({
+              className: `upload-dropzone${
+                isDragActive ? " dropzone-active" : ""
+              }`,
+            })}
+          >
+            <input {...getInputProps()} />
+            <i className="bi bi-cloud-arrow-up-fill"></i>
+            <p>Drag 'n' drop PDF or DOCX files here, or click to select</p>
           </div>
-          <div className="modal-body">
-            <div
-              {...getRootProps({
-                className: `upload-dropzone${
-                  isDragActive ? " dropzone-active" : ""
-                }`,
-              })}
-            >
-              <input {...getInputProps()} />
-              <i className="bi bi-cloud-arrow-up-fill"></i>
-              <p>Drag 'n' drop PDF or DOCX files here, or click to select</p>
-            </div>
-            <aside>
-              <h4>Files</h4>
-              <ul>
-                {files.map((file) => (
-                  <li key={file.name}>
-                    {file.name} - {file.size} bytes
-                  </li>
-                ))}
-              </ul>
-            </aside>
-            <div className="mb-3">
-              <label htmlFor="controlNumber" className="form-label">
-                Control Number
-              </label>
-              <input
-                type="text"
-                id="controlNumber"
-                className="form-control"
-                value={
-                  controlNumber || "Drop a file to scan for a control number"
-                }
-                readOnly
-              />
-            </div>
-            <div className="mb-3">
-              <label htmlFor="documentType" className="form-label">
-                Document Type
-              </label>
-              <select
-                id="documentType"
-                className="form-select"
-                value={selectedDocumentType}
-                onChange={(e) => setSelectedDocumentType(e.target.value)}
-              >
-                <option value="">Select a type...</option>
-                {documentTypes?.map((type) => (
-                  <option key={type.id} value={type.id}>
-                    {type.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="mb-3">
-              <label htmlFor="classification" className="form-label">
-                Classification / Visibility
-              </label>
-              <select
-                id="classification"
-                className="form-select"
-                value={classification}
-                onChange={(e) => setClassification(e.target.value as any)}
-              >
-                {(highestRoleLevel <= 1 || canManageDocs) && (
-                  <>
-                    <option value="INSTITUTIONAL">
-                      Institutional (Organization-wide)
-                    </option>
-                    <option value="CAMPUS">Campus (Campus-wide)</option>
-                  </>
-                )}
-                {(highestRoleLevel <= 2 || canManageDocs) && (
-                  <option value="INTERNAL">
-                    Internal (Department/Office only)
-                  </option>
-                )}
-                <option value="CONFIDENTIAL">
-                  Confidential (Sender and Recipient only)
-                </option>
-              </select>
-              <div className="form-text">
-                Controls who can view this document based on standard access
-                controls.
-              </div>
-            </div>
-            {error && <p className="error">{error}</p>}
-          </div>
-          <div className="modal-footer">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onClose}
-            >
-              Close
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleUpload}
-              disabled={
-                uploading ||
-                files.length === 0 ||
-                isConfigLoading ||
-                !bucketName
+          <aside>
+            <h4>Files</h4>
+            <ul>
+              {files.map((file) => (
+                <li key={file.name}>
+                  {file.name} - {file.size} bytes
+                </li>
+              ))}
+            </ul>
+          </aside>
+          <div className="mb-3">
+            <label htmlFor="controlNumber" className="form-label">
+              Control Number
+            </label>
+            <input
+              type="text"
+              id="controlNumber"
+              className="form-control"
+              value={
+                controlNumber || "Drop a file to scan for a control number"
               }
-            >
-              {uploading ? "Uploading..." : "Upload"}
-            </button>
+              readOnly
+            />
           </div>
+          <div className="mb-3">
+            <label htmlFor="documentType" className="form-label">
+              Document Type
+            </label>
+            <select
+              id="documentType"
+              className="form-select"
+              value={selectedDocumentType}
+              onChange={(e) => setSelectedDocumentType(e.target.value)}
+            >
+              <option value="">Select a type...</option>
+              {documentTypes?.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="mb-3">
+            <label htmlFor="classification" className="form-label">
+              Classification / Visibility
+            </label>
+            <select
+              id="classification"
+              className="form-select"
+              value={classification}
+              onChange={(e) => setClassification(e.target.value as any)}
+            >
+              {(highestRoleLevel <= 1 || canManageDocs) && (
+                <>
+                  <option value="INSTITUTIONAL">
+                    Institutional (Organization-wide)
+                  </option>
+                  <option value="CAMPUS">Campus (Campus-wide)</option>
+                </>
+              )}
+              {(highestRoleLevel <= 2 || canManageDocs) && (
+                <option value="INTERNAL">
+                  Internal (Department/Office only)
+                </option>
+              )}
+              <option value="CONFIDENTIAL">
+                Confidential (Sender and Recipient only)
+              </option>
+            </select>
+            <div className="form-text">
+              Controls who can view this document based on standard access
+              controls.
+            </div>
+          </div>
+          {error && <p className="error">{error}</p>}
+        </div>
+        <div className="custom-modal-actions">
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
+            Close
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleUpload}
+            disabled={
+              uploading || files.length === 0 || isConfigLoading || !bucketName
+            }
+          >
+            {uploading ? "Uploading..." : "Upload"}
+          </button>
         </div>
       </div>
     </div>

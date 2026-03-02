@@ -22,7 +22,7 @@ const PIE_CHART_COLORS = ["#BA3B46", "#ED9B40", "#AAB8C2", "#E1E8ED"];
 // --- 2. DEFINE TYPES FROM TRPC (Fixes 'any' errors) ---
 type RecentFile = AppRouterOutputs["getDashboardStats"]["recentFiles"][0];
 type DocTypeStat = AppRouterOutputs["getDashboardStats"]["docsByType"][0];
-type TopTagStat = AppRouterOutputs["getDashboardStats"]["topTags"][0];
+type DocStatusStat = AppRouterOutputs["getDashboardStats"]["docsByStatus"][0];
 
 export function Dashboard() {
   const { data, isLoading, isError, error } = trpc.getDashboardStats.useQuery();
@@ -78,7 +78,7 @@ export function Dashboard() {
     recentUploadsCount: 0,
     totalUsers: 0,
     docsByType: [],
-    topTags: [],
+    docsByStatus: [],
   };
 
   const recentFiles = data?.recentFiles || [];
@@ -177,14 +177,14 @@ export function Dashboard() {
               </div>
             </div>
 
-            {/* --- Right Column (Unchanged) --- */}
+            {/* --- Right Column (Updated to contain Document Types and Status) --- */}
             <div className="col-lg-4">
               <h5>
                 <i className="bi bi-graph-up-arrow me-2"></i>Analytics
               </h5>
               <div className="card mini-stat-card mb-3">
                 <div className="card-body d-flex flex-column align-items-center">
-                  <h5 className="card-title">Documents by Type</h5>
+                  <h5 className="card-title mb-3">Documents by Type</h5>
                   {stats.docsByType.length > 0 ? (
                     <ResponsiveContainer width="100%" height={200}>
                       <PieChart>
@@ -192,25 +192,25 @@ export function Dashboard() {
                           data={stats.docsByType}
                           cx="50%"
                           cy="50%"
-                          labelLine={false}
+                          innerRadius={50}
                           outerRadius={80}
+                          labelLine={false}
                           fill="#8884d8"
                           dataKey="value"
                           nameKey="name"
                         >
-                          {/* --- 6. EXPLICIT TYPES ADDED --- */}
                           {stats.docsByType.map(
-                            // --- 6. EXPLICIT TYPES ADDED ---
-                            (_entry: DocTypeStat, index: number) => (
+                            (entry: DocTypeStat, index: number) => (
                               <Cell
                                 key={`cell-${index}`}
                                 fill={
+                                  entry.color ||
                                   PIE_CHART_COLORS[
                                     index % PIE_CHART_COLORS.length
                                   ]
                                 }
                               />
-                            )
+                            ),
                           )}
                         </Pie>
                         <Tooltip
@@ -226,7 +226,7 @@ export function Dashboard() {
                               <div
                                 style={{
                                   backgroundColor: "rgba(0, 0, 0, 0.8)",
-                                  color: "#fff", // ✅ Works reliably
+                                  color: "#fff",
                                   borderRadius: "5px",
                                   padding: "6px 10px",
                                   fontSize: "0.85rem",
@@ -240,33 +240,70 @@ export function Dashboard() {
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
-                    <p className="card-text text-muted">
+                    <p className="card-text text-muted mt-4">
                       No documents found to generate stats.
                     </p>
                   )}
-                </div>
-              </div>
-              <div className="card mini-stat-card">
-                <div className="card-body">
-                  <h5 className="card-title">Most Used Tags</h5>
-                  {stats.topTags.length > 0 ? (
-                    <ol className="list-group list-group-numbered">
-                      {/* --- 7. EXPLICIT TYPE ADDED --- */}
-                      {stats.topTags.map((tag: TopTagStat) => (
-                        <li
-                          key={tag.name}
-                          className="list-group-item d-flex justify-content-between align-items-start"
+
+                  <hr className="w-100 my-4" />
+
+                  <h5 className="card-title mb-3">Documents by Status</h5>
+                  {stats.docsByStatus.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie
+                          data={stats.docsByStatus}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          labelLine={false}
+                          fill="#82ca9d"
+                          dataKey="value"
+                          nameKey="name"
                         >
-                          <div className="ms-2 me-auto">{tag.name}</div>
-                          <span className="badge bg-primary rounded-pill">
-                            {tag.count}
-                          </span>
-                        </li>
-                      ))}
-                    </ol>
+                          {stats.docsByStatus.map(
+                            (_entry: DocStatusStat, index: number) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={
+                                  PIE_CHART_COLORS[
+                                    (index + 2) % PIE_CHART_COLORS.length
+                                  ]
+                                }
+                              />
+                            ),
+                          )}
+                        </Pie>
+                        <Tooltip
+                          cursor={{ fill: "transparent" }}
+                          content={({ payload }) => {
+                            if (!payload || payload.length === 0) return null;
+                            const { name, value } = payload[0].payload;
+                            const percentage = (
+                              (value / stats.totalDocuments) *
+                              100
+                            ).toFixed(2);
+                            return (
+                              <div
+                                style={{
+                                  backgroundColor: "rgba(0, 0, 0, 0.8)",
+                                  color: "#fff",
+                                  borderRadius: "5px",
+                                  padding: "6px 10px",
+                                  fontSize: "0.85rem",
+                                }}
+                              >
+                                <strong>{name}</strong>: {percentage}%
+                              </div>
+                            );
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
                   ) : (
-                    <p className="card-text text-muted">
-                      No tags have been used yet.
+                    <p className="card-text text-muted mt-4">
+                      No status data available.
                     </p>
                   )}
                 </div>

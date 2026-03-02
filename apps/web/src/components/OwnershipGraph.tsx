@@ -117,7 +117,7 @@ export function OwnershipGraph() {
         // Do NOT set fx/fy here, or it will be pinned to 0,0
       };
 
-      let initialStack: Node[] = [orgNode];
+      const initialStack: Node[] = [orgNode];
       const initialExpanded = new Set<string>();
       let targetFound = false;
 

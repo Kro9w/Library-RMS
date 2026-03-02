@@ -20,7 +20,7 @@ export default function TitleUpdater() {
       "/signup": "Sign Up",
     };
 
-    let path = location.pathname;
+    const path = location.pathname;
     let title = titles[path];
 
     // Handle dynamic document details route
@@ -36,9 +36,7 @@ export default function TitleUpdater() {
           : path
               .replace("/", "")
               .split("/")
-              .map(
-                (word) => word.charAt(0).toUpperCase() + word.slice(1)
-              )
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
               .join(" - ");
     }
 

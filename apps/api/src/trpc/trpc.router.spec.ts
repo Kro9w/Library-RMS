@@ -73,14 +73,22 @@ describe('TrpcRouter', () => {
         recentFiles: [],
         totalUsers: 0,
         docsByType: [],
-        topTags: [],
+        docsByStatus: [],
       });
     });
 
     it('should query prisma with OR condition for documents and strictly departmentId for users', async () => {
       const mockPrisma = {
         document: {
-          groupBy: jest.fn().mockResolvedValue([{ fileType: 'pdf', _count: { fileType: 2 } }]),
+          groupBy: jest.fn().mockImplementation(({ by }) => {
+            if (by[0] === 'documentTypeId') {
+              return Promise.resolve([{ documentTypeId: 'type-1', _count: { documentTypeId: 2 } }]);
+            }
+            if (by[0] === 'status') {
+              return Promise.resolve([{ status: 'approved', _count: { status: 3 } }]);
+            }
+            return Promise.resolve([]);
+          }),
           count: jest.fn().mockResolvedValue(10),
           findMany: jest.fn().mockResolvedValue([
             {
@@ -99,6 +107,11 @@ describe('TrpcRouter', () => {
             campusId: 'campus-1',
             roles: [],
           }),
+        },
+        documentType: {
+          findMany: jest.fn().mockResolvedValue([
+            { id: 'type-1', name: 'Invoice', color: '#FF0000' }
+          ]),
         },
         $queryRaw: jest.fn().mockResolvedValue([{ name: 'Tag 1', count: 3n }]),
       };
@@ -147,11 +160,11 @@ describe('TrpcRouter', () => {
       // Verify the formatted results
       expect(result.totalDocuments).toBe(10);
       expect(result.totalUsers).toBe(5);
-      expect(result.docsByType).toEqual([{ name: 'PDF', value: 2 }]);
+      expect(result.docsByType).toEqual([{ name: 'Invoice', value: 2, color: '#FF0000' }]);
+      expect(result.docsByStatus).toEqual([{ name: 'approved', value: 3 }]);
       expect(result.recentFiles).toEqual([
         { id: 'doc-1', title: 'Doc 1', uploadedBy: 'John Doe' },
       ]);
-      expect(result.topTags).toEqual([{ name: 'Tag 1', count: 3 }]);
     });
   });
 });

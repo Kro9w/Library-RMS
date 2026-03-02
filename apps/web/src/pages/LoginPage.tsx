@@ -23,7 +23,7 @@ const LoginPage: React.FC = () => {
         {
           email,
           password,
-        }
+        },
       );
 
       if (authError) throw authError;
@@ -35,7 +35,7 @@ const LoginPage: React.FC = () => {
 
         // Handle cases where we might still have old metadata or need to split display_name
         let firstName = meta.first_name;
-        let middleName = meta.middle_name;
+        const middleName = meta.middle_name;
         let lastName = meta.last_name;
 
         if (!firstName && meta.display_name) {

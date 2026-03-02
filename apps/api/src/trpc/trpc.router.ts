@@ -25,17 +25,6 @@ export class TrpcRouter {
   ) {}
 
   get appRouter() {
-    const formatFileType = (fileType: string | null | undefined): string => {
-      if (!fileType) return 'Other';
-      if (fileType.includes('pdf')) return 'PDF';
-      if (fileType.includes('word')) return 'DOCX';
-      if (fileType.includes('excel') || fileType.includes('spreadsheet'))
-        return 'XLSX';
-      if (fileType.includes('image')) return 'Image';
-      if (fileType.includes('text')) return 'Text';
-      return 'Other';
-    };
-
     return router({
       greeting: publicProcedure
         .input(z.object({ name: z.string() }))
@@ -58,7 +47,7 @@ export class TrpcRouter {
             recentFiles: [],
             totalUsers: 0,
             docsByType: [],
-            topTags: [],
+            docsByStatus: [],
           };
         }
 
@@ -71,9 +60,17 @@ export class TrpcRouter {
         };
 
         const docsByTypeQuery = ctx.prisma.document.groupBy({
-          by: ['fileType'],
+          by: ['documentTypeId'],
           _count: {
-            fileType: true,
+            documentTypeId: true,
+          },
+          where: documentWhere,
+        });
+        
+        const docsByStatusQuery = ctx.prisma.document.groupBy({
+          by: ['status'],
+          _count: {
+            status: true,
           },
           where: documentWhere,
         });
@@ -83,7 +80,7 @@ export class TrpcRouter {
           recentUploadsCount,
           recentFiles,
           totalUsers,
-          topTagsRaw,
+          docsByStatusRaw,
           docsByTypeRaw,
         ] = await Promise.all([
           ctx.prisma.document.count({ where: documentWhere }),
@@ -106,29 +103,38 @@ export class TrpcRouter {
             },
           }),
           ctx.prisma.user.count({ where: { departmentId } }),
-          ctx.prisma.$queryRaw<{ name: string; count: bigint }[]>`
-            SELECT t.name, COUNT(dt."B")::int as count
-            FROM "_DocumentToTag" dt
-            JOIN "Document" d ON dt."A" = d.id
-            JOIN "Tag" t ON dt."B" = t.id
-            WHERE d."departmentId" = ${departmentId}
-               OR (d."classification" = 'INSTITUTIONAL'::"Classification" AND d."organizationId" = ${organizationId})
-               OR (d."classification" = 'CAMPUS'::"Classification" AND d."campusId" = ${campusId})
-            GROUP BY t.name
-            ORDER BY count DESC
-            LIMIT 5;
-          `,
+          docsByStatusQuery,
           docsByTypeQuery,
         ]);
 
-        const docsByType = docsByTypeRaw.map((group) => ({
-          name: formatFileType(group.fileType),
-          value: group._count.fileType,
-        }));
+        // Fetch document types to get their names and colors
+        const documentTypeIds = docsByTypeRaw
+          .map((group) => group.documentTypeId)
+          .filter((id): id is string => id !== null);
 
-        const topTags = topTagsRaw.map((tag) => ({
-          name: tag.name,
-          count: Number(tag.count),
+        const documentTypes = await ctx.prisma.documentType.findMany({
+          where: {
+            id: { in: documentTypeIds },
+          },
+        });
+
+        const docsByType = docsByTypeRaw.map((group) => {
+          const docType = documentTypes.find((t) => t.id === group.documentTypeId);
+          let color = docType?.color || '#AAB8C2'; // Default color if not found
+          // Ensure hex colors start with '#'
+          if (color && !color.startsWith('#')) {
+            color = `#${color}`;
+          }
+          return {
+            name: docType?.name || 'Uncategorized',
+            value: group._count.documentTypeId,
+            color,
+          };
+        });
+
+        const docsByStatus = docsByStatusRaw.map((group) => ({
+          name: group.status || 'Uncategorized',
+          value: group._count.status,
         }));
 
         return {
@@ -148,8 +154,8 @@ export class TrpcRouter {
             };
           }),
           totalUsers,
-          docsByType: docsByType,
-          topTags,
+          docsByType,
+          docsByStatus,
         };
       }),
 
