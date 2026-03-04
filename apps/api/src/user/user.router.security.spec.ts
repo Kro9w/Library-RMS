@@ -21,7 +21,7 @@ describe('UserRouter Security', () => {
   let router: UserRouter;
 
   const mockPrismaService = {
-    organization: {
+    institution: {
       findUnique: jest.fn(),
     },
     user: {
@@ -47,17 +47,17 @@ describe('UserRouter Security', () => {
     jest.clearAllMocks();
   });
 
-  describe('getOrgHierarchy', () => {
+  describe('getInstitutionHierarchy', () => {
     it('should filter documents when user lacks canManageDocuments permission', async () => {
       const trpcRouter = router.createRouter();
       const dbUser = {
         id: 'user-1',
-        organizationId: 'org-1',
+        institutionId: 'org-1',
         roles: [{ name: 'User', canManageDocuments: false }],
       };
 
       mockPrismaService.user.findUnique.mockResolvedValue(dbUser);
-      mockPrismaService.organization.findUnique.mockResolvedValue({
+      mockPrismaService.institution.findUnique.mockResolvedValue({
         id: 'org-1',
       });
 
@@ -67,10 +67,10 @@ describe('UserRouter Security', () => {
         prisma: mockPrismaService as any,
       });
 
-      await caller.getOrgHierarchy();
+      await caller.getInstitutionHierarchy();
 
       const callArgs =
-        mockPrismaService.organization.findUnique.mock.calls[0][0];
+        mockPrismaService.institution.findUnique.mock.calls[0][0];
       const documentsInclude =
         callArgs.include.campuses.include.departments.include.users.include
           .documents;
@@ -87,12 +87,12 @@ describe('UserRouter Security', () => {
       const trpcRouter = router.createRouter();
       const dbUser = {
         id: 'admin-1',
-        organizationId: 'org-1',
+        institutionId: 'org-1',
         roles: [{ name: 'Admin', canManageDocuments: true }],
       };
 
       mockPrismaService.user.findUnique.mockResolvedValue(dbUser);
-      mockPrismaService.organization.findUnique.mockResolvedValue({
+      mockPrismaService.institution.findUnique.mockResolvedValue({
         id: 'org-1',
       });
 
@@ -102,10 +102,10 @@ describe('UserRouter Security', () => {
         prisma: mockPrismaService as any,
       });
 
-      await caller.getOrgHierarchy();
+      await caller.getInstitutionHierarchy();
 
       const callArgs =
-        mockPrismaService.organization.findUnique.mock.calls[0][0];
+        mockPrismaService.institution.findUnique.mock.calls[0][0];
       const documentsInclude =
         callArgs.include.campuses.include.departments.include.users.include
           .documents;

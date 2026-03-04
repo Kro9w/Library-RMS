@@ -219,7 +219,7 @@ const Documents: React.FC = () => {
             onChange={(e) => setFilter(e.target.value as "all" | "mine")}
             className="filter-dropdown"
           >
-            <option value="all">All Organization Documents</option>
+            <option value="all">All Institution Documents</option>
             <option value="mine">My Documents</option>
           </select>
           <select

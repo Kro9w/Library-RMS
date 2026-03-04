@@ -39,12 +39,25 @@ const DocumentDetails = React.lazy(() =>
 const GraphView = React.lazy(() =>
   import("./pages/GraphView").then((module) => ({ default: module.GraphView })),
 );
-const JoinOrganization = React.lazy(() => import("./pages/JoinOrganization"));
+const JoinInstitution = React.lazy(() => import("./pages/JoinInstitution"));
 const Users = React.lazy(() =>
   import("./pages/Users").then((module) => ({ default: module.Users })),
 );
 const LogsPage = React.lazy(() => import("./pages/LogsPage"));
 const WordAuth = React.lazy(() => import("./pages/WordAuth"));
+
+// Admin Pages
+const AdminLayout = React.lazy(() => import("./pages/admin/AdminLayout"));
+const AdminCampuses = React.lazy(() => import("./pages/admin/AdminCampuses"));
+const AdminDepartments = React.lazy(
+  () => import("./pages/admin/AdminDepartments"),
+);
+const AdminDocumentTypes = React.lazy(
+  () => import("./pages/admin/AdminDocumentTypes"),
+);
+const AdminSystemUsers = React.lazy(
+  () => import("./pages/admin/AdminSystemUsers"),
+);
 
 const AdminRoute: React.FC<{ children: React.ReactElement }> = ({
   children,
@@ -91,11 +104,11 @@ const AuthRedirectHandler: React.FC = () => {
 
   useEffect(() => {
     if (!isLoadingDbUser && session) {
-      if (dbUser && !dbUser.organizationId && location.pathname !== "/join") {
+      if (dbUser && !dbUser.institutionId && location.pathname !== "/join") {
         navigate("/join", { replace: true });
       } else if (
         dbUser &&
-        dbUser.organizationId &&
+        dbUser.institutionId &&
         location.pathname === "/join"
       ) {
         navigate("/", { replace: true });
@@ -163,6 +176,21 @@ const AppContent: React.FC = () => {
               }
             />
             <Route path="/graph" element={<GraphView />} />
+
+            {/* Super Admin Routes */}
+            <Route
+              path="/admin"
+              element={
+                session ? <AdminLayout /> : <Navigate to="/login" replace />
+              }
+            >
+              <Route index element={<Navigate to="campuses" replace />} />
+              <Route path="campuses" element={<AdminCampuses />} />
+              <Route path="departments" element={<AdminDepartments />} />
+              <Route path="document-types" element={<AdminDocumentTypes />} />
+              <Route path="users" element={<AdminSystemUsers />} />
+            </Route>
+
             <Route
               path="/users"
               element={
@@ -195,11 +223,7 @@ const AppContent: React.FC = () => {
             <Route
               path="/join"
               element={
-                session ? (
-                  <JoinOrganization />
-                ) : (
-                  <Navigate to="/login" replace />
-                )
+                session ? <JoinInstitution /> : <Navigate to="/login" replace />
               }
             />
             {session && (

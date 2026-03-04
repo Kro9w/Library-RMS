@@ -99,7 +99,7 @@ function computeGraphData(
       nodes.push(n);
     };
 
-    if (currentRoot.type === "organization") {
+    if (currentRoot.type === "institution") {
       orgHierarchy.campuses.forEach((c: any) => {
         addNode({
           id: c.id,

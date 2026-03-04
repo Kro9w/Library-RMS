@@ -67,7 +67,7 @@ describe('DocumentsRouter Performance', () => {
     const trpcRouter = router.createRouter();
     const dbUser = {
       id: 'user-1',
-      organizationId: 'org-1',
+      institutionId: 'org-1',
       roles: [{ name: 'Admin' }],
     };
 
@@ -75,14 +75,14 @@ describe('DocumentsRouter Performance', () => {
       if (where.id === 'user-1') {
         return Promise.resolve({
           id: 'user-1',
-          organizationId: 'org-1',
+          institutionId: 'org-1',
           roles: [{ name: 'Admin' }],
         });
       }
       if (where.id === 'recipient-1') {
         return Promise.resolve({
           id: 'recipient-1',
-          organizationId: 'org-1',
+          institutionId: 'org-1',
           firstName: 'John',
           lastName: 'Doe',
         });
@@ -93,7 +93,7 @@ describe('DocumentsRouter Performance', () => {
     mockPrismaService.document.findMany.mockImplementation(({ where }: any) => {
       if (where.id && where.id.in) {
         return Promise.resolve(
-          where.id.in.map((id: string) => ({ id, organizationId: 'org-1' })),
+          where.id.in.map((id: string) => ({ id, institutionId: 'org-1' })),
         );
       }
       return Promise.resolve([]);
@@ -129,7 +129,7 @@ describe('DocumentsRouter Performance', () => {
     expect(callArgs).toHaveLength(documentIds.length);
     expect(callArgs[0]).toMatchObject({
       userId: 'user-1',
-      organizationId: 'org-1',
+      institutionId: 'org-1',
       action: expect.stringContaining('Sent Document to John Doe'),
     });
   });

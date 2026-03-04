@@ -11,15 +11,9 @@
     "benchmark": "tsx test/benchmarks/graph-bench.ts"
   },
   "dependencies": {
-    "@mantine/core": "^8.3.5",
-    "@mantine/dates": "^8.3.5",
-    "@mantine/dropzone": "^8.3.5",
-    "@mantine/form": "^8.3.5",
-    "@mantine/hooks": "^8.3.5",
     "@repo/supabase-types": "workspace:*",
     "@supabase/supabase-js": "^2.76.1",
     "@tabler/icons-react": "^3.35.0",
-    "@tailwindcss/vite": "^4.1.16",
     "@tanstack/react-query": "^5.85.8",
     "@tiptap/extension-placeholder": "^3.3.0",
     "@tiptap/react": "^3.3.0",
@@ -45,13 +39,11 @@
     "react-router-dom": "^7.9.1",
     "react-select": "^5.10.2",
     "recharts": "^3.2.1",
-    "tailwindcss": "^4.1.16",
     "uuid": "^13.0.0",
     "zod": "^4.1.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
-    "@tailwindcss/postcss": "^4.1.16",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -74,7 +66,6 @@
     "identity-obj-proxy": "^3.0.0",
     "jest": "^30.2.0",
     "jest-environment-jsdom": "^30.2.0",
-    "tailwindcss-animate": "^1.0.7",
     "ts-jest": "^29.4.5",
     "tsx": "^4.21.0",
     "typescript": "^5.9.2",

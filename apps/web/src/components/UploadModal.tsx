@@ -223,7 +223,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
               {(highestRoleLevel <= 1 || canManageDocs) && (
                 <>
                   <option value="INSTITUTIONAL">
-                    Institutional (Organization-wide)
+                    Institutional (Institution-wide)
                   </option>
                   <option value="CAMPUS">Campus (Campus-wide)</option>
                 </>

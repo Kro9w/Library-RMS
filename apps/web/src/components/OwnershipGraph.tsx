@@ -66,11 +66,11 @@ export function OwnershipGraph() {
   const { data: currentUserData, isLoading: isLoadingCurrentUser } =
     trpc.user.getMe.useQuery();
   const {
-    data: orgHierarchy,
+    data: institutionHierarchy,
     isLoading: isLoadingHierarchy,
     isError,
     error,
-  } = trpc.user.getOrgHierarchy.useQuery(undefined, {
+  } = trpc.user.getInstitutionHierarchy.useQuery(undefined, {
     staleTime: 60000,
   });
 
@@ -84,23 +84,23 @@ export function OwnershipGraph() {
     const dMap = new Map<string, any>();
     const users: any[] = [];
 
-    if (orgHierarchy) {
-      for (const c of orgHierarchy.campuses) {
+    if (institutionHierarchy) {
+      for (const c of institutionHierarchy.campuses) {
         for (const d of c.departments) {
           dMap.set(d.id, d);
           for (const u of d.users) {
             uMap.set(u.id, u);
-            users.push({ ...u, organizationId: orgHierarchy.id }); // Ensure orgId is present
+            users.push({ ...u, institutionId: institutionHierarchy.id }); // Ensure institutionId is present
           }
         }
       }
     }
     return { userMap: uMap, deptMap: dMap, allUsers: users };
-  }, [orgHierarchy]);
+  }, [institutionHierarchy]);
 
   const allCampuses = useMemo(() => {
-    return orgHierarchy?.campuses || [];
-  }, [orgHierarchy]);
+    return institutionHierarchy?.campuses || [];
+  }, [institutionHierarchy]);
 
   // Check if we are in "Document View" (User is root)
   const isDocumentView =
@@ -108,12 +108,12 @@ export function OwnershipGraph() {
 
   // --- 1. INITIAL STATE: Start at User's Campus or Target User ---
   useEffect(() => {
-    if (orgHierarchy && currentUserData && viewStack.length === 0) {
+    if (institutionHierarchy && currentUserData && viewStack.length === 0) {
       // Construct Org Node
       const orgNode: Node = {
-        id: orgHierarchy.id,
-        name: orgHierarchy.acronym,
-        type: "organization",
+        id: institutionHierarchy.id,
+        name: institutionHierarchy.acronym,
+        type: "institution",
         // Do NOT set fx/fy here, or it will be pinned to 0,0
       };
 
@@ -123,7 +123,7 @@ export function OwnershipGraph() {
 
       // Priority: Check Target User Param first
       if (targetUserIdParam) {
-        for (const campus of orgHierarchy.campuses) {
+        for (const campus of institutionHierarchy.campuses) {
           for (const dept of campus.departments) {
             const user = dept.users.find(
               (u: any) => u.id === targetUserIdParam,
@@ -138,7 +138,7 @@ export function OwnershipGraph() {
                 id: campus.id,
                 name: campus.name,
                 type: "campus",
-                parentId: orgHierarchy.id,
+                parentId: institutionHierarchy.id,
                 color: "var(--primary)",
               };
               initialStack.push(campusNode);
@@ -178,7 +178,7 @@ export function OwnershipGraph() {
       if (!targetFound && currentUserData.campusId) {
         initialExpanded.add(currentUserData.campusId);
 
-        const campus = orgHierarchy.campuses.find(
+        const campus = institutionHierarchy.campuses.find(
           (c: any) => c.id === currentUserData.campusId,
         );
         if (campus) {
@@ -186,7 +186,7 @@ export function OwnershipGraph() {
             id: campus.id,
             name: campus.name,
             type: "campus",
-            parentId: orgHierarchy.id,
+            parentId: institutionHierarchy.id,
             color: "var(--primary)",
           };
           initialStack.push(campusNode);
@@ -239,7 +239,7 @@ export function OwnershipGraph() {
       setViewStack(initialStack);
       setExpandedIds(initialExpanded);
     }
-  }, [orgHierarchy, currentUserData, targetUserIdParam]);
+  }, [institutionHierarchy, currentUserData, targetUserIdParam]);
 
   // --- Reset Temp Nodes on View Change ---
   useEffect(() => {
@@ -270,17 +270,17 @@ export function OwnershipGraph() {
 
   // Sync Hierarchy to Worker
   useEffect(() => {
-    if (orgHierarchy && workerRef.current) {
+    if (institutionHierarchy && workerRef.current) {
       workerRef.current.postMessage({
         type: "INIT_DATA",
-        payload: orgHierarchy,
+        payload: institutionHierarchy,
       });
     }
-  }, [orgHierarchy]);
+  }, [institutionHierarchy]);
 
   // Request Graph Calculation from Worker
   useEffect(() => {
-    if (orgHierarchy && viewStack.length > 0 && workerRef.current) {
+    if (institutionHierarchy && viewStack.length > 0 && workerRef.current) {
       workerRef.current.postMessage({
         type: "CALCULATE_GRAPH",
         payload: {
@@ -293,7 +293,7 @@ export function OwnershipGraph() {
     } else {
       setGraphData({ nodes: [], links: [] });
     }
-  }, [orgHierarchy, viewStack, tempNodes, bubbleNode, bubbleDocuments]);
+  }, [institutionHierarchy, viewStack, tempNodes, bubbleNode, bubbleDocuments]);
 
   // --- Event Handlers ---
   const handleNodeClick = (event: MouseEvent, d: Node) => {
@@ -637,7 +637,7 @@ export function OwnershipGraph() {
     // CUSTOM COLLISION FORCE: Exclude contained documents entirely
     // This prevents the bubble from being pushed by the documents inside it (drifting)
     const collideForce = d3.forceCollide<Node>().radius((d) => {
-      if (d.type === "organization") return 50;
+      if (d.type === "institution") return 50;
       if (d.type === "campus") return 45;
       if (d.type === "department") return 40;
       if (d.type === "user") return 35;
@@ -758,7 +758,7 @@ export function OwnershipGraph() {
       .select("circle")
       .attr("class", (d) => `node-circle ${d.type}`)
       .attr("r", (d) => {
-        if (d.type === "organization") return 40;
+        if (d.type === "institution") return 40;
         if (d.type === "campus") return 35;
         if (d.type === "department") return 30;
         if (d.type === "user") return 25;
@@ -771,7 +771,7 @@ export function OwnershipGraph() {
         if (d.type === "document" && d.color) return `#${d.color}`;
         if (d.type === "campus" || d.type === "department")
           return "var(--primary)";
-        if (d.type === "organization") return "var(--text)";
+        if (d.type === "institution") return "var(--text)";
         return null;
       })
       .classed("selected", (d) => d.id === selectedUserNode?.id)
@@ -1214,7 +1214,7 @@ export function OwnershipGraph() {
     // Just clear state; docs will disappear from graphData or re-appear at owner if we revert logic?
     // Current logic: Docs in bubble are just nodes in bubbleDocuments state.
     // If we clear state, they disappear. Wait, requirement: "re-attaches to original owner"
-    // Since graphData re-calculates from orgHierarchy every render, clearing bubbleDocuments
+    // Since graphData re-calculates from institutionHierarchy every render, clearing bubbleDocuments
     // means they stop being suppressed/hijacked and the original logic will render them linked to owner!
     // So simply clearing state is enough.
     setBubbleDocuments([]);
@@ -1293,10 +1293,10 @@ export function OwnershipGraph() {
         <div className={`binder-wrapper ${!isBinderOpen ? "collapsed" : ""}`}>
           <div className="binder-body">
             <div className="binder-content">
-              {activeTab === "directory" && orgHierarchy && (
+              {activeTab === "directory" && institutionHierarchy && (
                 <div className="directory-tree">
                   {/* Campus Level */}
-                  {orgHierarchy.campuses.map((campus: any) => (
+                  {institutionHierarchy.campuses.map((campus: any) => (
                     <div key={campus.id} className="tree-item">
                       <div
                         className={`tree-header ${expandedIds.has(campus.id) ? "expanded" : ""}`}
@@ -1471,7 +1471,7 @@ export function OwnershipGraph() {
                 className={`breadcrumb-item-text ${index === viewStack.length - 1 ? "active" : ""}`}
                 onClick={() => handleBreadcrumbClick(index)}
               >
-                {index === 0 && node.type === "organization"
+                {index === 0 && node.type === "institution"
                   ? "University"
                   : node.name}
               </span>

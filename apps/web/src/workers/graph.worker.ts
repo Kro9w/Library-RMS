@@ -2,17 +2,17 @@
 import type { Node, LinkData, WorkerMessage, WorkerResponse } from "../types/graph";
 
 // State
-let orgHierarchy: any = null;
+let institutionHierarchy: any = null;
 let userMap: Map<string, any> = new Map();
 let deptMap: Map<string, any> = new Map();
 
 // Helper Functions
-function buildMaps(orgHierarchy: any) {
+function buildMaps(institutionHierarchy: any) {
   const uMap = new Map<string, any>();
   const dMap = new Map<string, any>();
 
-  if (orgHierarchy) {
-    for (const c of orgHierarchy.campuses) {
+  if (institutionHierarchy) {
+    for (const c of institutionHierarchy.campuses) {
       for (const d of c.departments) {
         dMap.set(d.id, d);
         for (const u of d.users) {
@@ -30,7 +30,7 @@ function computeGraphData(
   bubbleNode: Node | null,
   bubbleDocuments: Node[]
 ) {
-    if (!orgHierarchy || viewStack.length === 0)
+    if (!institutionHierarchy || viewStack.length === 0)
       return { nodes: [], links: [] };
 
     const currentRoot = viewStack[viewStack.length - 1];
@@ -58,8 +58,8 @@ function computeGraphData(
       nodes.push(n);
     };
 
-    if (currentRoot.type === "organization") {
-      orgHierarchy.campuses.forEach((c: any) => {
+    if (currentRoot.type === "institution") {
+      institutionHierarchy.campuses.forEach((c: any) => {
         addNode({
           id: c.id,
           name: c.name,
@@ -69,7 +69,7 @@ function computeGraphData(
         });
       });
     } else if (currentRoot.type === "campus") {
-      const campus = orgHierarchy.campuses.find(
+      const campus = institutionHierarchy.campuses.find(
         (c: any) => c.id === currentRoot.id,
       );
       if (campus) {
@@ -203,8 +203,8 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
     const { type, payload } = e.data;
 
     if (type === "INIT_DATA") {
-        orgHierarchy = payload;
-        const maps = buildMaps(orgHierarchy);
+        institutionHierarchy = payload;
+        const maps = buildMaps(institutionHierarchy);
         userMap = maps.userMap;
         deptMap = maps.deptMap;
     } else if (type === "CALCULATE_GRAPH") {

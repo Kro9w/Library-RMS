@@ -7,7 +7,7 @@ export class LogService {
 
   async logAction(
     userId: string,
-    organizationId: string,
+    institutionId: string,
     action: string,
     roles: string[],
     targetName?: string, // Optional parameter for enriched logging
@@ -19,7 +19,7 @@ export class LogService {
         data: {
           action: actionString,
           userId,
-          organizationId,
+          institutionId,
           userRole: roles.join(', '),
         },
       })
@@ -31,7 +31,7 @@ export class LogService {
   async logActions(
     logs: {
       userId: string;
-      organizationId: string;
+      institutionId: string;
       action: string;
       roles: string[];
       targetName?: string;
@@ -42,7 +42,7 @@ export class LogService {
         ? `${log.action}: '${log.targetName}'`
         : log.action,
       userId: log.userId,
-      organizationId: log.organizationId,
+      institutionId: log.institutionId,
       userRole: log.roles.join(', '),
     }));
 

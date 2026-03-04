@@ -45,12 +45,12 @@ describe('TrpcRouter', () => {
   });
 
   describe('getDashboardStats', () => {
-    it('should return 0s if departmentId, organizationId, or campusId is not present', async () => {
+    it('should return 0s if departmentId, institutionId, or campusId is not present', async () => {
       const mockPrisma = {
         user: {
           findUnique: jest.fn().mockResolvedValue({
             id: 'user-1',
-            organizationId: 'org-1',
+            institutionId: 'org-1',
             departmentId: null,
             campusId: 'campus-1',
             roles: [],
@@ -61,7 +61,7 @@ describe('TrpcRouter', () => {
       const appRouter = trpcRouter.appRouter;
       const caller = appRouter.createCaller({
         user: { id: 'user-1' } as any,
-        dbUser: { id: 'user-1', organizationId: 'org-1', departmentId: null, campusId: 'campus-1' } as any,
+        dbUser: { id: 'user-1', institutionId: 'org-1', departmentId: null, campusId: 'campus-1' } as any,
         prisma: mockPrisma as any,
       });
 
@@ -102,7 +102,7 @@ describe('TrpcRouter', () => {
           count: jest.fn().mockResolvedValue(5),
           findUnique: jest.fn().mockResolvedValue({
             id: 'user-1',
-            organizationId: 'org-1',
+            institutionId: 'org-1',
             departmentId: 'dept-1',
             campusId: 'campus-1',
             roles: [],
@@ -119,7 +119,7 @@ describe('TrpcRouter', () => {
       const appRouter = trpcRouter.appRouter;
       const caller = appRouter.createCaller({
         user: { id: 'user-1' } as any,
-        dbUser: { id: 'user-1', organizationId: 'org-1', departmentId: 'dept-1', campusId: 'campus-1' } as any,
+        dbUser: { id: 'user-1', institutionId: 'org-1', departmentId: 'dept-1', campusId: 'campus-1' } as any,
         prisma: mockPrisma as any,
       });
 
@@ -128,7 +128,7 @@ describe('TrpcRouter', () => {
       const expectedDocumentWhere = {
         OR: [
           { departmentId: 'dept-1' },
-          { classification: 'INSTITUTIONAL', organizationId: 'org-1' },
+          { classification: 'INSTITUTIONAL', institutionId: 'org-1' },
           { classification: 'CAMPUS', campusId: 'campus-1' },
         ],
       };

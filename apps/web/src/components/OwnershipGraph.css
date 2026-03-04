@@ -371,7 +371,7 @@ svg.grabbing {
   stroke-width: 4px;
   filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.2));
 }
-.node-circle.organization {
+.node-circle.institution {
   fill: var(--text);
 }
 .node-circle.campus {

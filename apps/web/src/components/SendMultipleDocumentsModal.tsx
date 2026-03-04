@@ -64,12 +64,10 @@ export function SendMultipleDocumentsModal({
     undefined,
     { enabled: !propUsers && show },
   );
-  const { data: fetchedOrgHierarchy } = trpc.user.getOrgHierarchy.useQuery(
-    undefined,
-    {
+  const { data: fetchedOrgHierarchy } =
+    trpc.user.getInstitutionHierarchy.useQuery(undefined, {
       enabled: !propCampuses && show,
-    },
-  );
+    });
   const { data: fetchedTags } = trpc.documents.getTags.useQuery(undefined, {
     enabled: !propTags && show,
   });
@@ -211,7 +209,7 @@ export function SendMultipleDocumentsModal({
       });
 
       utils.documents.getAll.invalidate();
-      utils.user.getOrgHierarchy.invalidate();
+      utils.user.getInstitutionHierarchy.invalidate();
       if (onSuccess) onSuccess();
       onClose();
     } catch (error) {

@@ -27,7 +27,7 @@ interface SendDocumentModalProps {
   initialRecipientId?: string | null;
   forceRecipientLock?: boolean; // If true, disable the dropdowns
   users?: User[]; // Optional: if provided, we skip fetch
-  campuses?: Campus[]; // Replacing flat orgs with hierarchical campuses
+  campuses?: Campus[]; // Replacing flat institutions with hierarchical campuses
   tags?: Tag[];
   globalTags?: Tag[];
   recipient?: User | null; // The full user object if known
@@ -55,12 +55,10 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
     undefined,
     { enabled: !propUsers && show },
   );
-  const { data: fetchedOrgHierarchy } = trpc.user.getOrgHierarchy.useQuery(
-    undefined,
-    {
+  const { data: fetchedOrgHierarchy } =
+    trpc.user.getInstitutionHierarchy.useQuery(undefined, {
       enabled: !propCampuses && show,
-    },
-  );
+    });
   const { data: fetchedTags } = trpc.documents.getTags.useQuery(undefined, {
     enabled: !propTags && show,
   });

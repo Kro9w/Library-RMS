@@ -95,17 +95,17 @@ export class DocumentsRouter {
         .input(z.object({ id: z.string() }))
         .output(z.any())
         .query(async ({ ctx, input }) => {
-          if (!ctx.dbUser.organizationId) {
+          if (!ctx.dbUser.institutionId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'User does not belong to an organization.',
+              message: 'User does not belong to an institution.',
             });
           }
 
           let doc = await this.prisma.document.findFirst({
             where: {
               id: input.id,
-              organizationId: ctx.dbUser.organizationId,
+              institutionId: ctx.dbUser.institutionId,
             },
             select: {
               id: true,
@@ -238,10 +238,10 @@ export class DocumentsRouter {
         .output(z.any())
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
-          if (!dbUser.organizationId) {
+          if (!dbUser.institutionId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'User does not belong to an organization.',
+              message: 'User does not belong to an institution.',
             });
           }
 
@@ -307,7 +307,7 @@ export class DocumentsRouter {
               content: '',
               uploadedById: user.id,
               originalSenderId: user.id,
-              organizationId: dbUser.organizationId,
+              institutionId: dbUser.institutionId,
               campusId: dbUser.campusId,
               departmentId: dbUser.departmentId,
               fileType: input.fileType,
@@ -321,7 +321,7 @@ export class DocumentsRouter {
 
           await this.logService.logAction(
             user.id,
-            dbUser.organizationId,
+            dbUser.institutionId,
             'Created Document',
             dbUser.roles.map((r) => r.name),
             document.title,
@@ -345,17 +345,17 @@ export class DocumentsRouter {
         .input(z.object({ documentId: z.string() }))
         .output(z.object({ signedUrl: z.string() }))
         .query(async ({ ctx, input }) => {
-          if (!ctx.dbUser.organizationId) {
+          if (!ctx.dbUser.institutionId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'User does not belong to an organization.',
+              message: 'User does not belong to an institution.',
             });
           }
 
           const doc = await this.prisma.document.findFirst({
             where: {
               id: input.documentId,
-              organizationId: ctx.dbUser.organizationId,
+              institutionId: ctx.dbUser.institutionId,
             },
             select: {
               s3Key: true,
@@ -436,20 +436,20 @@ export class DocumentsRouter {
             method: 'GET',
             path: '/documents.getAppUsers',
             tags: ['documents', 'users'],
-            summary: 'Get all users in the organization',
+            summary: 'Get all users in the institution',
           },
         })
         .input(z.void())
         .output(z.any())
         .query(async ({ ctx }) => {
-          if (!ctx.dbUser.organizationId) {
+          if (!ctx.dbUser.institutionId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'User does not belong to an organization.',
+              message: 'User does not belong to an institution.',
             });
           }
           return this.prisma.user.findMany({
-            where: { organizationId: ctx.dbUser.organizationId },
+            where: { institutionId: ctx.dbUser.institutionId },
           });
         }),
 
@@ -460,7 +460,7 @@ export class DocumentsRouter {
             method: 'GET',
             path: '/documents.getAll',
             tags: ['documents'],
-            summary: 'Get all documents in the organization',
+            summary: 'Get all documents in the institution',
           },
         })
         .input(
@@ -479,10 +479,10 @@ export class DocumentsRouter {
           }),
         )
         .query(async ({ ctx, input }) => {
-          if (!ctx.dbUser.organizationId) {
+          if (!ctx.dbUser.institutionId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'User does not belong to an organization.',
+              message: 'User does not belong to an institution.',
             });
           }
 
@@ -508,7 +508,7 @@ export class DocumentsRouter {
             fileType: true,
             fileSize: true,
             uploadedById: true,
-            organizationId: true,
+            institutionId: true,
             documentType: true,
             controlNumber: true,
             tags: {
@@ -527,14 +527,14 @@ export class DocumentsRouter {
 
           // Optimized path for "Ready for Disposition"
           if (lifecycleFilter === 'ready') {
-            const orgId = ctx.dbUser.organizationId;
+            const institutionId = ctx.dbUser.institutionId;
             const userId = ctx.user.id;
             const searchPattern = search ? `%${search}%` : null;
 
             // Base query for IDs and count
             // We use Prisma.sql to compose the query safely
             const conditions: Prisma.Sql[] = [
-              Prisma.sql`d."organizationId" = ${orgId}`,
+              Prisma.sql`d."institutionId" = ${institutionId}`,
               Prisma.sql`d."dispositionStatus" NOT IN ('DESTROYED', 'ARCHIVED')`,
               Prisma.sql`d."activeRetentionSnapshot" IS NOT NULL`,
               // Check active retention
@@ -616,7 +616,7 @@ export class DocumentsRouter {
 
           // Standard path (No lifecycle filter or 'all')
           const whereClause: Prisma.DocumentWhereInput = {
-            organizationId: ctx.dbUser.organizationId,
+            institutionId: ctx.dbUser.institutionId,
           };
 
           if (filter === 'mine') {
@@ -691,28 +691,28 @@ export class DocumentsRouter {
         .input(z.string())
         .output(z.any())
         .query(async ({ ctx, input: userId }) => {
-          if (!ctx.dbUser.organizationId) {
+          if (!ctx.dbUser.institutionId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'User does not belong to an organization.',
+              message: 'User does not belong to an institution.',
             });
           }
           // Verify user exists in org
           const userToQuery = await this.prisma.user.findFirst({
             where: {
               id: userId,
-              organizationId: ctx.dbUser.organizationId,
+              institutionId: ctx.dbUser.institutionId,
             },
           });
           if (!userToQuery) {
             throw new TRPCError({
               code: 'NOT_FOUND',
-              message: 'User not found in your organization.',
+              message: 'User not found in your institution.',
             });
           }
           return this.prisma.document.findMany({
             where: {
-              organizationId: ctx.dbUser.organizationId,
+              institutionId: ctx.dbUser.institutionId,
               uploadedById: userId,
             },
           });
@@ -730,10 +730,10 @@ export class DocumentsRouter {
         .input(z.object({ id: z.string() }))
         .output(z.any())
         .mutation(async ({ ctx, input }) => {
-          if (!ctx.dbUser.organizationId) {
+          if (!ctx.dbUser.institutionId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'User does not belong to an organization.',
+              message: 'User does not belong to an institution.',
             });
           }
 
@@ -742,14 +742,14 @@ export class DocumentsRouter {
           const doc = await this.prisma.document.findFirst({
             where: {
               id: input.id,
-              organizationId: ctx.dbUser.organizationId,
+              institutionId: ctx.dbUser.institutionId,
             },
             select: {
               id: true,
               s3Key: true,
               s3Bucket: true,
               title: true,
-              organizationId: true,
+              institutionId: true,
             },
           });
           if (!doc) {
@@ -768,7 +768,7 @@ export class DocumentsRouter {
 
           await this.logService.logAction(
             ctx.dbUser.id,
-            doc.organizationId,
+            doc.institutionId,
             'Deleted Document',
             ctx.dbUser.roles.map((r) => r.name),
             doc.title,
@@ -791,10 +791,10 @@ export class DocumentsRouter {
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
 
-          if (!dbUser.organizationId) {
+          if (!dbUser.institutionId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'User does not belong to an organization.',
+              message: 'User does not belong to an institution.',
             });
           }
 
@@ -812,7 +812,7 @@ export class DocumentsRouter {
           // Verify ownership of all documents to prevent unauthorized access
           const whereClause: any = {
             id: input.documentId,
-            organizationId: dbUser.organizationId,
+            institutionId: dbUser.institutionId,
           };
 
           if (!checkPermission(dbUser, 'canManageDocuments')) {
@@ -864,7 +864,7 @@ export class DocumentsRouter {
 
           await this.logService.logAction(
             user.id,
-            dbUser.organizationId,
+            dbUser.institutionId,
             `Sent Document to ${recipient.firstName} ${recipient.lastName}`,
             dbUser.roles.map((r) => r.name),
             updatedDocument.title,
@@ -906,10 +906,10 @@ export class DocumentsRouter {
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
 
-          if (!dbUser.organizationId) {
+          if (!dbUser.institutionId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'User does not belong to an organization.',
+              message: 'User does not belong to an institution.',
             });
           }
 
@@ -927,7 +927,7 @@ export class DocumentsRouter {
           // Verify ownership of all documents to prevent unauthorized access
           const whereClause: any = {
             id: { in: input.documentIds },
-            organizationId: dbUser.organizationId,
+            institutionId: dbUser.institutionId,
           };
 
           if (!checkPermission(dbUser, 'canManageDocuments')) {
@@ -989,7 +989,7 @@ export class DocumentsRouter {
           await this.logService.logActions(
             results.map((updatedDocument) => ({
               userId: user.id,
-              organizationId: dbUser.organizationId!,
+              institutionId: dbUser.institutionId!,
               action: `Sent Document to ${recipient.firstName} ${recipient.lastName}`,
               roles: userRoles,
               targetName: updatedDocument.title,
@@ -1023,10 +1023,10 @@ export class DocumentsRouter {
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
 
-          if (!dbUser.organizationId) {
+          if (!dbUser.institutionId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'User does not belong to an organization.',
+              message: 'User does not belong to an institution.',
             });
           }
 
@@ -1074,7 +1074,7 @@ export class DocumentsRouter {
 
           await this.logService.logAction(
             user.id,
-            dbUser.organizationId,
+            dbUser.institutionId,
             `Reviewed Document (Status: ${input.status})`,
             dbUser.roles.map((r) => r.name),
             updatedDocument.title,
@@ -1195,10 +1195,10 @@ export class DocumentsRouter {
         .mutation(async ({ ctx, input: tagId }) => {
           const { dbUser } = ctx;
 
-          if (!dbUser.organizationId) {
+          if (!dbUser.institutionId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'User does not belong to an organization.',
+              message: 'User does not belong to an institution.',
             });
           }
 
@@ -1222,18 +1222,18 @@ export class DocumentsRouter {
             });
           }
 
-          // Check if tag is used by other organizations
+          // Check if tag is used by other institutions
           const isUsedByOthers = await this.prisma.document.findFirst({
             where: {
               tags: { some: { id: tagId } },
-              organizationId: { not: dbUser.organizationId },
+              institutionId: { not: dbUser.institutionId },
             },
           });
 
           if (isUsedByOthers) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'Tag is in use by other organizations.',
+              message: 'Tag is in use by other institutions.',
             });
           }
 
@@ -1245,10 +1245,10 @@ export class DocumentsRouter {
       getRemarks: protectedProcedure
         .input(z.object({ documentId: z.string() }))
         .query(async ({ ctx, input }) => {
-          if (!ctx.dbUser.organizationId) {
+          if (!ctx.dbUser.institutionId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'User does not belong to an organization.',
+              message: 'User does not belong to an institution.',
             });
           }
 
@@ -1271,13 +1271,13 @@ export class DocumentsRouter {
           });
         }),
 
-      getAllOrgs: protectedProcedure
+      getAllInstitutions: protectedProcedure
         .meta({
           openapi: {
             method: 'GET',
-            path: '/documents.getAllOrgs',
+            path: '/documents.getAllInstitutions',
             tags: ['documents', 'admin'],
-            summary: 'Get all organizations',
+            summary: 'Get all institutions',
           },
         })
         .input(z.void())
@@ -1285,13 +1285,13 @@ export class DocumentsRouter {
         .query(async ({ ctx }) => {
           requirePermission(ctx.dbUser, 'canManageDocuments');
 
-          if (!ctx.dbUser.organizationId) {
+          if (!ctx.dbUser.institutionId) {
             return [];
           }
 
-          return this.prisma.organization.findMany({
+          return this.prisma.institution.findMany({
             where: {
-              id: ctx.dbUser.organizationId,
+              id: ctx.dbUser.institutionId,
             },
           });
         }),
@@ -1310,13 +1310,13 @@ export class DocumentsRouter {
         .query(async ({ ctx }) => {
           requirePermission(ctx.dbUser, 'canManageUsers');
 
-          if (!ctx.dbUser.organizationId) {
+          if (!ctx.dbUser.institutionId) {
             return [];
           }
 
           return this.prisma.user.findMany({
             where: {
-              organizationId: ctx.dbUser.organizationId,
+              institutionId: ctx.dbUser.institutionId,
             },
           });
         }),
@@ -1368,13 +1368,13 @@ export class DocumentsRouter {
           }
 
           const adminWhereClause: Prisma.DocumentWhereInput = {
-            organizationId: ctx.dbUser.organizationId!,
+            institutionId: ctx.dbUser.institutionId!,
             OR: adminOrConditions,
           };
 
 
           if (canManageDocuments) {
-            if (!ctx.dbUser.organizationId) {
+            if (!ctx.dbUser.institutionId) {
               return [];
             }
             docs = await this.prisma.document.findMany({
@@ -1390,7 +1390,7 @@ export class DocumentsRouter {
                 fileSize: true,
                 uploadedById: true,
                 originalSenderId: true,
-                organizationId: true,
+                institutionId: true,
                 documentType: true,
                 activeRetentionSnapshot: true,
                 inactiveRetentionSnapshot: true,
@@ -1399,7 +1399,7 @@ export class DocumentsRouter {
                 classification: true,
               },
             });
-          } else if (ctx.dbUser.organizationId) {
+          } else if (ctx.dbUser.institutionId) {
             docs = await this.prisma.document.findMany({
               where: adminWhereClause,
               select: {
@@ -1413,7 +1413,7 @@ export class DocumentsRouter {
                 fileSize: true,
                 uploadedById: true,
                 originalSenderId: true,
-                organizationId: true,
+                institutionId: true,
                 activeRetentionSnapshot: true,
                 inactiveRetentionSnapshot: true,
                 dispositionActionSnapshot: true,
@@ -1432,10 +1432,10 @@ export class DocumentsRouter {
         }),
 
       getMyDocuments: protectedProcedure.query(async ({ ctx }) => {
-        if (!ctx.dbUser.organizationId) {
+        if (!ctx.dbUser.institutionId) {
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: 'User does not belong to an organization.',
+            message: 'User does not belong to an institution.',
           });
         }
         return ctx.prisma.document.findMany({
@@ -1444,7 +1444,7 @@ export class DocumentsRouter {
               { uploadedById: ctx.dbUser.id },
               { originalSenderId: ctx.dbUser.id },
             ],
-            organizationId: ctx.dbUser.organizationId,
+            institutionId: ctx.dbUser.institutionId,
           },
         });
       }),
@@ -1453,10 +1453,10 @@ export class DocumentsRouter {
         .input(z.object({ documentId: z.string() }))
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
-          if (!dbUser.organizationId) {
+          if (!dbUser.institutionId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'User does not belong to an organization.',
+              message: 'User does not belong to an institution.',
             });
           }
 
@@ -1503,7 +1503,7 @@ export class DocumentsRouter {
 
             await this.logService.logAction(
               user.id,
-              dbUser.organizationId,
+              dbUser.institutionId,
               'Executed Disposition (DESTROY)',
               dbUser.roles.map((r) => r.name),
               doc.title,
@@ -1517,7 +1517,7 @@ export class DocumentsRouter {
 
             await this.logService.logAction(
               user.id,
-              dbUser.organizationId,
+              dbUser.institutionId,
               'Executed Disposition (ARCHIVE)',
               dbUser.roles.map((r) => r.name),
               doc.title,

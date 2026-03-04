@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 
 export type NodeType =
-  | "organization"
+  | "institution"
   | "campus"
   | "department"
   | "user"
@@ -12,7 +12,7 @@ export type Node = d3.SimulationNodeDatum & {
   id: string;
   name: string;
   type: NodeType;
-  organizationId?: string;
+  institutionId?: string;
   campusId?: string;
   departmentId?: string;
   uploadedById?: string;
@@ -27,7 +27,7 @@ export type LinkData = d3.SimulationLinkDatum<Node> & { isDetached?: boolean };
 
 export type WorkerMessage =
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  | { type: "INIT_DATA"; payload: any } // orgHierarchy
+  | { type: "INIT_DATA"; payload: any } // institutionHierarchy
   | {
       type: "CALCULATE_GRAPH";
       payload: {

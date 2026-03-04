@@ -129,21 +129,21 @@ async function main() {
   }
   console.log('Seeded global tags.');
 
-  // Seed Organization: CSU
-  let organization = await prisma.organization.findFirst({
+  // Seed Institution: CSU
+  let institution = await prisma.institution.findFirst({
     where: { name: 'Cagayan State University' },
   });
 
-  if (!organization) {
-    organization = await prisma.organization.create({
+  if (!institution) {
+    institution = await prisma.institution.create({
       data: {
         name: 'Cagayan State University',
         acronym: 'CSU',
       },
     });
-    console.log(`Created Organization: ${organization.name}`);
+    console.log(`Created Institution: ${institution.name}`);
   } else {
-    console.log(`Using existing Organization: ${organization.name}`);
+    console.log(`Using existing Institution: ${institution.name}`);
   }
 
   // Seed Campuses and Departments
@@ -152,7 +152,7 @@ async function main() {
     let campus = await prisma.campus.findFirst({
         where: {
             name: campusData.name,
-            organizationId: organization.id
+            institutionId: institution.id
         }
     });
 
@@ -160,7 +160,7 @@ async function main() {
         campus = await prisma.campus.create({
             data: {
                 name: campusData.name,
-                organizationId: organization.id
+                institutionId: institution.id
             }
         });
         console.log(`Created Campus: ${campus.name}`);

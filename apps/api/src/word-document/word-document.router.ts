@@ -22,10 +22,10 @@ export class WordDocumentRouter {
           const { file, fileName, controlNumber } = input;
           const { dbUser } = ctx;
 
-          if (!dbUser.organizationId) {
+          if (!dbUser.institutionId) {
             throw new TRPCError({
               code: 'BAD_REQUEST',
-              message: 'User is not associated with an organization.',
+              message: 'User is not associated with an institution.',
             });
           }
 
@@ -36,7 +36,7 @@ export class WordDocumentRouter {
             fileName,
             controlNumber,
             dbUser.id,
-            dbUser.organizationId,
+            dbUser.institutionId,
           );
         }),
     });

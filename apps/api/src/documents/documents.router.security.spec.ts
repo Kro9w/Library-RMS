@@ -31,6 +31,9 @@ describe('DocumentsRouter Security', () => {
     tag: {
       findMany: jest.fn(),
     },
+    notification: {
+      create: jest.fn(),
+    },
   };
 
   const mockSupabaseService = {
@@ -63,11 +66,11 @@ describe('DocumentsRouter Security', () => {
       const userId = 'user-1';
       const otherUserId = 'user-2';
       const docId = 'doc-1';
-      const orgId = 'org-1';
+      const institutionId = 'org-1';
 
       const dbUser = {
         id: userId,
-        organizationId: orgId,
+        institutionId: institutionId,
         roles: [{ canManageDocuments: false, name: 'Member' }],
       };
 
@@ -98,7 +101,7 @@ describe('DocumentsRouter Security', () => {
         return [
           {
             id: docId,
-            organizationId: orgId,
+            institutionId: institutionId,
             uploadedById: otherUserId,
             title: 'Test Doc',
           },
@@ -110,6 +113,7 @@ describe('DocumentsRouter Security', () => {
         id: docId,
         title: 'Test Doc',
       });
+      mockPrismaService.notification = { create: jest.fn() };
 
       mockPrismaService.tag.findMany.mockResolvedValue([]);
 
@@ -138,11 +142,11 @@ describe('DocumentsRouter Security', () => {
 
       const userId = 'user-1';
       const docId = 'doc-1';
-      const orgId = 'org-1';
+      const institutionId = 'org-1';
 
       const dbUser = {
         id: userId,
-        organizationId: orgId,
+        institutionId: institutionId,
         roles: [{ canManageDocuments: false, name: 'Member' }],
       };
 
@@ -164,7 +168,7 @@ describe('DocumentsRouter Security', () => {
       mockPrismaService.document.findMany.mockResolvedValue([
         {
           id: docId,
-          organizationId: orgId,
+          institutionId: institutionId,
           uploadedById: userId,
           title: 'Test Doc',
         },
@@ -175,6 +179,7 @@ describe('DocumentsRouter Security', () => {
         id: docId,
         title: 'Test Doc',
       });
+      mockPrismaService.notification = { create: jest.fn() };
 
       const caller = trpcRouter.createCaller({
         user: { id: userId },
@@ -191,17 +196,17 @@ describe('DocumentsRouter Security', () => {
       ).resolves.not.toThrow();
     });
 
-    it('should allow admin to send any document in organization', async () => {
+    it('should allow admin to send any document in institution', async () => {
       const trpcRouter = router.createRouter();
 
       const userId = 'admin-1';
       const otherUserId = 'user-2';
       const docId = 'doc-1';
-      const orgId = 'org-1';
+      const institutionId = 'org-1';
 
       const dbUser = {
         id: userId,
-        organizationId: orgId,
+        institutionId: institutionId,
         roles: [{ canManageDocuments: true, name: 'Admin' }],
       };
 
@@ -223,7 +228,7 @@ describe('DocumentsRouter Security', () => {
       mockPrismaService.document.findMany.mockResolvedValue([
         {
           id: docId,
-          organizationId: orgId,
+          institutionId: institutionId,
           uploadedById: otherUserId,
           title: 'Test Doc',
         },
@@ -259,11 +264,11 @@ describe('DocumentsRouter Security', () => {
       const otherUserId = 'user-2';
       const docId1 = 'doc-1';
       const docId2 = 'doc-2';
-      const orgId = 'org-1';
+      const institutionId = 'org-1';
 
       const dbUser = {
         id: userId,
-        organizationId: orgId,
+        institutionId: institutionId,
         roles: [{ canManageDocuments: false, name: 'Member' }],
       };
 
@@ -286,13 +291,13 @@ describe('DocumentsRouter Security', () => {
         const docs = [
           {
             id: docId1,
-            organizationId: orgId,
+            institutionId: institutionId,
             uploadedById: userId,
             title: 'My Doc',
           },
           {
             id: docId2,
-            organizationId: orgId,
+            institutionId: institutionId,
             uploadedById: otherUserId,
             title: 'Other Doc',
           },

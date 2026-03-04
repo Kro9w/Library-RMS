@@ -15,8 +15,6 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
-    "@mantine/core": "^8.3.5",
-    "@mantine/hooks": "^8.3.5",
     "superjson": "^2.2.3"
   }
 }

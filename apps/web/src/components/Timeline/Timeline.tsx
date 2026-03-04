@@ -8,7 +8,7 @@ interface Log {
   id: string;
   user: UserNameFields;
   action: string;
-  organization: {
+  institution: {
     name: string;
   };
   userRole: string;

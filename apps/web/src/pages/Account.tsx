@@ -225,12 +225,12 @@ const Account: React.FC = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="org">Organization</label>
+            <label htmlFor="org">Institution</label>
             <input
               id="org"
               type="text"
               className="form-control"
-              value={dbUser.organization?.name || "N/A"}
+              value={dbUser.institution?.name || "N/A"}
               disabled
             />
           </div>

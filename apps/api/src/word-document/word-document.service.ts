@@ -14,9 +14,9 @@ export class WordDocumentService {
     fileName: string,
     controlNumber: string,
     userId: string,
-    organizationId: string,
+    institutionId: string,
   ) {
-    const s3Key = `${organizationId}/${userId}/${fileName}`;
+    const s3Key = `${institutionId}/${userId}/${fileName}`;
     const s3Bucket = 'documents'; // Replace with your actual bucket name
 
     // Upload to Supabase Storage
@@ -35,7 +35,7 @@ export class WordDocumentService {
         s3Key,
         s3Bucket,
         uploadedById: userId,
-        organizationId,
+        institutionId,
       },
     });
 

@@ -11,14 +11,14 @@ export class DocumentTypesRouter {
 
   createRouter() {
     return router({
-      // Procedure to get all document types for the current user's organization
+      // Procedure to get all document types for the current user's institution
       getAll: protectedProcedure.query(async ({ ctx }) => {
-        const orgId = ctx.dbUser.organizationId as string;
+        const institutionId = ctx.dbUser.institutionId as string;
         // Basic check if user belongs to org
-        if (!orgId) return [];
+        if (!institutionId) return [];
 
         return ctx.prisma.documentType.findMany({
-          where: { organizationId: orgId },
+          where: { institutionId: institutionId },
           orderBy: { name: 'asc' },
         });
       }),
@@ -37,12 +37,15 @@ export class DocumentTypesRouter {
           }),
         )
         .mutation(async ({ ctx, input }) => {
-          const orgId = ctx.dbUser.organizationId as string;
+          if (!ctx.dbUser.isSuperAdmin) {
+            throw new Error('Only Super Admins can manage document types.');
+          }
+          const institutionId = ctx.dbUser.institutionId as string;
           const newDocType = await ctx.prisma.documentType.create({
             data: {
               name: input.name,
               color: input.color,
-              organizationId: orgId,
+              institutionId: institutionId,
               activeRetentionDuration: input.activeRetentionDuration,
               inactiveRetentionDuration: input.inactiveRetentionDuration,
               dispositionAction: input.dispositionAction,
@@ -51,7 +54,7 @@ export class DocumentTypesRouter {
 
           await this.logService.logAction(
             ctx.dbUser.id,
-            orgId,
+            institutionId,
             `Created document type: ${newDocType.name}`,
             ctx.dbUser.roles.map((r) => r.name),
           );
@@ -72,6 +75,9 @@ export class DocumentTypesRouter {
           }),
         )
         .mutation(async ({ ctx, input }) => {
+          if (!ctx.dbUser.isSuperAdmin) {
+            throw new Error('Only Super Admins can manage document types.');
+          }
           return ctx.prisma.documentType.update({
             where: { id: input.id },
             data: {
@@ -88,13 +94,16 @@ export class DocumentTypesRouter {
       delete: protectedProcedure
         .input(z.object({ id: z.string() }))
         .mutation(async ({ ctx, input }) => {
+          if (!ctx.dbUser.isSuperAdmin) {
+            throw new Error('Only Super Admins can manage document types.');
+          }
           const deletedDocType = await ctx.prisma.documentType.delete({
             where: { id: input.id },
           });
 
           await this.logService.logAction(
             ctx.dbUser.id,
-            deletedDocType.organizationId,
+            deletedDocType.institutionId,
             `Deleted document type: ${deletedDocType.name}`,
             ctx.dbUser.roles.map((r) => r.name),
           );

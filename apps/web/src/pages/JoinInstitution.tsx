@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
 import "./Auth.css";
 
-const JoinOrganization: React.FC = () => {
+const JoinInstitution: React.FC = () => {
   const [step, setStep] = useState(1);
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const [selectedCampusId, setSelectedCampusId] = useState("");
@@ -18,10 +18,10 @@ const JoinOrganization: React.FC = () => {
   const utils = trpc.useUtils();
 
   const { data: me } = trpc.user.getMe.useQuery();
-  const { data: organizations } = trpc.user.getAllOrgs.useQuery();
+  const { data: institutions } = trpc.user.getAllInstitutions.useQuery();
 
   const { data: campuses } = trpc.user.getCampuses.useQuery(
-    { orgId: selectedOrgId },
+    { institutionId: selectedOrgId },
     { enabled: !!selectedOrgId },
   );
 
@@ -32,13 +32,13 @@ const JoinOrganization: React.FC = () => {
 
   // Auto-select Org
   useEffect(() => {
-    if (organizations && organizations.length > 0 && !selectedOrgId) {
-      const csu = organizations.find((o) => o.acronym === "CSU");
-      setSelectedOrgId(csu ? csu.id : organizations[0].id);
+    if (institutions && institutions.length > 0 && !selectedOrgId) {
+      const csu = institutions.find((o) => o.acronym === "CSU");
+      setSelectedOrgId(csu ? csu.id : institutions[0].id);
     }
-  }, [organizations, selectedOrgId]);
+  }, [institutions, selectedOrgId]);
 
-  const joinOrg = trpc.user.joinOrganization.useMutation({
+  const joinOrg = trpc.user.joinInstitution.useMutation({
     onSuccess: () => {
       setStep(3); // Go to success step
     },
@@ -64,14 +64,14 @@ const JoinOrganization: React.FC = () => {
       if (isCreatingDept) {
         if (!newDeptName.trim()) return;
         createDeptAndJoin.mutate({
-          orgId: selectedOrgId,
+          institutionId: selectedOrgId,
           campusId: selectedCampusId,
           departmentName: newDeptName,
         });
       } else {
         if (!selectedDepartmentId) return;
         joinOrg.mutate({
-          orgId: selectedOrgId,
+          institutionId: selectedOrgId,
           campusId: selectedCampusId,
           departmentId: selectedDepartmentId,
         });
@@ -248,4 +248,4 @@ const JoinOrganization: React.FC = () => {
   );
 };
 
-export default JoinOrganization;
+export default JoinInstitution;

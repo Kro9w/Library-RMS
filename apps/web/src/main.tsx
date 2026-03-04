@@ -5,8 +5,6 @@ import "./index.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "./trpc.ts";
 import { ThemeProvider } from "./Theme.tsx";
-
-// CHANGE: Import the new provider
 import { SessionProvider } from "./contexts/SessionContext.tsx";
 
 const queryClient = new QueryClient({
@@ -29,5 +27,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         </QueryClientProvider>
       </trpc.Provider>
     </SessionProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

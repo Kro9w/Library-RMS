@@ -25,7 +25,8 @@ export function Users() {
   });
   const myDocuments = data?.documents;
 
-  const removeUserFromOrg = trpc.user.removeUserFromOrg.useMutation();
+  const removeUserFromInstitution =
+    trpc.user.removeUserFromInstitution.useMutation();
   const transferDocument = trpc.documents.sendDocument.useMutation();
   const utils = trpc.useUtils();
 
@@ -105,7 +106,7 @@ export function Users() {
 
   const handleRemoveFromOrg = () => {
     if (userToRemove) {
-      removeUserFromOrg.mutate(
+      removeUserFromInstitution.mutate(
         { userId: userToRemove.id },
         {
           onSuccess: () => {
@@ -372,14 +373,14 @@ export function Users() {
             ? "Action Not Allowed"
             : "Remove User"
         }
-        isConfirming={removeUserFromOrg.isPending}
+        isConfirming={removeUserFromInstitution.isPending}
       >
         {userToRemove && currentUser && userToRemove.id === currentUser.id ? (
-          <span>You can't remove yourself from the organization!</span>
+          <span>You can't remove yourself from the institution!</span>
         ) : (
           <>
             Are you sure you want to remove {formatUserName(userToRemove)} from
-            the organization?
+            the institution?
           </>
         )}
       </ConfirmModal>

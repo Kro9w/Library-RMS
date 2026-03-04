@@ -57,11 +57,11 @@ describe('DocumentsRouter', () => {
   });
 
   describe('getAllDocs', () => {
-    it('should filter documents by organization even if user has canManageDocuments permission', async () => {
+    it('should filter documents by institution even if user has canManageDocuments permission', async () => {
       const trpcRouter = router.createRouter();
       const dbUser = {
         id: 'user-1',
-        organizationId: 'org-1',
+        institutionId: 'org-1',
         roles: [{ canManageDocuments: true, name: 'Admin' }],
       };
 
@@ -80,17 +80,17 @@ describe('DocumentsRouter', () => {
       expect(mockPrismaService.document.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            organizationId: 'org-1',
+            institutionId: 'org-1',
           }),
         }),
       );
     });
 
-    it('should filter documents by organization if user does NOT have canManageDocuments permission', async () => {
+    it('should filter documents by institution if user does NOT have canManageDocuments permission', async () => {
       const trpcRouter = router.createRouter();
       const dbUser = {
         id: 'user-2',
-        organizationId: 'org-1',
+        institutionId: 'org-1',
         roles: [{ canManageDocuments: false, name: 'Member' }],
       };
 
@@ -108,17 +108,17 @@ describe('DocumentsRouter', () => {
       expect(mockPrismaService.document.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            organizationId: 'org-1',
+            institutionId: 'org-1',
           }),
         }),
       );
     });
 
-    it('should return empty array if user has canManageDocuments permission but no organization', async () => {
+    it('should return empty array if user has canManageDocuments permission but no institution', async () => {
       const trpcRouter = router.createRouter();
       const dbUser = {
         id: 'user-3',
-        organizationId: null,
+        institutionId: null,
         roles: [{ canManageDocuments: true, name: 'Admin' }],
       };
 
@@ -143,7 +143,7 @@ describe('DocumentsRouter', () => {
       const trpcRouter = router.createRouter();
       const dbUser = {
         id: 'user-1',
-        organizationId: 'org-1',
+        institutionId: 'org-1',
         roles: [{ canManageDocuments: true, name: 'Admin' }],
       };
 
@@ -182,7 +182,7 @@ describe('DocumentsRouter', () => {
         expect.objectContaining({
           where: {
             id: 'doc-1',
-            organizationId: 'org-1',
+            institutionId: 'org-1',
           },
           select: expect.objectContaining({
             uploadedBy: {

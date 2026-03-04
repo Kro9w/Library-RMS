@@ -16,20 +16,20 @@ export class LogRouter {
         )
         .query(async ({ ctx, input }) => {
           const { page, limit } = input;
-          const orgId = ctx.dbUser.organizationId as string;
+          const institutionId = ctx.dbUser.institutionId as string;
           const [logs, totalLogs] = await Promise.all([
             ctx.prisma.log.findMany({
-              where: { organizationId: orgId },
+              where: { institutionId: institutionId },
               orderBy: { createdAt: 'desc' },
               take: limit,
               skip: (page - 1) * limit,
               include: {
                 user: true,
-                organization: true,
+                institution: true,
               },
             }),
             ctx.prisma.log.count({
-              where: { organizationId: orgId },
+              where: { institutionId: institutionId },
             }),
           ]);
 

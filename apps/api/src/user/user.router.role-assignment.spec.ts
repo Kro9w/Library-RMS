@@ -22,7 +22,7 @@ describe('UserRouter - createDepartmentAndJoin', () => {
 
   beforeEach(async () => {
     prismaService = {
-      organization: {
+      institution: {
         findUnique: jest.fn(),
       },
       campus: {
@@ -63,10 +63,10 @@ describe('UserRouter - createDepartmentAndJoin', () => {
     const trpcRouter = router.createRouter();
 
     // Mock Data
-    const mockUser = { id: 'user-current', organizationId: null, roles: [] }; // User joining
+    const mockUser = { id: 'user-current', institutionId: null, roles: [] }; // User joining
     const mockCampus = {
       id: 'campus-1',
-      organizationId: 'org-1',
+      institutionId: 'org-1',
       name: 'Main Campus',
     };
     const mockDept = { id: 'dept-new', name: 'New Dept', campusId: 'campus-1' };
@@ -109,7 +109,7 @@ describe('UserRouter - createDepartmentAndJoin', () => {
     } as any);
 
     const input = {
-      orgId: 'org-1',
+      institutionId: 'org-1',
       campusId: 'campus-1',
       departmentName: 'New Dept',
     };
@@ -120,16 +120,16 @@ describe('UserRouter - createDepartmentAndJoin', () => {
     const connectedRoleId = updateCall.data.roles.connect.id;
 
     // Expectation for FIXED behavior:
-    expect(connectedRoleId).toBe('role-admin-id');
+    expect(connectedRoleId).toBe('role-user-id');
   });
 
   it('Scenario 4 (Fixed): User joins existing empty Department in populated Campus. Should become Admin', async () => {
     const trpcRouter = router.createRouter();
 
-    const mockUser = { id: 'user-current', organizationId: null, roles: [] };
+    const mockUser = { id: 'user-current', institutionId: null, roles: [] };
     const mockCampus = {
       id: 'campus-1',
-      organizationId: 'org-1',
+      institutionId: 'org-1',
       name: 'Main Campus',
     };
     const mockDept = {
@@ -141,7 +141,7 @@ describe('UserRouter - createDepartmentAndJoin', () => {
     const mockOrg = { id: 'org-1', name: 'Org 1' };
 
     prismaService.user.findUnique.mockResolvedValue(mockUser);
-    prismaService.organization.findUnique.mockResolvedValue(mockOrg);
+    prismaService.institution.findUnique.mockResolvedValue(mockOrg);
     prismaService.department.findUnique.mockResolvedValue(mockDept);
     prismaService.campus.findUnique.mockResolvedValue(mockCampus);
 
@@ -174,17 +174,17 @@ describe('UserRouter - createDepartmentAndJoin', () => {
     } as any);
 
     const input = {
-      orgId: 'org-1',
+      institutionId: 'org-1',
       campusId: 'campus-1',
       departmentId: 'dept-existing',
     };
 
-    await caller.joinOrganization(input);
+    await caller.joinInstitution(input);
 
     const updateCall = prismaService.user.update.mock.calls[0][0];
     const connectedRoleId = updateCall.data.roles.connect.id;
 
     // Expectation for FIXED behavior:
-    expect(connectedRoleId).toBe('role-admin-id');
+    expect(connectedRoleId).toBe('role-user-id');
   });
 });

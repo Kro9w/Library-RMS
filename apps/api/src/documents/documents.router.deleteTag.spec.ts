@@ -65,7 +65,7 @@ describe('DocumentsRouter - deleteTag', () => {
     // Default mock user
     const dbUser = {
       id: 'user-1',
-      organizationId: 'org-1',
+      institutionId: 'org-1',
       roles: [{ canManageDocuments: true, name: 'Admin' }],
       ...userOverrides,
     };
@@ -132,8 +132,8 @@ describe('DocumentsRouter - deleteTag', () => {
     expect(mockPrismaService.tag.delete).not.toHaveBeenCalled();
   });
 
-  it('should prevent deletion if tag is used by another organization', async () => {
-    caller = createCaller({ organizationId: 'org-1' }); // Admin of org-1
+  it('should prevent deletion if tag is used by another institution', async () => {
+    caller = createCaller({ institutionId: 'org-1' }); // Admin of org-1
 
     mockPrismaService.tag.findUnique.mockResolvedValue({
       id: 'tag-shared',
@@ -141,16 +141,16 @@ describe('DocumentsRouter - deleteTag', () => {
       isLocked: false,
     });
 
-    // Mock that another organization uses this tag
+    // Mock that another institution uses this tag
     mockPrismaService.document.findFirst.mockResolvedValue({
       id: 'doc-other-org',
-      organizationId: 'org-2', // Different org
+      institutionId: 'org-2', // Different org
     });
 
     await expect(caller.deleteTag('tag-shared')).rejects.toThrow(
       new TRPCError({
         code: 'FORBIDDEN',
-        message: 'Tag is in use by other organizations.',
+        message: 'Tag is in use by other institutions.',
       }),
     );
 
@@ -160,14 +160,14 @@ describe('DocumentsRouter - deleteTag', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           tags: { some: { id: 'tag-shared' } },
-          organizationId: { not: 'org-1' },
+          institutionId: { not: 'org-1' },
         }),
       }),
     );
   });
 
-  it('should allow deletion if tag is valid and only used by current organization', async () => {
-    caller = createCaller({ organizationId: 'org-1' }); // Admin of org-1
+  it('should allow deletion if tag is valid and only used by current institution', async () => {
+    caller = createCaller({ institutionId: 'org-1' }); // Admin of org-1
 
     mockPrismaService.tag.findUnique.mockResolvedValue({
       id: 'tag-local',
@@ -175,7 +175,7 @@ describe('DocumentsRouter - deleteTag', () => {
       isLocked: false,
     });
 
-    // Mock that NO other organization uses this tag
+    // Mock that NO other institution uses this tag
     mockPrismaService.document.findFirst.mockResolvedValue(null);
 
     mockPrismaService.tag.delete.mockResolvedValue({ id: 'tag-local' });

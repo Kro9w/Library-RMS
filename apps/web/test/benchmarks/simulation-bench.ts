@@ -8,7 +8,7 @@ function createGraphData(numNodes: number) {
     const links: LinkData[] = [];
 
     // Center node
-    nodes.push({ id: "root", name: "Root", type: "organization", x: 400, y: 300 });
+    nodes.push({ id: "root", name: "Root", type: "institution", x: 400, y: 300 });
 
     for (let i = 0; i < numNodes; i++) {
         nodes.push({

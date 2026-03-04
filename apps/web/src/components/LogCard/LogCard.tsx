@@ -9,7 +9,7 @@ interface Log {
   id: string;
   user: UserNameFields;
   action: string;
-  organization: {
+  institution: {
     name: string;
   };
   userRole: string;
@@ -52,7 +52,7 @@ const LogCard: React.FC<LogCardProps> = ({ log }) => {
             <span className="log-card-user-name">
               {formatUserName(log.user)}
             </span>
-            <span className="log-card-org-name">{log.organization.name}</span>
+            <span className="log-card-org-name">{log.institution.name}</span>
           </div>
         </div>
         <div className="log-card-role">
