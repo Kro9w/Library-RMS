@@ -499,6 +499,59 @@ export class UserRouter {
           });
         }),
 
+      updateCampus: protectedProcedure
+        .input(z.object({ id: z.string(), name: z.string().min(1) }))
+        .mutation(async ({ ctx, input }) => {
+          if (!ctx.dbUser.isSuperAdmin) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Only Super Admins can update campuses.',
+            });
+          }
+
+          const campus = await ctx.prisma.campus.findUnique({
+            where: { id: input.id },
+          });
+
+          if (!campus || campus.institutionId !== ctx.dbUser.institutionId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Campus not found or access denied.',
+            });
+          }
+
+          return ctx.prisma.campus.update({
+            where: { id: input.id },
+            data: { name: input.name },
+          });
+        }),
+
+      deleteCampus: protectedProcedure
+        .input(z.object({ id: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+          if (!ctx.dbUser.isSuperAdmin) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Only Super Admins can delete campuses.',
+            });
+          }
+
+          const campus = await ctx.prisma.campus.findUnique({
+            where: { id: input.id },
+          });
+
+          if (!campus || campus.institutionId !== ctx.dbUser.institutionId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Campus not found or access denied.',
+            });
+          }
+
+          return ctx.prisma.campus.delete({
+            where: { id: input.id },
+          });
+        }),
+
       createDepartment: protectedProcedure
         .input(
           z.object({
@@ -563,6 +616,96 @@ export class UserRouter {
             data: {
               name: input.name,
               icon: input.icon,
+            },
+          });
+        }),
+
+      deleteDepartment: protectedProcedure
+        .input(z.object({ id: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+          if (!ctx.dbUser.isSuperAdmin) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Only Super Admins can delete departments.',
+            });
+          }
+
+          const dept = await ctx.prisma.department.findUnique({
+            where: { id: input.id },
+            include: { campus: true },
+          });
+
+          if (!dept || dept.campus.institutionId !== ctx.dbUser.institutionId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Department not found or access denied.',
+            });
+          }
+
+          return ctx.prisma.department.delete({
+            where: { id: input.id },
+          });
+        }),
+
+      updateUserHierarchy: protectedProcedure
+        .input(
+          z.object({
+            userId: z.string(),
+            campusId: z.string(),
+            departmentId: z.string(),
+            roleId: z.string().optional(),
+          })
+        )
+        .mutation(async ({ ctx, input }) => {
+          if (!ctx.dbUser.isSuperAdmin) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Only Super Admins can reassign users globally.',
+            });
+          }
+
+          const targetUser = await ctx.prisma.user.findUnique({
+            where: { id: input.userId },
+          });
+
+          if (!targetUser || targetUser.institutionId !== ctx.dbUser.institutionId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User not found or access denied.',
+            });
+          }
+
+          const dept = await ctx.prisma.department.findUnique({
+            where: { id: input.departmentId },
+            include: { campus: true },
+          });
+
+          if (!dept || dept.campusId !== input.campusId || dept.campus.institutionId !== ctx.dbUser.institutionId) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Invalid campus or department hierarchy.',
+            });
+          }
+
+          let rolesToConnect: { id: string }[] = [];
+          
+          if (input.roleId) {
+            const role = await ctx.prisma.role.findUnique({
+              where: { id: input.roleId },
+            });
+            if (role && role.departmentId === input.departmentId) {
+              rolesToConnect = [{ id: role.id }];
+            }
+          }
+
+          return ctx.prisma.user.update({
+            where: { id: input.userId },
+            data: {
+              campusId: input.campusId,
+              departmentId: input.departmentId,
+              roles: {
+                set: rolesToConnect, // Overwrite roles
+              },
             },
           });
         }),

@@ -70,7 +70,10 @@ export const checkPermission = (
   user: UserWithRoles | undefined,
   permission: keyof Role,
 ) => {
-  if (!user || !user.roles) return false;
+  if (!user) return false;
+  // Super Admins inherently have all permissions
+  if (user.isSuperAdmin) return true;
+  if (!user.roles) return false;
   // We only care if *any* role has the permission
   return user.roles.some((role) => role[permission] === true);
 };

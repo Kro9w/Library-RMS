@@ -6,6 +6,7 @@ import {
   IconUsers,
   IconFileTypePdf,
   IconMapPins,
+  IconClockHour4,
 } from "@tabler/icons-react";
 import { LoadingAnimation } from "../../components/ui/LoadingAnimation";
 
@@ -43,6 +44,11 @@ export default function AdminLayout() {
       label: "Document Types",
       icon: <IconFileTypePdf size={16} stroke={1.5} className="me-2" />,
       path: "/admin/document-types",
+    },
+    {
+      label: "Records Retention",
+      icon: <IconClockHour4 size={16} stroke={1.5} className="me-2" />,
+      path: "/admin/retention",
     },
     {
       label: "System Users",

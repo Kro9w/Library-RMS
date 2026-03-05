@@ -5,6 +5,7 @@ export function useIsAdmin() {
   const { data: user, isLoading } = trpc.user.getMe.useQuery();
 
   const isAdmin =
+    user?.isSuperAdmin ||
     user?.roles.some(
       (role) =>
         role.canManageRoles
