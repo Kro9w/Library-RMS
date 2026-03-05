@@ -1,5 +1,6 @@
 import React, { useState, Suspense, useMemo } from "react";
 import { trpc } from "../trpc";
+import { keepPreviousData } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { ConfirmModal } from "../components/ConfirmModal";
 // Lazy loaded modals
@@ -9,6 +10,7 @@ import { formatUserName } from "../utils/user";
 import { StatusBadge } from "../components/StatusBadge";
 import { FileIcon } from "../components/FileIcon";
 import { usePermissions } from "../hooks/usePermissions";
+import { useDebounce } from "../hooks/useDebounce";
 import { DocumentTypePill } from "./DocumentTypePill";
 import { DocumentActionsMenu } from "./DocumentActionsMenu";
 import {
@@ -45,6 +47,8 @@ type Document = AppRouterOutputs["documents"]["getAll"]["documents"][0];
 
 const Documents: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
   // Type filter correctly for the TRPC input
   const [filter, setFilter] = useState<"all" | "mine">("all");
   const [lifecycleFilter, setLifecycleFilter] = useState<"all" | "ready">(
@@ -71,12 +75,13 @@ const Documents: React.FC = () => {
     filter,
     page: currentPage,
     perPage: itemsPerPage,
-    search: searchTerm || undefined,
+    search: debouncedSearchTerm || undefined,
     lifecycleFilter: lifecycleFilter === "all" ? undefined : lifecycleFilter,
   };
 
   const { data, isLoading } = trpc.documents.getAll.useQuery(queryInput, {
     staleTime: 30000,
+    placeholderData: keepPreviousData,
   });
 
   // Recent documents query
@@ -91,6 +96,7 @@ const Documents: React.FC = () => {
   const { data: recentData, isLoading: isLoadingRecent } =
     trpc.documents.getAll.useQuery(recentQueryInput, {
       staleTime: 30000,
+      placeholderData: keepPreviousData,
     });
 
   const { data: documentTypesData, isLoading: isLoadingTypes } =

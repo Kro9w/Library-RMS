@@ -13,6 +13,7 @@ const JoinInstitution: React.FC = () => {
   // State for creating a new department
   const [isCreatingDept, setIsCreatingDept] = useState(false);
   const [newDeptName, setNewDeptName] = useState("");
+  const [isFinishing, setIsFinishing] = useState(false);
 
   const navigate = useNavigate();
   const utils = trpc.useUtils();
@@ -79,9 +80,15 @@ const JoinInstitution: React.FC = () => {
     }
   };
 
-  const handleFinish = () => {
-    utils.user.getMe.invalidate();
-    navigate("/");
+  const handleFinish = async () => {
+    setIsFinishing(true);
+    try {
+      await utils.user.getMe.invalidate();
+      navigate("/");
+    } catch (err) {
+      console.error("Failed to invalidate user cache:", err);
+      setIsFinishing(false);
+    }
   };
 
   const selectedCampusName = campuses?.find(
@@ -237,8 +244,12 @@ const JoinInstitution: React.FC = () => {
               <p className="mb-4">
                 Welcome to Folio, <strong>{me?.firstName}</strong>!
               </p>
-              <button onClick={handleFinish} className="btn-primary w-100">
-                Go to Dashboard
+              <button
+                onClick={handleFinish}
+                className="btn-primary w-100"
+                disabled={isFinishing}
+              >
+                {isFinishing ? "Redirecting..." : "Go to Dashboard"}
               </button>
             </div>
           )}

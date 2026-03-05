@@ -12,6 +12,7 @@ import { supabase } from "../supabase";
 import { trpc } from "../trpc";
 import { useOutsideClick } from "../hooks/useOutsideClick";
 import { useIsAdmin } from "../hooks/useIsAdmin";
+import { useQueryClient } from "@tanstack/react-query";
 import "./Navbar.css";
 import { formatUserName } from "../utils/user";
 import { NotificationsDropdown } from "./NotificationsDropdown";
@@ -85,8 +86,11 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
   const [showSendDocumentModal, setShowSendDocumentModal] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
 
+  const queryClient = useQueryClient();
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    queryClient.clear();
     navigate("/login");
   };
 
