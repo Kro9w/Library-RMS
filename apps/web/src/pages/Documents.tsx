@@ -228,16 +228,18 @@ const Documents: React.FC = () => {
             <option value="all">All Institution Documents</option>
             <option value="mine">My Documents</option>
           </select>
-          <select
-            value={lifecycleFilter}
-            onChange={(e) =>
-              setLifecycleFilter(e.target.value as "all" | "ready")
-            }
-            className="filter-dropdown ms-2"
-          >
-            <option value="all">All Statuses</option>
-            <option value="ready">Ready for Disposition</option>
-          </select>
+          {canManageDocuments && (
+            <select
+              value={lifecycleFilter}
+              onChange={(e) =>
+                setLifecycleFilter(e.target.value as "all" | "ready")
+              }
+              className="filter-dropdown ms-2"
+            >
+              <option value="all">All Statuses</option>
+              <option value="ready">Ready for Disposition</option>
+            </select>
+          )}
           <input
             type="text"
             placeholder="Search documents..."

@@ -10,21 +10,6 @@ export class RolesRouter {
   createRouter() {
     return router({
       getRoles: protectedProcedure.query(async ({ ctx }) => {
-        if (ctx.dbUser.isSuperAdmin) {
-          // Super Admins can see all roles in their org (or globally)
-          // Since roles are tied to departments, we can get roles for all departments in the user's institution.
-          const depts = await ctx.prisma.department.findMany({
-            where: { campus: { institutionId: ctx.dbUser.institutionId! } },
-            select: { id: true },
-          });
-          const deptIds = depts.map((d) => d.id);
-
-          return ctx.prisma.role.findMany({
-            where: { departmentId: { in: deptIds } },
-            orderBy: { level: 'asc' },
-          });
-        }
-
         if (!ctx.dbUser.departmentId) {
           throw new TRPCError({
             code: 'FORBIDDEN',

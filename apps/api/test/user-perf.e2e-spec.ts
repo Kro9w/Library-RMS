@@ -80,7 +80,7 @@ describe('UserRouter Performance', () => {
     expect(result).toEqual(mockFullUser);
 
     // Check call counts
-    // eslint-disable-next-line @typescript-eslint/unbound-method
+
     expect(prismaService.user.findUnique).toHaveBeenCalledTimes(2);
 
     // Check arguments of the second call (the one in getMe)
