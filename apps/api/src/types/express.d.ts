@@ -1,4 +1,3 @@
-
 // Shape of the user object from the Supabase JWT
 export interface SupabaseUser {
   id: string; // Supabase User ID (UUID)

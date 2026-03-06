@@ -102,7 +102,7 @@ export class DocumentsRouter {
             });
           }
 
-          let doc = await this.prisma.document.findFirst({
+          const doc = await this.prisma.document.findFirst({
             where: {
               id: input.id,
               institutionId: ctx.dbUser.institutionId,
@@ -179,14 +179,16 @@ export class DocumentsRouter {
             ) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
-                message: 'You do not have permission to view this CONFIDENTIAL document.',
+                message:
+                  'You do not have permission to view this CONFIDENTIAL document.',
               });
             }
           } else if (doc.classification === 'INTERNAL') {
             if (ctx.dbUser.departmentId !== doc.uploadedBy.departmentId) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
-                message: 'You do not have permission to view this INTERNAL (Department) document.',
+                message:
+                  'You do not have permission to view this INTERNAL (Department) document.',
               });
             }
           } else if (doc.classification === 'CAMPUS') {
@@ -194,14 +196,16 @@ export class DocumentsRouter {
               ctx.dbUser.campusId !== doc.uploadedBy.department?.campusId &&
               ctx.dbUser.campusId !== doc.uploadedBy.campusId // robust check depending on user schema usage
             ) {
-               // Need to ensure robust user campus mapping
-               const ownerCampusId = doc.uploadedBy.campusId || doc.uploadedBy.department?.campusId;
-               if (ctx.dbUser.campusId !== ownerCampusId) {
-                 throw new TRPCError({
+              // Need to ensure robust user campus mapping
+              const ownerCampusId =
+                doc.uploadedBy.campusId || doc.uploadedBy.department?.campusId;
+              if (ctx.dbUser.campusId !== ownerCampusId) {
+                throw new TRPCError({
                   code: 'FORBIDDEN',
-                  message: 'You do not have permission to view this CAMPUS document.',
+                  message:
+                    'You do not have permission to view this CAMPUS document.',
                 });
-               }
+              }
             }
           }
 
@@ -232,7 +236,10 @@ export class DocumentsRouter {
             fileSize: z.number().optional(),
             documentTypeId: z.string().optional(),
             controlNumber: z.string().optional().nullable(),
-            classification: z.enum(['INSTITUTIONAL', 'CAMPUS', 'INTERNAL', 'CONFIDENTIAL']).optional().default('CONFIDENTIAL'),
+            classification: z
+              .enum(['INSTITUTIONAL', 'CAMPUS', 'INTERNAL', 'CONFIDENTIAL'])
+              .optional()
+              .default('CONFIDENTIAL'),
           }),
         )
         .output(z.any())
@@ -245,18 +252,26 @@ export class DocumentsRouter {
             });
           }
 
-          const highestRoleLevel = dbUser.roles.length > 0 
-            ? dbUser.roles.reduce((min, role) => Math.min(min, role.level), Infinity) 
-            : 4; // Default to lowest privilege if no roles are assigned
-            
+          const highestRoleLevel =
+            dbUser.roles.length > 0
+              ? dbUser.roles.reduce(
+                  (min, role) => Math.min(min, role.level),
+                  Infinity,
+                )
+              : 4; // Default to lowest privilege if no roles are assigned
+
           const canManageDocs = checkPermission(dbUser, 'canManageDocuments');
-          
+
           // Allow Level 1 users OR Admin equivalents (canManageDocuments) to broadcast wide
-          if (input.classification === 'INSTITUTIONAL' || input.classification === 'CAMPUS') {
+          if (
+            input.classification === 'INSTITUTIONAL' ||
+            input.classification === 'CAMPUS'
+          ) {
             if (highestRoleLevel > 1 && !canManageDocs) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
-                message: 'Only Level 1 users or Admins can broadcast Institutional or Campus documents.',
+                message:
+                  'Only Level 1 users or Admins can broadcast Institutional or Campus documents.',
               });
             }
           }
@@ -265,7 +280,8 @@ export class DocumentsRouter {
             if (highestRoleLevel > 2 && !canManageDocs) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
-                message: 'Only Level 1 and 2 users or Admins can broadcast Internal department documents.',
+                message:
+                  'Only Level 1 and 2 users or Admins can broadcast Internal department documents.',
               });
             }
           }
@@ -381,7 +397,8 @@ export class DocumentsRouter {
             ) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
-                message: 'You do not have permission to access the contents of this CONFIDENTIAL document.',
+                message:
+                  'You do not have permission to access the contents of this CONFIDENTIAL document.',
               });
             }
           } else if (doc.classification === 'INTERNAL') {
@@ -390,21 +407,27 @@ export class DocumentsRouter {
               select: { departmentId: true },
             });
             if (ctx.dbUser.departmentId !== documentOwner?.departmentId) {
-               throw new TRPCError({
+              throw new TRPCError({
                 code: 'FORBIDDEN',
-                message: 'You do not have permission to access the contents of this INTERNAL document.',
+                message:
+                  'You do not have permission to access the contents of this INTERNAL document.',
               });
             }
           } else if (doc.classification === 'CAMPUS') {
             const documentOwner = await this.prisma.user.findUnique({
               where: { id: doc.uploadedById },
-              select: { campusId: true, department: { select: { campusId: true } } },
+              select: {
+                campusId: true,
+                department: { select: { campusId: true } },
+              },
             });
-            const ownerCampusId = documentOwner?.campusId || documentOwner?.department?.campusId;
+            const ownerCampusId =
+              documentOwner?.campusId || documentOwner?.department?.campusId;
             if (ctx.dbUser.campusId !== ownerCampusId) {
-               throw new TRPCError({
+              throw new TRPCError({
                 code: 'FORBIDDEN',
-                message: 'You do not have permission to access the contents of this CAMPUS document.',
+                message:
+                  'You do not have permission to access the contents of this CAMPUS document.',
               });
             }
           }
@@ -467,7 +490,7 @@ export class DocumentsRouter {
           z.object({
             filter: z.enum(['mine', 'all']).optional(),
             page: z.number().min(1).default(1),
-            perPage: z.number().min(1).max(1000).default(25),
+            perPage: z.number().min(1).max(100).default(25),
             search: z.string().optional(),
             lifecycleFilter: z.enum(['all', 'ready']).optional(),
           }),
@@ -503,7 +526,12 @@ export class DocumentsRouter {
             title: true,
             createdAt: true,
             uploadedBy: {
-              select: { firstName: true, middleName: true, lastName: true, departmentId: true },
+              select: {
+                firstName: true,
+                middleName: true,
+                lastName: true,
+                departmentId: true,
+              },
             },
             fileType: true,
             fileSize: true,
@@ -554,7 +582,7 @@ export class DocumentsRouter {
             // Classification filtering in raw SQL
             const userDeptId = ctx.dbUser.departmentId;
             const userCampusId = ctx.dbUser.campusId; // might need to fallback to department.campusId if null
-            
+
             const visibilityConditions: Prisma.Sql[] = [
               Prisma.sql`d."classification" = 'INSTITUTIONAL'`,
               Prisma.sql`(d."classification" = 'CONFIDENTIAL' AND (d."uploadedById" = ${userId} OR d."originalSenderId" = ${userId}))`,
@@ -562,17 +590,17 @@ export class DocumentsRouter {
 
             if (userDeptId) {
               visibilityConditions.push(
-                Prisma.sql`(d."classification" = 'INTERNAL' AND d."departmentId" = ${userDeptId})`
+                Prisma.sql`(d."classification" = 'INTERNAL' AND d."departmentId" = ${userDeptId})`,
               );
             }
             if (userCampusId) {
               visibilityConditions.push(
-                Prisma.sql`(d."classification" = 'CAMPUS' AND d."campusId" = ${userCampusId})`
+                Prisma.sql`(d."classification" = 'CAMPUS' AND d."campusId" = ${userCampusId})`,
               );
             }
 
             conditions.push(
-              Prisma.sql`(${Prisma.join(visibilityConditions, ' OR ')})`
+              Prisma.sql`(${Prisma.join(visibilityConditions, ' OR ')})`,
             );
 
             const whereSql =
@@ -1002,7 +1030,7 @@ export class DocumentsRouter {
             data: results.map((doc) => ({
               userId: recipient.id,
               title: isReview ? 'Review Requested' : 'Document Received',
-              message: isReview 
+              message: isReview
                 ? `${senderName} has sent you a confidential document for review: "${doc.title}".`
                 : `${senderName} sent you a document: "${doc.title}".`,
               documentId: doc.id,
@@ -1082,7 +1110,8 @@ export class DocumentsRouter {
 
           // Notification to the requester
           if (document.reviewRequesterId) {
-            const reviewerName = `${dbUser.firstName} ${dbUser.lastName}`.trim();
+            const reviewerName =
+              `${dbUser.firstName} ${dbUser.lastName}`.trim();
             await this.prisma.notification.create({
               data: {
                 userId: document.reviewRequesterId,
@@ -1339,7 +1368,7 @@ export class DocumentsRouter {
           );
 
           let docs;
-          
+
           const userDeptId = ctx.dbUser.departmentId;
           const userCampusId = ctx.dbUser.campusId;
 
@@ -1371,7 +1400,6 @@ export class DocumentsRouter {
             institutionId: ctx.dbUser.institutionId!,
             OR: adminOrConditions,
           };
-
 
           if (canManageDocuments) {
             if (!ctx.dbUser.institutionId) {

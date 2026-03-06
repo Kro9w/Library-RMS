@@ -66,7 +66,7 @@ export class TrpcRouter {
           },
           where: documentWhere,
         });
-        
+
         const docsByStatusQuery = ctx.prisma.document.groupBy({
           by: ['status'],
           _count: {
@@ -119,7 +119,9 @@ export class TrpcRouter {
         });
 
         const docsByType = docsByTypeRaw.map((group) => {
-          const docType = documentTypes.find((t) => t.id === group.documentTypeId);
+          const docType = documentTypes.find(
+            (t) => t.id === group.documentTypeId,
+          );
           let color = docType?.color || '#AAB8C2'; // Default color if not found
           // Ensure hex colors start with '#'
           if (color && !color.startsWith('#')) {

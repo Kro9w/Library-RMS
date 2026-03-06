@@ -57,11 +57,16 @@ describe('TrpcRouter', () => {
           }),
         },
       };
-      
+
       const appRouter = trpcRouter.appRouter;
       const caller = appRouter.createCaller({
         user: { id: 'user-1' } as any,
-        dbUser: { id: 'user-1', institutionId: 'org-1', departmentId: null, campusId: 'campus-1' } as any,
+        dbUser: {
+          id: 'user-1',
+          institutionId: 'org-1',
+          departmentId: null,
+          campusId: 'campus-1',
+        } as any,
         prisma: mockPrisma as any,
       });
 
@@ -82,10 +87,14 @@ describe('TrpcRouter', () => {
         document: {
           groupBy: jest.fn().mockImplementation(({ by }) => {
             if (by[0] === 'documentTypeId') {
-              return Promise.resolve([{ documentTypeId: 'type-1', _count: { documentTypeId: 2 } }]);
+              return Promise.resolve([
+                { documentTypeId: 'type-1', _count: { documentTypeId: 2 } },
+              ]);
             }
             if (by[0] === 'status') {
-              return Promise.resolve([{ status: 'approved', _count: { status: 3 } }]);
+              return Promise.resolve([
+                { status: 'approved', _count: { status: 3 } },
+              ]);
             }
             return Promise.resolve([]);
           }),
@@ -94,7 +103,11 @@ describe('TrpcRouter', () => {
             {
               id: 'doc-1',
               title: 'Doc 1',
-              uploadedBy: { firstName: 'John', middleName: null, lastName: 'Doe' },
+              uploadedBy: {
+                firstName: 'John',
+                middleName: null,
+                lastName: 'Doe',
+              },
             },
           ]),
         },
@@ -109,9 +122,11 @@ describe('TrpcRouter', () => {
           }),
         },
         documentType: {
-          findMany: jest.fn().mockResolvedValue([
-            { id: 'type-1', name: 'Invoice', color: '#FF0000' }
-          ]),
+          findMany: jest
+            .fn()
+            .mockResolvedValue([
+              { id: 'type-1', name: 'Invoice', color: '#FF0000' },
+            ]),
         },
         $queryRaw: jest.fn().mockResolvedValue([{ name: 'Tag 1', count: 3n }]),
       };
@@ -119,7 +134,12 @@ describe('TrpcRouter', () => {
       const appRouter = trpcRouter.appRouter;
       const caller = appRouter.createCaller({
         user: { id: 'user-1' } as any,
-        dbUser: { id: 'user-1', institutionId: 'org-1', departmentId: 'dept-1', campusId: 'campus-1' } as any,
+        dbUser: {
+          id: 'user-1',
+          institutionId: 'org-1',
+          departmentId: 'dept-1',
+          campusId: 'campus-1',
+        } as any,
         prisma: mockPrisma as any,
       });
 
@@ -136,31 +156,33 @@ describe('TrpcRouter', () => {
       expect(mockPrisma.document.groupBy).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expectedDocumentWhere,
-        })
+        }),
       );
 
       expect(mockPrisma.document.count).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining(expectedDocumentWhere),
-        })
+        }),
       );
 
       expect(mockPrisma.document.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expectedDocumentWhere,
-        })
+        }),
       );
 
       expect(mockPrisma.user.count).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { departmentId: 'dept-1' },
-        })
+        }),
       );
 
       // Verify the formatted results
       expect(result.totalDocuments).toBe(10);
       expect(result.totalUsers).toBe(5);
-      expect(result.docsByType).toEqual([{ name: 'Invoice', value: 2, color: '#FF0000' }]);
+      expect(result.docsByType).toEqual([
+        { name: 'Invoice', value: 2, color: '#FF0000' },
+      ]);
       expect(result.docsByStatus).toEqual([{ name: 'approved', value: 3 }]);
       expect(result.recentFiles).toEqual([
         { id: 'doc-1', title: 'Doc 1', uploadedBy: 'John Doe' },

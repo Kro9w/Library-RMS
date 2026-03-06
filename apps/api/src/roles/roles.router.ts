@@ -18,7 +18,7 @@ export class RolesRouter {
             select: { id: true },
           });
           const deptIds = depts.map((d) => d.id);
-          
+
           return ctx.prisma.role.findMany({
             where: { departmentId: { in: deptIds } },
             orderBy: { level: 'asc' },
@@ -55,9 +55,9 @@ export class RolesRouter {
         )
         .mutation(async ({ ctx, input }) => {
           requirePermission(ctx.dbUser, 'canManageRoles');
-          
+
           let targetDeptId = ctx.dbUser.departmentId;
-          
+
           if (ctx.dbUser.isSuperAdmin && input.departmentId) {
             targetDeptId = input.departmentId;
           }
@@ -105,10 +105,16 @@ export class RolesRouter {
           });
 
           if (!existingRole) {
-             throw new TRPCError({ code: 'NOT_FOUND', message: 'Role not found.' });
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Role not found.',
+            });
           }
 
-          if (!ctx.dbUser.isSuperAdmin && existingRole.departmentId !== ctx.dbUser.departmentId) {
+          if (
+            !ctx.dbUser.isSuperAdmin &&
+            existingRole.departmentId !== ctx.dbUser.departmentId
+          ) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'Role not found or access denied.',
@@ -157,12 +163,18 @@ export class RolesRouter {
           const role = await ctx.prisma.role.findUnique({
             where: { id: input },
           });
-          
+
           if (!role) {
-             throw new TRPCError({ code: 'NOT_FOUND', message: 'Role not found.' });
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Role not found.',
+            });
           }
-          
-          if (!ctx.dbUser.isSuperAdmin && role.departmentId !== ctx.dbUser.departmentId) {
+
+          if (
+            !ctx.dbUser.isSuperAdmin &&
+            role.departmentId !== ctx.dbUser.departmentId
+          ) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'Access denied.',
@@ -179,12 +191,18 @@ export class RolesRouter {
           const role = await ctx.prisma.role.findUnique({
             where: { id: input.roleId },
           });
-          
+
           if (!role) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Role not found.' });
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Role not found.',
+            });
           }
 
-          if (!ctx.dbUser.isSuperAdmin && role.departmentId !== ctx.dbUser.departmentId) {
+          if (
+            !ctx.dbUser.isSuperAdmin &&
+            role.departmentId !== ctx.dbUser.departmentId
+          ) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'Role not found or access denied.',
@@ -197,10 +215,16 @@ export class RolesRouter {
           });
 
           if (!targetUser) {
-             throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found.' });
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'User not found.',
+            });
           }
 
-          if (!ctx.dbUser.isSuperAdmin && targetUser.departmentId !== ctx.dbUser.departmentId) {
+          if (
+            !ctx.dbUser.isSuperAdmin &&
+            targetUser.departmentId !== ctx.dbUser.departmentId
+          ) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'Target user not found or access denied.',
@@ -254,10 +278,16 @@ export class RolesRouter {
           });
 
           if (!targetUser) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found.' });
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'User not found.',
+            });
           }
 
-          if (!ctx.dbUser.isSuperAdmin && targetUser.departmentId !== ctx.dbUser.departmentId) {
+          if (
+            !ctx.dbUser.isSuperAdmin &&
+            targetUser.departmentId !== ctx.dbUser.departmentId
+          ) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'Target user not found or access denied.',
@@ -269,10 +299,16 @@ export class RolesRouter {
           });
 
           if (!role) {
-             throw new TRPCError({ code: 'NOT_FOUND', message: 'Role not found.' });
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Role not found.',
+            });
           }
 
-          if (!ctx.dbUser.isSuperAdmin && role.departmentId !== ctx.dbUser.departmentId) {
+          if (
+            !ctx.dbUser.isSuperAdmin &&
+            role.departmentId !== ctx.dbUser.departmentId
+          ) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'Role not found or access denied.',

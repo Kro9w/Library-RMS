@@ -148,7 +148,7 @@ describe('DocumentsRouter', () => {
       };
 
       // Mock user context
-      (mockPrismaService.user.findUnique as jest.Mock).mockResolvedValue(dbUser);
+      mockPrismaService.user.findUnique.mockResolvedValue(dbUser);
 
       const caller = trpcRouter.createCaller({
         user: { id: 'user-1' },
@@ -174,7 +174,7 @@ describe('DocumentsRouter', () => {
         },
       };
 
-      (mockPrismaService.document.findFirst as jest.Mock).mockResolvedValue(mockDoc);
+      mockPrismaService.document.findFirst.mockResolvedValue(mockDoc);
 
       const result = await caller.getById({ id: 'doc-1' });
 

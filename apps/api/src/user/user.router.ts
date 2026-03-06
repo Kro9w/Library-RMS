@@ -146,18 +146,18 @@ export class UserRouter {
                 canManageUsers: true,
                 canManageRoles: true,
                 canManageDocuments: true,
-              departmentId: adminDept.id,
+                departmentId: adminDept.id,
               },
             });
 
-          // Connect user to Org, Campus, Dept, Role. Make them super admin since they created the institution.
+            // Connect user to Org, Campus, Dept, Role. Make them super admin since they created the institution.
             await tx.user.update({
               where: { id: ctx.dbUser.id },
               data: {
                 institutionId: newInstitution.id,
                 campusId: mainCampus.id,
                 departmentId: adminDept.id,
-              isSuperAdmin: true,
+                isSuperAdmin: true,
                 roles: {
                   connect: { id: adminRole.id },
                 },
@@ -419,7 +419,7 @@ export class UserRouter {
             message: 'User does not belong to a department.',
           });
         }
-        
+
         return ctx.prisma.user.findMany({
           where: {
             departmentId: ctx.dbUser.departmentId,
@@ -601,10 +601,7 @@ export class UserRouter {
             include: { campus: true },
           });
 
-          if (
-            !dept ||
-            dept.campus.institutionId !== ctx.dbUser.institutionId
-          ) {
+          if (!dept || dept.campus.institutionId !== ctx.dbUser.institutionId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'Department not found or access denied.',
@@ -654,7 +651,7 @@ export class UserRouter {
             campusId: z.string(),
             departmentId: z.string(),
             roleId: z.string().optional(),
-          })
+          }),
         )
         .mutation(async ({ ctx, input }) => {
           if (!ctx.dbUser.isSuperAdmin) {
@@ -668,7 +665,10 @@ export class UserRouter {
             where: { id: input.userId },
           });
 
-          if (!targetUser || targetUser.institutionId !== ctx.dbUser.institutionId) {
+          if (
+            !targetUser ||
+            targetUser.institutionId !== ctx.dbUser.institutionId
+          ) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'User not found or access denied.',
@@ -680,7 +680,11 @@ export class UserRouter {
             include: { campus: true },
           });
 
-          if (!dept || dept.campusId !== input.campusId || dept.campus.institutionId !== ctx.dbUser.institutionId) {
+          if (
+            !dept ||
+            dept.campusId !== input.campusId ||
+            dept.campus.institutionId !== ctx.dbUser.institutionId
+          ) {
             throw new TRPCError({
               code: 'BAD_REQUEST',
               message: 'Invalid campus or department hierarchy.',
@@ -688,7 +692,7 @@ export class UserRouter {
           }
 
           let rolesToConnect: { id: string }[] = [];
-          
+
           if (input.roleId) {
             const role = await ctx.prisma.role.findUnique({
               where: { id: input.roleId },

@@ -27,7 +27,7 @@ export class RolesService {
     // Retrieve org id via department
     const department = await this.prisma.department.findUnique({
       where: { id: data.departmentId },
-      include: { campus: true }
+      include: { campus: true },
     });
 
     await this.prisma.log.create({
@@ -54,7 +54,7 @@ export class RolesService {
         department: {
           campus: {
             institutionId: institutionId,
-          }
+          },
         },
       },
       include: {
