@@ -147,18 +147,6 @@ export function Users() {
   return (
     <>
       <style>{`
-        /* Override Accordion Active State */
-        .accordion-button:not(.collapsed) {
-          background-color: #ED9B40 !important;
-          color: white !important; /* Changed to white for better contrast, or black if user prefers */
-          font-weight: bold;
-          box-shadow: none !important; /* Remove focus ring */
-        }
-        .accordion-button:focus {
-            box-shadow: none !important;
-            border-color: rgba(0,0,0,.125);
-        }
-        
         /* Custom Shield with Star Icon */
         .shield-icon-wrapper {
             position: absolute;
@@ -188,11 +176,6 @@ export function Users() {
             transform: translate(-50%, -50%);
             z-index: 11;
         }
-
-        /* Adjust Table Padding */
-        .table > :not(caption) > * > * {
-            padding: 1rem 1rem; /* Increased padding (p-3 equivalent) */
-        }
       `}</style>
 
       <div className="container mt-4">
@@ -210,146 +193,142 @@ export function Users() {
         </h2>
 
         {sortedDepts.length > 0 ? (
-          <div className="accordion" id="departmentsAccordion">
-            {sortedDepts.map((deptName) => (
-              <div className="accordion-item" key={deptName}>
-                <h2 className="accordion-header">
+          <div className="mb-4">
+            {sortedDepts.map((deptName) => {
+              const isExpanded = expandedDepts[deptName];
+              return (
+                <div className="accordion-item mb-3" key={deptName}>
                   <button
-                    className={`accordion-button ${
-                      expandedDepts[deptName] ? "" : "collapsed"
-                    }`}
+                    className="accordion-header w-100 text-start d-flex justify-content-between align-items-center"
                     type="button"
                     onClick={() => toggleDept(deptName)}
-                    aria-expanded={expandedDepts[deptName]}
                   >
-                    <span
-                      className="fw-bold me-2"
-                      style={{
-                        color: expandedDepts[deptName] ? "white" : "inherit",
-                      }}
-                    >
-                      {deptName}
+                    <span>
+                      {deptName}{" "}
+                      <span className="text-muted ms-2">
+                        ({groupedUsers[deptName].length})
+                      </span>
                     </span>
-                    <span
-                      className={`badge rounded-pill ${expandedDepts[deptName] ? "bg-white text-dark" : "bg-secondary"}`}
-                    >
-                      {groupedUsers[deptName].length}
-                    </span>
+                    <i
+                      className={`bi bi-chevron-${isExpanded ? "up" : "down"}`}
+                    ></i>
                   </button>
-                </h2>
-                <div
-                  className={`accordion-collapse collapse ${
-                    expandedDepts[deptName] ? "show" : ""
-                  }`}
-                >
-                  <div className="accordion-body p-0">
-                    <table className="table table-hover mb-0 align-middle">
-                      <thead>
-                        <tr>
-                          <th style={{ width: "45%" }}>User</th>
-                          <th style={{ width: "40%" }}>Roles</th>
-                          <th style={{ width: "15%" }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {groupedUsers[deptName].map((user: User) => {
-                          const level = getUserLevel(user);
+                  {isExpanded && (
+                    <div className="accordion-content">
+                      <div className="card document-table-card mt-0 border-top-0 rounded-top-0">
+                        <div className="card-body p-0">
+                          <table className="table mb-0">
+                            <thead>
+                              <tr>
+                                <th style={{ width: "45%" }}>User</th>
+                                <th style={{ width: "40%" }}>Roles</th>
+                                <th style={{ width: "15%" }}>Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {groupedUsers[deptName].map((user: User) => {
+                                const level = getUserLevel(user);
 
-                          return (
-                            <tr key={user.id}>
-                              <td>
-                                <div className="d-flex align-items-center">
-                                  <div className="position-relative me-3">
-                                    <img
-                                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                        formatUserName(user),
-                                      )}&background=ED9B40&color=fff`}
-                                      alt={formatUserName(user)}
-                                      className="rounded-circle"
-                                      style={{
-                                        width: "48px",
-                                        height: "48px",
-                                        objectFit: "cover",
-                                        // Removed border
-                                      }}
-                                    />
+                                return (
+                                  <tr key={user.id}>
+                                    <td>
+                                      <div className="d-flex align-items-center">
+                                        <div className="position-relative me-3">
+                                          <img
+                                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                              formatUserName(user),
+                                            )}&background=ED9B40&color=fff`}
+                                            alt={formatUserName(user)}
+                                            className="rounded-circle"
+                                            style={{
+                                              width: "48px",
+                                              height: "48px",
+                                              objectFit: "cover",
+                                              // Removed border
+                                            }}
+                                          />
 
-                                    {/* Badge logic: Bottom-Left */}
-                                    {level === 1 && (
-                                      <div
-                                        className="shield-icon-wrapper"
-                                        title="Department Head"
-                                      >
-                                        {/* Stacked Icon: Shield base + Star overlay */}
-                                        <i className="bi bi-shield-fill shield-base"></i>
-                                        <i className="bi bi-star-fill shield-star"></i>
+                                          {/* Badge logic: Bottom-Left */}
+                                          {level === 1 && (
+                                            <div
+                                              className="shield-icon-wrapper"
+                                              title="Department Head"
+                                            >
+                                              {/* Stacked Icon: Shield base + Star overlay */}
+                                              <i className="bi bi-shield-fill shield-base"></i>
+                                              <i className="bi bi-star-fill shield-star"></i>
+                                            </div>
+                                          )}
+                                          {level === 2 && (
+                                            <div
+                                              className="shield-icon-wrapper"
+                                              title="Officer"
+                                            >
+                                              {/* Plain Shield */}
+                                              <i className="bi bi-shield-fill shield-base"></i>
+                                            </div>
+                                          )}
+                                        </div>
+                                        <div>
+                                          <h6 className="fw-bold mb-0">
+                                            {formatUserNameLastFirst(user)}
+                                          </h6>
+                                          <small className="text-muted">
+                                            {user.email}
+                                          </small>
+                                        </div>
                                       </div>
-                                    )}
-                                    {level === 2 && (
-                                      <div
-                                        className="shield-icon-wrapper"
-                                        title="Officer"
-                                      >
-                                        {/* Plain Shield */}
-                                        <i className="bi bi-shield-fill shield-base"></i>
+                                    </td>
+                                    <td>
+                                      <div className="role-pills-container">
+                                        {user.roles.map((role: any) => (
+                                          <div
+                                            key={role.id}
+                                            className="role-pill" // Removed bg-warning logic
+                                            data-role-name={role.name}
+                                          >
+                                            <span className="role-dot"></span>
+                                            {role.name}
+                                          </div>
+                                        ))}
                                       </div>
-                                    )}
-                                  </div>
-                                  <div>
-                                    <h6 className="fw-bold mb-0">
-                                      {formatUserNameLastFirst(user)}
-                                    </h6>
-                                    <small className="text-muted">
-                                      {user.email}
-                                    </small>
-                                  </div>
-                                </div>
-                              </td>
-                              <td>
-                                <div className="role-pills-container">
-                                  {user.roles.map((role: any) => (
-                                    <div
-                                      key={role.id}
-                                      className="role-pill" // Removed bg-warning logic
-                                      data-role-name={role.name}
-                                    >
-                                      <span className="role-dot"></span>
-                                      {role.name}
-                                    </div>
-                                  ))}
-                                </div>
-                              </td>
-                              <td>
-                                <div className="d-flex gap-2">
-                                  <button
-                                    className="btn btn-sm btn-outline-primary border-0"
-                                    onClick={() => setUserToSendTo(user)}
-                                    title="Send Document"
-                                  >
-                                    <i className="bi bi-send fs-5"></i>
-                                  </button>
-                                  {canManageUsers && (
-                                    <>
-                                      <button
-                                        className="btn btn-sm btn-outline-danger border-0"
-                                        onClick={() => setUserToRemove(user)}
-                                        title="Remove User"
-                                      >
-                                        <i className="bi bi-trash fs-5"></i>
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                                    </td>
+                                    <td>
+                                      <div className="d-flex gap-2">
+                                        <button
+                                          className="btn btn-sm btn-outline-primary border-0"
+                                          onClick={() => setUserToSendTo(user)}
+                                          title="Send Document"
+                                        >
+                                          <i className="bi bi-send fs-5"></i>
+                                        </button>
+                                        {canManageUsers && (
+                                          <>
+                                            <button
+                                              className="btn btn-sm btn-outline-danger border-0"
+                                              onClick={() =>
+                                                setUserToRemove(user)
+                                              }
+                                              title="Remove User"
+                                            >
+                                              <i className="bi bi-trash fs-5"></i>
+                                            </button>
+                                          </>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="card">

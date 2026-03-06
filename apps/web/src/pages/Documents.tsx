@@ -262,79 +262,89 @@ const Documents: React.FC = () => {
 
       {/* Recent Documents Section */}
       <div className="mb-4">
-        <h4 className="section-title">Recent Documents</h4>
-        <div className="card document-table-card mt-2">
-          <div className="card-body p-0">
-            <table className="table mb-0">
-              <thead>
-                <tr>
-                  <th>Type</th>
-                  <th>Title</th>
-                  <th>Owner</th>
-                  <th>Lifecycle</th>
-                  <th>Control Number</th>
-                  <th>Date</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentDocuments.map((doc: Document) => (
-                  <tr key={doc.id}>
-                    <td>
-                      <div className="d-flex align-items-center gap-2">
-                        <FileIcon
-                          fileType={doc.fileType}
-                          fileName={doc.title}
-                        />
-                        <div className="d-flex flex-column gap-1 align-items-start">
-                          <DocumentTypePill documentType={doc.documentType} />
-                          <ClassificationBadge
-                            classification={
-                              doc.classification as ClassificationType
-                            }
+        <div className="accordion-item mb-3">
+          <div className="accordion-header w-100 text-start d-flex justify-content-between align-items-center non-clickable">
+            <span>Recent Documents</span>
+          </div>
+          <div className="accordion-content">
+            <div className="card document-table-card mt-0 border-top-0 rounded-top-0">
+              <div className="card-body p-0">
+                <table className="table mb-0">
+                  <thead>
+                    <tr>
+                      <th>Type</th>
+                      <th>Title</th>
+                      <th>Owner</th>
+                      <th>Lifecycle</th>
+                      <th>Control Number</th>
+                      <th>Date</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentDocuments.map((doc: Document) => (
+                      <tr key={doc.id}>
+                        <td>
+                          <div className="d-flex align-items-center gap-2">
+                            <FileIcon
+                              fileType={doc.fileType}
+                              fileName={doc.title}
+                            />
+                            <div className="d-flex flex-column gap-1 align-items-start">
+                              <DocumentTypePill
+                                documentType={doc.documentType}
+                              />
+                              <ClassificationBadge
+                                classification={
+                                  doc.classification as ClassificationType
+                                }
+                              />
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <Link
+                            to={`/documents/${doc.id}`}
+                            className="fw-bold text-decoration-none"
+                          >
+                            {doc.title}
+                          </Link>
+                        </td>
+                        <td className="text-muted">
+                          {formatUserName(doc.uploadedBy)}
+                        </td>
+                        <td>
+                          <StatusBadge status={doc.lifecycleStatus} />
+                        </td>
+                        <td className="text-muted">
+                          {doc.controlNumber || "—"}
+                        </td>
+                        <td className="text-muted">
+                          {new Date(doc.createdAt).toLocaleDateString()}
+                        </td>
+                        <td>
+                          <DocumentActionsMenu
+                            doc={doc}
+                            isUploader={isUploader}
+                            canManageDocuments={canManageDocuments}
+                            onSendClick={handleSendClick}
+                            onReviewClick={handleReviewClick}
+                            onDeleteClick={handleDeleteClick}
                           />
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <Link
-                        to={`/documents/${doc.id}`}
-                        className="fw-bold text-decoration-none"
-                      >
-                        {doc.title}
-                      </Link>
-                    </td>
-                    <td className="text-muted">
-                      {formatUserName(doc.uploadedBy)}
-                    </td>
-                    <td>
-                      <StatusBadge status={doc.lifecycleStatus} />
-                    </td>
-                    <td className="text-muted">{doc.controlNumber || "—"}</td>
-                    <td className="text-muted">
-                      {new Date(doc.createdAt).toLocaleDateString()}
-                    </td>
-                    <td>
-                      <DocumentActionsMenu
-                        doc={doc}
-                        isUploader={isUploader}
-                        canManageDocuments={canManageDocuments}
-                        onSendClick={handleSendClick}
-                        onReviewClick={handleReviewClick}
-                        onDeleteClick={handleDeleteClick}
-                      />
-                    </td>
-                  </tr>
-                ))}
-                {recentDocuments.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="text-center text-muted py-4">
-                      No recent documents found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                        </td>
+                      </tr>
+                    ))}
+                    {recentDocuments.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="text-center text-muted py-4">
+                          No recent documents found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       </div>

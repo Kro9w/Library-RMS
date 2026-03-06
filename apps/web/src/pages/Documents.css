@@ -2,7 +2,7 @@
 
 .document-table-card {
   background-color: var(--card-background);
-  border-radius: 1rem;
+  border-radius: 0.75rem;
   box-shadow: var(--card-shadow);
   overflow: hidden;
   margin-top: 2rem;
@@ -126,6 +126,17 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
+/* Override Bootstrap's default accordion radii for first/last items */
+.accordion-item:first-of-type,
+.accordion-item:last-of-type {
+  border-radius: 0.75rem;
+}
+
+/* Override Bootstrap's default border-top removal on adjacent accordion items */
+.accordion-item:not(:first-of-type) {
+  border-top: 1px solid var(--card-border);
+}
+
 .accordion-header {
   background: var(--card-background);
   border: none;
@@ -146,6 +157,14 @@
   color: var(--text-muted);
 }
 
+.accordion-header.non-clickable {
+  cursor: default;
+}
+
+.accordion-header.non-clickable:hover {
+  background: var(--card-background);
+}
+
 .accordion-content {
   border-top: 1px solid var(--card-border);
   background-color: var(--background);
@@ -153,8 +172,63 @@
 
 .accordion-content .document-table-card {
   margin-top: 0;
-  border-radius: 0;
+  border-radius: 0 0 0.75rem 0.75rem;
   box-shadow: none;
+  background-color: transparent;
+  border: none;
+}
+
+/* Make table corners properly rounded inside the card */
+.document-table-card .table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  margin-bottom: 0; /* Remove default Bootstrap bottom margin */
+}
+
+/* Ensure flush edges in accordions by removing left and right borders and paddings if any exist */
+.accordion-content .document-table-card .table td:first-child,
+.accordion-content .document-table-card .table th:first-child {
+  padding-left: 1.25rem; /* Match the accordion-header padding */
+  border-left: none;
+}
+
+.accordion-content .document-table-card .table td:last-child,
+.accordion-content .document-table-card .table th:last-child {
+  padding-right: 1.25rem;
+  border-right: none;
+}
+
+/* Style the table header inside accordions to blend with the expanded section seamlessly */
+.accordion-content .document-table-card .table thead th {
+  border-top: none;
+  background-color: var(--background); /* Match accordion-content background */
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--card-border);
+}
+
+.accordion-content .document-table-card .table tbody tr td {
+  background-color: var(--background); /* Match accordion-content background */
+}
+
+/* Make sure the very top border of the nested table is gone since the accordion handles the top border */
+.accordion-content .document-table-card .table {
+  border-top: none;
+}
+
+.document-table-card .table tr:last-child td:first-child {
+  border-bottom-left-radius: 0.75rem;
+}
+
+.document-table-card .table tr:last-child td:last-child {
+  border-bottom-right-radius: 0.75rem;
+}
+
+.document-table-card .table tr:last-child td {
+  border-bottom: none;
 }
 
 /* Actions Dropdown */
