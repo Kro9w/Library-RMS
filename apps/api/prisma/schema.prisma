@@ -23,6 +23,11 @@ enum Classification {
   CONFIDENTIAL
 }
 
+enum PermissionLevel {
+  READ
+  WRITE
+}
+
 // apps/api/prisma/schema.prisma
 
 model User {
@@ -44,12 +49,13 @@ model User {
 
   isSuperAdmin Boolean @default(false)
 
-  documents       Document[]     @relation("uploadedBy")
-  roles           Role[] // Implicit M:N
-  logs            Log[]
-  Remark          Remark[]
-  reviewRequested Document[]     @relation("DocumentReviewRequester")
-  notifications   Notification[]
+  documents        Document[]       @relation("uploadedBy")
+  roles            Role[] // Implicit M:N
+  logs             Log[]
+  Remark           Remark[]
+  reviewRequested  Document[]       @relation("DocumentReviewRequester")
+  notifications    Notification[]
+  documentAccesses DocumentAccess[]
 }
 
 model Notification {
@@ -66,48 +72,52 @@ model Notification {
 }
 
 model Role {
-  id                 String  @id @default(cuid())
+  id                 String           @id @default(cuid())
   name               String
-  level              Int     @default(4) // 1: Leader, 2: Co-Leader, 3: Elder, 4: Member
-  canManageUsers     Boolean @default(false)
-  canManageRoles     Boolean @default(false)
-  canManageDocuments Boolean @default(false)
+  level              Int              @default(4) // 1: Leader, 2: Co-Leader, 3: Elder, 4: Member
+  canManageUsers     Boolean          @default(false)
+  canManageRoles     Boolean          @default(false)
+  canManageDocuments Boolean          @default(false)
   users              User[] // Implicit M:N
+  documentAccesses   DocumentAccess[]
 
   department   Department @relation(fields: [departmentId], references: [id])
   departmentId String
 }
 
 model Institution {
-  id            String         @id @default(cuid())
-  name          String
-  acronym       String
-  users         User[]
-  campuses      Campus[]
-  documents     Document[]
-  documentTypes DocumentType[]
-  logs          Log[]
+  id               String           @id @default(cuid())
+  name             String
+  acronym          String
+  users            User[]
+  campuses         Campus[]
+  documents        Document[]
+  documentTypes    DocumentType[]
+  logs             Log[]
+  documentAccesses DocumentAccess[]
 }
 
 model Campus {
-  id            String       @id @default(cuid())
-  name          String
-  institution   Institution  @relation(fields: [institutionId], references: [id])
-  institutionId String
-  departments   Department[]
-  users         User[]
-  documents     Document[]
+  id               String           @id @default(cuid())
+  name             String
+  institution      Institution      @relation(fields: [institutionId], references: [id])
+  institutionId    String
+  departments      Department[]
+  users            User[]
+  documents        Document[]
+  documentAccesses DocumentAccess[]
 }
 
 model Department {
-  id        String     @id @default(cuid())
-  name      String
-  icon      String     @default("default-icon.png")
-  campus    Campus     @relation(fields: [campusId], references: [id])
-  campusId  String
-  users     User[]
-  roles     Role[]
-  documents Document[]
+  id               String           @id @default(cuid())
+  name             String
+  icon             String           @default("default-icon.png")
+  campus           Campus           @relation(fields: [campusId], references: [id])
+  campusId         String
+  users            User[]
+  roles            Role[]
+  documents        Document[]
+  documentAccesses DocumentAccess[]
 }
 
 model Log {
@@ -180,6 +190,7 @@ model Document {
   inactiveRetentionSnapshot Int?
   dispositionActionSnapshot DispositionAction?
   dispositionStatus         String? // 'ARCHIVED', 'DESTROYED'
+  documentAccesses          DocumentAccess[]
 
   @@index([institutionId])
   @@index([uploadedById])
@@ -206,4 +217,35 @@ model Remark {
   author     User     @relation(fields: [authorId], references: [id])
   authorId   String
   createdAt  DateTime @default(now())
+}
+
+model DocumentAccess {
+  id         String   @id @default(cuid())
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String
+
+  // Can be granted to a specific user, role, department, campus, or institution
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  roleId String?
+  role   Role?   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  campusId String?
+  campus   Campus? @relation(fields: [campusId], references: [id], onDelete: Cascade)
+
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  permission PermissionLevel @default(READ)
+
+  @@index([documentId])
+  @@index([userId])
+  @@index([roleId])
+  @@index([departmentId])
+  @@index([campusId])
+  @@index([institutionId])
 }

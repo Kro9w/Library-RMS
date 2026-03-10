@@ -1,3 +1,4 @@
+import { AccessControlService } from "./access-control.service";
 import { Test, TestingModule } from '@nestjs/testing';
 import { DocumentsRouter } from './documents.router';
 import { PrismaService } from '../prisma/prisma.service';
@@ -20,6 +21,7 @@ describe('DocumentsRouter Security', () => {
   let router: DocumentsRouter;
 
   const mockPrismaService = {
+    documentAccess: { create: jest.fn(), createMany: jest.fn() },
     document: {
       findMany: jest.fn(),
       update: jest.fn(),
@@ -52,6 +54,7 @@ describe('DocumentsRouter Security', () => {
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: SupabaseService, useValue: mockSupabaseService },
         { provide: LogService, useValue: mockLogService },
+        AccessControlService,
       ],
     }).compile();
 

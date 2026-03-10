@@ -15,15 +15,35 @@ const Upload: React.FC = () => {
   const createDocMutation = trpc.documents.createDocumentRecord.useMutation();
   const bucketName = import.meta.env.VITE_SUPABASE_BUCKET_NAME;
 
+  const [classification, setClassification] = useState<
+    "INSTITUTIONAL" | "CAMPUS" | "INTERNAL" | "CONFIDENTIAL"
+  >("CONFIDENTIAL");
+
+  // Determine accepted file types based on classification
+  const acceptedTypes: Record<string, string[]> =
+    classification === "INSTITUTIONAL" || classification === "CAMPUS"
+      ? {
+          "application/pdf": [".pdf"],
+          "image/jpeg": [".jpeg", ".jpg"],
+          "image/png": [".png"],
+          "image/tiff": [".tiff"],
+        }
+      : {
+          "application/pdf": [".pdf"],
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            [".docx"],
+          "application/msword": [".doc"],
+          "application/vnd.ms-excel": [".xls"],
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+            ".xlsx",
+          ],
+        };
+
   const { getRootProps, getInputProps } = useDropzone({
     onDrop: (acceptedFiles) => {
       setFiles(acceptedFiles);
     },
-    accept: {
-      "application/pdf": [".pdf"],
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        [".docx"],
-    },
+    accept: acceptedTypes,
   });
 
   const handleUpload = async () => {
@@ -55,6 +75,8 @@ const Upload: React.FC = () => {
         title: file.name,
         storageKey: uploadData.path,
         storageBucket: bucketName, // Use the correct variable here
+        classification,
+        fileType: file.type,
       });
 
       setFiles([]);
@@ -75,9 +97,53 @@ const Upload: React.FC = () => {
   return (
     <div className="upload-container">
       <h2>Upload Documents</h2>
-      <div {...getRootProps({ className: "dropzone" })}>
+
+      <div style={{ marginBottom: "20px" }}>
+        <label htmlFor="classification">
+          <strong>Visibility / Classification:</strong>
+        </label>
+        <select
+          id="classification"
+          value={classification}
+          onChange={(e) => {
+            setClassification(e.target.value as any);
+            setFiles([]); // Clear files when changing classification to prevent invalid uploads
+          }}
+          style={{ marginLeft: "10px", padding: "5px" }}
+        >
+          <option value="CONFIDENTIAL">Confidential (Draft / Review)</option>
+          <option value="INTERNAL">Internal (Department)</option>
+          <option value="CAMPUS">Campus (Finalized Broadcast)</option>
+          <option value="INSTITUTIONAL">
+            Institutional (Finalized Broadcast)
+          </option>
+        </select>
+        <p style={{ fontSize: "0.85em", color: "#666", marginTop: "5px" }}>
+          {classification === "INSTITUTIONAL" || classification === "CAMPUS"
+            ? "Note: Campus and Institutional broadcasts require finalized formats (PDF, JPEG, PNG, TIFF)."
+            : "Note: You can upload editable drafts (DOCX, Excel) for Internal or Confidential items."}
+        </p>
+      </div>
+
+      <div
+        {...getRootProps({
+          className: "dropzone",
+          style: {
+            border: "2px dashed #ccc",
+            padding: "20px",
+            textAlign: "center",
+            cursor: "pointer",
+          },
+        })}
+      >
         <input {...getInputProps()} />
-        <p>Drag 'n' drop PDF or DOCX files here, or click to select</p>
+        <p>
+          Drag 'n' drop files here, or click to select.
+          <br />
+          <small>
+            Allowed formats: {Object.values(acceptedTypes).flat().join(", ")}
+          </small>
+        </p>
       </div>
       <aside>
         <h4>Files</h4>

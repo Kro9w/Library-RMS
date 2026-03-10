@@ -1,3 +1,4 @@
+import { AccessControlService } from "./access-control.service";
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -21,6 +22,7 @@ describe('DocumentsRouter', () => {
   let router: DocumentsRouter;
 
   const mockPrismaService = {
+    documentAccess: { create: jest.fn(), createMany: jest.fn() },
     document: {
       findMany: jest.fn(),
       findFirst: jest.fn(),
@@ -40,7 +42,7 @@ describe('DocumentsRouter', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
+      providers: [ AccessControlService, 
         DocumentsRouter,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: SupabaseService, useValue: mockSupabaseService },
@@ -183,6 +185,19 @@ describe('DocumentsRouter', () => {
           where: {
             id: 'doc-1',
             institutionId: 'org-1',
+            AND: [
+              {
+                documentAccesses: {
+                  some: {
+                    OR: [
+                      { userId: 'user-1' },
+                      { institutionId: 'org-1' },
+                      { roleId: { in: [undefined] } },
+                    ],
+                  },
+                },
+              },
+            ],
           },
           select: expect.objectContaining({
             uploadedBy: {
@@ -190,19 +205,6 @@ describe('DocumentsRouter', () => {
                 firstName: true,
                 middleName: true,
                 lastName: true,
-                departmentId: true,
-                campusId: true,
-                department: {
-                  select: {
-                    name: true,
-                    campusId: true,
-                    campus: {
-                      select: {
-                        name: true,
-                      },
-                    },
-                  },
-                },
               },
             },
           }),

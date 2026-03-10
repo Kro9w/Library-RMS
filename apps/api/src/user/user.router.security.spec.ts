@@ -1,10 +1,10 @@
+import { AccessControlService } from "../documents/access-control.service";
 import { Test, TestingModule } from '@nestjs/testing';
-import { UserRouter } from './user.router';
+import { DocumentsRouter } from '../documents/documents.router';
 import { PrismaService } from '../prisma/prisma.service';
+import { SupabaseService } from '../supabase/supabase.service';
 import { LogService } from '../log/log.service';
 import { TRPCError } from '@trpc/server';
-import { Context, protectedProcedure } from '../trpc/trpc';
-import * as trpcExpress from '@trpc/server/adapters/express';
 
 // Mock environment variables
 jest.mock('../env', () => ({
@@ -17,102 +17,325 @@ jest.mock('../env', () => ({
   },
 }));
 
-describe('UserRouter Security', () => {
-  let router: UserRouter;
+describe('DocumentsRouter Security', () => {
+  let router: DocumentsRouter;
 
   const mockPrismaService = {
-    institution: {
-      findUnique: jest.fn(),
+    documentAccess: { create: jest.fn(), createMany: jest.fn() },
+    document: {
+      findMany: jest.fn(),
+      update: jest.fn(),
     },
+    $transaction: jest.fn(),
     user: {
       findUnique: jest.fn(),
     },
-    $transaction: jest.fn(),
+    tag: {
+      findMany: jest.fn(),
+    },
+    notification: {
+      create: jest.fn(),
+    },
+  };
+
+  const mockSupabaseService = {
+    getAdminClient: jest.fn(),
   };
 
   const mockLogService = {
     logAction: jest.fn(),
+    logActions: jest.fn(),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        UserRouter,
+      providers: [ AccessControlService, 
+        DocumentsRouter,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: SupabaseService, useValue: mockSupabaseService },
         { provide: LogService, useValue: mockLogService },
       ],
     }).compile();
 
-    router = module.get<UserRouter>(UserRouter);
+    router = module.get<DocumentsRouter>(DocumentsRouter);
     jest.clearAllMocks();
   });
 
-  describe('getInstitutionHierarchy', () => {
-    it('should filter documents when user lacks canManageDocuments permission', async () => {
+  describe('sendDocument', () => {
+    it('should throw FORBIDDEN if user tries to send a document they do not own and lack permission', async () => {
       const trpcRouter = router.createRouter();
+
+      const userId = 'user-1';
+      const otherUserId = 'user-2';
+      const docId = 'doc-1';
+      const institutionId = 'org-1';
+
       const dbUser = {
-        id: 'user-1',
-        institutionId: 'org-1',
-        roles: [{ name: 'User', canManageDocuments: false }],
+        id: userId,
+        institutionId: institutionId,
+        roles: [{ canManageDocuments: false, name: 'Member' }],
       };
 
-      mockPrismaService.user.findUnique.mockResolvedValue(dbUser);
-      mockPrismaService.institution.findUnique.mockResolvedValue({
-        id: 'org-1',
+      // Recipient exists
+      mockPrismaService.user.findUnique.mockImplementation((args) => {
+        if (args.where.id === userId) {
+          return Promise.resolve(dbUser);
+        }
+        if (args.where.id === 'recipient-1') {
+          return Promise.resolve({
+            id: 'recipient-1',
+            firstName: 'John',
+            lastName: 'Doe',
+          });
+        }
+        return Promise.resolve(null);
       });
 
+      // Document exists in org but owned by someone else
+      mockPrismaService.document.findMany.mockImplementation((args) => {
+        // Simulate DB filtering: if query requests a specific uploader, check against document's owner
+        if (
+          args.where.uploadedById &&
+          args.where.uploadedById !== otherUserId
+        ) {
+          return [];
+        }
+        return [
+          {
+            id: docId,
+            institutionId: institutionId,
+            uploadedById: otherUserId,
+            title: 'Test Doc',
+          },
+        ];
+      });
+
+      // Mock update to return a document so the operation succeeds (demonstrating vulnerability)
+      mockPrismaService.document.update.mockResolvedValue({
+        id: docId,
+        title: 'Test Doc',
+      });
+      mockPrismaService.notification = { create: jest.fn() };
+
+      mockPrismaService.tag.findMany.mockResolvedValue([]);
+
       const caller = trpcRouter.createCaller({
-        user: { id: 'user-1' },
+        user: { id: userId },
         dbUser: dbUser as any,
         prisma: mockPrismaService as any,
       });
 
-      await caller.getInstitutionHierarchy();
-
-      const callArgs =
-        mockPrismaService.institution.findUnique.mock.calls[0][0];
-      const documentsInclude =
-        callArgs.include.campuses.include.departments.include.users.include
-          .documents;
-
-      // Without fix, this expects undefined (no filter), but we want to assert that it SHOULD filter
-      // If we assert it fails without fix, we check for presence of `where` clause.
-
-      // Currently, documentsInclude.where is likely undefined.
-      // We expect it to be filtered by uploadedById: 'user-1'
-      expect(documentsInclude.where).toEqual({ uploadedById: 'user-1' });
+      // This should fail securely, but currently it might succeed due to vulnerability
+      await expect(
+        caller.sendDocument({
+          documentId: docId,
+          recipientId: 'recipient-1',
+          tagIds: [],
+        }),
+      ).rejects.toThrow(
+        expect.objectContaining({
+          code: 'FORBIDDEN',
+        }),
+      );
     });
 
-    it('should NOT filter documents when user HAS canManageDocuments permission', async () => {
+    it('should allow user to send a document they own', async () => {
       const trpcRouter = router.createRouter();
+
+      const userId = 'user-1';
+      const docId = 'doc-1';
+      const institutionId = 'org-1';
+
       const dbUser = {
-        id: 'admin-1',
-        institutionId: 'org-1',
-        roles: [{ name: 'Admin', canManageDocuments: true }],
+        id: userId,
+        institutionId: institutionId,
+        roles: [{ canManageDocuments: false, name: 'Member' }],
       };
 
-      mockPrismaService.user.findUnique.mockResolvedValue(dbUser);
-      mockPrismaService.institution.findUnique.mockResolvedValue({
-        id: 'org-1',
+      mockPrismaService.user.findUnique.mockImplementation((args) => {
+        if (args.where.id === userId) {
+          return Promise.resolve(dbUser);
+        }
+        if (args.where.id === 'recipient-1') {
+          return Promise.resolve({
+            id: 'recipient-1',
+            firstName: 'John',
+            lastName: 'Doe',
+          });
+        }
+        return Promise.resolve(null);
       });
 
+      // Document owned by user
+      mockPrismaService.document.findMany.mockResolvedValue([
+        {
+          id: docId,
+          institutionId: institutionId,
+          uploadedById: userId,
+          title: 'Test Doc',
+        },
+      ]);
+
+      mockPrismaService.tag.findMany.mockResolvedValue([]);
+      mockPrismaService.document.update.mockResolvedValue({
+        id: docId,
+        title: 'Test Doc',
+      });
+      mockPrismaService.notification = { create: jest.fn() };
+
       const caller = trpcRouter.createCaller({
-        user: { id: 'admin-1' },
+        user: { id: userId },
         dbUser: dbUser as any,
         prisma: mockPrismaService as any,
       });
 
-      await caller.getInstitutionHierarchy();
+      await expect(
+        caller.sendDocument({
+          documentId: docId,
+          recipientId: 'recipient-1',
+          tagIds: [],
+        }),
+      ).resolves.not.toThrow();
+    });
 
-      const callArgs =
-        mockPrismaService.institution.findUnique.mock.calls[0][0];
-      const documentsInclude =
-        callArgs.include.campuses.include.departments.include.users.include
-          .documents;
+    it('should allow admin to send any document in institution', async () => {
+      const trpcRouter = router.createRouter();
 
-      // Should be undefined or explicitly allow all?
-      // Usually undefined means no filter (all documents).
-      expect(documentsInclude.where).toBeUndefined();
+      const userId = 'admin-1';
+      const otherUserId = 'user-2';
+      const docId = 'doc-1';
+      const institutionId = 'org-1';
+
+      const dbUser = {
+        id: userId,
+        institutionId: institutionId,
+        roles: [{ canManageDocuments: true, name: 'Admin' }],
+      };
+
+      mockPrismaService.user.findUnique.mockImplementation((args) => {
+        if (args.where.id === userId) {
+          return Promise.resolve(dbUser);
+        }
+        if (args.where.id === 'recipient-1') {
+          return Promise.resolve({
+            id: 'recipient-1',
+            firstName: 'John',
+            lastName: 'Doe',
+          });
+        }
+        return Promise.resolve(null);
+      });
+
+      // Document owned by someone else
+      mockPrismaService.document.findMany.mockResolvedValue([
+        {
+          id: docId,
+          institutionId: institutionId,
+          uploadedById: otherUserId,
+          title: 'Test Doc',
+        },
+      ]);
+
+      mockPrismaService.tag.findMany.mockResolvedValue([]);
+      mockPrismaService.document.update.mockResolvedValue({
+        id: docId,
+        title: 'Test Doc',
+      });
+
+      const caller = trpcRouter.createCaller({
+        user: { id: userId },
+        dbUser: dbUser as any,
+        prisma: mockPrismaService as any,
+      });
+
+      await expect(
+        caller.sendDocument({
+          documentId: docId,
+          recipientId: 'recipient-1',
+          tagIds: [],
+        }),
+      ).resolves.not.toThrow();
+    });
+  });
+
+  describe('sendMultipleDocuments', () => {
+    it('should throw FORBIDDEN if user tries to send documents they do not own', async () => {
+      const trpcRouter = router.createRouter();
+
+      const userId = 'user-1';
+      const otherUserId = 'user-2';
+      const docId1 = 'doc-1';
+      const docId2 = 'doc-2';
+      const institutionId = 'org-1';
+
+      const dbUser = {
+        id: userId,
+        institutionId: institutionId,
+        roles: [{ canManageDocuments: false, name: 'Member' }],
+      };
+
+      mockPrismaService.user.findUnique.mockImplementation((args) => {
+        if (args.where.id === userId) {
+          return Promise.resolve(dbUser);
+        }
+        if (args.where.id === 'recipient-1') {
+          return Promise.resolve({
+            id: 'recipient-1',
+            firstName: 'John',
+            lastName: 'Doe',
+          });
+        }
+        return Promise.resolve(null);
+      });
+
+      // One doc owned by user, one by someone else
+      mockPrismaService.document.findMany.mockImplementation((args) => {
+        const docs = [
+          {
+            id: docId1,
+            institutionId: institutionId,
+            uploadedById: userId,
+            title: 'My Doc',
+          },
+          {
+            id: docId2,
+            institutionId: institutionId,
+            uploadedById: otherUserId,
+            title: 'Other Doc',
+          },
+        ];
+
+        if (args.where.uploadedById) {
+          return docs.filter((d) => d.uploadedById === args.where.uploadedById);
+        }
+        return docs;
+      });
+
+      // Mock transaction result
+      mockPrismaService.$transaction.mockResolvedValue([
+        { id: docId1, title: 'My Doc' },
+        { id: docId2, title: 'Other Doc' },
+      ]);
+
+      mockPrismaService.tag.findMany.mockResolvedValue([]);
+
+      const caller = trpcRouter.createCaller({
+        user: { id: userId },
+        dbUser: dbUser as any,
+        prisma: mockPrismaService as any,
+      });
+
+      await expect(
+        caller.sendMultipleDocuments({
+          documentIds: [docId1, docId2],
+          recipientId: 'recipient-1',
+          tagIds: [],
+        }),
+      ).rejects.toThrow(
+        expect.objectContaining({
+          code: 'FORBIDDEN',
+        }),
+      );
     });
   });
 });

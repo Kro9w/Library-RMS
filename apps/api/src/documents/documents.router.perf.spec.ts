@@ -1,3 +1,4 @@
+import { AccessControlService } from "./access-control.service";
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -23,6 +24,7 @@ describe('DocumentsRouter Performance', () => {
   let router: DocumentsRouter;
 
   const mockPrismaService = {
+    documentAccess: { create: jest.fn(), createMany: jest.fn() },
     document: {
       update: jest.fn(),
       findMany: jest.fn(),
@@ -50,7 +52,7 @@ describe('DocumentsRouter Performance', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
+      providers: [ AccessControlService, 
         DocumentsRouter,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: SupabaseService, useValue: mockSupabaseService },

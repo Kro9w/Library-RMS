@@ -1,7 +1,7 @@
 // apps/api/src/documents/documents.router.ts
 
 import { z } from 'zod';
-import { Prisma } from '@prisma/client';
+import { Prisma, PermissionLevel } from '@prisma/client';
 import {
   protectedProcedure,
   router,
@@ -13,6 +13,7 @@ import { Injectable } from '@nestjs/common';
 import { TRPCError } from '@trpc/server';
 import { SupabaseService } from '../supabase/supabase.service';
 import { LogService } from '../log/log.service';
+import { AccessControlService } from './access-control.service';
 import { env } from '../env';
 
 function computeLifecycleStatus(doc: {
@@ -58,6 +59,7 @@ export class DocumentsRouter {
     private readonly prisma: PrismaService,
     private readonly supabase: SupabaseService,
     private readonly logService: LogService,
+    private readonly accessControlService: AccessControlService,
   ) {}
 
   createRouter() {
@@ -102,10 +104,13 @@ export class DocumentsRouter {
             });
           }
 
+          const aclWhere = this.accessControlService.generateAclWhereClause(ctx.dbUser);
+
           const doc = await this.prisma.document.findFirst({
             where: {
               id: input.id,
               institutionId: ctx.dbUser.institutionId,
+              AND: [aclWhere],
             },
             select: {
               id: true,
@@ -120,19 +125,6 @@ export class DocumentsRouter {
                   firstName: true,
                   middleName: true,
                   lastName: true,
-                  campusId: true,
-                  departmentId: true,
-                  department: {
-                    select: {
-                      name: true,
-                      campusId: true,
-                      campus: {
-                        select: {
-                          name: true,
-                        },
-                      },
-                    },
-                  },
                 },
               },
               reviewRequester: {
@@ -169,44 +161,6 @@ export class DocumentsRouter {
 
           if (!doc) {
             throw new TRPCError({ code: 'NOT_FOUND' });
-          }
-
-          // Enforce Classification Rules
-          if (doc.classification === 'CONFIDENTIAL') {
-            if (
-              doc.uploadedById !== ctx.user.id &&
-              doc.originalSenderId !== ctx.user.id
-            ) {
-              throw new TRPCError({
-                code: 'FORBIDDEN',
-                message:
-                  'You do not have permission to view this CONFIDENTIAL document.',
-              });
-            }
-          } else if (doc.classification === 'INTERNAL') {
-            if (ctx.dbUser.departmentId !== doc.uploadedBy.departmentId) {
-              throw new TRPCError({
-                code: 'FORBIDDEN',
-                message:
-                  'You do not have permission to view this INTERNAL (Department) document.',
-              });
-            }
-          } else if (doc.classification === 'CAMPUS') {
-            if (
-              ctx.dbUser.campusId !== doc.uploadedBy.department?.campusId &&
-              ctx.dbUser.campusId !== doc.uploadedBy.campusId // robust check depending on user schema usage
-            ) {
-              // Need to ensure robust user campus mapping
-              const ownerCampusId =
-                doc.uploadedBy.campusId || doc.uploadedBy.department?.campusId;
-              if (ctx.dbUser.campusId !== ownerCampusId) {
-                throw new TRPCError({
-                  code: 'FORBIDDEN',
-                  message:
-                    'You do not have permission to view this CAMPUS document.',
-                });
-              }
-            }
           }
 
           return {
@@ -300,6 +254,26 @@ export class DocumentsRouter {
             });
           }
 
+          // Format Immutability: Institutional & Campus broadcasts must be non-editable formats
+          if (
+            input.classification === 'INSTITUTIONAL' ||
+            input.classification === 'CAMPUS'
+          ) {
+            const allowedFormats = [
+              'application/pdf',
+              'image/jpeg',
+              'image/png',
+              'image/tiff',
+            ];
+            
+            if (!input.fileType || !allowedFormats.includes(input.fileType)) {
+              throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: `Published Institutional or Campus documents must be finalized formats (PDF or images). Received: ${input.fileType || 'Unknown'}`,
+              });
+            }
+          }
+
           let retentionSnapshot = {};
           if (input.documentTypeId) {
             const docType = await this.prisma.documentType.findUnique({
@@ -335,6 +309,36 @@ export class DocumentsRouter {
             },
           });
 
+          const accessesToCreate: any[] = [];
+          
+          accessesToCreate.push({
+            documentId: document.id,
+            userId: user.id,
+            permission: PermissionLevel.WRITE,
+          });
+          
+          if (input.classification === 'INSTITUTIONAL' && dbUser.institutionId) {
+            accessesToCreate.push({
+              documentId: document.id,
+              institutionId: dbUser.institutionId,
+              permission: PermissionLevel.READ,
+            });
+          } else if (input.classification === 'CAMPUS' && dbUser.campusId) {
+            accessesToCreate.push({
+              documentId: document.id,
+              campusId: dbUser.campusId,
+              permission: PermissionLevel.READ,
+            });
+          } else if (input.classification === 'INTERNAL' && dbUser.departmentId) {
+            accessesToCreate.push({
+              documentId: document.id,
+              departmentId: dbUser.departmentId,
+              permission: PermissionLevel.READ,
+            });
+          }
+          
+          await this.prisma.documentAccess.createMany({ data: accessesToCreate });
+
           await this.logService.logAction(
             user.id,
             dbUser.institutionId,
@@ -368,10 +372,13 @@ export class DocumentsRouter {
             });
           }
 
+          const aclWhere = this.accessControlService.generateAclWhereClause(ctx.dbUser);
+
           const doc = await this.prisma.document.findFirst({
             where: {
               id: input.documentId,
               institutionId: ctx.dbUser.institutionId,
+              AND: [aclWhere],
             },
             select: {
               s3Key: true,
@@ -387,49 +394,6 @@ export class DocumentsRouter {
               code: 'NOT_FOUND',
               message: 'Document not found in getSignedDocumentUrl',
             });
-          }
-
-          // Strict access control for viewing content
-          if (doc.classification === 'CONFIDENTIAL') {
-            if (
-              doc.uploadedById !== ctx.user.id &&
-              doc.originalSenderId !== ctx.user.id
-            ) {
-              throw new TRPCError({
-                code: 'FORBIDDEN',
-                message:
-                  'You do not have permission to access the contents of this CONFIDENTIAL document.',
-              });
-            }
-          } else if (doc.classification === 'INTERNAL') {
-            const documentOwner = await this.prisma.user.findUnique({
-              where: { id: doc.uploadedById },
-              select: { departmentId: true },
-            });
-            if (ctx.dbUser.departmentId !== documentOwner?.departmentId) {
-              throw new TRPCError({
-                code: 'FORBIDDEN',
-                message:
-                  'You do not have permission to access the contents of this INTERNAL document.',
-              });
-            }
-          } else if (doc.classification === 'CAMPUS') {
-            const documentOwner = await this.prisma.user.findUnique({
-              where: { id: doc.uploadedById },
-              select: {
-                campusId: true,
-                department: { select: { campusId: true } },
-              },
-            });
-            const ownerCampusId =
-              documentOwner?.campusId || documentOwner?.department?.campusId;
-            if (ctx.dbUser.campusId !== ownerCampusId) {
-              throw new TRPCError({
-                code: 'FORBIDDEN',
-                message:
-                  'You do not have permission to access the contents of this CAMPUS document.',
-              });
-            }
           }
 
           if (!doc.s3Key || !doc.s3Bucket) {
@@ -556,86 +520,56 @@ export class DocumentsRouter {
           // Optimized path for "Ready for Disposition"
           if (lifecycleFilter === 'ready') {
             const institutionId = ctx.dbUser.institutionId;
-            const userId = ctx.user.id;
-            const searchPattern = search ? `%${search}%` : null;
+            
+            const aclWhere = this.accessControlService.generateAclWhereClause(ctx.dbUser);
 
-            // Base query for IDs and count
-            // We use Prisma.sql to compose the query safely
-            const conditions: Prisma.Sql[] = [
-              Prisma.sql`d."institutionId" = ${institutionId}`,
-              Prisma.sql`d."dispositionStatus" NOT IN ('DESTROYED', 'ARCHIVED')`,
-              Prisma.sql`d."activeRetentionSnapshot" IS NOT NULL`,
-              // Check active retention
-              Prisma.sql`(d."createdAt" + make_interval(years => d."activeRetentionSnapshot")) <= NOW()`,
-              // Check inactive retention
-              Prisma.sql`(d."createdAt" + make_interval(years => d."activeRetentionSnapshot") + make_interval(years => COALESCE(d."inactiveRetentionSnapshot", 0))) <= NOW()`,
-            ];
-
+            const lifecycleWhereClause: Prisma.DocumentWhereInput = {
+              institutionId: ctx.dbUser.institutionId,
+              dispositionStatus: { notIn: ['DESTROYED', 'ARCHIVED'] },
+              activeRetentionSnapshot: { not: null },
+              AND: [
+                aclWhere
+              ]
+            };
+            
             if (filter === 'mine') {
-              conditions.push(Prisma.sql`d."uploadedById" = ${userId}`);
+              lifecycleWhereClause.uploadedById = ctx.user.id;
             }
-
-            if (searchPattern) {
-              conditions.push(Prisma.sql`d."title" ILIKE ${searchPattern}`);
+            
+            if (search) {
+              lifecycleWhereClause.title = { contains: search, mode: 'insensitive' };
             }
-
-            // Classification filtering in raw SQL
-            const userDeptId = ctx.dbUser.departmentId;
-            const userCampusId = ctx.dbUser.campusId; // might need to fallback to department.campusId if null
-
-            const visibilityConditions: Prisma.Sql[] = [
-              Prisma.sql`d."classification" = 'INSTITUTIONAL'`,
-              Prisma.sql`(d."classification" = 'CONFIDENTIAL' AND (d."uploadedById" = ${userId} OR d."originalSenderId" = ${userId}))`,
-            ];
-
-            if (userDeptId) {
-              visibilityConditions.push(
-                Prisma.sql`(d."classification" = 'INTERNAL' AND d."departmentId" = ${userDeptId})`,
-              );
-            }
-            if (userCampusId) {
-              visibilityConditions.push(
-                Prisma.sql`(d."classification" = 'CAMPUS' AND d."campusId" = ${userCampusId})`,
-              );
-            }
-
-            conditions.push(
-              Prisma.sql`(${Prisma.join(visibilityConditions, ' OR ')})`,
-            );
-
-            const whereSql =
-              conditions.length > 0
-                ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`
-                : Prisma.empty;
-
-            // Fetch IDs and total count in one go using window function
-            // Because we added campusId and departmentId directly to the Document table,
-            // we don't strictly need to join the User table anymore for these checks!
+            
             const rawQuery = Prisma.sql`
-              SELECT d.id, COUNT(*) OVER() as full_count
+              SELECT d.id
               FROM "Document" d
-              ${whereSql}
-              ORDER BY d."createdAt" DESC
-              LIMIT ${perPage} OFFSET ${skip}
+              WHERE d."institutionId" = ${institutionId}
+                AND d."dispositionStatus" NOT IN ('DESTROYED', 'ARCHIVED')
+                AND d."activeRetentionSnapshot" IS NOT NULL
+                AND (d."createdAt" + make_interval(years => d."activeRetentionSnapshot")) <= NOW()
+                AND (d."createdAt" + make_interval(years => d."activeRetentionSnapshot") + make_interval(years => COALESCE(d."inactiveRetentionSnapshot", 0))) <= NOW()
             `;
-
-            const rawResults = await this.prisma.$queryRaw<any[]>(rawQuery);
-            const totalCount =
-              rawResults.length > 0 ? Number(rawResults[0].full_count) : 0;
-
-            if (rawResults.length === 0) {
-              return { documents: [], totalCount: 0 };
+            
+            const rawResults = await this.prisma.$queryRaw<{ id: string }[]>(rawQuery);
+            const matchingLifecycleIds = rawResults.map((r) => r.id);
+            
+            if (matchingLifecycleIds.length === 0) {
+               return { documents: [], totalCount: 0 };
             }
+            
+            lifecycleWhereClause.id = { in: matchingLifecycleIds };
+            
+            const [totalCount, documents] = await this.prisma.$transaction([
+              this.prisma.document.count({ where: lifecycleWhereClause }),
+              this.prisma.document.findMany({
+                where: lifecycleWhereClause,
+                select: selectFields,
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: perPage,
+              })
+            ]);
 
-            const ids = rawResults.map((r) => r.id);
-
-            const documents = await this.prisma.document.findMany({
-              where: { id: { in: ids } },
-              select: selectFields,
-              orderBy: { createdAt: 'desc' },
-            });
-
-            // Re-order documents to match the raw query order (if needed, but sort by created desc is same)
             return {
               documents: mapDocuments(documents),
               totalCount,
@@ -658,34 +592,11 @@ export class DocumentsRouter {
             };
           }
 
-          const userDeptId = ctx.dbUser.departmentId;
-          const userCampusId = ctx.dbUser.campusId;
-
-          const baseOrConditions: Prisma.DocumentWhereInput[] = [
-            { classification: 'INSTITUTIONAL' },
-            {
-              classification: 'CONFIDENTIAL',
-              OR: [
-                { uploadedById: ctx.user.id },
-                { originalSenderId: ctx.user.id },
-              ],
-            },
+          const aclWhere = this.accessControlService.generateAclWhereClause(ctx.dbUser);
+          
+          whereClause.AND = [
+             aclWhere
           ];
-
-          if (userDeptId) {
-            baseOrConditions.push({
-              classification: 'INTERNAL',
-              departmentId: userDeptId,
-            });
-          }
-          if (userCampusId) {
-            baseOrConditions.push({
-              classification: 'CAMPUS',
-              campusId: userCampusId,
-            });
-          }
-
-          whereClause.OR = baseOrConditions;
 
           const [totalCount, documents] = await this.prisma.$transaction([
             this.prisma.document.count({ where: whereClause }),
@@ -767,10 +678,13 @@ export class DocumentsRouter {
 
           requirePermission(ctx.dbUser, 'canManageDocuments');
 
+          const aclWhere = this.accessControlService.generateAclWhereClause(ctx.dbUser);
+
           const doc = await this.prisma.document.findFirst({
             where: {
               id: input.id,
               institutionId: ctx.dbUser.institutionId,
+              AND: [aclWhere],
             },
             select: {
               id: true,
@@ -888,6 +802,14 @@ export class DocumentsRouter {
                 ],
               },
             },
+          });
+
+          await this.prisma.documentAccess.create({
+            data: {
+              documentId: updatedDocument.id,
+              userId: recipient.id,
+              permission: PermissionLevel.WRITE
+            }
           });
 
           await this.logService.logAction(
@@ -1012,6 +934,14 @@ export class DocumentsRouter {
             ),
           );
 
+          await this.prisma.documentAccess.createMany({
+            data: results.map(doc => ({
+              documentId: doc.id,
+              userId: recipient.id,
+              permission: PermissionLevel.WRITE
+            }))
+          });
+
           // Log actions after successful transaction using batch logging
           const userRoles = dbUser.roles.map((r) => r.name);
           await this.logService.logActions(
@@ -1046,6 +976,9 @@ export class DocumentsRouter {
             documentId: z.string(),
             status: z.enum(['approved', 'returned', 'disapproved']),
             remarks: z.string().optional(),
+            finalFileType: z.string().optional(),
+            finalFileSize: z.number().optional(),
+            finalStorageKey: z.string().optional(),
           }),
         )
         .mutation(async ({ ctx, input }) => {
@@ -1071,6 +1004,25 @@ export class DocumentsRouter {
             });
           }
 
+          // Format Immutability: You cannot approve a draft (editable format)
+          if (input.status === 'approved') {
+            const allowedFinalFormats = [
+              'application/pdf',
+              'image/jpeg',
+              'image/png',
+              'image/tiff',
+            ];
+            
+            const fileTypeToCheck = input.finalFileType || document.fileType;
+            
+            if (!fileTypeToCheck || !allowedFinalFormats.includes(fileTypeToCheck)) {
+              throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'Cannot approve an editable draft format. The final version must be uploaded as a PDF or image.',
+              });
+            }
+          }
+
           if (input.remarks) {
             await this.prisma.remark.create({
               data: {
@@ -1089,15 +1041,23 @@ export class DocumentsRouter {
             where: { name: input.status },
           });
 
+          const updateData: Prisma.DocumentUpdateInput = {
+            status: input.status,
+            tags: {
+              disconnect: forReviewTag ? [{ id: forReviewTag.id }] : [],
+              connect: statusTag ? [{ id: statusTag.id }] : [],
+            },
+          };
+          
+          if (input.status === 'approved' && input.finalStorageKey) {
+             updateData.s3Key = input.finalStorageKey;
+             if (input.finalFileType) updateData.fileType = input.finalFileType;
+             if (input.finalFileSize) updateData.fileSize = input.finalFileSize;
+          }
+
           const updatedDocument = await this.prisma.document.update({
             where: { id: input.documentId },
-            data: {
-              status: input.status,
-              tags: {
-                disconnect: forReviewTag ? [{ id: forReviewTag.id }] : [],
-                connect: statusTag ? [{ id: statusTag.id }] : [],
-              },
-            },
+            data: updateData,
           });
 
           await this.logService.logAction(
@@ -1369,36 +1329,11 @@ export class DocumentsRouter {
 
           let docs;
 
-          const userDeptId = ctx.dbUser.departmentId;
-          const userCampusId = ctx.dbUser.campusId;
-
-          const adminOrConditions: Prisma.DocumentWhereInput[] = [
-            { classification: 'INSTITUTIONAL' },
-            {
-              classification: 'CONFIDENTIAL',
-              OR: [
-                { uploadedById: ctx.user.id },
-                { originalSenderId: ctx.user.id },
-              ],
-            },
-          ];
-
-          if (userDeptId) {
-            adminOrConditions.push({
-              classification: 'INTERNAL',
-              departmentId: userDeptId,
-            });
-          }
-          if (userCampusId) {
-            adminOrConditions.push({
-              classification: 'CAMPUS',
-              campusId: userCampusId,
-            });
-          }
-
+          const aclWhere = this.accessControlService.generateAclWhereClause(ctx.dbUser);
+          
           const adminWhereClause: Prisma.DocumentWhereInput = {
             institutionId: ctx.dbUser.institutionId!,
-            OR: adminOrConditions,
+            AND: [aclWhere],
           };
 
           if (canManageDocuments) {
