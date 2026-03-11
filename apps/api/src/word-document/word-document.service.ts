@@ -32,10 +32,17 @@ export class WordDocumentService {
         controlNumber,
         title: fileName, // You might want to get this from the user
         content: '', // Or extract content from the document
-        s3Key,
-        s3Bucket,
         uploadedById: userId,
         institutionId,
+        recordStatus: 'DRAFT',
+        versions: {
+          create: {
+            versionNumber: 1,
+            s3Key,
+            s3Bucket,
+            uploadedById: userId,
+          },
+        },
       },
     });
 

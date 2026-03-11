@@ -236,7 +236,7 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
                 }
               >
                 <i className="bi bi-people-fill me-2"></i>
-                Forward to Reviewer
+                Forward to Sender
               </button>
             </div>
           </div>

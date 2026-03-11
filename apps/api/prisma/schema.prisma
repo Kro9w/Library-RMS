@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -28,6 +25,11 @@ enum PermissionLevel {
   WRITE
 }
 
+enum RecordStatus {
+  DRAFT
+  FINAL
+}
+
 // apps/api/prisma/schema.prisma
 
 model User {
@@ -50,10 +52,12 @@ model User {
   isSuperAdmin Boolean @default(false)
 
   documents        Document[]       @relation("uploadedBy")
+  documentVersions DocumentVersion[] @relation("versionUploadedBy")
   roles            Role[] // Implicit M:N
   logs             Log[]
   Remark           Remark[]
   reviewRequested  Document[]       @relation("DocumentReviewRequester")
+  checkedOutDocs   Document[]       @relation("CheckedOutDocs")
   notifications    Notification[]
   documentAccesses DocumentAccess[]
 }
@@ -149,8 +153,6 @@ model Document {
   controlNumber String?
   title         String
   content       String
-  s3Key         String  @unique
-  s3Bucket      String
 
   documentType   DocumentType? @relation(fields: [documentTypeId], references: [id])
   documentTypeId String?
@@ -175,8 +177,12 @@ model Document {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  fileType String?
-  fileSize Int?
+  recordStatus  RecordStatus @default(DRAFT)
+  isCheckedOut  Boolean      @default(false)
+  checkedOutBy  User?        @relation("CheckedOutDocs", fields: [checkedOutById], references: [id])
+  checkedOutById String?
+
+  versions DocumentVersion[]
 
   tags Tag[] // Implicit M:N
 
@@ -199,6 +205,26 @@ model Document {
   @@index([originalSenderId])
   @@index([campusId])
   @@index([departmentId])
+}
+
+model DocumentVersion {
+  id             String   @id @default(cuid())
+  versionNumber  Int
+  s3Key          String   @unique
+  s3Bucket       String
+  fileType       String?
+  fileSize       Int?
+  
+  document       Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId     String
+  
+  uploadedBy     User     @relation("versionUploadedBy", fields: [uploadedById], references: [id])
+  uploadedById   String
+  
+  createdAt      DateTime @default(now())
+
+  @@index([documentId])
+  @@index([uploadedById])
 }
 
 model Tag {

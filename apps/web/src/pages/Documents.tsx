@@ -39,6 +39,16 @@ const TagsManagementModal = React.lazy(() =>
     default: m.TagsManagementModal,
   })),
 );
+const CheckOutModal = React.lazy(() =>
+  import("../components/CheckOutModal").then((m) => ({
+    default: m.CheckOutModal,
+  })),
+);
+const CheckInModal = React.lazy(() =>
+  import("../components/CheckInModal").then((m) => ({
+    default: m.CheckInModal,
+  })),
+);
 
 // This type now correctly includes fileType and fileSize
 type Document = AppRouterOutputs["documents"]["getAll"]["documents"][0];
@@ -61,6 +71,8 @@ const Documents: React.FC = () => {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showTagsModal, setShowTagsModal] = useState(false);
+  const [showCheckOutModal, setShowCheckOutModal] = useState(false);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
 
   // Pagination State - we'll keep this variable but set page to 1 and perPage to 1000 to fetch all for grouping
   const currentPage = 1;
@@ -69,6 +81,7 @@ const Documents: React.FC = () => {
   const utils = trpc.useUtils();
 
   // Use the new custom hook
+  const { data: userData } = trpc.user.getMe.useQuery();
   const { canManageDocuments, isUploader } = usePermissions();
 
   const queryInput = {
@@ -142,6 +155,12 @@ const Documents: React.FC = () => {
     },
   });
 
+  const discardCheckOutMutation = trpc.documents.discardCheckOut.useMutation({
+    onSuccess: () => {
+      utils.documents.getAll.invalidate();
+    },
+  });
+
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
@@ -167,6 +186,26 @@ const Documents: React.FC = () => {
   const handleReviewClick = (doc: Document) => {
     setSelectedDoc(doc);
     setShowReviewModal(true);
+  };
+
+  const handleCheckOutClick = (doc: Document) => {
+    setSelectedDoc(doc);
+    setShowCheckOutModal(true);
+  };
+
+  const handleCheckInClick = (doc: Document) => {
+    setSelectedDoc(doc);
+    setShowCheckInModal(true);
+  };
+
+  const handleDiscardCheckOutClick = (doc: Document) => {
+    if (
+      window.confirm(
+        "Are you sure you want to discard this check out? This cannot be undone.",
+      )
+    ) {
+      discardCheckOutMutation.mutate({ documentId: doc.id });
+    }
   };
   // ----------------------------------------------------
 
@@ -325,14 +364,28 @@ const Documents: React.FC = () => {
                           {new Date(doc.createdAt).toLocaleDateString()}
                         </td>
                         <td>
-                          <DocumentActionsMenu
-                            doc={doc}
-                            isUploader={isUploader}
-                            canManageDocuments={canManageDocuments}
-                            onSendClick={handleSendClick}
-                            onReviewClick={handleReviewClick}
-                            onDeleteClick={handleDeleteClick}
-                          />
+                          <div className="d-flex align-items-center justify-content-end gap-2">
+                            {doc.isCheckedOut && (
+                              <i
+                                className="bi bi-lock-fill text-danger me-1"
+                                title="Checked Out"
+                              ></i>
+                            )}
+                            <DocumentActionsMenu
+                              doc={doc}
+                              isUploader={isUploader}
+                              canManageDocuments={canManageDocuments}
+                              onSendClick={handleSendClick}
+                              onReviewClick={handleReviewClick}
+                              onDeleteClick={handleDeleteClick}
+                              onCheckOutClick={handleCheckOutClick}
+                              onCheckInClick={handleCheckInClick}
+                              onDiscardCheckOutClick={
+                                handleDiscardCheckOutClick
+                              }
+                              currentUserId={userData?.id}
+                            />
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -446,14 +499,28 @@ const Documents: React.FC = () => {
                                     ).toLocaleDateString()}
                                   </td>
                                   <td>
-                                    <DocumentActionsMenu
-                                      doc={doc}
-                                      isUploader={isUploader}
-                                      canManageDocuments={canManageDocuments}
-                                      onSendClick={handleSendClick}
-                                      onReviewClick={handleReviewClick}
-                                      onDeleteClick={handleDeleteClick}
-                                    />
+                                    <div className="d-flex align-items-center justify-content-end gap-2">
+                                      {doc.isCheckedOut && (
+                                        <i
+                                          className="bi bi-lock-fill text-danger me-1"
+                                          title="Checked Out"
+                                        ></i>
+                                      )}
+                                      <DocumentActionsMenu
+                                        doc={doc}
+                                        isUploader={isUploader}
+                                        canManageDocuments={canManageDocuments}
+                                        onSendClick={handleSendClick}
+                                        onReviewClick={handleReviewClick}
+                                        onDeleteClick={handleDeleteClick}
+                                        onCheckOutClick={handleCheckOutClick}
+                                        onCheckInClick={handleCheckInClick}
+                                        onDiscardCheckOutClick={
+                                          handleDiscardCheckOutClick
+                                        }
+                                        currentUserId={userData?.id}
+                                      />
+                                    </div>
                                   </td>
                                 </tr>
                               ))
@@ -509,6 +576,22 @@ const Documents: React.FC = () => {
           <TagsManagementModal
             show={showTagsModal}
             onClose={() => setShowTagsModal(false)}
+          />
+        )}
+
+        {selectedDoc && showCheckOutModal && (
+          <CheckOutModal
+            show={showCheckOutModal}
+            onClose={() => setShowCheckOutModal(false)}
+            documentId={selectedDoc.id}
+          />
+        )}
+
+        {selectedDoc && showCheckInModal && (
+          <CheckInModal
+            show={showCheckInModal}
+            onClose={() => setShowCheckInModal(false)}
+            documentId={selectedDoc.id}
           />
         )}
       </Suspense>

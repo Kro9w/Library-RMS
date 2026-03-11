@@ -1,4 +1,4 @@
-import { AccessControlService } from "./access-control.service";
+import { AccessControlService } from './access-control.service';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DocumentsRouter } from './documents.router';
 import { PrismaService } from '../prisma/prisma.service';

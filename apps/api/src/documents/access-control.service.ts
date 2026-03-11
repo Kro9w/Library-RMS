@@ -4,9 +4,9 @@ import { Prisma } from '@prisma/client';
 @Injectable()
 export class AccessControlService {
   /**
-   * Generates a Prisma WHERE clause snippet to filter documents 
+   * Generates a Prisma WHERE clause snippet to filter documents
    * based on the user's ACL (DocumentAccess records).
-   * 
+   *
    * A user has access to a document if ANY of the following match in `DocumentAccess`:
    * - Their user ID
    * - Any of their assigned roles
@@ -20,11 +20,11 @@ export class AccessControlService {
     campusId?: string | null;
     departmentId?: string | null;
     roles?: { id: string }[];
-  }): Prisma.DocumentWhereInput {
-    const roleIds = userCtx.roles?.map(r => r.id) || [];
+  }, requiredPermission: 'READ' | 'WRITE' = 'READ'): Prisma.DocumentWhereInput {
+    const roleIds = userCtx.roles?.map((r) => r.id) || [];
 
     const aclConditions: Prisma.DocumentAccessWhereInput[] = [
-      { userId: userCtx.id }
+      { userId: userCtx.id },
     ];
 
     if (userCtx.institutionId) {
@@ -43,12 +43,18 @@ export class AccessControlService {
       aclConditions.push({ roleId: { in: roleIds } });
     }
 
+    const baseSome: Prisma.DocumentAccessWhereInput = {
+      OR: aclConditions,
+    };
+
+    if (requiredPermission === 'WRITE') {
+      baseSome.permission = 'WRITE';
+    }
+
     return {
       documentAccesses: {
-        some: {
-          OR: aclConditions
-        }
-      }
+        some: baseSome,
+      },
     };
   }
 }

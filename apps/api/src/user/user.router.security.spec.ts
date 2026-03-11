@@ -1,4 +1,4 @@
-import { AccessControlService } from "../documents/access-control.service";
+import { AccessControlService } from '../documents/access-control.service';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DocumentsRouter } from '../documents/documents.router';
 import { PrismaService } from '../prisma/prisma.service';
@@ -49,7 +49,8 @@ describe('DocumentsRouter Security', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [ AccessControlService, 
+      providers: [
+        AccessControlService,
         DocumentsRouter,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: SupabaseService, useValue: mockSupabaseService },

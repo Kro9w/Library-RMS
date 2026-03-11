@@ -1,4 +1,4 @@
-import { AccessControlService } from "./access-control.service";
+import { AccessControlService } from './access-control.service';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -52,7 +52,8 @@ describe('DocumentsRouter Performance', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [ AccessControlService, 
+      providers: [
+        AccessControlService,
         DocumentsRouter,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: SupabaseService, useValue: mockSupabaseService },

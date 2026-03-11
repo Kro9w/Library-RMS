@@ -1,4 +1,4 @@
-import { AccessControlService } from "./access-control.service";
+import { AccessControlService } from './access-control.service';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -42,7 +42,8 @@ describe('DocumentsRouter', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [ AccessControlService, 
+      providers: [
+        AccessControlService,
         DocumentsRouter,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: SupabaseService, useValue: mockSupabaseService },
@@ -164,6 +165,14 @@ describe('DocumentsRouter', () => {
         activeRetentionSnapshot: null,
         inactiveRetentionSnapshot: null,
         dispositionStatus: null,
+        versions: [
+          {
+            versionNumber: 1,
+            fileType: 'application/pdf',
+            s3Key: 'test-key',
+            s3Bucket: 'test-bucket',
+          },
+        ],
         uploadedBy: {
           firstName: 'John',
           lastName: 'Doe',

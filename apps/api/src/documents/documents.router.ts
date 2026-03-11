@@ -104,7 +104,9 @@ export class DocumentsRouter {
             });
           }
 
-          const aclWhere = this.accessControlService.generateAclWhereClause(ctx.dbUser);
+          const aclWhere = this.accessControlService.generateAclWhereClause(
+            ctx.dbUser,
+          );
 
           const doc = await this.prisma.document.findFirst({
             where: {
@@ -116,10 +118,27 @@ export class DocumentsRouter {
               id: true,
               title: true,
               createdAt: true,
-              fileType: true,
-              s3Key: true,
-              s3Bucket: true,
               documentType: true,
+              recordStatus: true,
+              isCheckedOut: true,
+              checkedOutBy: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+              versions: {
+                orderBy: { versionNumber: 'desc' },
+                include: {
+                  uploadedBy: {
+                    select: {
+                      firstName: true,
+                      lastName: true,
+                    },
+                  },
+                },
+              },
               uploadedBy: {
                 select: {
                   firstName: true,
@@ -163,8 +182,13 @@ export class DocumentsRouter {
             throw new TRPCError({ code: 'NOT_FOUND' });
           }
 
+          const latestVersion = doc.versions[0];
+
           return {
             ...doc,
+            fileType: latestVersion?.fileType,
+            s3Key: latestVersion?.s3Key,
+            s3Bucket: latestVersion?.s3Bucket,
             lifecycleStatus: computeLifecycleStatus(doc),
           };
         }),
@@ -265,7 +289,7 @@ export class DocumentsRouter {
               'image/png',
               'image/tiff',
             ];
-            
+
             if (!input.fileType || !allowedFormats.includes(input.fileType)) {
               throw new TRPCError({
                 code: 'BAD_REQUEST',
@@ -273,6 +297,17 @@ export class DocumentsRouter {
               });
             }
           }
+
+          const allowedFinalFormats = [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+            'image/tiff',
+          ];
+          const isFinal =
+            input.fileType && allowedFinalFormats.includes(input.fileType)
+              ? 'FINAL'
+              : 'DRAFT';
 
           let retentionSnapshot = {};
           if (input.documentTypeId) {
@@ -292,32 +327,42 @@ export class DocumentsRouter {
             data: {
               title: input.title,
               fileName: input.title,
-              s3Key: input.storageKey,
-              s3Bucket: input.storageBucket,
               content: '',
               uploadedById: user.id,
               originalSenderId: user.id,
               institutionId: dbUser.institutionId,
               campusId: dbUser.campusId,
               departmentId: dbUser.departmentId,
-              fileType: input.fileType,
-              fileSize: input.fileSize,
               documentTypeId: input.documentTypeId,
               controlNumber: input.controlNumber,
               classification: input.classification,
+              recordStatus: isFinal,
               ...retentionSnapshot,
+              versions: {
+                create: {
+                  versionNumber: 1,
+                  s3Key: input.storageKey,
+                  s3Bucket: input.storageBucket,
+                  fileType: input.fileType,
+                  fileSize: input.fileSize,
+                  uploadedById: user.id,
+                },
+              },
             },
           });
 
           const accessesToCreate: any[] = [];
-          
+
           accessesToCreate.push({
             documentId: document.id,
             userId: user.id,
             permission: PermissionLevel.WRITE,
           });
-          
-          if (input.classification === 'INSTITUTIONAL' && dbUser.institutionId) {
+
+          if (
+            input.classification === 'INSTITUTIONAL' &&
+            dbUser.institutionId
+          ) {
             accessesToCreate.push({
               documentId: document.id,
               institutionId: dbUser.institutionId,
@@ -329,15 +374,20 @@ export class DocumentsRouter {
               campusId: dbUser.campusId,
               permission: PermissionLevel.READ,
             });
-          } else if (input.classification === 'INTERNAL' && dbUser.departmentId) {
+          } else if (
+            input.classification === 'INTERNAL' &&
+            dbUser.departmentId
+          ) {
             accessesToCreate.push({
               documentId: document.id,
               departmentId: dbUser.departmentId,
               permission: PermissionLevel.READ,
             });
           }
-          
-          await this.prisma.documentAccess.createMany({ data: accessesToCreate });
+
+          await this.prisma.documentAccess.createMany({
+            data: accessesToCreate,
+          });
 
           await this.logService.logAction(
             user.id,
@@ -362,7 +412,12 @@ export class DocumentsRouter {
             summary: 'Get a signed URL for a document',
           },
         })
-        .input(z.object({ documentId: z.string() }))
+        .input(
+          z.object({
+            documentId: z.string(),
+            versionId: z.string().optional(),
+          }),
+        )
         .output(z.object({ signedUrl: z.string() }))
         .query(async ({ ctx, input }) => {
           if (!ctx.dbUser.institutionId) {
@@ -372,7 +427,9 @@ export class DocumentsRouter {
             });
           }
 
-          const aclWhere = this.accessControlService.generateAclWhereClause(ctx.dbUser);
+          const aclWhere = this.accessControlService.generateAclWhereClause(
+            ctx.dbUser,
+          );
 
           const doc = await this.prisma.document.findFirst({
             where: {
@@ -381,11 +438,14 @@ export class DocumentsRouter {
               AND: [aclWhere],
             },
             select: {
-              s3Key: true,
-              s3Bucket: true,
               classification: true,
               uploadedById: true,
               originalSenderId: true,
+              versions: {
+                where: input.versionId ? { id: input.versionId } : undefined,
+                orderBy: { versionNumber: 'desc' as const },
+                take: 1,
+              },
             },
           });
 
@@ -396,17 +456,23 @@ export class DocumentsRouter {
             });
           }
 
-          if (!doc.s3Key || !doc.s3Bucket) {
+          const targetVersion = doc.versions[0];
+
+          if (
+            !targetVersion ||
+            !targetVersion.s3Key ||
+            !targetVersion.s3Bucket
+          ) {
             throw new TRPCError({
               code: 'INTERNAL_SERVER_ERROR',
-              message: 'Document record is missing storage key or bucket.',
+              message: 'Document version is missing storage key or bucket.',
             });
           }
 
           const { data, error } = await this.supabase
             .getAdminClient()
-            .storage.from(doc.s3Bucket)
-            .createSignedUrl(doc.s3Key, 300);
+            .storage.from(targetVersion.s3Bucket)
+            .createSignedUrl(targetVersion.s3Key, 300);
 
           if (error) {
             throw new TRPCError({
@@ -480,6 +546,8 @@ export class DocumentsRouter {
           const mapDocuments = (documents: any[]) => {
             return documents.map((doc) => ({
               ...doc,
+              fileType: doc.versions?.[0]?.fileType,
+              fileSize: doc.versions?.[0]?.fileSize,
               tags: doc.tags.map((t: any) => ({ tag: t })),
               lifecycleStatus: computeLifecycleStatus(doc),
             }));
@@ -497,12 +565,16 @@ export class DocumentsRouter {
                 departmentId: true,
               },
             },
-            fileType: true,
-            fileSize: true,
             uploadedById: true,
             institutionId: true,
             documentType: true,
             controlNumber: true,
+            recordStatus: true,
+            isCheckedOut: true,
+            versions: {
+              orderBy: { versionNumber: 'desc' as const },
+              take: 1,
+            },
             tags: {
               select: {
                 id: true,
@@ -520,26 +592,29 @@ export class DocumentsRouter {
           // Optimized path for "Ready for Disposition"
           if (lifecycleFilter === 'ready') {
             const institutionId = ctx.dbUser.institutionId;
-            
-            const aclWhere = this.accessControlService.generateAclWhereClause(ctx.dbUser);
+
+            const aclWhere = this.accessControlService.generateAclWhereClause(
+              ctx.dbUser,
+            );
 
             const lifecycleWhereClause: Prisma.DocumentWhereInput = {
               institutionId: ctx.dbUser.institutionId,
               dispositionStatus: { notIn: ['DESTROYED', 'ARCHIVED'] },
               activeRetentionSnapshot: { not: null },
-              AND: [
-                aclWhere
-              ]
+              AND: [aclWhere],
             };
-            
+
             if (filter === 'mine') {
               lifecycleWhereClause.uploadedById = ctx.user.id;
             }
-            
+
             if (search) {
-              lifecycleWhereClause.title = { contains: search, mode: 'insensitive' };
+              lifecycleWhereClause.title = {
+                contains: search,
+                mode: 'insensitive',
+              };
             }
-            
+
             const rawQuery = Prisma.sql`
               SELECT d.id
               FROM "Document" d
@@ -549,16 +624,17 @@ export class DocumentsRouter {
                 AND (d."createdAt" + make_interval(years => d."activeRetentionSnapshot")) <= NOW()
                 AND (d."createdAt" + make_interval(years => d."activeRetentionSnapshot") + make_interval(years => COALESCE(d."inactiveRetentionSnapshot", 0))) <= NOW()
             `;
-            
-            const rawResults = await this.prisma.$queryRaw<{ id: string }[]>(rawQuery);
+
+            const rawResults =
+              await this.prisma.$queryRaw<{ id: string }[]>(rawQuery);
             const matchingLifecycleIds = rawResults.map((r) => r.id);
-            
+
             if (matchingLifecycleIds.length === 0) {
-               return { documents: [], totalCount: 0 };
+              return { documents: [], totalCount: 0 };
             }
-            
+
             lifecycleWhereClause.id = { in: matchingLifecycleIds };
-            
+
             const [totalCount, documents] = await this.prisma.$transaction([
               this.prisma.document.count({ where: lifecycleWhereClause }),
               this.prisma.document.findMany({
@@ -567,7 +643,7 @@ export class DocumentsRouter {
                 orderBy: { createdAt: 'desc' },
                 skip,
                 take: perPage,
-              })
+              }),
             ]);
 
             return {
@@ -592,11 +668,11 @@ export class DocumentsRouter {
             };
           }
 
-          const aclWhere = this.accessControlService.generateAclWhereClause(ctx.dbUser);
-          
-          whereClause.AND = [
-             aclWhere
-          ];
+          const aclWhere = this.accessControlService.generateAclWhereClause(
+            ctx.dbUser,
+          );
+
+          whereClause.AND = [aclWhere];
 
           const [totalCount, documents] = await this.prisma.$transaction([
             this.prisma.document.count({ where: whereClause }),
@@ -678,7 +754,9 @@ export class DocumentsRouter {
 
           requirePermission(ctx.dbUser, 'canManageDocuments');
 
-          const aclWhere = this.accessControlService.generateAclWhereClause(ctx.dbUser);
+          const aclWhere = this.accessControlService.generateAclWhereClause(
+            ctx.dbUser,
+          );
 
           const doc = await this.prisma.document.findFirst({
             where: {
@@ -688,10 +766,14 @@ export class DocumentsRouter {
             },
             select: {
               id: true,
-              s3Key: true,
-              s3Bucket: true,
               title: true,
               institutionId: true,
+              versions: {
+                select: {
+                  s3Key: true,
+                  s3Bucket: true,
+                },
+              },
             },
           });
           if (!doc) {
@@ -700,12 +782,20 @@ export class DocumentsRouter {
               message: 'Document not found or you lack permissions.',
             });
           }
-          const { error: storageError } = await this.supabase
-            .getAdminClient()
-            .storage.from(doc.s3Bucket)
-            .remove([doc.s3Key]);
-          if (storageError) {
-            console.error('Failed to delete file from storage:', storageError);
+
+          for (const version of doc.versions) {
+            if (version.s3Key && version.s3Bucket) {
+              const { error: storageError } = await this.supabase
+                .getAdminClient()
+                .storage.from(version.s3Bucket)
+                .remove([version.s3Key]);
+              if (storageError) {
+                console.error(
+                  'Failed to delete file from storage:',
+                  storageError,
+                );
+              }
+            }
           }
 
           await this.logService.logAction(
@@ -808,8 +898,8 @@ export class DocumentsRouter {
             data: {
               documentId: updatedDocument.id,
               userId: recipient.id,
-              permission: PermissionLevel.WRITE
-            }
+              permission: PermissionLevel.WRITE,
+            },
           });
 
           await this.logService.logAction(
@@ -935,11 +1025,11 @@ export class DocumentsRouter {
           );
 
           await this.prisma.documentAccess.createMany({
-            data: results.map(doc => ({
+            data: results.map((doc) => ({
               documentId: doc.id,
               userId: recipient.id,
-              permission: PermissionLevel.WRITE
-            }))
+              permission: PermissionLevel.WRITE,
+            })),
           });
 
           // Log actions after successful transaction using batch logging
@@ -1012,13 +1102,23 @@ export class DocumentsRouter {
               'image/png',
               'image/tiff',
             ];
-            
-            const fileTypeToCheck = input.finalFileType || document.fileType;
-            
-            if (!fileTypeToCheck || !allowedFinalFormats.includes(fileTypeToCheck)) {
+
+            // Look up latest version file type
+            const latestVersion = await this.prisma.documentVersion.findFirst({
+              where: { documentId: document.id },
+              orderBy: { versionNumber: 'desc' },
+            });
+            const fileTypeToCheck =
+              input.finalFileType || latestVersion?.fileType;
+
+            if (
+              !fileTypeToCheck ||
+              !allowedFinalFormats.includes(fileTypeToCheck)
+            ) {
               throw new TRPCError({
                 code: 'BAD_REQUEST',
-                message: 'Cannot approve an editable draft format. The final version must be uploaded as a PDF or image.',
+                message:
+                  'Cannot approve an editable draft format. The final version must be uploaded as a PDF or image.',
               });
             }
           }
@@ -1041,6 +1141,12 @@ export class DocumentsRouter {
             where: { name: input.status },
           });
 
+          const maxVersion = await this.prisma.documentVersion.aggregate({
+            where: { documentId: input.documentId },
+            _max: { versionNumber: true },
+          });
+          const nextVersionNumber = (maxVersion._max.versionNumber || 0) + 1;
+
           const updateData: Prisma.DocumentUpdateInput = {
             status: input.status,
             tags: {
@@ -1048,11 +1154,19 @@ export class DocumentsRouter {
               connect: statusTag ? [{ id: statusTag.id }] : [],
             },
           };
-          
+
           if (input.status === 'approved' && input.finalStorageKey) {
-             updateData.s3Key = input.finalStorageKey;
-             if (input.finalFileType) updateData.fileType = input.finalFileType;
-             if (input.finalFileSize) updateData.fileSize = input.finalFileSize;
+            updateData.recordStatus = 'FINAL';
+            updateData.versions = {
+              create: {
+                versionNumber: nextVersionNumber,
+                s3Key: input.finalStorageKey,
+                s3Bucket: env.SUPABASE_BUCKET_NAME,
+                fileType: input.finalFileType,
+                fileSize: input.finalFileSize,
+                uploadedById: user.id,
+              },
+            };
           }
 
           const updatedDocument = await this.prisma.document.update({
@@ -1329,8 +1443,10 @@ export class DocumentsRouter {
 
           let docs;
 
-          const aclWhere = this.accessControlService.generateAclWhereClause(ctx.dbUser);
-          
+          const aclWhere = this.accessControlService.generateAclWhereClause(
+            ctx.dbUser,
+          );
+
           const adminWhereClause: Prisma.DocumentWhereInput = {
             institutionId: ctx.dbUser.institutionId!,
             AND: [aclWhere],
@@ -1349,12 +1465,16 @@ export class DocumentsRouter {
                 uploadedBy: {
                   select: { firstName: true, middleName: true, lastName: true },
                 },
-                fileType: true,
-                fileSize: true,
                 uploadedById: true,
                 originalSenderId: true,
                 institutionId: true,
                 documentType: true,
+                recordStatus: true,
+                isCheckedOut: true,
+                versions: {
+                  orderBy: { versionNumber: 'desc' as const },
+                  take: 1,
+                },
                 activeRetentionSnapshot: true,
                 inactiveRetentionSnapshot: true,
                 dispositionActionSnapshot: true,
@@ -1372,11 +1492,15 @@ export class DocumentsRouter {
                 uploadedBy: {
                   select: { firstName: true, middleName: true, lastName: true },
                 },
-                fileType: true,
-                fileSize: true,
                 uploadedById: true,
                 originalSenderId: true,
                 institutionId: true,
+                recordStatus: true,
+                isCheckedOut: true,
+                versions: {
+                  orderBy: { versionNumber: 'desc' as const },
+                  take: 1,
+                },
                 activeRetentionSnapshot: true,
                 inactiveRetentionSnapshot: true,
                 dispositionActionSnapshot: true,
@@ -1390,6 +1514,8 @@ export class DocumentsRouter {
 
           return docs.map((doc) => ({
             ...doc,
+            fileType: doc.versions?.[0]?.fileType,
+            fileSize: doc.versions?.[0]?.fileSize,
             lifecycleStatus: computeLifecycleStatus(doc),
           }));
         }),
@@ -1442,20 +1568,24 @@ export class DocumentsRouter {
           const action = doc.dispositionActionSnapshot;
 
           if (action === 'DESTROY') {
-            // Delete from S3
-            if (doc.s3Key && doc.s3Bucket) {
-              const { error: storageError } = await this.supabase
-                .getAdminClient()
-                .storage.from(doc.s3Bucket)
-                .remove([doc.s3Key]);
+            // Delete from S3 for all versions
+            const versions = await this.prisma.documentVersion.findMany({
+              where: { documentId: doc.id },
+            });
 
-              if (storageError) {
-                console.error(
-                  'Failed to delete file from storage during disposition:',
-                  storageError,
-                );
-                // We might still want to proceed with DB update or throw?
-                // Proceeding ensures DB reflects intent, but file remains orphan.
+            for (const version of versions) {
+              if (version.s3Key && version.s3Bucket) {
+                const { error: storageError } = await this.supabase
+                  .getAdminClient()
+                  .storage.from(version.s3Bucket)
+                  .remove([version.s3Key]);
+
+                if (storageError) {
+                  console.error(
+                    'Failed to delete file from storage during disposition:',
+                    storageError,
+                  );
+                }
               }
             }
 
@@ -1489,6 +1619,280 @@ export class DocumentsRouter {
           }
 
           return doc;
+        }),
+
+      /**
+       * Check out a document for editing
+       */
+      checkOutDocument: protectedProcedure
+        .input(z.object({ documentId: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+          const { user, dbUser } = ctx;
+
+          if (!dbUser.institutionId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to an institution.',
+            });
+          }
+
+          const aclWhere = this.accessControlService.generateAclWhereClause(
+            ctx.dbUser,
+          );
+          const doc = await this.prisma.document.findFirst({
+            where: {
+              id: input.documentId,
+              institutionId: dbUser.institutionId,
+              AND: [aclWhere],
+            },
+            include: {
+              documentAccesses: true,
+            },
+          });
+
+          if (!doc) {
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Document not found or access denied.',
+            });
+          }
+
+          if (doc.recordStatus === 'FINAL') {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Cannot check out a final document.',
+            });
+          }
+
+          if (doc.isCheckedOut) {
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: 'Document is already checked out.',
+            });
+          }
+
+          // Verify write access
+          let hasWriteAccess = false;
+          if (
+            checkPermission(dbUser, 'canManageDocuments') ||
+            doc.uploadedById === user.id
+          ) {
+            hasWriteAccess = true;
+          } else {
+            // Correctly verify using AccessControlService write clause
+            const writeAclWhere =
+              this.accessControlService.generateAclWhereClause(dbUser, 'WRITE');
+
+            const writeAccessCheck = await this.prisma.document.findFirst({
+              where: {
+                id: input.documentId,
+                institutionId: dbUser.institutionId,
+                AND: [writeAclWhere],
+              },
+            });
+            if (writeAccessCheck) hasWriteAccess = true;
+          }
+
+          if (!hasWriteAccess) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'You do not have write access to this document.',
+            });
+          }
+
+          const updatedDoc = await this.prisma.document.update({
+            where: { id: input.documentId },
+            data: {
+              isCheckedOut: true,
+              checkedOutById: user.id,
+            },
+          });
+
+          await this.logService.logAction(
+            user.id,
+            dbUser.institutionId,
+            'Checked Out Document',
+            dbUser.roles.map((r) => r.name),
+            doc.title,
+          );
+
+          return updatedDoc;
+        }),
+
+      /**
+       * Check in a new version of a document
+       */
+      checkInDocument: protectedProcedure
+        .input(
+          z.object({
+            documentId: z.string(),
+            storageKey: z.string(),
+            storageBucket: z.string(),
+            fileType: z.string().optional(),
+            fileSize: z.number().optional(),
+          }),
+        )
+        .mutation(async ({ ctx, input }) => {
+          const { user, dbUser } = ctx;
+
+          if (!dbUser.institutionId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to an institution.',
+            });
+          }
+
+          const doc = await this.prisma.document.findUnique({
+            where: { id: input.documentId },
+          });
+
+          if (!doc || doc.institutionId !== dbUser.institutionId) {
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Document not found.',
+            });
+          }
+
+          if (!doc.isCheckedOut || doc.checkedOutById !== user.id) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'You must check out the document first to check it in.',
+            });
+          }
+
+          if (input.storageBucket !== env.SUPABASE_BUCKET_NAME) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Invalid storage bucket.',
+            });
+          }
+
+          if (!input.storageKey.startsWith(`${user.id}/`)) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Invalid storage key. Must start with your user ID.',
+            });
+          }
+
+          const allowedFinalFormats = [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+            'image/tiff',
+          ];
+          const isFinal =
+            input.fileType && allowedFinalFormats.includes(input.fileType)
+              ? 'FINAL'
+              : 'DRAFT';
+
+          const maxVersion = await this.prisma.documentVersion.aggregate({
+            where: { documentId: input.documentId },
+            _max: { versionNumber: true },
+          });
+          const nextVersionNumber = (maxVersion._max.versionNumber || 0) + 1;
+
+          const updatedDoc = await this.prisma.document.update({
+            where: { id: input.documentId },
+            data: {
+              isCheckedOut: false,
+              checkedOutById: null,
+              recordStatus: isFinal,
+              versions: {
+                create: {
+                  versionNumber: nextVersionNumber,
+                  s3Key: input.storageKey,
+                  s3Bucket: input.storageBucket,
+                  fileType: input.fileType,
+                  fileSize: input.fileSize,
+                  uploadedById: user.id,
+                },
+              },
+            },
+            include: {
+              versions: {
+                orderBy: { versionNumber: 'desc' as const },
+                take: 1,
+              },
+            },
+          });
+
+          await this.logService.logAction(
+            user.id,
+            dbUser.institutionId,
+            `Checked In Document (v${nextVersionNumber})`,
+            dbUser.roles.map((r) => r.name),
+            doc.title,
+          );
+
+          return updatedDoc;
+        }),
+
+      /**
+       * Discard Check Out
+       */
+      discardCheckOut: protectedProcedure
+        .input(z.object({ documentId: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+          const { user, dbUser } = ctx;
+
+          if (!dbUser.institutionId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to an institution.',
+            });
+          }
+
+          const doc = await this.prisma.document.findUnique({
+            where: { id: input.documentId },
+          });
+
+          if (!doc || doc.institutionId !== dbUser.institutionId) {
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Document not found.',
+            });
+          }
+
+          if (!doc.isCheckedOut) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Document is not checked out.',
+            });
+          }
+
+          const canManageDocuments = checkPermission(
+            dbUser,
+            'canManageDocuments',
+          );
+
+          if (
+            doc.checkedOutById !== user.id &&
+            doc.uploadedById !== user.id &&
+            !canManageDocuments
+          ) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'You do not have permission to discard this check out.',
+            });
+          }
+
+          const updatedDoc = await this.prisma.document.update({
+            where: { id: input.documentId },
+            data: {
+              isCheckedOut: false,
+              checkedOutById: null,
+            },
+          });
+
+          await this.logService.logAction(
+            user.id,
+            dbUser.institutionId,
+            'Discarded Check Out',
+            dbUser.roles.map((r) => r.name),
+            doc.title,
+          );
+
+          return updatedDoc;
         }),
     });
   }

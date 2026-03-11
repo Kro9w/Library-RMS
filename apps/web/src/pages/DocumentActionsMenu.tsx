@@ -12,6 +12,10 @@ interface DocumentActionsMenuProps {
   onSendClick: (doc: Document) => void;
   onReviewClick: (doc: Document) => void;
   onDeleteClick: (doc: Document) => void;
+  onCheckOutClick?: (doc: Document) => void;
+  onCheckInClick?: (doc: Document) => void;
+  onDiscardCheckOutClick?: (doc: Document) => void;
+  currentUserId?: string;
 }
 
 export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
@@ -21,6 +25,10 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
   onSendClick,
   onReviewClick,
   onDeleteClick,
+  onCheckOutClick,
+  onCheckInClick,
+  onDiscardCheckOutClick,
+  currentUserId,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
@@ -127,6 +135,61 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
                   </button>
                 </li>
               )}
+
+              {/* Version Control Actions */}
+              {doc.recordStatus !== "FINAL" &&
+                !doc.isCheckedOut &&
+                onCheckOutClick && (
+                  <li>
+                    <button
+                      className="dropdown-item d-flex align-items-center gap-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsOpen(false);
+                        onCheckOutClick(doc);
+                      }}
+                    >
+                      <i className="bi bi-cloud-arrow-down text-success"></i>{" "}
+                      Check Out
+                    </button>
+                  </li>
+                )}
+              {doc.isCheckedOut &&
+                doc.checkedOutById === currentUserId &&
+                onCheckInClick && (
+                  <li>
+                    <button
+                      className="dropdown-item d-flex align-items-center gap-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsOpen(false);
+                        onCheckInClick(doc);
+                      }}
+                    >
+                      <i className="bi bi-cloud-arrow-up text-primary"></i>{" "}
+                      Check In
+                    </button>
+                  </li>
+                )}
+              {doc.isCheckedOut &&
+                (doc.checkedOutById === currentUserId ||
+                  doc.uploadedById === currentUserId ||
+                  canManageDocuments) &&
+                onDiscardCheckOutClick && (
+                  <li>
+                    <button
+                      className="dropdown-item d-flex align-items-center gap-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsOpen(false);
+                        onDiscardCheckOutClick(doc);
+                      }}
+                    >
+                      <i className="bi bi-x-circle text-warning"></i> Discard
+                      Check Out
+                    </button>
+                  </li>
+                )}
               <li>
                 <button
                   className="dropdown-item d-flex align-items-center gap-2 text-danger"

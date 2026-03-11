@@ -53,10 +53,11 @@ const formatFileTypeDisplay = (
         return "PNG";
       case "text/plain":
         return "TXT";
-      default:
+      default: {
         // If we don't recognize the type, try to split it
         const simpleType = fileType.split("/")[1];
         if (simpleType) return simpleType.toUpperCase();
+      }
     }
   }
 
@@ -67,13 +68,17 @@ const formatFileTypeDisplay = (
 // ------------------------------
 
 import { SendDocumentModal } from "../components/SendDocumentModal";
+import { ReviewDocumentModal } from "../components/ReviewDocumentModal";
+import { usePermissions } from "../hooks/usePermissions";
 
 export const DocumentDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [showResubmitModal, setShowResubmitModal] = React.useState(false);
+  const [showReviewModal, setShowReviewModal] = React.useState(false);
 
   const { data: user } = trpc.user.getMe.useQuery();
+  const { canManageDocuments } = usePermissions();
   const utils = trpc.useUtils();
 
   const { data: document, isLoading: isLoadingDoc } =
@@ -144,6 +149,14 @@ export const DocumentDetails: React.FC = () => {
 
   const previewUrl = getPreviewDetails(document);
 
+  // Check if document needs review
+  const hasReviewTag = document.tags?.some(
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    (t: any) =>
+      t.tag?.name?.toLowerCase() === "for review" ||
+      t.name?.toLowerCase() === "for review",
+  );
+
   return (
     <div className="container mt-4">
       <div className="page-header">
@@ -192,6 +205,27 @@ export const DocumentDetails: React.FC = () => {
                 {new Date(document.createdAt).toLocaleDateString()}
               </p>
 
+              <p>
+                <strong>Status:</strong>{" "}
+                <span
+                  className={`badge ${document.recordStatus === "FINAL" ? "bg-success" : "bg-warning text-dark"}`}
+                >
+                  {document.recordStatus}
+                </span>
+              </p>
+
+              {document.isCheckedOut && (
+                <p>
+                  <strong>Checked Out By:</strong>{" "}
+                  <span className="text-danger">
+                    <i className="bi bi-lock-fill me-1"></i>
+                    {document.checkedOutBy
+                      ? formatUserName(document.checkedOutBy)
+                      : "Unknown User"}
+                  </span>
+                </p>
+              )}
+
               {/* This now calls our new, safe function */}
               <p>
                 <strong>File Type:</strong>{" "}
@@ -239,6 +273,7 @@ export const DocumentDetails: React.FC = () => {
                 </span>
               </p>
 
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {user?.roles.some((r: any) => r.canManageDocuments) &&
                 document.lifecycleStatus === "Ready" && (
                   <div className="mt-3">
@@ -276,6 +311,18 @@ export const DocumentDetails: React.FC = () => {
             </div>
           </div>
 
+          {canManageDocuments && hasReviewTag && (
+            <div className="d-grid mt-3 mb-3">
+              <button
+                className="btn btn-primary fw-bold py-2 shadow-sm"
+                onClick={() => setShowReviewModal(true)}
+              >
+                <i className="bi bi-eye-fill me-2"></i>
+                Review Document
+              </button>
+            </div>
+          )}
+
           {/* Review Status Section */}
           {document.status && (
             <div className="document-table-card mt-4">
@@ -309,6 +356,7 @@ export const DocumentDetails: React.FC = () => {
                       Remarks:
                     </span>
                     <div className="d-flex flex-column gap-2">
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                       {document.remarks.map((remark: any) => (
                         <div
                           key={remark.id}
@@ -372,6 +420,78 @@ export const DocumentDetails: React.FC = () => {
         </div>
       </div>
 
+      {/* Version History Section Full Width */}
+      <div className="document-table-card mt-4 mb-4">
+        <div className="card-body">
+          <h5 className="card-title d-flex align-items-center">
+            <i className="bi bi-clock-history me-2"></i>
+            Version History
+          </h5>
+          <hr />
+          {document.versions && document.versions.length > 0 ? (
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Version</th>
+                    <th>Date</th>
+                    <th>Uploaded By</th>
+                    <th>Type</th>
+                    <th className="text-end">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {document.versions.map((v: any) => (
+                    <tr key={v.id}>
+                      <td>
+                        <span className="badge bg-secondary">
+                          v{v.versionNumber}
+                        </span>
+                      </td>
+                      <td>{new Date(v.createdAt).toLocaleDateString()}</td>
+                      <td>{formatUserName(v.uploadedBy)}</td>
+                      <td>{formatFileTypeDisplay(v.fileType, "File")}</td>
+                      <td className="text-end">
+                        <button
+                          className="btn btn-sm btn-outline-primary"
+                          onClick={async () => {
+                            try {
+                              const result =
+                                await utils.documents.getSignedDocumentUrl.fetch(
+                                  {
+                                    documentId: document.id,
+                                    versionId: v.id,
+                                  },
+                                );
+                              window.open(
+                                result.signedUrl,
+                                "_blank",
+                                "noopener,noreferrer",
+                              );
+                            } catch (err) {
+                              console.error("Failed to open version", err);
+                              alert("Could not retrieve document version URL.");
+                            }
+                          }}
+                          title="Download / View Version"
+                        >
+                          <i className="bi bi-download me-1"></i> Download
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-muted mb-0" style={{ fontSize: "0.85rem" }}>
+              No version history available.
+            </p>
+          )}
+        </div>
+      </div>
+
       {showResubmitModal && (
         <SendDocumentModal
           show={showResubmitModal}
@@ -383,6 +503,14 @@ export const DocumentDetails: React.FC = () => {
               : undefined
           }
           forceRecipientLock={true}
+        />
+      )}
+
+      {showReviewModal && (
+        <ReviewDocumentModal
+          show={showReviewModal}
+          onClose={() => setShowReviewModal(false)}
+          documentId={document.id}
         />
       )}
     </div>
