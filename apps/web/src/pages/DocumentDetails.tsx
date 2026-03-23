@@ -84,12 +84,38 @@ export const DocumentDetails: React.FC = () => {
   const { data: document, isLoading: isLoadingDoc } =
     trpc.documents.getById.useQuery({ id: id! }, { enabled: !!id });
 
-  const executeDispositionMutation =
-    trpc.documents.executeDisposition.useMutation({
+  const requestDispositionMutation =
+    trpc.documents.requestDisposition.useMutation({
       onSuccess: () => {
         utils.documents.getById.invalidate({ id: id! });
       },
     });
+
+  const approveDispositionMutation =
+    trpc.documents.approveDisposition.useMutation({
+      onSuccess: () => {
+        utils.documents.getById.invalidate({ id: id! });
+      },
+    });
+
+  const rejectDispositionMutation =
+    trpc.documents.rejectDisposition.useMutation({
+      onSuccess: () => {
+        utils.documents.getById.invalidate({ id: id! });
+      },
+    });
+
+  const applyLegalHoldMutation = trpc.documents.applyLegalHold.useMutation({
+    onSuccess: () => {
+      utils.documents.getById.invalidate({ id: id! });
+    },
+  });
+
+  const removeLegalHoldMutation = trpc.documents.removeLegalHold.useMutation({
+    onSuccess: () => {
+      utils.documents.getById.invalidate({ id: id! });
+    },
+  });
 
   const { data: urlData, isLoading: isLoadingUrl } =
     trpc.documents.getSignedDocumentUrl.useQuery(
@@ -159,6 +185,21 @@ export const DocumentDetails: React.FC = () => {
 
   return (
     <div className="container mt-4">
+      {document.isUnderLegalHold && (
+        <div
+          className="alert alert-danger d-flex align-items-center mb-4 shadow-sm"
+          role="alert"
+        >
+          <i className="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+          <div>
+            <h5 className="alert-heading mb-1">Document is under Legal Hold</h5>
+            <p className="mb-0">
+              {document.legalHoldReason || "No reason provided."}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="page-header">
         <h2>
           {document.title}
@@ -251,6 +292,43 @@ export const DocumentDetails: React.FC = () => {
                   <i className="bi bi-diagram-3 me-2"></i>
                   Show in Graph
                 </button>
+                {canManageDocuments && (
+                  <button
+                    className={`btn ${document.isUnderLegalHold ? "btn-outline-danger" : "btn-outline-dark"}`}
+                    onClick={() => {
+                      if (document.isUnderLegalHold) {
+                        if (
+                          window.confirm(
+                            "Are you sure you want to remove the legal hold?",
+                          )
+                        ) {
+                          removeLegalHoldMutation.mutate({
+                            documentId: document.id,
+                          });
+                        }
+                      } else {
+                        const reason = window.prompt(
+                          "Enter reason for Legal Hold:",
+                        );
+                        if (reason) {
+                          applyLegalHoldMutation.mutate({
+                            documentId: document.id,
+                            reason,
+                          });
+                        }
+                      }
+                    }}
+                    disabled={
+                      applyLegalHoldMutation.isPending ||
+                      removeLegalHoldMutation.isPending
+                    }
+                  >
+                    <i className="bi bi-shield-lock me-2"></i>
+                    {document.isUnderLegalHold
+                      ? "Remove Legal Hold"
+                      : "Apply Legal Hold"}
+                  </button>
+                )}
               </div>
 
               <hr />
@@ -264,50 +342,124 @@ export const DocumentDetails: React.FC = () => {
                         ? "bg-secondary"
                         : document.lifecycleStatus === "Ready"
                           ? "bg-warning text-dark"
-                          : document.lifecycleStatus === "Archived"
-                            ? "bg-info"
-                            : "bg-danger"
+                          : document.lifecycleStatus === "Legal Hold"
+                            ? "bg-danger"
+                            : document.lifecycleStatus === "Archived"
+                              ? "bg-info"
+                              : "bg-danger"
                   }`}
                 >
                   {document.lifecycleStatus}
                 </span>
               </p>
 
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {user?.roles.some((r: any) => r.canManageDocuments) &&
-                document.lifecycleStatus === "Ready" && (
-                  <div className="mt-3">
-                    <div className="alert alert-warning">
-                      <h6 className="alert-heading">Disposition Ready</h6>
-                      <p className="mb-2">
-                        This document has reached its retention limit.
-                      </p>
-                      <p className="mb-3">
-                        Action:{" "}
-                        <strong>{document.dispositionActionSnapshot}</strong>
-                      </p>
-                      <button
-                        className="btn btn-danger w-100"
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              "Are you sure you want to execute disposition? This action is irreversible.",
-                            )
-                          ) {
-                            executeDispositionMutation.mutate({
-                              documentId: document.id,
-                            });
-                          }
-                        }}
-                        disabled={executeDispositionMutation.isPending}
-                      >
-                        {executeDispositionMutation.isPending
-                          ? "Executing..."
-                          : `Execute ${document.dispositionActionSnapshot}`}
-                      </button>
+              {canManageDocuments && !document.isUnderLegalHold && (
+                <>
+                  {document.lifecycleStatus === "Ready" && (
+                    <div className="mt-3">
+                      <div className="alert alert-warning">
+                        <h6 className="alert-heading">Disposition Ready</h6>
+                        <p className="mb-2">
+                          This document has reached its retention limit.
+                        </p>
+                        <p className="mb-3">
+                          Action:{" "}
+                          <strong>{document.dispositionActionSnapshot}</strong>
+                        </p>
+                        <button
+                          className="btn btn-warning w-100 fw-bold"
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                "Request approval to execute disposition?",
+                              )
+                            ) {
+                              requestDispositionMutation.mutate({
+                                documentId: document.id,
+                              });
+                            }
+                          }}
+                          disabled={requestDispositionMutation.isPending}
+                        >
+                          {requestDispositionMutation.isPending
+                            ? "Requesting..."
+                            : "Request Disposition Approval"}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+
+                  {document.dispositionStatus === "PENDING_DISPOSITION" && (
+                    <div className="mt-3">
+                      <div className="alert alert-info">
+                        <h6 className="alert-heading">
+                          Disposition Pending Approval
+                        </h6>
+                        <p className="mb-3">
+                          A request to{" "}
+                          <strong>{document.dispositionActionSnapshot}</strong>{" "}
+                          this document is pending.
+                        </p>
+
+                        {user?.id === document.dispositionRequesterId ? (
+                          <button
+                            className="btn btn-outline-secondary w-100"
+                            onClick={() => {
+                              if (
+                                window.confirm("Cancel disposition request?")
+                              ) {
+                                rejectDispositionMutation.mutate({
+                                  documentId: document.id,
+                                });
+                              }
+                            }}
+                            disabled={rejectDispositionMutation.isPending}
+                          >
+                            Cancel Request
+                          </button>
+                        ) : (
+                          <div className="d-flex gap-2">
+                            <button
+                              className="btn btn-danger flex-grow-1"
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    "Approve and execute disposition? This action is irreversible.",
+                                  )
+                                ) {
+                                  approveDispositionMutation.mutate({
+                                    documentId: document.id,
+                                  });
+                                }
+                              }}
+                              disabled={approveDispositionMutation.isPending}
+                            >
+                              {approveDispositionMutation.isPending
+                                ? "Executing..."
+                                : "Approve & Execute"}
+                            </button>
+                            <button
+                              className="btn btn-outline-danger flex-grow-1"
+                              onClick={() => {
+                                if (
+                                  window.confirm("Reject disposition request?")
+                                ) {
+                                  rejectDispositionMutation.mutate({
+                                    documentId: document.id,
+                                  });
+                                }
+                              }}
+                              disabled={rejectDispositionMutation.isPending}
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
 

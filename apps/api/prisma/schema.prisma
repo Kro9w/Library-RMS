@@ -51,15 +51,16 @@ model User {
 
   isSuperAdmin Boolean @default(false)
 
-  documents        Document[]       @relation("uploadedBy")
-  documentVersions DocumentVersion[] @relation("versionUploadedBy")
-  roles            Role[] // Implicit M:N
-  logs             Log[]
-  Remark           Remark[]
-  reviewRequested  Document[]       @relation("DocumentReviewRequester")
-  checkedOutDocs   Document[]       @relation("CheckedOutDocs")
-  notifications    Notification[]
-  documentAccesses DocumentAccess[]
+  documents                Document[]        @relation("uploadedBy")
+  documentVersions         DocumentVersion[] @relation("versionUploadedBy")
+  roles                    Role[] // Implicit M:N
+  logs                     Log[]
+  Remark                   Remark[]
+  reviewRequested          Document[]        @relation("DocumentReviewRequester")
+  checkedOutDocs           Document[]        @relation("CheckedOutDocs")
+  notifications            Notification[]
+  documentAccesses         DocumentAccess[]
+  dispositionRequestedDocs Document[]        @relation("dispositionRequester")
 }
 
 model Notification {
@@ -177,9 +178,9 @@ model Document {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  recordStatus  RecordStatus @default(DRAFT)
-  isCheckedOut  Boolean      @default(false)
-  checkedOutBy  User?        @relation("CheckedOutDocs", fields: [checkedOutById], references: [id])
+  recordStatus   RecordStatus @default(DRAFT)
+  isCheckedOut   Boolean      @default(false)
+  checkedOutBy   User?        @relation("CheckedOutDocs", fields: [checkedOutById], references: [id])
   checkedOutById String?
 
   versions DocumentVersion[]
@@ -195,8 +196,15 @@ model Document {
   activeRetentionSnapshot   Int?
   inactiveRetentionSnapshot Int?
   dispositionActionSnapshot DispositionAction?
-  dispositionStatus         String? // 'ARCHIVED', 'DESTROYED'
-  documentAccesses          DocumentAccess[]
+  dispositionStatus         String? // 'ARCHIVED', 'DESTROYED', 'PENDING_DISPOSITION'
+
+  isUnderLegalHold Boolean @default(false)
+  legalHoldReason  String?
+
+  dispositionRequesterId String?
+  dispositionRequester   User?   @relation("dispositionRequester", fields: [dispositionRequesterId], references: [id])
+
+  documentAccesses DocumentAccess[]
 
   @@index([institutionId])
   @@index([uploadedById])
@@ -208,20 +216,20 @@ model Document {
 }
 
 model DocumentVersion {
-  id             String   @id @default(cuid())
-  versionNumber  Int
-  s3Key          String   @unique
-  s3Bucket       String
-  fileType       String?
-  fileSize       Int?
-  
-  document       Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  documentId     String
-  
-  uploadedBy     User     @relation("versionUploadedBy", fields: [uploadedById], references: [id])
-  uploadedById   String
-  
-  createdAt      DateTime @default(now())
+  id            String  @id @default(cuid())
+  versionNumber Int
+  s3Key         String  @unique
+  s3Bucket      String
+  fileType      String?
+  fileSize      Int?
+
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String
+
+  uploadedBy   User   @relation("versionUploadedBy", fields: [uploadedById], references: [id])
+  uploadedById String
+
+  createdAt DateTime @default(now())
 
   @@index([documentId])
   @@index([uploadedById])

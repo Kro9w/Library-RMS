@@ -21,7 +21,10 @@ function computeLifecycleStatus(doc: {
   activeRetentionSnapshot: number | null;
   inactiveRetentionSnapshot: number | null;
   dispositionStatus: string | null;
-}): 'Active' | 'Inactive' | 'Ready' | 'Archived' | 'Destroyed' | null {
+  isUnderLegalHold: boolean;
+}): 'Active' | 'Inactive' | 'Ready' | 'Archived' | 'Destroyed' | 'Legal Hold' | null {
+  if (doc.isUnderLegalHold) return 'Legal Hold';
+
   if (doc.dispositionStatus === 'DESTROYED') return 'Destroyed';
   if (doc.dispositionStatus === 'ARCHIVED') return 'Archived';
 
@@ -175,6 +178,9 @@ export class DocumentsRouter {
               classification: true,
               originalSenderId: true,
               uploadedById: true,
+              isUnderLegalHold: true,
+              legalHoldReason: true,
+              dispositionRequesterId: true,
             },
           });
 
@@ -587,6 +593,9 @@ export class DocumentsRouter {
             dispositionStatus: true,
             classification: true,
             originalSenderId: true,
+            isUnderLegalHold: true,
+            legalHoldReason: true,
+            dispositionRequesterId: true,
           };
 
           // Optimized path for "Ready for Disposition"
@@ -621,6 +630,7 @@ export class DocumentsRouter {
               WHERE d."institutionId" = ${institutionId}
                 AND d."dispositionStatus" NOT IN ('DESTROYED', 'ARCHIVED')
                 AND d."activeRetentionSnapshot" IS NOT NULL
+                AND d."isUnderLegalHold" = false
                 AND (d."createdAt" + make_interval(years => d."activeRetentionSnapshot")) <= NOW()
                 AND (d."createdAt" + make_interval(years => d."activeRetentionSnapshot") + make_interval(years => COALESCE(d."inactiveRetentionSnapshot", 0))) <= NOW()
             `;
@@ -1480,6 +1490,9 @@ export class DocumentsRouter {
                 dispositionActionSnapshot: true,
                 dispositionStatus: true,
                 classification: true,
+                isUnderLegalHold: true,
+                legalHoldReason: true,
+                dispositionRequesterId: true,
               },
             });
           } else if (ctx.dbUser.institutionId) {
@@ -1506,6 +1519,9 @@ export class DocumentsRouter {
                 dispositionActionSnapshot: true,
                 dispositionStatus: true,
                 classification: true,
+                isUnderLegalHold: true,
+                legalHoldReason: true,
+                dispositionRequesterId: true,
               },
             });
           } else {
@@ -1538,7 +1554,123 @@ export class DocumentsRouter {
         });
       }),
 
-      executeDisposition: protectedProcedure
+      applyLegalHold: protectedProcedure
+        .input(z.object({ documentId: z.string(), reason: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+          const { user, dbUser } = ctx;
+          if (!dbUser.institutionId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to an institution.',
+            });
+          }
+
+          requirePermission(dbUser, 'canManageDocuments');
+
+          const doc = await ctx.prisma.document.update({
+            where: { id: input.documentId, institutionId: dbUser.institutionId },
+            data: {
+              isUnderLegalHold: true,
+              legalHoldReason: input.reason,
+            },
+          });
+
+          await this.logService.logAction(
+            user.id,
+            dbUser.institutionId,
+            `Applied Legal Hold: ${input.reason}`,
+            dbUser.roles.map((r) => r.name),
+            doc.title,
+          );
+
+          return doc;
+        }),
+
+      removeLegalHold: protectedProcedure
+        .input(z.object({ documentId: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+          const { user, dbUser } = ctx;
+          if (!dbUser.institutionId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to an institution.',
+            });
+          }
+
+          requirePermission(dbUser, 'canManageDocuments');
+
+          const doc = await ctx.prisma.document.update({
+            where: { id: input.documentId, institutionId: dbUser.institutionId },
+            data: {
+              isUnderLegalHold: false,
+              legalHoldReason: null,
+            },
+          });
+
+          await this.logService.logAction(
+            user.id,
+            dbUser.institutionId,
+            'Removed Legal Hold',
+            dbUser.roles.map((r) => r.name),
+            doc.title,
+          );
+
+          return doc;
+        }),
+
+      requestDisposition: protectedProcedure
+        .input(z.object({ documentId: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+          const { user, dbUser } = ctx;
+          if (!dbUser.institutionId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to an institution.',
+            });
+          }
+
+          requirePermission(dbUser, 'canManageDocuments');
+
+          const doc = await ctx.prisma.document.findUnique({
+            where: { id: input.documentId },
+          });
+
+          if (!doc || doc.institutionId !== dbUser.institutionId) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Document not found' });
+          }
+
+          if (doc.isUnderLegalHold) {
+             throw new TRPCError({ code: 'FORBIDDEN', message: 'Document is under legal hold' });
+          }
+
+          const status = computeLifecycleStatus(doc);
+          if (status !== 'Ready') {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Document is not ready for disposition',
+            });
+          }
+
+          const updatedDoc = await this.prisma.document.update({
+            where: { id: input.documentId },
+            data: {
+              dispositionStatus: 'PENDING_DISPOSITION',
+              dispositionRequesterId: user.id,
+            },
+          });
+
+          await this.logService.logAction(
+            user.id,
+            dbUser.institutionId,
+            'Disposition Approval Requested',
+            dbUser.roles.map((r) => r.name),
+            doc.title,
+          );
+
+          return updatedDoc;
+        }),
+
+      approveDisposition: protectedProcedure
         .input(z.object({ documentId: z.string() }))
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
@@ -1557,11 +1689,18 @@ export class DocumentsRouter {
 
           if (!doc) throw new TRPCError({ code: 'NOT_FOUND' });
 
-          const status = computeLifecycleStatus(doc);
-          if (status !== 'Ready') {
+          if (doc.isUnderLegalHold) {
+             throw new TRPCError({ code: 'FORBIDDEN', message: 'Document is under legal hold' });
+          }
+
+          if (doc.dispositionStatus !== 'PENDING_DISPOSITION') {
+            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Document is not pending disposition' });
+          }
+
+          if (user.id === doc.dispositionRequesterId) {
             throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: 'Document is not ready for disposition',
+              code: 'FORBIDDEN',
+              message: 'Separation of duties violation: You cannot approve a disposition you requested.',
             });
           }
 
@@ -1597,7 +1736,7 @@ export class DocumentsRouter {
             await this.logService.logAction(
               user.id,
               dbUser.institutionId,
-              'Executed Disposition (DESTROY)',
+              'Approved and Executed Disposition (DESTROY)',
               dbUser.roles.map((r) => r.name),
               doc.title,
             );
@@ -1611,7 +1750,7 @@ export class DocumentsRouter {
             await this.logService.logAction(
               user.id,
               dbUser.institutionId,
-              'Executed Disposition (ARCHIVE)',
+              'Approved and Executed Disposition (ARCHIVE)',
               dbUser.roles.map((r) => r.name),
               doc.title,
             );
@@ -1619,6 +1758,48 @@ export class DocumentsRouter {
           }
 
           return doc;
+        }),
+
+      rejectDisposition: protectedProcedure
+        .input(z.object({ documentId: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+          const { user, dbUser } = ctx;
+          if (!dbUser.institutionId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to an institution.',
+            });
+          }
+
+          requirePermission(dbUser, 'canManageDocuments');
+
+          const doc = await ctx.prisma.document.findUnique({
+            where: { id: input.documentId },
+          });
+
+          if (!doc) throw new TRPCError({ code: 'NOT_FOUND' });
+
+          if (doc.dispositionStatus !== 'PENDING_DISPOSITION') {
+             throw new TRPCError({ code: 'BAD_REQUEST', message: 'Document is not pending disposition' });
+          }
+
+          const updatedDoc = await this.prisma.document.update({
+            where: { id: input.documentId },
+            data: {
+              dispositionStatus: null,
+              dispositionRequesterId: null,
+            },
+          });
+
+          await this.logService.logAction(
+            user.id,
+            dbUser.institutionId,
+            'Rejected Disposition Request',
+            dbUser.roles.map((r) => r.name),
+            doc.title,
+          );
+
+          return updatedDoc;
         }),
 
       /**
