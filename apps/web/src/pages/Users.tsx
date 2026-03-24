@@ -10,13 +10,15 @@ import { formatUserName, formatUserNameLastFirst } from "../utils/user";
 type User = AppRouterOutputs["user"]["getUsersWithRoles"][0];
 
 export function Users() {
+  const { data: currentUser } = trpc.user.getMe.useQuery();
   const {
     data: users,
     isLoading,
     isError,
     error,
-  } = trpc.user.getUsersWithRoles.useQuery();
-  const { data: currentUser } = trpc.user.getMe.useQuery();
+  } = trpc.user.getUsersWithRoles.useQuery(undefined, {
+    enabled: !!currentUser, // Prevent fetching until current user is loaded
+  });
 
   // Refactored to use getAll with pagination
   const { data } = trpc.documents.getAll.useQuery({

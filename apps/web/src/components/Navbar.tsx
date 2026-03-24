@@ -153,50 +153,6 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
     <>
       {/* ── Left sidebar ── */}
       <aside className={`sidebar ${isCollapsed ? "collapsed" : "expanded"}`}>
-        {/* Logo + breadcrumb */}
-        <div className="sidebar-logo-area">
-          <button
-            className="sidebar-logo-btn"
-            onClick={onToggle}
-            title="Toggle sidebar"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 119.4 152.21"
-              className="sidebar-logo-svg"
-            >
-              <path
-                fillRule="evenodd"
-                d="M119.25,44.29h-30.63c-.21-8.67,.8-19.25-3.3-24.72-3.64-5-14.23-6.25-22.15-3.77-13.27,4.93-21.94,17.44-29.95,27.78-3.32,4.28-7.25,9.8-13.43,11.07-7.05,1.45-9.54-5.24-11.05-10.11-3.94-14.68,1.31-31.7,5.63-42.44,.39,.08,.79,.16,1.18,.02v1.18c-.98,3.38-.29,7.88,.47,10.37,3.08,11.1,10.5,15.34,22.64,10.13C55.43,17.33,83.75-11.39,107.94,4.97c3.89,2.71,6.71,6.87,8.48,10.84,3.56,7.28,3.02,17.98,2.83,28.49Zm-13.19,66.68c-9.92-.16-20.05-.31-30.18-.68,.36-9.01,1.75-27.73-4.95-31.81-2.51-1.24-6.96-1.03-11.05-1.18-9.91,22.05-19.11,43.88-33.25,61.26-5.68,7.28-14.02,13.64-26.62,13.64,.08-25.99,.16-52,.24-77.99H36.05c6.36-14.14,12.72-28.28,18.87-42.62,9.01,.29,17.81,.37,26.39,.45-6.21,13.75-14.62,27.39-19.79,42.18,28.48-.25,44.98,8.54,44.53,36.76ZM1.88,118.77c16.54-.24,26.91-27.76,32.28-40.79v-.45c-10.85,.18-25.97,1.09-30.39,7.54-3.59,5.61-2,24.9-1.88,33.69Z"
-              />
-            </svg>
-            {!isCollapsed && <span className="sidebar-logo-text">Folio</span>}
-          </button>
-
-          {/* Breadcrumb — only when expanded */}
-          {!isCollapsed && (campusName || deptName) && (
-            <div className="sidebar-breadcrumb">
-              <span className="sidebar-breadcrumb-root">
-                {institutionAcronym}
-              </span>
-              {campusName && (
-                <>
-                  <span className="sidebar-breadcrumb-sep">/</span>
-                  <span className="sidebar-breadcrumb-item">{campusName}</span>
-                </>
-              )}
-              {deptName && (
-                <>
-                  <span className="sidebar-breadcrumb-sep">/</span>
-                  <span className="sidebar-breadcrumb-item sidebar-breadcrumb-dept">
-                    {deptName}
-                  </span>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
         {/* Nav links */}
         <nav className="sidebar-nav">
           <NavLink
@@ -208,7 +164,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
             title="Dashboard"
           >
             <i className="bi bi-grid-1x2" />
-            {!isCollapsed && <span>Dashboard</span>}
+            <span>Dashboard</span>
           </NavLink>
           <NavLink
             to="/documents"
@@ -218,7 +174,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
             title="Documents"
           >
             <i className="bi bi-file-earmark-text" />
-            {!isCollapsed && <span>Documents</span>}
+            <span>Documents</span>
           </NavLink>
           <NavLink
             to="/graph"
@@ -228,7 +184,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
             title="Graph"
           >
             <i className="bi bi-diagram-3" />
-            {!isCollapsed && <span>Graph</span>}
+            <span>Graph</span>
           </NavLink>
           {canManageUsers && (
             <>
@@ -240,7 +196,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
                 title="Users"
               >
                 <i className="bi bi-people" />
-                {!isCollapsed && <span>Users</span>}
+                <span>Users</span>
               </NavLink>
               <NavLink
                 to="/logs"
@@ -250,46 +206,84 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
                 title="Logs"
               >
                 <i className="bi bi-journal-text" />
-                {!isCollapsed && <span>Logs</span>}
+                <span>Logs</span>
               </NavLink>
             </>
           )}
         </nav>
+
+        {/* Sidebar footer: collapse toggle */}
+        <div className="sidebar-footer">
+          <button
+            className="sidebar-toggle-btn"
+            onClick={onToggle}
+            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <i
+              className={`bi ${isCollapsed ? "bi-layout-sidebar" : "bi-layout-sidebar-inset"}`}
+            />
+          </button>
+        </div>
       </aside>
 
       {/* ── Top bar ── */}
-      <header
-        className={`topbar ${isCollapsed ? "sidebar-collapsed" : "sidebar-expanded"}`}
-      >
-        {/* Left: collapse toggle (icon only on collapsed) */}
+      <header className="topbar">
+        {/* Left: Logo and Breadcrumb */}
         <div className="topbar-left">
-          {isCollapsed && (
-            <button
-              className="topbar-icon-btn"
-              onClick={onToggle}
-              title="Expand sidebar"
+          <div className="topbar-brand">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 119.4 152.21"
+              className="topbar-logo-svg"
             >
-              <i className="bi bi-layout-sidebar" />
-            </button>
+              <path
+                fillRule="evenodd"
+                d="M119.25,44.29h-30.63c-.21-8.67,.8-19.25-3.3-24.72-3.64-5-14.23-6.25-22.15-3.77-13.27,4.93-21.94,17.44-29.95,27.78-3.32,4.28-7.25,9.8-13.43,11.07-7.05,1.45-9.54-5.24-11.05-10.11-3.94-14.68,1.31-31.7,5.63-42.44,.39,.08,.79,.16,1.18,.02v1.18c-.98,3.38-.29,7.88,.47,10.37,3.08,11.1,10.5,15.34,22.64,10.13C55.43,17.33,83.75-11.39,107.94,4.97c3.89,2.71,6.71,6.87,8.48,10.84,3.56,7.28,3.02,17.98,2.83,28.49Zm-13.19,66.68c-9.92-.16-20.05-.31-30.18-.68,.36-9.01,1.75-27.73-4.95-31.81-2.51-1.24-6.96-1.03-11.05-1.18-9.91,22.05-19.11,43.88-33.25,61.26-5.68,7.28-14.02,13.64-26.62,13.64,.08-25.99,.16-52,.24-77.99H36.05c6.36-14.14,12.72-28.28,18.87-42.62,9.01,.29,17.81,.37,26.39,.45-6.21,13.75-14.62,27.39-19.79,42.18,28.48-.25,44.98,8.54,44.53,36.76ZM1.88,118.77c16.54-.24,26.91-27.76,32.28-40.79v-.45c-10.85,.18-25.97,1.09-30.39,7.54-3.59,5.61-2,24.9-1.88,33.69Z"
+              />
+            </svg>
+            <span className="topbar-logo-text">Folio RMS</span>
+          </div>
+
+          {(campusName || deptName) && (
+            <div className="topbar-breadcrumb">
+              <span className="topbar-breadcrumb-sep">/</span>
+              <span className="topbar-breadcrumb-root">
+                {institutionAcronym}
+              </span>
+              {campusName && (
+                <>
+                  <span className="topbar-breadcrumb-sep">/</span>
+                  <span className="topbar-breadcrumb-item">{campusName}</span>
+                </>
+              )}
+              {deptName && (
+                <>
+                  <span className="topbar-breadcrumb-sep">/</span>
+                  <span className="topbar-breadcrumb-item topbar-breadcrumb-dept">
+                    {deptName}
+                  </span>
+                </>
+              )}
+            </div>
           )}
         </div>
 
         {/* Right: actions */}
         <div className="topbar-right">
           <button
-            className="topbar-btn"
+            className="topbar-icon-btn"
             onClick={() => setShowUploadModal(true)}
+            title="Upload Document"
           >
             <i className="bi bi-upload" />
-            <span>Upload</span>
           </button>
 
-          <button
-            className="topbar-btn topbar-btn-primary"
-            onClick={() => setShowSelectDocumentModal(true)}
-          >
-            <i className="bi bi-send" />
-            <span>Send</span>
+          <button className="topbar-icon-btn" title="Read the docs">
+            <i className="bi bi-journal-text" />
+          </button>
+
+          <button className="topbar-icon-btn" title="FAQs">
+            <i className="bi bi-question-circle" />
           </button>
 
           {/* Notifications */}

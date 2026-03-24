@@ -49,7 +49,7 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({
       setPanelStyle({
         position: "fixed",
         top: `${rect.bottom + 8}px`,
-        right: `${window.innerWidth - rect.right - 2}px`,
+        right: `${window.innerWidth - rect.right - 8}px` /* Adjusted offset to match dropdowns */,
         zIndex: 9999,
       });
     }

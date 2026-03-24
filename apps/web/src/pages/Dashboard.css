@@ -28,16 +28,9 @@
   border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow-xs);
-  transition:
-    box-shadow var(--transition-slow),
-    border-color var(--transition-slow);
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-.stat-card:hover {
-  box-shadow: var(--shadow-md);
-  border-color: var(--border-strong);
 }
 
 /* Legacy stat card compat */
@@ -46,10 +39,6 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs);
-}
-
-.card.stat-card-primary:hover {
-  box-shadow: var(--shadow-md);
 }
 
 .card.stat-card-primary .card-body {

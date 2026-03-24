@@ -9,6 +9,7 @@
   min-height: calc(100vh - var(--topbar-h, 52px));
   gap: 0;
   background-color: var(--bg-app);
+  margin: -28px; /* Negative margin to pull it flush with the main container padding */
 }
 
 @media (max-width: 768px) {
@@ -122,7 +123,7 @@ body[data-bs-theme="dark"] .admin-nav-item.active {
 
 /* ── Admin content ── */
 .admin-content {
-  padding: 32px;
+  padding: 32px 32px 32px 56px;
   overflow-y: auto;
 }
 

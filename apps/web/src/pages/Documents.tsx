@@ -112,12 +112,50 @@ const Documents: React.FC = () => {
       placeholderData: keepPreviousData,
     });
 
-  const { data: _documentTypesData, isLoading: isLoadingTypes } =
+  const { data: documentTypesData, isLoading: isLoadingTypes } =
     trpc.documentTypes.getAll.useQuery(undefined, {
       staleTime: 30000,
     });
 
   const documents = useMemo(() => data?.documents || [], [data?.documents]);
+
+  const groupedDocuments = useMemo(() => {
+    const groups: Record<string, Document[]> = {};
+
+    // Initialize groups for all known document types to show empty accordions if desired,
+    // or we can just build groups dynamically based on what's present.
+    // Given the instruction to show accordion for "every document type made plus the uncategorized one",
+    // we initialize arrays for each type.
+    if (documentTypesData) {
+      documentTypesData.forEach((type: any) => {
+        groups[type.name] = [];
+      });
+    }
+
+    // Always ensure "Uncategorized" exists
+    groups["Uncategorized"] = [];
+
+    documents.forEach((doc: Document) => {
+      const typeName = doc.documentType?.name || "Uncategorized";
+      if (!groups[typeName]) {
+        groups[typeName] = [];
+      }
+      groups[typeName].push(doc);
+    });
+
+    return groups;
+  }, [documents, documentTypesData]);
+
+  const [openAccordions, setOpenAccordions] = useState<Record<string, boolean>>(
+    {},
+  );
+
+  const toggleAccordion = (groupName: string) => {
+    setOpenAccordions((prev) => ({
+      ...prev,
+      [groupName]: !prev[groupName],
+    }));
+  };
   const recentDocuments = recentData?.documents || [];
 
   const deleteMutation = trpc.documents.deleteDocument.useMutation({
@@ -372,164 +410,183 @@ const Documents: React.FC = () => {
         </div>
       </div>
 
-      {/* All Documents Table with Pagination */}
+      {/* Grouped Documents by Type Accordions */}
       <div className="mb-4">
-        <div className="accordion-item mb-3">
-          <div className="accordion-header w-100 text-start d-flex justify-content-between align-items-center non-clickable">
-            <span>All Documents</span>
-            <span
-              className="text-muted ms-2"
-              style={{ fontSize: "0.9rem", fontWeight: "normal" }}
-            >
-              Total: {data?.totalCount || 0}
-            </span>
-          </div>
-          <div className="accordion-content">
-            <div className="card document-table-card mt-0 border-top-0 rounded-top-0">
-              <div className="card-body p-0">
-                <table className="table mb-0">
-                  <thead>
-                    <tr>
-                      <th>Type</th>
-                      <th>Title</th>
-                      <th>Owner</th>
-                      <th>Lifecycle</th>
-                      <th>Control Number</th>
-                      <th>Date</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {documents.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="text-center text-muted py-4">
-                          No documents found.
-                        </td>
-                      </tr>
-                    ) : (
-                      documents.map((doc: Document) => (
-                        <tr key={doc.id}>
-                          <td>
-                            <div className="d-flex align-items-center gap-2">
-                              <FileIcon
-                                fileType={doc.fileType}
-                                fileName={doc.title}
-                              />
-                              <div className="d-flex flex-column gap-1 align-items-start">
-                                <DocumentTypePill
-                                  documentType={doc.documentType}
-                                />
-                                <ClassificationBadge
-                                  classification={
-                                    doc.classification as ClassificationType
-                                  }
-                                />
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            <Link
-                              to={`/documents/${doc.id}`}
-                              className="fw-bold text-decoration-none"
-                            >
-                              {doc.title}
-                            </Link>
-                          </td>
-                          <td className="text-muted">
-                            {formatUserName(doc.uploadedBy)}
-                          </td>
-                          <td>
-                            <StatusBadge status={doc.lifecycleStatus} />
-                          </td>
-                          <td className="text-muted">
-                            {doc.controlNumber || "—"}
-                          </td>
-                          <td className="text-muted">
-                            {new Date(doc.createdAt).toLocaleDateString()}
-                          </td>
-                          <td>
-                            <div className="d-flex align-items-center justify-content-end gap-2">
-                              {doc.isCheckedOut && (
-                                <i
-                                  className="bi bi-lock-fill text-danger me-1"
-                                  title="Checked Out"
-                                ></i>
-                              )}
-                              <DocumentActionsMenu
-                                doc={doc}
-                                isUploader={isUploader}
-                                canManageDocuments={canManageDocuments}
-                                onSendClick={handleSendClick}
-                                onReviewClick={handleReviewClick}
-                                onDeleteClick={handleDeleteClick}
-                                onCheckOutClick={handleCheckOutClick}
-                                onCheckInClick={handleCheckInClick}
-                                onDiscardCheckOutClick={
-                                  handleDiscardCheckOutClick
-                                }
-                                currentUserId={userData?.id}
-                              />
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+        {Object.entries(groupedDocuments).map(([groupName, groupDocs]) => {
+          const isOpen = openAccordions[groupName];
+          return (
+            <div className="accordion-item mb-3" key={groupName}>
+              <button
+                className={`accordion-header w-100 text-start d-flex justify-content-between align-items-center ${!isOpen ? "collapsed" : ""}`}
+                onClick={() => toggleAccordion(groupName)}
+              >
+                <span>{groupName}</span>
+                <div className="d-flex align-items-center gap-3">
+                  <span
+                    className="text-muted"
+                    style={{ fontSize: "0.9rem", fontWeight: "normal" }}
+                  >
+                    Count: {groupDocs.length}
+                  </span>
+                  <i className={`bi bi-chevron-${isOpen ? "up" : "down"}`}></i>
+                </div>
+              </button>
+
+              {isOpen && (
+                <div className="accordion-content">
+                  <div className="card document-table-card mt-0 border-top-0 rounded-top-0">
+                    <div className="card-body p-0">
+                      <table className="table mb-0">
+                        <thead>
+                          <tr>
+                            <th>Type</th>
+                            <th>Title</th>
+                            <th>Owner</th>
+                            <th>Lifecycle</th>
+                            <th>Control Number</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {groupDocs.length === 0 ? (
+                            <tr>
+                              <td
+                                colSpan={7}
+                                className="text-center text-muted py-4"
+                              >
+                                No documents found in this category.
+                              </td>
+                            </tr>
+                          ) : (
+                            groupDocs.map((doc: Document) => (
+                              <tr key={doc.id}>
+                                <td>
+                                  <div className="d-flex align-items-center gap-2">
+                                    <FileIcon
+                                      fileType={doc.fileType}
+                                      fileName={doc.title}
+                                    />
+                                    <div className="d-flex flex-column gap-1 align-items-start">
+                                      <DocumentTypePill
+                                        documentType={doc.documentType}
+                                      />
+                                      <ClassificationBadge
+                                        classification={
+                                          doc.classification as ClassificationType
+                                        }
+                                      />
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>
+                                  <Link
+                                    to={`/documents/${doc.id}`}
+                                    className="fw-bold text-decoration-none"
+                                  >
+                                    {doc.title}
+                                  </Link>
+                                </td>
+                                <td className="text-muted">
+                                  {formatUserName(doc.uploadedBy)}
+                                </td>
+                                <td>
+                                  <StatusBadge status={doc.lifecycleStatus} />
+                                </td>
+                                <td className="text-muted">
+                                  {doc.controlNumber || "—"}
+                                </td>
+                                <td className="text-muted">
+                                  {new Date(doc.createdAt).toLocaleDateString()}
+                                </td>
+                                <td>
+                                  <div className="d-flex align-items-center justify-content-end gap-2">
+                                    {doc.isCheckedOut && (
+                                      <i
+                                        className="bi bi-lock-fill text-danger me-1"
+                                        title="Checked Out"
+                                      ></i>
+                                    )}
+                                    <DocumentActionsMenu
+                                      doc={doc}
+                                      isUploader={isUploader}
+                                      canManageDocuments={canManageDocuments}
+                                      onSendClick={handleSendClick}
+                                      onReviewClick={handleReviewClick}
+                                      onDeleteClick={handleDeleteClick}
+                                      onCheckOutClick={handleCheckOutClick}
+                                      onCheckInClick={handleCheckInClick}
+                                      onDiscardCheckOutClick={
+                                        handleDiscardCheckOutClick
+                                      }
+                                      currentUserId={userData?.id}
+                                    />
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Note: Pagination is maintained at the API query level, but with accordion grouping it applies to the whole set requested per page. */}
+                  {/* To correctly paginate grouped data, it is recommended to either increase itemsPerPage or maintain global pagination below all accordions. */}
+                </div>
+              )}
             </div>
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="d-flex justify-content-center mt-4 pb-3">
-                <nav>
-                  <ul className="pagination mb-0">
+          );
+        })}
+
+        {/* Global Pagination Controls across all fetched documents */}
+        {totalPages > 1 && (
+          <div className="d-flex justify-content-center mt-4 pb-3">
+            <nav>
+              <ul className="pagination mb-0">
+                <li
+                  className={`page-item ${currentPage === 1 ? "disabled" : ""}`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(prev - 1, 1))
+                    }
+                  >
+                    Previous
+                  </button>
+                </li>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => (
                     <li
-                      className={`page-item ${currentPage === 1 ? "disabled" : ""}`}
+                      key={page}
+                      className={`page-item ${currentPage === page ? "active" : ""}`}
                     >
                       <button
                         className="page-link"
-                        onClick={() =>
-                          setCurrentPage((prev) => Math.max(prev - 1, 1))
-                        }
+                        onClick={() => setCurrentPage(page)}
                       >
-                        Previous
+                        {page}
                       </button>
                     </li>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                      (page) => (
-                        <li
-                          key={page}
-                          className={`page-item ${currentPage === page ? "active" : ""}`}
-                        >
-                          <button
-                            className="page-link"
-                            onClick={() => setCurrentPage(page)}
-                          >
-                            {page}
-                          </button>
-                        </li>
-                      ),
-                    )}
-                    <li
-                      className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}
-                    >
-                      <button
-                        className="page-link"
-                        onClick={() =>
-                          setCurrentPage((prev) =>
-                            Math.min(prev + 1, totalPages),
-                          )
-                        }
-                      >
-                        Next
-                      </button>
-                    </li>
-                  </ul>
-                </nav>
-              </div>
-            )}
+                  ),
+                )}
+                <li
+                  className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                    }
+                  >
+                    Next
+                  </button>
+                </li>
+              </ul>
+            </nav>
           </div>
-        </div>
+        )}
       </div>
 
       <ConfirmModal

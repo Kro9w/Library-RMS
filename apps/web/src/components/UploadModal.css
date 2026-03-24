@@ -109,15 +109,14 @@
   overflow: hidden;
 }
 
-.upload-dropzone:hover,
+.upload-dropzone:not(.has-file):hover,
 .upload-dropzone.active {
   border-color: var(--brand-muted);
   background-color: var(--brand-subtle);
 }
 
 .upload-dropzone.has-file {
-  border-style: solid;
-  border-color: var(--border);
+  border: 1.5px solid var(--border);
   background-color: var(--bg-surface);
 }
 
@@ -136,7 +135,7 @@
   color: var(--text-muted);
 }
 
-.upload-dropzone:hover .upload-dropzone-icon i,
+.upload-dropzone:not(.has-file):hover .upload-dropzone-icon i,
 .upload-dropzone.active .upload-dropzone-icon i {
   color: var(--brand);
 }

@@ -963,7 +963,7 @@ hr {
 
 /* ── Tooltip-ish ── */
 [title] {
-  cursor: help;
+  /* Removed cursor: help to prevent overriding native cursors on buttons/links */
 }
 
 /* ── Utility classes ── */
