@@ -8,7 +8,6 @@ import { SupabaseModule } from '../supabase/supabase.module'; // 2. Add this imp
 import { RolesModule } from '../roles/roles.module';
 import { DocumentTypesModule } from '../document-types/document-types.module';
 import { LogModule } from '../log/log.module';
-import { WordDocumentModule } from '../word-document/word-document.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
@@ -21,7 +20,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
     RolesModule,
     DocumentTypesModule,
     LogModule,
-    WordDocumentModule,
     NotificationsModule,
   ],
   providers: [TrpcRouter, TrpcContextFactory],

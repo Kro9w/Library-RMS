@@ -17,7 +17,6 @@ import { UserRouter } from '../user/user.router';
 import { RolesRouter } from '../roles/roles.router';
 import { DocumentTypesRouter } from '../document-types/document-types.router';
 import { LogRouter } from '../log/log.router';
-import { WordDocumentRouter } from '../word-document/word-document.router';
 import { NotificationsRouter } from '../notifications/notifications.router';
 
 describe('TrpcRouter', () => {
@@ -36,7 +35,6 @@ describe('TrpcRouter', () => {
         { provide: RolesRouter, useValue: mockRouter },
         { provide: DocumentTypesRouter, useValue: mockRouter },
         { provide: LogRouter, useValue: mockRouter },
-        { provide: WordDocumentRouter, useValue: mockRouter },
         { provide: NotificationsRouter, useValue: mockRouter },
       ],
     }).compile();

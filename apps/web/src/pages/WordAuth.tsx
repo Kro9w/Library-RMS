@@ -17,7 +17,7 @@ const WordAuth: React.FC = () => {
   const queryParams = new URLSearchParams(location.search);
   const [fileName, setFileName] = useState(queryParams.get("fileName") || "");
   const [controlNumber, setControlNumber] = useState(
-    queryParams.get("controlNumber") || ""
+    queryParams.get("controlNumber") || "",
   );
 
   useEffect(() => {

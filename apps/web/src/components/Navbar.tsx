@@ -11,7 +11,7 @@ import { useUser } from "../contexts/SessionContext";
 import { supabase } from "../supabase";
 import { trpc } from "../trpc";
 import { useOutsideClick } from "../hooks/useOutsideClick";
-import { useIsAdmin } from "../hooks/useIsAdmin";
+import { usePermissions } from "../hooks/usePermissions";
 import { useQueryClient } from "@tanstack/react-query";
 import "./Navbar.css";
 import { formatUserName } from "../utils/user";
@@ -94,7 +94,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
     navigate("/login");
   };
 
-  const { isAdmin } = useIsAdmin();
+  const { canManageUsers } = usePermissions();
 
   const { data: unreadCount } = trpc.notifications.getUnreadCount.useQuery(
     undefined,
@@ -256,7 +256,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
                 <i className="bi bi-share-fill"></i>
                 <span className="link-text">Graph</span>
               </NavLink>
-              {isAdmin && (
+              {canManageUsers && (
                 <NavLink
                   to="/users"
                   className="nav-link"
@@ -266,7 +266,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
                   <span className="link-text">Users</span>
                 </NavLink>
               )}
-              {isAdmin && (
+              {canManageUsers && (
                 <NavLink
                   to="/logs"
                   className="nav-link"

@@ -17,7 +17,7 @@ import {
 import { Navbar } from "./components/Navbar";
 import { trpc } from "./trpc";
 import { TRPCClientError } from "@trpc/client";
-import { useIsAdmin } from "./hooks/useIsAdmin";
+import { usePermissions } from "./hooks/usePermissions";
 import { LoadingAnimation } from "./components/ui/LoadingAnimation";
 
 // Lazy-loaded components
@@ -65,13 +65,14 @@ const AdminSystemUsers = React.lazy(
 const AdminRoute: React.FC<{ children: React.ReactElement }> = ({
   children,
 }) => {
-  const { isAdmin, isLoading } = useIsAdmin();
+  const { canManageUsers, isLoading } = usePermissions();
 
   if (isLoading) {
     return <LoadingAnimation />;
   }
 
-  if (!isAdmin) {
+  // Use granular permission rather than legacy isAdmin
+  if (!canManageUsers) {
     return <Navigate to="/" replace />;
   }
 

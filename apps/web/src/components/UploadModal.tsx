@@ -1,7 +1,7 @@
 // apps/web/src/components/UploadModal.tsx
 import React, { useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { supabase } from "../supabase";
+import { supabase } from "../supabase.ts";
 import { useUser } from "../contexts/SessionContext.tsx";
 import { trpc } from "../trpc";
 import { v4 as uuidv4 } from "uuid";

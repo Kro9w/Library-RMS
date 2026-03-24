@@ -3,7 +3,10 @@ import { trpc } from "../trpc";
 export const usePermissions = () => {
   const { data: user, isLoading } = trpc.user.getMe.useQuery();
 
-  const canManageDocuments = user?.roles.some((r) => r.canManageDocuments) ?? false;
+  const isSuperAdmin = user?.isSuperAdmin ?? false;
+  const canManageDocuments = isSuperAdmin || (user?.roles.some((r) => r.canManageDocuments) ?? false);
+  const canManageUsers = isSuperAdmin || (user?.roles.some((r) => r.canManageUsers) ?? false);
+  const canManageRoles = isSuperAdmin || (user?.roles.some((r) => r.canManageRoles) ?? false);
 
   const isUploader = (uploaderId: string | null | undefined): boolean => {
     if (!user || !uploaderId) return false;
@@ -11,7 +14,10 @@ export const usePermissions = () => {
   };
 
   return {
+    isSuperAdmin,
     canManageDocuments,
+    canManageUsers,
+    canManageRoles,
     isUploader,
     user,
     isLoading,

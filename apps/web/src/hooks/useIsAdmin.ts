@@ -1,15 +1,15 @@
 // apps/web/src/hooks/useIsAdmin.ts
-import { trpc } from "../trpc";
+import { usePermissions } from "./usePermissions";
 
+/**
+ * @deprecated Use usePermissions() instead for granular access control.
+ * This hook is maintained for backward compatibility.
+ */
 export function useIsAdmin() {
-  const { data: user, isLoading } = trpc.user.getMe.useQuery();
+  const { canManageRoles, isSuperAdmin, isLoading } = usePermissions();
 
-  const isAdmin =
-    user?.isSuperAdmin ||
-    user?.roles.some(
-      (role) =>
-        role.canManageRoles
-    ) || false;
+  // Previously, isAdmin arbitrarily meant "canManageRoles" or "isSuperAdmin"
+  const isAdmin = isSuperAdmin || canManageRoles;
 
   return { isAdmin, isLoading };
 }

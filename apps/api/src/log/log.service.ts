@@ -14,18 +14,14 @@ export class LogService {
   ) {
     const actionString = targetName ? `${action}: '${targetName}'` : action;
 
-    this.prisma.log
-      .create({
-        data: {
-          action: actionString,
-          userId,
-          institutionId,
-          userRole: roles.join(', '),
-        },
-      })
-      .catch((e) => {
-        console.error('Failed to create log entry', e);
-      });
+    await this.prisma.log.create({
+      data: {
+        action: actionString,
+        userId,
+        institutionId,
+        userRole: roles.join(', '),
+      },
+    });
   }
 
   async logActions(
@@ -46,12 +42,8 @@ export class LogService {
       userRole: log.roles.join(', '),
     }));
 
-    this.prisma.log
-      .createMany({
-        data,
-      })
-      .catch((e) => {
-        console.error('Failed to create multiple log entries', e);
-      });
+    await this.prisma.log.createMany({
+      data,
+    });
   }
 }

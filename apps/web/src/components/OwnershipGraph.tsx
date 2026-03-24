@@ -4,11 +4,9 @@ import { useSearchParams } from "react-router-dom";
 import * as d3 from "d3";
 import { trpc } from "../trpc";
 import "./OwnershipGraph.css";
-import { SendDocumentModal } from "./SendDocumentModal";
-import { SendMultipleDocumentsModal } from "./SendMultipleDocumentsModal";
 import { LoadingAnimation } from "./ui/LoadingAnimation";
 import { FileIcon } from "./FileIcon";
-import type { Node, LinkData, NodeType, WorkerResponse } from "../types/graph";
+import type { Node, LinkData, NodeType } from "../types/graph";
 
 const truncateText = (name: string, type: NodeType, maxLength = 15) => {
   if (type !== "document" && name.length > maxLength) {
@@ -29,38 +27,20 @@ export function OwnershipGraph() {
     undefined
   > | null>(null);
 
-  const dropTargetNodeRef = useRef<Node | null>(null);
-  const workerRef = useRef<Worker | null>(null);
-
   // --- State ---
   const [graphData, setGraphData] = useState<{
     nodes: Node[];
     links: LinkData[];
   }>({ nodes: [], links: [] });
   const [viewStack, setViewStack] = useState<Node[]>([]);
-  const [_expandedUserId, _setExpandedUserId] = useState<string | null>(null);
   const [selectedUserNode, setSelectedUserNode] = useState<Node | null>(null);
   const [userDocuments, setUserDocuments] = useState<any[]>([]);
-  const [_dropTargetNode, setDropTargetNode] = useState<Node | null>(null);
-  const [isSendModalOpen, setIsSendModalOpen] = useState(false);
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
-  const [targetUserId, setTargetUserId] = useState<string | null>(null);
-  const [targetUser, setTargetUser] = useState<any | null>(null);
 
-  // Bubble State
-  const [bubbleNode, setBubbleNode] = useState<Node | null>(null);
-  const [bubbleDocuments, setBubbleDocuments] = useState<Node[]>([]);
-  const [isMultiSendModalOpen, setIsMultiSendModalOpen] = useState(false);
-  const [multiSendTargetId, setMultiSendTargetId] = useState<string | null>(
-    null,
-  );
-
-  // New State for Binder
-  const [activeTab, setActiveTab] = useState<"directory" | "details" | "tools">(
+  // Binder State
+  const [activeTab, setActiveTab] = useState<"directory" | "details">(
     "directory",
   );
   const [isBinderOpen, setIsBinderOpen] = useState(true);
-  const [tempNodes, setTempNodes] = useState<Node[]>([]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const { data: currentUserData, isLoading: isLoadingCurrentUser } =
@@ -74,12 +54,8 @@ export function OwnershipGraph() {
     staleTime: 60000,
   });
 
-  // Prefetch tags
-  const { data: tags } = trpc.documents.getTags.useQuery();
-  const { data: globalTags } = trpc.documents.getGlobalTags.useQuery();
-
   // O(1) Lookup Maps
-  const { userMap, allUsers } = useMemo(() => {
+  const { userMap } = useMemo(() => {
     const uMap = new Map<string, any>();
     const dMap = new Map<string, any>();
     const users: any[] = [];
@@ -90,7 +66,7 @@ export function OwnershipGraph() {
           dMap.set(d.id, d);
           for (const u of d.users) {
             uMap.set(u.id, u);
-            users.push({ ...u, institutionId: institutionHierarchy.id }); // Ensure institutionId is present
+            users.push({ ...u, institutionId: institutionHierarchy.id });
           }
         }
       }
@@ -98,30 +74,22 @@ export function OwnershipGraph() {
     return { userMap: uMap, deptMap: dMap, allUsers: users };
   }, [institutionHierarchy]);
 
-  const allCampuses = useMemo(() => {
-    return institutionHierarchy?.campuses || [];
-  }, [institutionHierarchy]);
-
-  // Check if we are in "Document View" (User is root)
   const isDocumentView =
     viewStack.length > 0 && viewStack[viewStack.length - 1].type === "user";
 
-  // --- 1. INITIAL STATE: Start at User's Campus or Target User ---
+  // --- 1. INITIAL STATE ---
   useEffect(() => {
     if (institutionHierarchy && currentUserData && viewStack.length === 0) {
-      // Construct Org Node
       const orgNode: Node = {
         id: institutionHierarchy.id,
         name: institutionHierarchy.acronym,
         type: "institution",
-        // Do NOT set fx/fy here, or it will be pinned to 0,0
       };
 
       const initialStack: Node[] = [orgNode];
       const initialExpanded = new Set<string>();
       let targetFound = false;
 
-      // Priority: Check Target User Param first
       if (targetUserIdParam) {
         for (const campus of institutionHierarchy.campuses) {
           for (const dept of campus.departments) {
@@ -130,7 +98,6 @@ export function OwnershipGraph() {
             );
             if (user) {
               targetFound = true;
-
               initialExpanded.add(campus.id);
               initialExpanded.add(dept.id);
 
@@ -174,7 +141,6 @@ export function OwnershipGraph() {
         }
       }
 
-      // Find User's Campus (Fallback if no target or target not found)
       if (!targetFound && currentUserData.campusId) {
         initialExpanded.add(currentUserData.campusId);
 
@@ -191,7 +157,6 @@ export function OwnershipGraph() {
           };
           initialStack.push(campusNode);
 
-          // Find User's Department
           if (currentUserData.departmentId) {
             initialExpanded.add(currentUserData.departmentId);
 
@@ -209,7 +174,6 @@ export function OwnershipGraph() {
               };
               initialStack.push(deptNode);
 
-              // Find User Node
               const user = dept.users.find(
                 (u: any) => u.id === currentUserData.id,
               );
@@ -241,66 +205,117 @@ export function OwnershipGraph() {
     }
   }, [institutionHierarchy, currentUserData, targetUserIdParam]);
 
-  // --- Reset Temp Nodes on View Change ---
+  // --- Compute Graph Data Synchronously ---
   useEffect(() => {
-    // Whenever the view stack changes (navigation), clear any dragged-in temp nodes
-    setTempNodes([]);
-  }, [viewStack]);
-
-  // --- Derived Graph Data via Web Worker ---
-  useEffect(() => {
-    workerRef.current = new Worker(
-      new URL("../workers/graph.worker.ts", import.meta.url),
-      { type: "module" },
-    );
-
-    workerRef.current.onmessage = (e: MessageEvent<WorkerResponse>) => {
-      const { type, payload } = e.data;
-      if (type === "GRAPH_DATA") {
-        setGraphData(payload);
-      } else if (type === "ERROR") {
-        console.error("Worker Error:", payload);
-      }
-    };
-
-    return () => {
-      workerRef.current?.terminate();
-    };
-  }, []);
-
-  // Sync Hierarchy to Worker
-  useEffect(() => {
-    if (institutionHierarchy && workerRef.current) {
-      workerRef.current.postMessage({
-        type: "INIT_DATA",
-        payload: institutionHierarchy,
-      });
-    }
-  }, [institutionHierarchy]);
-
-  // Request Graph Calculation from Worker
-  useEffect(() => {
-    if (institutionHierarchy && viewStack.length > 0 && workerRef.current) {
-      workerRef.current.postMessage({
-        type: "CALCULATE_GRAPH",
-        payload: {
-          viewStack,
-          tempNodes,
-          bubbleNode,
-          bubbleDocuments,
-        },
-      });
-    } else {
+    if (!institutionHierarchy || viewStack.length === 0) {
       setGraphData({ nodes: [], links: [] });
+      return;
     }
-  }, [institutionHierarchy, viewStack, tempNodes, bubbleNode, bubbleDocuments]);
+
+    const currentRoot = viewStack[viewStack.length - 1];
+    const nodes: Node[] = [];
+    const links: LinkData[] = [];
+
+    const rootNodeForGraph: Node = {
+      ...currentRoot,
+      vx: 0,
+      vy: 0,
+      fx: undefined,
+      fy: undefined,
+    };
+    nodes.push(rootNodeForGraph);
+
+    const addNode = (n: Node) => {
+      const angle = Math.random() * 2 * Math.PI;
+      const radius = 50 + Math.random() * 100;
+      n.x = Math.cos(angle) * radius;
+      n.y = Math.sin(angle) * radius;
+      nodes.push(n);
+    };
+
+    if (currentRoot.type === "institution") {
+      institutionHierarchy.campuses.forEach((c: any) => {
+        addNode({
+          id: c.id,
+          name: c.name,
+          type: "campus",
+          parentId: currentRoot.id,
+          color: "var(--primary)",
+        });
+      });
+    } else if (currentRoot.type === "campus") {
+      const campus = institutionHierarchy.campuses.find(
+        (c: any) => c.id === currentRoot.id,
+      );
+      if (campus) {
+        campus.departments.forEach((d: any) => {
+          addNode({
+            id: d.id,
+            name: d.name,
+            type: "department",
+            parentId: currentRoot.id,
+            color: "var(--primary)",
+          });
+        });
+      }
+    } else if (currentRoot.type === "department") {
+      const campus = institutionHierarchy.campuses.find(
+        (c: any) => c.id === viewStack[viewStack.length - 2]?.id,
+      );
+      if (campus) {
+        const dept = campus.departments.find(
+          (d: any) => d.id === currentRoot.id,
+        );
+        if (dept) {
+          dept.users.forEach((u: any) => {
+            const first = u.firstName;
+            const last = u.lastName;
+            const name = !first
+              ? u.email || "User"
+              : `${first}, ${last ? last.charAt(0) : ""}.`;
+            addNode({
+              id: u.id,
+              name: name,
+              type: "user",
+              parentId: currentRoot.id,
+              email: u.email,
+            });
+          });
+        }
+      }
+    } else if (currentRoot.type === "user") {
+      const user = userMap.get(currentRoot.id);
+      if (user) {
+        user.documents.forEach((doc: any) => {
+          addNode({
+            id: doc.id,
+            name: doc.title,
+            type: "document",
+            parentId: user.id,
+            uploadedById: user.id,
+            color: doc.documentType?.color,
+          });
+        });
+      }
+    }
+
+    nodes.forEach((n) => {
+      if (n.id !== currentRoot.id) {
+        links.push({
+          source: rootNodeForGraph.id,
+          target: n.id,
+        });
+      }
+    });
+
+    setGraphData({ nodes, links });
+  }, [institutionHierarchy, viewStack, userMap]);
 
   // --- Event Handlers ---
   const handleNodeClick = (event: MouseEvent, d: Node) => {
     if (event.defaultPrevented) return;
     event.stopPropagation();
 
-    // If in Document View (Root is User), ignore clicks on other User nodes (Temp Users)
     const isRootUser = viewStack[viewStack.length - 1]?.type === "user";
     if (
       isRootUser &&
@@ -310,7 +325,6 @@ export function OwnershipGraph() {
       return;
     }
 
-    // Check if clicked node is already in the stack
     const stackIndex = viewStack.findIndex((n) => n.id === d.id);
     if (stackIndex !== -1) {
       if (stackIndex === viewStack.length - 1) return;
@@ -328,8 +342,8 @@ export function OwnershipGraph() {
 
       if (d.type === "user") {
         setSelectedUserNode(d);
-        setActiveTab("details"); // Switch to Details tab
-        setIsBinderOpen(true); // Open panel on drill down to user
+        setActiveTab("details");
+        setIsBinderOpen(true);
       } else {
         setSelectedUserNode(null);
       }
@@ -366,7 +380,7 @@ export function OwnershipGraph() {
     });
   };
 
-  const handleTabClick = (tab: "directory" | "details" | "tools") => {
+  const handleTabClick = (tab: "directory" | "details") => {
     if (activeTab === tab) {
       setIsBinderOpen(!isBinderOpen);
     } else {
@@ -375,25 +389,6 @@ export function OwnershipGraph() {
     }
   };
 
-  const spawnBubble = () => {
-    if (bubbleNode) return; // Only one bubble for now
-
-    const svgElement = svgRef.current;
-    if (!svgElement) return;
-    const width = svgElement.parentElement?.clientWidth || 500;
-    const height = svgElement.parentElement?.clientHeight || 500;
-
-    const newBubble: Node = {
-      id: "bubble-tool",
-      name: "", // Empty name to prevent text label rendering
-      type: "bubble",
-      x: width / 2,
-      y: height / 2,
-    };
-    setBubbleNode(newBubble);
-  };
-
-  // --- Document Details Panel Data ---
   useEffect(() => {
     if (selectedUserNode && userMap.size > 0) {
       const u = userMap.get(selectedUserNode.id);
@@ -403,7 +398,7 @@ export function OwnershipGraph() {
     }
   }, [selectedUserNode, userMap]);
 
-  // --- D3 Simulation ---
+  // --- D3 Simulation (Simplified Read-Only Graph) ---
   useEffect(() => {
     const svgElement = svgRef.current;
     if (graphData.nodes.length === 0 || !svgElement?.parentElement) {
@@ -419,30 +414,11 @@ export function OwnershipGraph() {
     const svg = d3.select(svgElement);
 
     if (!gRef.current) {
-      // ... (SVG Initialization same as before) ...
       svg.attr("width", width).attr("height", height);
-      const defs = svg.append("defs");
-      const filter = defs.append("filter").attr("id", "gooey");
-      filter
-        .append("feGaussianBlur")
-        .attr("in", "SourceGraphic")
-        .attr("stdDeviation", "8")
-        .attr("result", "blur");
-      filter
-        .append("feColorMatrix")
-        .attr("in", "blur")
-        .attr("mode", "matrix")
-        .attr("values", "1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -9")
-        .attr("result", "goo");
-      filter.append("feBlend").attr("in", "SourceGraphic").attr("in2", "goo");
-
       const g = svg.append("g");
       gRef.current = g;
       g.append("g").attr("class", "links");
       g.append("g").attr("class", "nodes");
-      g.append("g")
-        .attr("class", "gooey-container")
-        .style("filter", "url(#gooey)");
 
       const zoomBehavior = d3
         .zoom<SVGSVGElement, unknown>()
@@ -473,110 +449,18 @@ export function OwnershipGraph() {
           .attr("x2", (d: any) => d.target.x)
           .attr("y2", (d: any) => d.target.y);
 
-        // --- Custom Bubble Physics ---
-        // Access nodes directly from simulation to avoid stale closures
-        const currentNodes = simulationRef.current?.nodes() || [];
-        const bubble = currentNodes.find((n) => n.type === "bubble");
-
-        if (bubble) {
-          const bubbleRadius = 30 + bubbleDocuments.length * 3;
-
-          // Find nodes that are marked as contained in bubble
-          const containedNodes = currentNodes.filter(
-            (n) => n.isContainedInBubble && !(n as any)._isDragging,
-          );
-
-          // Custom internal collision to prevent stacking
-          for (let i = 0; i < containedNodes.length; i++) {
-            for (let j = i + 1; j < containedNodes.length; j++) {
-              const nodeA = containedNodes[i];
-              const nodeB = containedNodes[j];
-              const dx = (nodeA.x || 0) - (nodeB.x || 0);
-              const dy = (nodeA.y || 0) - (nodeB.y || 0);
-              const dist = Math.sqrt(dx * dx + dy * dy);
-              const minDistance = 18; // Document radius + padding
-
-              if (dist < minDistance && dist > 0) {
-                // Apply repulsive force
-                const force = ((minDistance - dist) / dist) * 0.5; // Tuning factor
-                const fX = dx * force;
-                const fY = dy * force;
-
-                if (nodeA.vx !== undefined && nodeA.vy !== undefined) {
-                  nodeA.vx += fX;
-                  nodeA.vy += fY;
-                }
-                if (nodeB.vx !== undefined && nodeB.vy !== undefined) {
-                  nodeB.vx -= fX;
-                  nodeB.vy -= fY;
-                }
-              }
-            }
-          }
-
-          containedNodes.forEach((doc) => {
-            const dx = (bubble.x || 0) - (doc.x || 0);
-            const dy = (bubble.y || 0) - (doc.y || 0);
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            // INTERMEDIARY STATE LOGIC: Strong Containment
-            // Treat the bubble interior like a viscous fluid with a hard boundary.
-
-            if (doc.vx !== undefined && doc.vy !== undefined) {
-              // 1. Friction / Viscosity: Continuously dampen velocity inside bubble
-              // This prevents documents from "bouncing" around violently
-              doc.vx *= 0.6;
-              doc.vy *= 0.6;
-
-              // 2. Centering Force: Gentle pull towards center to keep them clustered
-              const pullStrength = 0.05;
-              doc.vx += dx * pullStrength;
-              doc.vy += dy * pullStrength;
-            }
-
-            // 3. Hard Boundary Constraint
-            // If a node tries to escape the bubble radius, clamp it back inside.
-            const boundaryRadius = bubbleRadius - 12; // Keep them strictly inside visual boundary
-            if (dist > boundaryRadius) {
-              // Calculate the angle towards the node from center
-              // Note: dx/dy are (bubble - doc), so vector points TO bubble center.
-              // We want vector FROM bubble center TO doc to clamp it.
-              const angle = Math.atan2(-dy, -dx);
-
-              // Teleport node to the boundary edge
-              doc.x = (bubble.x || 0) + Math.cos(angle) * boundaryRadius;
-              doc.y = (bubble.y || 0) + Math.sin(angle) * boundaryRadius;
-
-              // Kill velocity to stop it from "pushing" against the wall
-              doc.vx = 0;
-              doc.vy = 0;
-            }
-          });
-        }
-
         g.selectAll<SVGGElement, Node>(".node").attr(
           "transform",
           (d: any) => `translate(${d.x},${d.y})`,
         );
-
-        // Update Tether Line if exists
-        const tether = g.select(".tether");
-        if (!tether.empty()) {
-          // Tether update logic is handled in dragged()
-        }
-
-        // Update Bubble Close Button Position
-        // Handled in animation timer now
       });
     }
 
     const simulation = simulationRef.current;
 
-    // --- 2. FORCE TUNING & INITIALIZATION ---
     const centerX = width / 2;
     const centerY = height / 2;
 
-    // PRESERVE POSITIONS: Capture old positions to enable smooth transitions
     const oldNodes = new Map<string, Node>();
     if (simulationRef.current) {
       simulationRef.current.nodes().forEach((n) => {
@@ -593,25 +477,12 @@ export function OwnershipGraph() {
         n.vy = old.vy;
       }
 
-      // Temp nodes don't need forcing to center if they have x/y already from drag
       if (n.id === graphData.nodes[0]?.id) {
         n.x = centerX;
         n.y = centerY;
       } else if (typeof n.x === "undefined" || typeof n.y === "undefined") {
-        // Initialize unknown positions
         n.x = centerX + (Math.random() - 0.5) * 50;
         n.y = centerY + (Math.random() - 0.5) * 50;
-      }
-      // If document is inside bubble, ensure it starts near bubble
-      if (
-        n.type === "document" &&
-        bubbleDocuments.some((bd) => bd.id === n.id) &&
-        bubbleNode
-      ) {
-        if (!n.x && !n.y) {
-          n.x = bubbleNode.x;
-          n.y = bubbleNode.y;
-        }
       }
     });
 
@@ -620,66 +491,34 @@ export function OwnershipGraph() {
       ?.distance(150)
       .strength(0.5);
 
-    // TUNED CHARGE FORCE FOR DOCUMENT DRAGGING
     simulation.force<d3.ForceManyBody<Node>>("charge")?.strength((d) => {
-      if ((d as any)._isDragging) return 0;
-
-      // If document is inside bubble, remove all repulsion/charge so they can clump naturally via custom physics
-      if (d.isContainedInBubble) {
-        return 0;
-      }
-
-      if (d.type === "document") return 0; // Reduce document repulsion
-      if (d.type === "user") return -30; // Further reduce user repulsion (was -50, originally -300)
-      return -50; // Moderate for others
+      if (d.type === "document") return 0;
+      if (d.type === "user") return -30;
+      return -50;
     });
 
-    // CUSTOM COLLISION FORCE: Exclude contained documents entirely
-    // This prevents the bubble from being pushed by the documents inside it (drifting)
-    const collideForce = d3.forceCollide<Node>().radius((d) => {
-      if (d.type === "institution") return 50;
-      if (d.type === "campus") return 45;
-      if (d.type === "department") return 40;
-      if (d.type === "user") return 35;
-      if (d.type === "bubble")
-        return 30 + (bubbleDocuments ? bubbleDocuments.length * 3 : 0);
-      // Fallback (though contained docs are filtered out below)
-      return 25;
-    });
-
-    // Monkey-patch initialize to filter out contained documents AND dragging nodes from collision force
-    const originalCollideInit = collideForce.initialize;
-    collideForce.initialize = function (nodes, random) {
-      originalCollideInit.call(
-        this,
-        nodes.filter((n) => !n.isContainedInBubble && !(n as any)._isDragging),
-        random,
-      );
-    };
-
-    // Since we monkey-patched initialize, we need to re-initialize on drag start/end so the array updates
-    // We can handle this by re-applying the nodes array to the collision force inside dragstarted/dragended,
-    // or by just ensuring the monkey patch handles dynamic checks. Wait, initialize is only called when nodes change.
-    // Instead of filtering at initialize, we can override the radius to 0 if dragging, but that won't stop
-    // it from affecting others if they aren't 0. Filtering the array is better. We'll update the simulation
-    // nodes in dragstarted/dragended to trigger re-initialization.
-
-    simulation.force("collide", collideForce);
+    simulation.force(
+      "collide",
+      d3.forceCollide<Node>().radius((d) => {
+        if (d.type === "institution") return 50;
+        if (d.type === "campus") return 45;
+        if (d.type === "department") return 40;
+        if (d.type === "user") return 35;
+        return 25;
+      }),
+    );
 
     simulation.force("center", d3.forceCenter(width / 2, height / 2));
-
     simulation.alphaDecay(0.0228);
 
-    // Render Links
     const link = gRef
       .current!.select(".links")
       .selectAll<SVGLineElement, LinkData>("line.link")
       .data(links, (d: any) => `${d.source.id}-${d.target.id}`);
     link.exit().remove();
     const linkEnter = link.enter().append("line").attr("class", "link");
-    link.merge(linkEnter).classed("link-detached", (d) => !!d.isDetached);
+    link.merge(linkEnter);
 
-    // Render Nodes
     const node = gRef
       .current!.select(".nodes")
       .selectAll<SVGGElement, Node>("g.node")
@@ -696,43 +535,16 @@ export function OwnershipGraph() {
       .attr("opacity", 0);
 
     nodeEnter.transition().duration(200).attr("opacity", 1);
+    nodeEnter.append("circle");
 
-    // Standard nodes get circles
-    nodeEnter.filter((d) => d.type !== "bubble").append("circle");
-
-    // Bubble gets path for amoeba shape
     nodeEnter
-      .filter((d) => d.type === "bubble")
-      .append("path")
-      .attr("class", "node-circle bubble-blob");
-
-    // Close Button for Bubble (Top Right Edge)
-    nodeEnter
-      .filter((d) => d.type === "bubble")
-      .append("text")
-      .attr("class", "close-btn")
-      .text("✕")
-      .attr("text-anchor", "middle")
-      // Initial Position (will be updated by animation loop)
-      .attr("dx", 0)
-      .attr("dy", 0)
-      .on("click", (e, _d) => {
-        e.stopPropagation();
-        handlePopBubble();
-      });
-
-    // Node Label (Text) - Exclude for Bubble entirely
-    nodeEnter
-      .filter((d) => d.type !== "bubble")
       .append("text")
       .attr("class", "node-label")
       .attr("dy", 5)
       .attr("dx", 35);
 
-    // Tooltip
     nodeEnter
       .on("mouseover", function (_e, d) {
-        // Target only the label text to avoid overwriting the "X" close button
         d3.select(this).raise().select(".node-label").text(d.name);
       })
       .on("mouseout", function (_e, d) {
@@ -743,17 +555,8 @@ export function OwnershipGraph() {
 
     const nodeMerge = node.merge(nodeEnter);
 
-    nodeMerge
-      .call(
-        d3
-          .drag<SVGGElement, Node>()
-          .on("start", dragstarted)
-          .on("drag", dragged)
-          .on("end", dragended),
-      )
-      .on("click", (e, d) => handleNodeClick(e, d));
+    nodeMerge.on("click", (e, d) => handleNodeClick(e, d));
 
-    // Update Circles
     nodeMerge
       .select("circle")
       .attr("class", (d) => `node-circle ${d.type}`)
@@ -762,10 +565,7 @@ export function OwnershipGraph() {
         if (d.type === "campus") return 35;
         if (d.type === "department") return 30;
         if (d.type === "user") return 25;
-        if (d.type === "document") {
-          return d.isContainedInBubble ? 8 : 12;
-        }
-        return 12; // Fallback
+        return 12;
       })
       .style("fill", (d) => {
         if (d.type === "document" && d.color) return `#${d.color}`;
@@ -780,507 +580,12 @@ export function OwnershipGraph() {
         (d) => d.id === viewStack[viewStack.length - 1]?.id,
       );
 
-    // Update Bubble Path (Initial fill only, shape handled by timer)
-    nodeMerge
-      .select("path.bubble-blob")
-      .style("fill", "var(--primary)") // Or specific bubble color
-      .attr("opacity", 0.3);
-
     nodeMerge.select(".node-label").text((d) => truncateText(d.name, d.type));
 
     simulation.nodes(nodes);
     simulation.force<d3.ForceLink<Node, LinkData>>("link")?.links(links);
     simulation.alpha(1).restart();
-
-    // --- Bubble Animation Loop ---
-    const timer = d3.timer((elapsed) => {
-      const bubble = nodes.find((n) => n.type === "bubble");
-      if (bubble) {
-        const radius = 30 + bubbleDocuments.length * 3;
-        const points: [number, number][] = [];
-        const numPoints = 12;
-
-        // Generate Amoeba Points
-        for (let i = 0; i < numPoints; i++) {
-          const angle = (i / numPoints) * Math.PI * 2;
-          // Organic oscillation
-          const offset =
-            Math.sin(angle * 3 + elapsed * 0.002) * 4 +
-            Math.cos(angle * 5 - elapsed * 0.003) * 3;
-          const r = radius + offset;
-          points.push([Math.cos(angle) * r, Math.sin(angle) * r]);
-        }
-
-        // Update Path
-        const pathData = d3.line().curve(d3.curveBasisClosed)(points);
-        const bubbleNode = gRef.current?.select(".node.bubble path");
-        if (bubbleNode && pathData) {
-          bubbleNode.attr("d", pathData);
-        }
-
-        // Update Close Button Position
-        // Find point at roughly -45 degrees (top-right)
-        // We can just calculate it using the same formula
-        const angle = -Math.PI / 4; // -45 deg
-        const offset =
-          Math.sin(angle * 3 + elapsed * 0.002) * 4 +
-          Math.cos(angle * 5 - elapsed * 0.003) * 3;
-        const r = radius + offset;
-        const x = Math.cos(angle) * r;
-        const y = Math.sin(angle) * r;
-
-        gRef.current
-          ?.select(".node.bubble .close-btn")
-          .attr("dx", x)
-          .attr("dy", y);
-      }
-    });
-
-    return () => {
-      timer.stop();
-    };
-
-    // Drag Functions
-    function dragstarted(event: any, d: any) {
-      if (event.sourceEvent) event.sourceEvent.stopPropagation(); // Stop propagation to container
-      if (!event.active) simulation?.alphaTarget(0.3).restart();
-      d.fx = d.x;
-      d.fy = d.y;
-      (d as any)._isDragging = true;
-
-      // Re-initialize collision force so dragging node is removed
-      const currentNodes = simulation?.nodes() || [];
-      simulation
-        ?.force<d3.ForceCollide<Node>>("collide")
-        ?.initialize(currentNodes, Math.random);
-
-      // If dragging a bubble, we want to allow it to "connect" to users for dropping
-      if (d.type === "bubble") {
-        return;
-      }
-
-      // If dragging a document already in bubble, detach it (allow it to be pulled out)
-      if (d.isContainedInBubble) {
-        // Temporarily allow it to move freely (physics will try to pull it back unless we drop it elsewhere)
-        // No link to detach since it's floating
-        // We do NOT return here, we proceed so physics can update fx/fy
-      } else if (
-        // If dragging a document owned by current user, detach link visually AND physically
-        d.type === "document" &&
-        currentUserData &&
-        d.uploadedById === currentUserData.id &&
-        !bubbleDocuments.some((bd) => bd.id === d.id) // Don't detach if already in bubble
-      ) {
-        const l = links.find(
-          (lnk) =>
-            (lnk.source as Node).id === d.id ||
-            (lnk.target as Node).id === d.id,
-        );
-        if (l) {
-          // 1. Mark as detached
-          l.isDetached = true;
-          (d as any)._activeLink = l;
-
-          // 2. Update Simulation Physics: Remove this link temporarily
-          simulation
-            ?.force<d3.ForceLink<Node, LinkData>>("link")
-            ?.links(links.filter((lnk) => !lnk.isDetached));
-
-          // 3. Visual Update (CSS)
-          const sourceId = (l.source as Node).id;
-          const targetId = (l.target as Node).id;
-          d3.select(svgRef.current!)
-            .selectAll("line.link")
-            .filter(
-              (ld: any) =>
-                ld.source.id === sourceId && ld.target.id === targetId,
-            )
-            .classed("link-detached", true);
-
-          // Restart sim slightly to apply new forces
-          simulation?.alpha(0.1).restart();
-        }
-      }
-    }
-
-    function dragged(this: any, event: any, d: any) {
-      d.fx = event.x;
-      d.fy = event.y;
-
-      // Ensure that if we drag a document OUT of the bubble, the physics doesn't instantly snap it back while dragging
-      // The tick function handles this via 'vx/vy' but since d.fx/d.fy are set, D3 overrides physics position.
-      // So visual drag is fine.
-
-      const g = gRef.current;
-      if (!g) return;
-
-      // --- 1. Bubble Drag Logic (Dropping Bubble onto User) ---
-      if (d.type === "bubble" && bubbleDocuments.length > 0) {
-        let target: Node | null = null;
-        const threshold = 100;
-
-        for (const u of nodes) {
-          if (u.type !== "user") continue;
-          const dx = (u.x || 0) - d.fx!;
-          const dy = (u.y || 0) - d.fy!;
-          if (Math.sqrt(dx * dx + dy * dy) < threshold) {
-            target = u;
-            break;
-          }
-        }
-
-        handleGooeyEffect(d, target);
-        dropTargetNodeRef.current = target;
-        setDropTargetNode(target);
-        return;
-      }
-
-      // Find the LIVE bubble node from the simulation, as its coordinates change!
-      const currentNodes = simulation?.nodes() || [];
-      const liveBubbleNode = currentNodes.find((n) => n.type === "bubble");
-
-      // --- 2. Document Drag Logic (Dropping Document into Bubble) ---
-      // If we are dragging a document and a bubble exists
-      if (
-        d.type === "document" &&
-        liveBubbleNode &&
-        !bubbleDocuments.some((bd) => bd.id === d.id)
-      ) {
-        const threshold = (30 + bubbleDocuments.length * 3) * 1.5 + 20; // Bubble radius + larger padding
-        const dx = (liveBubbleNode.x || 0) - d.fx!;
-        const dy = (liveBubbleNode.y || 0) - d.fy!;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const bubblePath = gRef.current?.select(".node.bubble path");
-
-        if (dist < threshold) {
-          bubblePath?.classed("bubble-hover", true);
-        } else {
-          bubblePath?.classed("bubble-hover", false);
-        }
-      }
-
-      // --- 3. Standard Document Transfer Logic ---
-      const activeLink = (d as any)._activeLink;
-      if (activeLink) {
-        let target: Node | null = null;
-        const threshold = 80;
-        const originalOwnerId =
-          (activeLink.target as Node).id === d.id
-            ? (activeLink.source as Node).id
-            : (activeLink.target as Node).id;
-
-        // Check Bubble Intersection First
-        if (liveBubbleNode && !bubbleDocuments.some((bd) => bd.id === d.id)) {
-          const dx = (liveBubbleNode.x || 0) - d.fx!;
-          const dy = (liveBubbleNode.y || 0) - d.fy!;
-          // Use generous bubble threshold
-          const bubbleThreshold = (30 + bubbleDocuments.length * 3) * 1.5 + 20;
-          if (Math.sqrt(dx * dx + dy * dy) < bubbleThreshold) {
-            target = liveBubbleNode;
-          }
-        }
-
-        // If not bubble, check users
-        if (!target) {
-          for (const u of nodes) {
-            if (u.type !== "user" || u.id === originalOwnerId) continue;
-            // Calculate distance
-            const dx = (u.x || 0) - d.fx!;
-            const dy = (u.y || 0) - d.fy!;
-            if (Math.sqrt(dx * dx + dy * dy) < threshold) {
-              target = u;
-              break;
-            }
-          }
-        }
-
-        handleGooeyEffect(d, target);
-        dropTargetNodeRef.current = target;
-        setDropTargetNode(target);
-      }
-    }
-
-    // Helper for Gooey Visuals
-    function handleGooeyEffect(source: any, target: Node | null) {
-      const g = gRef.current;
-      if (!g) return;
-
-      const isNearTarget = target !== null;
-      const sourceElement = g.selectAll<SVGGElement, Node>(
-        `g.node[data-id='${source.id}']`,
-      );
-      const targetElement = target
-        ? g.selectAll<SVGGElement, Node>(`g.node[data-id='${target.id}']`)
-        : null;
-
-      if (
-        isNearTarget &&
-        !sourceElement.empty() &&
-        targetElement &&
-        !targetElement.empty()
-      ) {
-        const gooeyContainer = g.select(".gooey-container");
-
-        // Move elements to gooey container
-        if (g.select(".tether").empty()) {
-          gooeyContainer.append(() => sourceElement.node()!);
-          gooeyContainer.append(() => targetElement.node()!);
-
-          // Add tether
-          gooeyContainer
-            .append("line")
-            .attr("class", "tether")
-            .attr("data-source-id", source.id)
-            .attr("data-target-id", target!.id)
-            .attr("x1", source.fx!)
-            .attr("y1", source.fy!)
-            .attr("x2", target!.x!)
-            .attr("y2", target!.y!);
-        } else {
-          // Update tether
-          g.select(".tether")
-            .attr("x1", source.fx!)
-            .attr("y1", source.fy!)
-            .attr("x2", target!.x!)
-            .attr("y2", target!.y!);
-        }
-
-        // Add classes
-        sourceElement
-          .select(".node-circle")
-          .classed("armed-for-drop", true)
-          .classed("drop-magnet", true);
-        targetElement.select(".node-circle").classed("drop-magnet", true);
-
-        // Magnet Force
-        simulation!.force(
-          "magnet",
-          d3
-            .forceLink<Node, LinkData>([
-              { source: source, target: target! } as any,
-            ])
-            .strength(2.0)
-            .distance(0),
-        );
-        simulation?.alpha(0.3).restart();
-      } else {
-        // Cleanup
-        const gooeyContainer = g.select(".gooey-container");
-        gooeyContainer.selectAll("g.node").each(function () {
-          g.select(".nodes").append(() => this as Element);
-        });
-        g.select(".tether").remove();
-        d3.selectAll(".node-circle.drop-magnet").classed("drop-magnet", false);
-        d3.selectAll(".node-circle.armed-for-drop").classed(
-          "armed-for-drop",
-          false,
-        );
-        simulation!.force("magnet", null);
-      }
-    }
-
-    function dragended(event: any, d: any) {
-      if (!event.active) simulation?.alphaTarget(0);
-      d.fx = null;
-      d.fy = null;
-      (d as any)._isDragging = false;
-
-      // Re-initialize collision force so node is added back
-      const currentNodes = simulation?.nodes() || [];
-      simulation
-        ?.force<d3.ForceCollide<Node>>("collide")
-        ?.initialize(currentNodes, Math.random);
-
-      const target = dropTargetNodeRef.current;
-      const g = gRef.current;
-
-      // Case: Document Removed from Bubble (Dropped into Nothing)
-      if (d.isContainedInBubble && !target) {
-        // Find the LIVE bubble node from the simulation
-        const currentNodes = simulation?.nodes() || [];
-        const liveBubbleNode = currentNodes.find((n) => n.type === "bubble");
-
-        // If we dragged a document OUT of the bubble and dropped it into void,
-        // it should RETURN to its original owner (i.e. remove from bubble).
-        // Check if it's far enough from bubble to be considered "removed"
-        if (liveBubbleNode) {
-          const dx = (liveBubbleNode.x || 0) - d.fx!;
-          const dy = (liveBubbleNode.y || 0) - d.fy!;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const bubbleThreshold = (30 + bubbleDocuments.length * 3) * 1.5 + 20;
-
-          if (dist > bubbleThreshold + 30) {
-            // Remove from bubble (will re-appear at owner due to graphData logic)
-            setBubbleDocuments((prev) => prev.filter((doc) => doc.id !== d.id));
-            d.isContainedInBubble = false;
-            // Clear position so it can fly back to owner
-            d.fx = null;
-            d.fy = null;
-            // No need to set activeLink, graphData handles re-linking
-          } else {
-            // Snapped back into bubble (didn't drag far enough)
-            d.fx = null;
-            d.fy = null;
-            // Physics will pull it back to center
-          }
-        }
-        // Cleanup and return
-        g?.select(".node.bubble path").classed("bubble-hover", false);
-        return;
-      }
-
-      // Case A: Bubble Dropped onto User
-      if (d.type === "bubble" && target && target.type === "user") {
-        const fullUser = userMap.get(target.id);
-        setMultiSendTargetId(target.id);
-        setTargetUser(fullUser || null);
-        setIsMultiSendModalOpen(true);
-      }
-
-      // Case B: Document Dropped onto Bubble
-      else if (
-        d.type === "document" &&
-        target &&
-        target.type === "bubble" &&
-        (d as any)._activeLink
-      ) {
-        // Ensure the node is free to be controlled by simulation
-        d.fx = null;
-        d.fy = null;
-        d.isContainedInBubble = true;
-
-        // Capture current position so it doesn't jump
-        const nodeClone = { ...d, x: d.x, y: d.y, vx: 0, vy: 0 };
-
-        // Add to bubble state
-        setBubbleDocuments((prev) => [...prev, nodeClone]);
-      }
-
-      // Case C: Document Dropped onto User (Standard)
-      else if (
-        target &&
-        target.type === "user" &&
-        d.type === "document" &&
-        (d as any)._activeLink
-      ) {
-        const fullUser = userMap.get(target.id);
-        setSelectedDocId(d.id);
-        setTargetUserId(target.id);
-        setTargetUser(fullUser || null);
-        setIsSendModalOpen(true);
-      }
-
-      // Case D: Drop Cancelled (Re-attach)
-      else if ((d as any)._activeLink) {
-        (d as any)._activeLink.isDetached = false;
-
-        // 1. Update Simulation Physics: Restore link
-        simulation?.force<d3.ForceLink<Node, LinkData>>("link")?.links(links);
-
-        // 2. Visual Update (CSS)
-        const sourceId = ((d as any)._activeLink.source as Node).id;
-        const targetId = ((d as any)._activeLink.target as Node).id;
-        d3.select(svgRef.current!)
-          .selectAll("line.link")
-          .filter(
-            (ld: any) => ld.source.id === sourceId && ld.target.id === targetId,
-          )
-          .classed("link-detached", false);
-
-        simulation?.alpha(0.1).restart();
-      }
-
-      // Cleanup DOM (Always move nodes back to main group)
-      g?.selectAll(".gooey-container g.node").each(function () {
-        g.select(".nodes").append(() => this as Element);
-      });
-      g?.select(".tether").remove();
-      g?.select(".node.bubble path").classed("bubble-hover", false);
-      d3.selectAll(".node-circle.drop-magnet").classed("drop-magnet", false);
-      d3.selectAll(".node-circle.armed-for-drop").classed(
-        "armed-for-drop",
-        false,
-      );
-      simulation?.force("magnet", null);
-
-      (d as any)._activeLink = null;
-      dropTargetNodeRef.current = null;
-      setDropTargetNode(null);
-    }
-  }, [graphData]); // Re-bind when graphData changes (e.g. bubble docs added)
-
-  // Bubble Pop Handler
-  const handlePopBubble = () => {
-    // Just clear state; docs will disappear from graphData or re-appear at owner if we revert logic?
-    // Current logic: Docs in bubble are just nodes in bubbleDocuments state.
-    // If we clear state, they disappear. Wait, requirement: "re-attaches to original owner"
-    // Since graphData re-calculates from institutionHierarchy every render, clearing bubbleDocuments
-    // means they stop being suppressed/hijacked and the original logic will render them linked to owner!
-    // So simply clearing state is enough.
-    setBubbleDocuments([]);
-    setBubbleNode(null);
-  };
-
-  // Drag & Drop Handlers
-  const handleDragStart = (e: React.DragEvent, user: any) => {
-    e.dataTransfer.setData(
-      "application/folio-user-node",
-      JSON.stringify({
-        id: user.id,
-        name: `${user.firstName}, ${user.lastName ? user.lastName.charAt(0) : ""}.`,
-        type: "user",
-        email: user.email,
-      }),
-    );
-    e.dataTransfer.effectAllowed = "copy";
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "copy";
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const data = e.dataTransfer.getData("application/folio-user-node");
-    if (!data) return;
-
-    const userNode = JSON.parse(data);
-
-    // Check duplicate
-    const allNodes = graphData.nodes;
-    if (allNodes.some((n) => n.id === userNode.id)) {
-      const status = document.createElement("div");
-      status.className = "graph-status-message error";
-      status.innerText = "User is already in view";
-      status.style.top = "10%";
-      status.style.zIndex = "1000";
-      svgRef.current?.parentElement?.appendChild(status);
-      setTimeout(() => status.remove(), 2000);
-      return;
-    }
-
-    // Calculate Coords
-    const svg = svgRef.current;
-    if (!svg) return;
-    const rect = svg.getBoundingClientRect();
-    const zoomTransform = d3.zoomTransform(svg);
-
-    // Mouse client coords relative to SVG
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    // Invert zoom to get graph coords
-    const [x, y] = zoomTransform.invert([mouseX, mouseY]);
-
-    const newNode: Node = {
-      ...userNode,
-      x,
-      y,
-    };
-
-    setTempNodes((prev) => [...prev, newNode]);
-  };
+  }, [graphData]);
 
   if (isLoadingCurrentUser || isLoadingHierarchy) return <LoadingAnimation />;
   if (isError)
@@ -1288,14 +593,12 @@ export function OwnershipGraph() {
 
   return (
     <div className="graph-container">
-      {/* Binder Panel - Only visible in Document View (User node) */}
       {isDocumentView && (
         <div className={`binder-wrapper ${!isBinderOpen ? "collapsed" : ""}`}>
           <div className="binder-body">
             <div className="binder-content">
               {activeTab === "directory" && institutionHierarchy && (
                 <div className="directory-tree">
-                  {/* Campus Level */}
                   {institutionHierarchy.campuses.map((campus: any) => (
                     <div key={campus.id} className="tree-item">
                       <div
@@ -1323,12 +626,7 @@ export function OwnershipGraph() {
                               {expandedIds.has(dept.id) && (
                                 <div className="tree-children">
                                   {dept.users.map((u: any) => (
-                                    <div
-                                      key={u.id}
-                                      className="user-draggable"
-                                      draggable={true}
-                                      onDragStart={(e) => handleDragStart(e, u)}
-                                    >
+                                    <div key={u.id} className="user-draggable">
                                       <div className="user-avatar-small">
                                         {u.firstName
                                           ? u.firstName.charAt(0)
@@ -1394,22 +692,6 @@ export function OwnershipGraph() {
                   )}
                 </div>
               )}
-              {activeTab === "tools" && (
-                <div className="tools-content p-3">
-                  <h5 className="mb-3">Tools</h5>
-                  <div className="tools-grid">
-                    <div
-                      className={`tool-item ${bubbleNode ? "disabled" : ""}`}
-                      onClick={spawnBubble}
-                      title="Bubble: Collect documents to send"
-                    >
-                      <i className="bi bi-circle"></i>
-                      <span>Bubble</span>
-                    </div>
-                    {/* Future tools can go here */}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
@@ -1428,22 +710,11 @@ export function OwnershipGraph() {
             >
               <i className="bi bi-card-text"></i> Details
             </div>
-            <div
-              className={`binder-tab ${activeTab === "tools" ? "active" : ""}`}
-              onClick={() => handleTabClick("tools")}
-              title="Tools"
-            >
-              <i className="bi bi-tools"></i> Tools
-            </div>
           </div>
         </div>
       )}
 
-      <div
-        className="graph-canvas-wrapper"
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-      >
+      <div className="graph-canvas-wrapper">
         {viewStack.length > 1 && (
           <button
             className="btn-icon btn-back"
@@ -1457,13 +728,10 @@ export function OwnershipGraph() {
           <i className="bi bi-info-circle"></i>
           <div className="info-tooltip-text">
             Navigation: Click nodes to drill down. Click Users to see documents.
-            Drag documents to transfer. Drag users from Directory to add them to
-            view.
           </div>
         </div>
         <svg ref={svgRef}></svg>
 
-        {/* Breadcrumbs */}
         <div className="breadcrumb-bar">
           {viewStack.map((node, index) => (
             <span key={node.id} className="breadcrumb-item-wrapper">
@@ -1482,74 +750,6 @@ export function OwnershipGraph() {
           ))}
         </div>
       </div>
-
-      {selectedDocId && (
-        <SendDocumentModal
-          show={isSendModalOpen}
-          initialRecipientId={targetUserId}
-          forceRecipientLock={true}
-          onClose={() => {
-            setIsSendModalOpen(false);
-            setTargetUserId(null);
-            setTargetUser(null);
-            const l = graphData.links.find(
-              (lnk) =>
-                (lnk.source as Node).id === selectedDocId ||
-                (lnk.target as Node).id === selectedDocId,
-            );
-            if (l) {
-              l.isDetached = false;
-              // Restore Physics
-              simulationRef.current
-                ?.force<d3.ForceLink<Node, LinkData>>("link")
-                ?.links(graphData.links);
-
-              // Restore Visuals
-              const sourceId = (l.source as Node).id;
-              const targetId = (l.target as Node).id;
-              d3.select(svgRef.current!)
-                .selectAll("line.link")
-                .filter(
-                  (ld: any) =>
-                    ld.source.id === sourceId && ld.target.id === targetId,
-                )
-                .classed("link-detached", false);
-
-              simulationRef.current?.alpha(0.1).restart();
-            }
-          }}
-          documentId={selectedDocId}
-          users={allUsers}
-          campuses={allCampuses}
-          tags={tags}
-          globalTags={globalTags}
-          recipient={targetUser}
-        />
-      )}
-
-      {/* Bulk Send Modal */}
-      {isMultiSendModalOpen && (
-        <SendMultipleDocumentsModal
-          show={isMultiSendModalOpen}
-          initialRecipientId={multiSendTargetId}
-          forceRecipientLock={true}
-          onClose={() => {
-            setIsMultiSendModalOpen(false);
-            setMultiSendTargetId(null);
-            setTargetUser(null);
-          }}
-          documentIds={bubbleDocuments.map((d) => d.id)}
-          users={allUsers}
-          campuses={allCampuses}
-          tags={tags}
-          globalTags={globalTags}
-          onSuccess={() => {
-            // Success: clear bubble
-            setBubbleDocuments([]);
-            setBubbleNode(null);
-          }}
-        />
-      )}
     </div>
   );
 }

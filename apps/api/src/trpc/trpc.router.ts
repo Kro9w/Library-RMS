@@ -9,7 +9,6 @@ import type { inferRouterOutputs, inferRouterInputs } from '@trpc/server';
 
 import { DocumentTypesRouter } from '../document-types/document-types.router';
 import { LogRouter } from '../log/log.router';
-import { WordDocumentRouter } from '../word-document/word-document.router';
 import { NotificationsRouter } from '../notifications/notifications.router';
 
 @Injectable()
@@ -20,7 +19,6 @@ export class TrpcRouter {
     private readonly documentTypesRouter: DocumentTypesRouter,
     private readonly logRouter: LogRouter,
     private readonly rolesRouter: RolesRouter,
-    private readonly wordDocumentRouter: WordDocumentRouter,
     private readonly notificationsRouter: NotificationsRouter,
   ) {}
 
@@ -166,7 +164,6 @@ export class TrpcRouter {
       roles: this.rolesRouter.createRouter(),
       documentTypes: this.documentTypesRouter.createRouter(),
       logs: this.logRouter.createRouter(),
-      wordDocument: this.wordDocumentRouter.createRouter(), // Updated to createRouter()
       notifications: this.notificationsRouter.createRouter(),
     });
   }
