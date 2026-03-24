@@ -1,275 +1,222 @@
-/* apps/web/src/pages/Documents.css */
+/* ============================================================
+   Documents Page — Folio RMS
+   ============================================================ */
 
-.document-table-card {
-  background-color: var(--card-background);
-  border-radius: 0.75rem;
-  box-shadow: var(--card-shadow);
-  overflow: hidden;
-  margin-top: 2rem;
-}
-
-.document-owner,
-.document-date,
-.document-size {
-  color: var(--text-muted);
-  font-size: 0.9rem;
-}
-
-.doc-type-badge {
-  padding: -0.25em 0.65em;
-  border-radius: 0.375rem;
-  font-size: 0.85em;
-  font-weight: 600;
-}
-
-.btn-icon {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  transition: all 0.2s ease;
-}
-
-.btn-icon i {
-  font-size: 1.1rem;
-}
-
-.btn-icon.btn-send:hover {
-  background-color: var(--hover-bg);
-  color: var(--accent);
-}
-
-.btn-icon.btn-delete:hover {
-  background-color: var(--btn-icon-hover-red-bg);
-  color: var(--btn-icon-hover-red-text);
-}
-
-/* --- Page Header Styles (Unchanged) --- */
-.page-header {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-}
-.page-header h2 {
-  margin: 0;
-}
-
+/* ── Header actions bar ── */
 .header-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.filter-dropdown,
-.search-bar {
-  border-radius: 50px;
-  border: 1px solid var(--card-border);
-  background-color: var(--input-bg); /* Use variable */
-  color: var(--text); /* Use variable */
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
-  width: 300px;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
-  margin-right: 0.5rem;
+/* ── Table card ── */
+.document-table-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
 }
 
-.search-bar:focus,
-.search-bar:focus-visible {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: var(--shadow-primary-focus);
-}
-
+/* ── Document type pill ── */
 .doc-type-pill {
   display: inline-flex;
   align-items: center;
-  padding: 0.25em 0.6em;
-  font-size: 0.8rem;
-  font-weight: 700;
-  line-height: 1;
-  text-align: center;
+  gap: 5px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--radius-full);
   white-space: nowrap;
-  vertical-align: baseline;
-  border-radius: 50rem; /* Make it a pill shape */
-  justify-self: start; /* Align to the start of the grid cell */
+  line-height: 1.6;
 }
 
 .doc-type-pill-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  margin-right: 6px;
+  flex-shrink: 0;
 }
 
-/* Accordion & Layout Styles */
-.section-title {
-  margin-bottom: 0.5rem;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text);
-}
-
+/* ── Accordion ── */
 .accordion-item {
-  border: 1px solid var(--card-border);
-  border-radius: 0.75rem;
-  background-color: var(--card-background);
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) !important;
+  background-color: var(--bg-surface);
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  box-shadow: var(--shadow-xs);
+  margin-bottom: 0 !important;
 }
 
-/* Override Bootstrap's default accordion radii for first/last items */
-.accordion-item:first-of-type,
-.accordion-item:last-of-type {
-  border-radius: 0.75rem;
-}
-
-/* Override Bootstrap's default border-top removal on adjacent accordion items */
-.accordion-item:not(:first-of-type) {
-  border-top: 1px solid var(--card-border);
+.accordion-item + .accordion-item {
+  margin-top: 8px !important;
 }
 
 .accordion-header {
-  background: var(--card-background);
-  border: none;
-  padding: 1rem 1.25rem;
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--text);
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  padding: 13px 18px !important;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color var(--transition-fast);
+  border: none !important;
+  width: 100%;
+  text-align: left;
 }
 
-.accordion-header:hover {
-  background-color: var(--hover-bg);
-}
-
-.accordion-header i {
-  transition: transform 0.3s ease;
-  color: var(--text-muted);
+.accordion-header:hover:not(.non-clickable) {
+  background-color: var(--bg-hover) !important;
 }
 
 .accordion-header.non-clickable {
   cursor: default;
 }
 
-.accordion-header.non-clickable:hover {
-  background: var(--card-background);
+.accordion-header .doc-count {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  background-color: var(--bg-subtle);
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
 }
 
 .accordion-content {
-  border-top: 1px solid var(--card-border);
-  background-color: var(--background);
+  border-top: 1px solid var(--border);
 }
 
+/* Fix nested table card inside accordion */
 .accordion-content .document-table-card {
   margin-top: 0;
-  border-radius: 0 0 0.75rem 0.75rem;
-  box-shadow: none;
-  background-color: transparent;
   border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
-/* Make table corners properly rounded inside the card */
-.document-table-card .table {
-  border-collapse: separate;
-  border-spacing: 0;
-  width: 100%;
-  margin-bottom: 0; /* Remove default Bootstrap bottom margin */
-}
-
-/* Ensure flush edges in accordions by removing left and right borders and paddings if any exist */
-.accordion-content .document-table-card .table td:first-child,
-.accordion-content .document-table-card .table th:first-child {
-  padding-left: 1.25rem; /* Match the accordion-header padding */
-  border-left: none;
-}
-
-.accordion-content .document-table-card .table td:last-child,
-.accordion-content .document-table-card .table th:last-child {
-  padding-right: 1.25rem;
-  border-right: none;
-}
-
-/* Style the table header inside accordions to blend with the expanded section seamlessly */
 .accordion-content .document-table-card .table thead th {
+  background-color: var(--bg-subtle);
   border-top: none;
-  background-color: var(--background); /* Match accordion-content background */
-  font-size: 0.85rem;
+}
+
+/* ── Table ── */
+.document-table-card .table {
+  margin-bottom: 0;
+}
+
+.document-table-card .table th {
+  font-size: 11px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   color: var(--text-muted);
-  border-bottom: 1px solid var(--card-border);
+  padding: 10px 16px;
+  background-color: var(--bg-subtle);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
 }
 
-.accordion-content .document-table-card .table tbody tr td {
-  background-color: var(--background); /* Match accordion-content background */
+.document-table-card .table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border-muted);
+  vertical-align: middle;
+  font-size: 13px;
 }
 
-/* Make sure the very top border of the nested table is gone since the accordion handles the top border */
-.accordion-content .document-table-card .table {
-  border-top: none;
-}
-
-.document-table-card .table tr:last-child td:first-child {
-  border-bottom-left-radius: 0.75rem;
-}
-
-.document-table-card .table tr:last-child td:last-child {
-  border-bottom-right-radius: 0.75rem;
-}
-
-.document-table-card .table tr:last-child td {
+.document-table-card .table tbody tr:last-child td {
   border-bottom: none;
 }
+.document-table-card .table tbody tr:hover td {
+  background-color: var(--bg-hover);
+}
 
-/* Actions Dropdown */
+/* Document title link */
+.document-table-card .table td a {
+  color: var(--text-primary);
+  font-weight: 500;
+  text-decoration: none;
+  font-size: 13px;
+  transition: color var(--transition-fast);
+}
+.document-table-card .table td a:hover {
+  color: var(--brand);
+}
+
+/* Muted cell text */
+.document-owner,
+.document-date,
+.document-size {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* ── Actions dropdown ── */
 .document-actions-dropdown {
-  min-width: 150px;
+  background-color: var(--bg-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+  min-width: 160px;
 }
 
 .document-actions-dropdown .dropdown-item {
-  color: var(--text);
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
-  transition: background-color 0.2s;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  padding: 7px 10px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
   background: transparent;
   border: none;
   width: 100%;
   text-align: left;
 }
-
 .document-actions-dropdown .dropdown-item:hover {
-  background-color: var(--hover-bg);
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
 }
-
+.document-actions-dropdown .dropdown-item.text-danger:hover {
+  background-color: var(--danger-subtle);
+  color: var(--danger);
+}
 .document-actions-dropdown .dropdown-item i {
-  width: 1.25rem;
-  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  width: 14px;
 }
 
-/* Ensure no-access icon matches size */
+.dropdown-container {
+  position: relative;
+  display: inline-flex;
+}
+
+/* No-access icon */
 .no-access-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem;
+  width: 32px;
+  height: 32px;
+  color: var(--text-muted);
+  opacity: 0.4;
+  font-size: 12px;
 }
 
-/* Document Type Pill Uncategorized overrides */
-.doc-type-pill.uncategorized {
-  background-color: #e9ecef;
-  color: #495057;
-}
-
-.doc-type-pill.uncategorized .doc-type-pill-dot {
-  background-color: #6c757d;
+/* ── Section title ── */
+.section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  padding: 0 2px;
 }

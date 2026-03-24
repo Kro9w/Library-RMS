@@ -1,64 +1,71 @@
+/* ============================================================
+   Classification Badge — Folio RMS
+   ============================================================ */
+
 .classification-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.25em 0.6em;
-  font-size: 0.75em;
-  font-weight: 600;
-  border-radius: 50rem;
-  line-height: 1;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: var(--radius-full);
+  line-height: 1.6;
   white-space: nowrap;
   vertical-align: middle;
+  border: 1px solid;
 }
 
 .classification-badge i {
-  margin-right: 0.25rem;
-  font-size: 0.9em;
+  font-size: 9px;
 }
 
-/* PUBLIC: Using --success color */
+/* INSTITUTIONAL — green family */
 .classification-badge-public {
-  background-color: rgba(25, 135, 84, 0.15); /* var(--success) with opacity */
-  color: var(--success);
-  border: 1px solid rgba(25, 135, 84, 0.2);
+  background-color: #f0fdf4;
+  color: #166534;
+  border-color: #86efac;
 }
-[data-bs-theme="dark"] .classification-badge-public {
-  background-color: rgba(46, 160, 67, 0.2);
-  color: #2ea043;
-  border-color: rgba(46, 160, 67, 0.3);
+body[data-bs-theme="dark"] .classification-badge-public {
+  background-color: #052e16;
+  color: #4ade80;
+  border-color: #166534;
 }
 
-/* CAMPUS: Using blue/indigo logic (or your --primary if you prefer, but let's use a standard blue for campus) */
+/* CAMPUS — blue family */
 .classification-badge-campus {
-  background-color: rgba(13, 110, 253, 0.15); /* bs-primary blue */
-  color: #0d6efd;
-  border: 1px solid rgba(13, 110, 253, 0.2);
+  background-color: #eff6ff;
+  color: #1e40af;
+  border-color: #93c5fd;
 }
-[data-bs-theme="dark"] .classification-badge-campus {
-  background-color: rgba(61, 139, 255, 0.2);
-  color: #3d8bff;
-  border-color: rgba(61, 139, 255, 0.3);
+body[data-bs-theme="dark"] .classification-badge-campus {
+  background-color: #0c1a3d;
+  color: #60a5fa;
+  border-color: #1e3a8a;
 }
 
-/* INTERNAL: Using --accent color (orange) */
+/* INTERNAL — amber family */
 .classification-badge-internal {
-  background-color: rgba(237, 155, 64, 0.15); /* var(--accent) with opacity */
-  color: var(--accent);
-  border: 1px solid rgba(237, 155, 64, 0.2);
+  background-color: #fefce8;
+  color: #854d0e;
+  border-color: #fde047;
 }
-[data-bs-theme="dark"] .classification-badge-confidential {
-  background-color: rgba(237, 155, 64, 0.2);
-  color: #ed9b40;
-  border-color: rgba(237, 155, 64, 0.3);
+body[data-bs-theme="dark"] .classification-badge-internal {
+  background-color: #1a1300;
+  color: #fbbf24;
+  border-color: #78350f;
 }
 
-/* CONFIDENTIAL: Using --primary color (maroon/red) */
+/* CONFIDENTIAL — maroon/red family */
 .classification-badge-restricted {
-  background-color: rgba(186, 59, 70, 0.15); /* var(--primary) with opacity */
-  color: var(--primary);
-  border: 1px solid rgba(186, 59, 70, 0.2);
+  background-color: #fff1f2;
+  color: #9f1239;
+  border-color: #fda4af;
 }
-[data-bs-theme="dark"] .classification-badge-restricted {
-  background-color: rgba(186, 59, 70, 0.2);
-  color: #ff8b8b; /* Brighter red for dark mode readability */
-  border-color: rgba(186, 59, 70, 0.3);
+body[data-bs-theme="dark"] .classification-badge-restricted {
+  background-color: #1a0a0f;
+  color: #fb7185;
+  border-color: #881337;
 }

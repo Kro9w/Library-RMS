@@ -1,132 +1,224 @@
-/* apps/web/src/pages/Dashboard.css */
+/* ============================================================
+   Dashboard — Folio RMS
+   ============================================================ */
 
-/* --- Stat Card Styles (Refactored) --- */
+/* ── Stat cards grid ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 900px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Stat card */
 .stat-card {
-  color: var(--light-text);
-  border: none;
-  border-radius: 0.5rem;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-xs);
+  transition:
+    box-shadow var(--transition-slow),
+    border-color var(--transition-slow);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.stat-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
 }
 
+/* Legacy stat card compat */
 .card.stat-card-primary {
-  background-color: var(--card-background); /* USE VAR */
-  box-shadow: var(--card-shadow); /* USE VAR */
-  border-radius: 1rem;
-  border: none;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
 }
 
-/* --- NEW: Center the chart and prevent overflow --- */
+.card.stat-card-primary:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card.stat-card-primary .card-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card.stat-card-primary .card-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card.stat-card-primary .card-title i {
+  font-size: 12px;
+  color: var(--brand);
+  opacity: 0.7;
+}
+
+.card.stat-card-primary .card-text.fs-2 {
+  font-size: 30px !important;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  color: var(--text-primary);
+  line-height: 1;
+  margin: 0;
+}
+
+/* ── Mini stat / analytics card ── */
+.card.mini-stat-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+
+.card.mini-stat-card .card-body {
+  padding: 20px;
+}
+
+.card.mini-stat-card .card-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
 .card.mini-stat-card .recharts-wrapper {
   margin: 0 auto;
 }
 
-.card.stat-card.card-title {
-  opacity: 0.9;
-  font-weight: 500;
-  display: flex;
-  justify-content: center;
-}
-
-.card.stat-card-primary .card-body {
-  color: var(--primary); /* This is correct */
-}
-
-/* This is for the "Most Used Tags" list */
-.list-group-item {
-  background-color: var(--card-background); /* USE VAR */
-  border-color: var(--card-border); /* USE VAR */
-  color: var(--text); /* USE VAR */
-}
-
-/* This is for the "Analytics" cards */
-.card.mini-stat-card {
-  background-color: var(--card-background); /* USE VAR */
-  box-shadow: var(--card-shadow); /* USE VAR */
+/* ── Dashboard content card ── */
+.document-table-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
   overflow: hidden;
-  border-radius: 1rem;
-  border: none;
 }
 
-/* --- Grid Override (Unchanged) --- */
-/* This is for the "Recent Uploads" list */
-.document-list-header.recent-uploads-header,
-.document-item.recent-upload-item {
-  grid-template-columns: 3fr 1fr; /* Title (flexible) and Owner (fixed) */
-  gap: 1rem;
-}
-
-/* This is also for "Recent Uploads" */
-.recent-uploads-header > span:last-child,
-.recent-upload-item .document-owner {
-  justify-self: end;
-}
-
-/* --- Helper Style (Unchanged) --- */
-/* This adds padding inside the "Analytics" cards */
 .document-table-card .card-body {
-  padding: 1.25rem;
+  padding: 20px;
 }
 
-/*
- * --- ALL DARK MODE STYLES ARE GONE! ---
- * They are no longer needed because 'index.css'
- * handles the theme change globally.
-*/
-
-.custom-tooltip {
-  position: fixed;
-  background-color: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 10px;
-  border-radius: 5px;
-  pointer-events: none;
-  transform: translate(-50%, -100%);
-  transition: opacity 0.2s;
-  z-index: 1000;
-}
-
+/* ── Recent uploads list ── */
 .document-list {
-  display: flex;
-  flex-direction: column;
-  padding-left: 0;
-  margin-block-start: 0;
-  margin-block-end: 0;
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 .document-list-header {
   display: grid;
-  grid-template-columns: 1fr 2.5fr 1fr 1fr 1fr 0.5fr;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  font-size: 0.9rem;
+  padding: 8px 16px;
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
-  border-bottom: 1px solid var(--card-border);
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  background-color: var(--bg-subtle);
+}
+
+.document-list-header.recent-uploads-header,
+.document-item.recent-upload-item {
+  grid-template-columns: 1fr auto;
+  gap: 12px;
 }
 
 .document-item {
   display: grid;
   grid-template-columns: 1fr 2.5fr 1fr 1fr 1fr 0.5fr;
   align-items: center;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--card-border);
-}
-
-/* Make the list striped for easier reading */
-.document-item:nth-child(even) {
-  background-color: var(--card-stripe-bg);
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-muted);
+  font-size: 13px;
+  transition: background-color var(--transition-fast);
 }
 
 .document-item:last-child {
   border-bottom: none;
 }
-
-.document-item a {
-  font-weight: 600;
-  color: var(--link-color); /* Use theme-aware link color */
-  text-decoration: none;
+.document-item:hover {
+  background-color: var(--bg-hover);
 }
 
+.document-item a {
+  font-weight: 500;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+  font-size: 13px;
+}
 .document-item a:hover {
-  text-decoration: underline;
+  color: var(--brand);
+}
+
+.document-item.recent-upload-item {
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+}
+
+.document-owner {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* ── Section header ── */
+.dashboard-section-header {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Recharts tooltip ── */
+.custom-tooltip {
+  background-color: var(--bg-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  box-shadow: var(--shadow-md);
+  font-size: 12px;
+  color: var(--text-primary);
+  pointer-events: none;
+}
+
+/* ── Greeting ── */
+.dashboard-greeting {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+  margin: 0;
 }

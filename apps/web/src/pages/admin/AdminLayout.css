@@ -1,0 +1,328 @@
+/* ============================================================
+   Admin Panel — Folio RMS
+   Full-page layout: admin sidebar + scrollable content
+   ============================================================ */
+
+.admin-layout {
+  display: grid;
+  grid-template-columns: 216px 1fr;
+  min-height: calc(100vh - var(--topbar-h, 52px));
+  gap: 0;
+  background-color: var(--bg-app);
+}
+
+@media (max-width: 768px) {
+  .admin-layout {
+    grid-template-columns: 1fr;
+  }
+  .admin-sidebar {
+    display: none;
+  }
+}
+
+/* ── Admin sidebar ── */
+.admin-sidebar {
+  background-color: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0;
+  position: sticky;
+  top: 0;
+  height: calc(100vh - var(--topbar-h, 52px));
+  overflow-y: auto;
+}
+
+.admin-sidebar-header {
+  padding: 0 16px 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.admin-sidebar-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.admin-sidebar-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+
+.admin-sidebar-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* Nav items */
+.admin-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 8px;
+}
+
+.admin-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+  background: none;
+  border: none;
+  text-align: left;
+  width: 100%;
+  transition:
+    background-color 100ms ease,
+    color 100ms ease;
+}
+
+.admin-nav-item svg {
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: opacity 100ms ease;
+}
+
+.admin-nav-item:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+.admin-nav-item:hover svg {
+  opacity: 1;
+}
+
+.admin-nav-item.active {
+  background-color: var(--brand-subtle);
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.admin-nav-item.active svg {
+  opacity: 1;
+}
+
+body[data-bs-theme="dark"] .admin-nav-item.active {
+  background-color: rgba(155, 35, 53, 0.15);
+  color: #d4828c;
+}
+
+/* ── Admin content ── */
+.admin-content {
+  padding: 32px;
+  overflow-y: auto;
+}
+
+/* Page title within admin */
+.admin-page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+  margin-bottom: 4px;
+}
+
+.admin-page-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+  line-height: 1.5;
+}
+
+/* ── Admin cards (shared) ── */
+.admin-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.admin-card-header {
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--bg-subtle);
+}
+
+.admin-card-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.admin-card-body {
+  padding: 20px;
+}
+
+/* ── Form row (inline create) ── */
+.admin-form-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.admin-form-row .form-control {
+  flex: 1;
+}
+
+/* ── Admin table ── */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 9px 16px;
+  background-color: var(--bg-subtle);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  text-align: left;
+}
+
+.admin-table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border-muted);
+  font-size: 13px;
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.admin-table tbody tr:hover td {
+  background-color: var(--bg-hover);
+}
+
+/* ── Select panel (campus selector etc.) ── */
+.admin-select-panel {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-select-panel label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.admin-select-panel .form-select {
+  flex: 1;
+  max-width: 300px;
+}
+
+/* ── Nested accordion (system users) ── */
+.admin-campus-accordion {
+  margin-bottom: 10px;
+}
+
+.admin-campus-header {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: background-color 100ms ease;
+}
+.admin-campus-header:hover {
+  background-color: var(--bg-hover);
+}
+
+.admin-campus-count {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background-color: var(--bg-subtle);
+  padding: 2px 8px;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+}
+
+.admin-dept-accordion {
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin: 6px 0 6px 16px;
+}
+
+.admin-dept-header {
+  background-color: var(--bg-subtle);
+  padding: 9px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.admin-dept-header:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Reassign inline form */
+.reassign-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.reassign-form .form-select {
+  height: 30px;
+  font-size: 12px;
+  padding: 4px 28px 4px 10px;
+  min-width: 130px;
+}
+
+/* ── Badge: Super Admin ── */
+.badge-superadmin {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background-color: var(--danger-subtle);
+  color: var(--danger);
+  border: 1px solid #fca5a5;
+}

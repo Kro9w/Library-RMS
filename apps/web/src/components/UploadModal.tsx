@@ -1,4 +1,3 @@
-// apps/web/src/components/UploadModal.tsx
 import React, { useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { supabase } from "../supabase.ts";
@@ -14,7 +13,7 @@ interface UploadModalProps {
 }
 
 export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
-  const [files, setFiles] = useState<File[]>([]);
+  const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDocumentType, setSelectedDocumentType] = useState<
@@ -24,75 +23,73 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
   const [classification, setClassification] = useState<
     "INSTITUTIONAL" | "CAMPUS" | "INTERNAL" | "CONFIDENTIAL"
   >("CONFIDENTIAL");
+
   const user = useUser();
   const { data: me } = trpc.user.getMe.useQuery();
+  const utils = trpc.useUtils();
+  const createDocMutation = trpc.documents.createDocumentRecord.useMutation();
+  const { data: documentTypes } = trpc.documentTypes.getAll.useQuery();
+  const { data: storageConfig } = trpc.documents.getStorageConfig.useQuery();
+  const bucketName = storageConfig?.bucketName;
+
   const highestRoleLevel =
     me?.roles && me.roles.length > 0
       ? me.roles.reduce(
           (min: number, role: any) => Math.min(min, role.level),
           Infinity,
         )
-      : 4; // Default to Level 4 (lowest privilege) if no roles found
+      : 4;
   const canManageDocs =
     me?.roles?.some((r: any) => r.canManageDocuments) ?? false;
-  const utils = trpc.useUtils();
-  const createDocMutation = trpc.documents.createDocumentRecord.useMutation();
-  const { data: documentTypes } = trpc.documentTypes.getAll.useQuery();
-  const { data: storageConfig, isLoading: isConfigLoading } =
-    trpc.documents.getStorageConfig.useQuery();
-  const bucketName = storageConfig?.bucketName;
 
-  const scanForControlNumber = async (file: File) => {
-    if (!file) return;
-
+  const scanForControlNumber = async (f: File) => {
     const reader = new FileReader();
     reader.onload = async (event) => {
       const arrayBuffer = event.target?.result;
       if (arrayBuffer instanceof ArrayBuffer) {
         try {
           const result = await mammoth.extractRawText({ arrayBuffer });
-          const text = result.value;
-          const regex = /CSU\-([\s\S]*?)([a-zA-Z0-9-]+)\s*-FL/;
-          const match = text.match(regex);
-          if (match && match[2]) {
-            setControlNumber(match[2].trim());
-          } else {
-            setControlNumber("No control number found in this document");
-          }
-        } catch (err) {
-          console.error("Error reading docx file:", err);
-          setControlNumber("NONE");
+          const match = result.value.match(
+            /CSU\-([\s\S]*?)([a-zA-Z0-9-]+)\s*-FL/,
+          );
+          setControlNumber(match?.[2]?.trim() ?? null);
+        } catch {
+          setControlNumber(null);
         }
       }
     };
-    reader.readAsArrayBuffer(file);
+    reader.readAsArrayBuffer(f);
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: (acceptedFiles) => {
-      setFiles(acceptedFiles);
-      if (acceptedFiles.length > 0) {
-        scanForControlNumber(acceptedFiles[0]);
+      if (acceptedFiles[0]) {
+        setFile(acceptedFiles[0]);
+        setError(null);
+        if (acceptedFiles[0].name.endsWith(".docx")) {
+          scanForControlNumber(acceptedFiles[0]);
+        }
       }
     },
     accept: {
       "application/pdf": [".pdf"],
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
         [".docx"],
+      "image/jpeg": [".jpg", ".jpeg"],
+      "image/png": [".png"],
+      "image/tiff": [".tiff", ".tif"],
     },
+    multiple: false,
   });
 
   const handleUpload = async () => {
-    if (files.length === 0 || !user) return;
-    if (!bucketName) {
-      setError("Supabase bucket name is not configured.");
+    if (!file || !user || !bucketName) {
+      setError("Missing required information.");
       return;
     }
-
     setUploading(true);
     setError(null);
 
-    const file = files[0];
     const fileExtension = file.name.split(".").pop();
     const storageKey = `${user.id}/${uuidv4()}.${fileExtension}`;
 
@@ -101,9 +98,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
         .from(bucketName)
         .upload(storageKey, file);
 
-      if (uploadError) {
-        throw uploadError;
-      }
+      if (uploadError) throw uploadError;
 
       await createDocMutation.mutateAsync({
         title: file.name,
@@ -112,151 +107,211 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
         documentTypeId: selectedDocumentType,
         fileType: file.type,
         fileSize: file.size,
-        classification: classification,
-        controlNumber:
-          controlNumber !== "No control number found in this document"
-            ? controlNumber
-            : null,
+        classification,
+        controlNumber: controlNumber ?? null,
       });
 
-      setFiles([]);
+      setFile(null);
+      setControlNumber(null);
       onClose();
-      alert("Upload successful!");
-
-      // Invalidate queries to refetch document list and dashboard stats
       await utils.documents.invalidate();
       await utils.getDashboardStats.invalidate();
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || "An error occurred during upload.");
+      setError(err.message || "Upload failed.");
     } finally {
       setUploading(false);
     }
   };
 
-  if (!show) {
-    return null;
-  }
+  if (!show) return null;
 
   return (
-    <div className="custom-modal-backdrop" onClick={onClose}>
-      <div
-        className="custom-modal-content upload-modal-content"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="custom-modal-title">
-          <h5 style={{ margin: 0, fontSize: "1.25rem", color: "inherit" }}>
-            Upload Document
-          </h5>
-          <button
-            type="button"
-            className="btn-close"
-            onClick={onClose}
-          ></button>
-        </div>
-        <div
-          style={{ padding: "1.5rem", maxHeight: "70vh", overflowY: "auto" }}
-        >
-          <div
-            {...getRootProps({
-              className: `upload-dropzone${
-                isDragActive ? " dropzone-active" : ""
-              }`,
-            })}
-          >
-            <input {...getInputProps()} />
-            <i className="bi bi-cloud-arrow-up-fill"></i>
-            <p>Drag 'n' drop PDF or DOCX files here, or click to select</p>
-          </div>
-          <aside>
-            <h4>Files</h4>
-            <ul>
-              {files.map((file) => (
-                <li key={file.name}>
-                  {file.name} - {file.size} bytes
-                </li>
-              ))}
-            </ul>
-          </aside>
-          <div className="mb-3">
-            <label htmlFor="controlNumber" className="form-label">
-              Control Number
-            </label>
-            <input
-              type="text"
-              id="controlNumber"
-              className="form-control"
-              value={
-                controlNumber || "Drop a file to scan for a control number"
-              }
-              readOnly
-            />
-          </div>
-          <div className="mb-3">
-            <label htmlFor="documentType" className="form-label">
-              Document Type
-            </label>
-            <select
-              id="documentType"
-              className="form-select"
-              value={selectedDocumentType}
-              onChange={(e) => setSelectedDocumentType(e.target.value)}
-            >
-              <option value="">Select a type...</option>
-              {documentTypes?.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="mb-3">
-            <label htmlFor="classification" className="form-label">
-              Classification / Visibility
-            </label>
-            <select
-              id="classification"
-              className="form-select"
-              value={classification}
-              onChange={(e) => setClassification(e.target.value as any)}
-            >
-              {(highestRoleLevel <= 1 || canManageDocs) && (
-                <>
-                  <option value="INSTITUTIONAL">
-                    Institutional (Institution-wide)
-                  </option>
-                  <option value="CAMPUS">Campus (Campus-wide)</option>
-                </>
-              )}
-              {(highestRoleLevel <= 2 || canManageDocs) && (
-                <option value="INTERNAL">
-                  Internal (Department/Office only)
-                </option>
-              )}
-              <option value="CONFIDENTIAL">
-                Confidential (Sender and Recipient only)
-              </option>
-            </select>
-            <div className="form-text">
-              Controls who can view this document based on standard access
-              controls.
+    <div className="upload-backdrop" onClick={!uploading ? onClose : undefined}>
+      <div className="upload-dialog" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="upload-dialog-header">
+          <div>
+            <div className="upload-dialog-title">Upload document</div>
+            <div className="upload-dialog-subtitle">
+              PDF, DOCX, or image formats supported
             </div>
           </div>
-          {error && <p className="error">{error}</p>}
+          {!uploading && (
+            <button className="upload-close-btn" onClick={onClose}>
+              <i className="bi bi-x" />
+            </button>
+          )}
         </div>
-        <div className="custom-modal-actions">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>
-            Close
+
+        {/* Body */}
+        <div className="upload-dialog-body">
+          {/* Dropzone */}
+          <div
+            {...getRootProps()}
+            className={`upload-dropzone ${isDragActive ? "active" : ""} ${file ? "has-file" : ""}`}
+          >
+            <input {...getInputProps()} />
+            {file ? (
+              <div className="upload-file-selected">
+                <div className="upload-file-icon">
+                  <i
+                    className={`bi ${
+                      file.type.includes("pdf")
+                        ? "bi-file-earmark-pdf"
+                        : file.type.includes("word")
+                          ? "bi-file-earmark-word"
+                          : file.type.includes("image")
+                            ? "bi-file-earmark-image"
+                            : "bi-file-earmark"
+                    }`}
+                  />
+                </div>
+                <div className="upload-file-meta">
+                  <div className="upload-file-name">{file.name}</div>
+                  <div className="upload-file-size">
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </div>
+                </div>
+                <button
+                  className="upload-file-remove"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFile(null);
+                    setControlNumber(null);
+                  }}
+                  type="button"
+                >
+                  <i className="bi bi-x" />
+                </button>
+              </div>
+            ) : (
+              <div className="upload-dropzone-inner">
+                <div className="upload-dropzone-icon">
+                  <i className="bi bi-cloud-arrow-up" />
+                </div>
+                <div className="upload-dropzone-text">
+                  {isDragActive ? (
+                    "Drop the file here"
+                  ) : (
+                    <>
+                      <strong>Click to upload</strong> or drag and drop
+                    </>
+                  )}
+                </div>
+                <div className="upload-dropzone-hint">
+                  PDF, DOCX, PNG, JPG, TIFF
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="upload-error">
+              <i className="bi bi-exclamation-circle" />
+              {error}
+            </div>
+          )}
+
+          {/* Fields */}
+          <div className="upload-fields">
+            {/* Classification */}
+            <div className="upload-field">
+              <label className="form-label">Classification</label>
+              <select
+                className="form-control form-select"
+                value={classification}
+                onChange={(e) => setClassification(e.target.value as any)}
+              >
+                {(highestRoleLevel <= 1 || canManageDocs) && (
+                  <>
+                    <option value="INSTITUTIONAL">
+                      Institutional — institution-wide
+                    </option>
+                    <option value="CAMPUS">Campus — campus-wide</option>
+                  </>
+                )}
+                {(highestRoleLevel <= 2 || canManageDocs) && (
+                  <option value="INTERNAL">Internal — department only</option>
+                )}
+                <option value="CONFIDENTIAL">
+                  Confidential — sender & recipient only
+                </option>
+              </select>
+            </div>
+
+            {/* Document type */}
+            <div className="upload-field">
+              <label className="form-label">
+                Document type{" "}
+                <span className="upload-field-optional">optional</span>
+              </label>
+              <select
+                className="form-control form-select"
+                value={selectedDocumentType ?? ""}
+                onChange={(e) =>
+                  setSelectedDocumentType(e.target.value || undefined)
+                }
+              >
+                <option value="">No type</option>
+                {documentTypes?.map((type: any) => (
+                  <option key={type.id} value={type.id}>
+                    {type.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Control number (read-only, scanned) */}
+            {file?.name.endsWith(".docx") && (
+              <div className="upload-field">
+                <label className="form-label">
+                  Control number
+                  <span className="upload-field-hint">
+                    Auto-scanned from document
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={controlNumber ?? "Scanning…"}
+                  readOnly
+                  style={{ fontFamily: "var(--font-mono)", fontSize: "12px" }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="upload-dialog-footer">
+          <button
+            className="btn btn-secondary"
+            onClick={onClose}
+            disabled={uploading}
+          >
+            Cancel
           </button>
           <button
-            type="button"
             className="btn btn-primary"
             onClick={handleUpload}
-            disabled={
-              uploading || files.length === 0 || isConfigLoading || !bucketName
-            }
+            disabled={!file || uploading || !bucketName}
           >
-            {uploading ? "Uploading..." : "Upload"}
+            {uploading ? (
+              <>
+                <span
+                  className="spinner-border spinner-border-sm"
+                  role="status"
+                  aria-hidden="true"
+                />
+                Uploading…
+              </>
+            ) : (
+              <>
+                <i className="bi bi-upload" />
+                Upload
+              </>
+            )}
           </button>
         </div>
       </div>

@@ -1,74 +1,64 @@
-/* apps/web/src/components/LogCard/LogCard.css */
+/* ============================================================
+   Log Card & Timeline — Folio RMS
+   ============================================================ */
+
+/* ── Log Card ── */
 .log-card {
-  background-color: var(--card-background);
-  border-radius: 0.75rem;
-  padding: 1.25rem;
-  box-shadow: var(--card-shadow);
-  transition: all 0.2s ease;
-
-  /* 1. Set the base border for top, right, bottom */
-  border: 1px solid var(--card-border);
-
-  /* 2. Override the left border width to be thicker for the accent */
-  border-left-width: 4px;
-
-  /* 3. Set a default style, though color will be overridden by modifiers */
-  border-left-style: solid;
-  border-left-color: transparent;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-xs);
+  transition: box-shadow var(--transition-slow);
 }
-
-/* Removed hover transform/shadow to disable animation */
-/* .log-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-} */
+.log-card:hover {
+  box-shadow: var(--shadow-md);
+}
 
 .log-card-success {
   border-left-color: var(--success);
 }
-
 .log-card-danger {
   border-left-color: var(--danger);
 }
-
 .log-card-default {
-  border-left-color: var(--secondary);
+  border-left-color: var(--border-strong);
 }
 
 .log-card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 1rem;
+  margin-bottom: 10px;
 }
 
 .log-card-user {
   display: flex;
   align-items: center;
-  gap: 1rem;
-}
-
-.log-card-user-info {
-  display: flex;
-  flex-direction: column;
+  gap: 10px;
 }
 
 .log-card-user-name {
-  font-weight: 700;
-  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
 }
 
 .log-card-org-name {
-  font-size: 0.85rem;
+  font-size: 11px;
   color: var(--text-muted);
+  line-height: 1.2;
 }
 
 .log-card-body {
-  margin-bottom: 1rem;
+  margin-bottom: 10px;
 }
 
 .log-card-message {
-  color: var(--text);
+  font-size: 13px;
+  color: var(--text-secondary);
   margin: 0;
   line-height: 1.5;
 }
@@ -79,6 +69,55 @@
 }
 
 .log-card-timestamp {
-  font-size: 0.8rem;
+  font-size: 11px;
   color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* ── Timeline ── */
+.timeline-container {
+  position: relative;
+  padding: 4px 0;
+}
+
+.timeline-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 18px;
+  width: 1px;
+  background-color: var(--border);
+}
+
+.timeline-date-header {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin: 20px 0 10px 44px;
+  position: relative;
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 10px;
+  padding-left: 44px;
+}
+
+.timeline-dot {
+  position: absolute;
+  left: 13px;
+  top: 17px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--brand);
+  border: 2px solid var(--bg-app);
+  z-index: 1;
+}
+
+.timeline-content {
+  position: relative;
 }

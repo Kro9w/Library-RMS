@@ -1,4 +1,3 @@
-// apps/web/src/pages/Account.tsx
 import React, { useState, useEffect } from "react";
 import { useUser } from "../contexts/SessionContext.tsx";
 import { trpc } from "../trpc";
@@ -11,47 +10,33 @@ import "./Account.css";
 import { LoadingAnimation } from "../components/ui/LoadingAnimation";
 import { formatUserName } from "../utils/user";
 
-// The data our form will manage
 type ProfileFormData = {
   firstName: string;
   middleName?: string;
   lastName: string;
 };
 
-// The bucket we created
 const AVATAR_BUCKET = "avatars";
 
 const Account: React.FC = () => {
-  const authUser = useUser(); // This is the Supabase auth user
+  const authUser = useUser();
   const trpcCtx = trpc.useUtils();
 
-  // Get the user profile from *our* database
-  const { data: dbUser, isLoading: isLoadingUser } = trpc.user.getMe.useQuery();
+  const { data: dbUser, isLoading } = trpc.user.getMe.useQuery();
 
-  // The new mutation to update the profile
   const { mutate: updateProfile, isPending: isUpdating } =
     trpc.user.updateProfile.useMutation({
       onSuccess: () => {
-        // When profile is updated, refresh all user data
         trpcCtx.user.getMe.invalidate();
-        alert("Profile updated successfully!");
-        // Clear file state after successful upload
-        setAvatarFile(null);
-        setAvatarPreview(null);
       },
-      onError: (error) => {
-        alert(`Error updating profile: ${error.message}`);
-      },
+      onError: (error) => alert(`Error: ${error.message}`),
     });
 
-  // State for the avatar preview
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
-  // react-hook-form setup
   const { register, handleSubmit, setValue } = useForm<ProfileFormData>();
 
-  // This effect loads the user's current name into the form
   useEffect(() => {
     if (dbUser) {
       setValue("firstName", dbUser.firstName || "");
@@ -60,191 +45,184 @@ const Account: React.FC = () => {
     }
   }, [dbUser, setValue]);
 
-  // This effect creates a local preview of the new avatar
   useEffect(() => {
     if (avatarFile) {
-      const previewUrl = URL.createObjectURL(avatarFile);
-      setAvatarPreview(previewUrl);
-      // Clean up the object URL when the component unmounts
-      return () => URL.revokeObjectURL(previewUrl);
+      const url = URL.createObjectURL(avatarFile);
+      setAvatarPreview(url);
+      return () => URL.revokeObjectURL(url);
     }
   }, [avatarFile]);
 
-  // Dropzone setup
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: (acceptedFiles) => {
-      if (acceptedFiles[0]) {
-        setAvatarFile(acceptedFiles[0]);
-      }
+    onDrop: (files) => {
+      if (files[0]) setAvatarFile(files[0]);
     },
     accept: { "image/jpeg": [], "image/png": [] },
     multiple: false,
   });
 
-  // --- Form Submit Handler ---
-  const onSubmit = async (formData: ProfileFormData) => {
+  const onSubmit = async (data: ProfileFormData) => {
     if (!dbUser) return;
+    let imageUrl: string | undefined;
 
-    let newAvatarUrl: string | undefined = undefined;
-
-    // 1. If user selected a new avatar, upload it first
     if (avatarFile) {
-      const fileExtension = avatarFile.name.split(".").pop();
-      const storageKey = `${dbUser.id}/${uuidv4()}.${fileExtension}`;
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const ext = avatarFile.name.split(".").pop();
+      const key = `${dbUser.id}/${uuidv4()}.${ext}`;
+      const { data: uploaded, error } = await supabase.storage
         .from(AVATAR_BUCKET)
-        .upload(storageKey, avatarFile, {
-          cacheControl: "3600",
-          upsert: true, // Overwrite existing avatar
-        });
-
-      if (uploadError) {
-        alert(`Error uploading avatar: ${uploadError.message}`);
+        .upload(key, avatarFile, { upsert: true });
+      if (error) {
+        alert(`Avatar upload failed: ${error.message}`);
         return;
       }
-
-      // 2. Get the public URL of the newly uploaded file
       const { data: urlData } = supabase.storage
         .from(AVATAR_BUCKET)
-        .getPublicUrl(uploadData.path);
-
-      newAvatarUrl = urlData.publicUrl;
+        .getPublicUrl(uploaded.path);
+      imageUrl = urlData.publicUrl;
     }
 
-    // 3. Call the tRPC mutation to save the new name and/or URL
     updateProfile({
-      firstName: formData.firstName,
-      middleName: formData.middleName || undefined,
-      lastName: formData.lastName,
-      ...(newAvatarUrl && { imageUrl: newAvatarUrl }),
+      firstName: data.firstName,
+      middleName: data.middleName || undefined,
+      lastName: data.lastName,
+      ...(imageUrl && { imageUrl }),
     });
   };
 
-  // --- Loading and Auth States ---
-  if (isLoadingUser) {
-    return <LoadingAnimation />;
-  }
+  if (isLoading) return <LoadingAnimation />;
+  if (!authUser || !dbUser) return <Navigate to="/login" replace />;
 
-  if (!authUser || !dbUser) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // Determine the current avatar to display
+  const displayName = formatUserName(dbUser);
   const currentAvatar =
-    avatarPreview || // 1. The new local preview
-    dbUser.imageUrl || // 2. The URL from our database (this now exists)
-    authUser.user_metadata?.avatar_url || // 3. The URL from Supabase auth
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      formatUserName(dbUser),
-    )}`;
+    avatarPreview ||
+    dbUser.imageUrl ||
+    authUser.user_metadata?.avatar_url ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=9B2335&color=fff&size=128`;
 
   return (
-    <div className="container mt-4">
+    <div className="container mt-2 account-page">
       <div className="page-header">
         <h2>My Account</h2>
       </div>
 
-      {/* We re-use our consistent card style */}
-      <div className="document-table-card">
-        <form
-          className="account-form-wrapper"
-          onSubmit={handleSubmit(onSubmit)}
-        >
-          {/* Avatar Uploader Section */}
-          <div className="form-group avatar-group">
-            <label>Profile Picture</label>
-            <div className="avatar-uploader">
+      {/* Profile card with banner */}
+      <div className="account-profile-card">
+        <div className="account-profile-banner">
+          <div className="account-profile-avatar-wrap">
+            <div className="account-avatar-uploader">
               <img
                 src={currentAvatar}
-                alt="Profile Avatar"
-                className="avatar-preview"
+                alt="avatar"
+                className="account-avatar-img"
               />
               <div
                 {...getRootProps()}
-                className={`avatar-dropzone ${isDragActive ? "active" : ""}`}
+                className={`account-avatar-overlay ${isDragActive ? "active" : ""}`}
               >
                 <input {...getInputProps()} />
-                <i className="bi bi-camera-fill"></i>
-                <span>{isDragActive ? "Drop" : "Change"}</span>
+                <i className="bi bi-camera" />
+                <span>Change</span>
               </div>
             </div>
           </div>
-
-          {/* User Details Section */}
-          <div className="form-group">
-            <label htmlFor="firstName">First Name</label>
-            <input
-              id="firstName"
-              type="text"
-              className="form-control"
-              {...register("firstName", { required: "First name is required" })}
-            />
+        </div>
+        <div className="account-profile-body">
+          <div className="account-profile-name">{displayName}</div>
+          <div className="account-profile-role">
+            {dbUser.roles?.map((r: any) => (
+              <span key={r.id} className="badge bg-secondary">
+                {r.name}
+              </span>
+            ))}
+            {dbUser.isSuperAdmin && (
+              <span className="badge bg-danger">Super Admin</span>
+            )}
           </div>
+        </div>
+      </div>
 
-          <div className="form-group">
-            <label htmlFor="middleName">Middle Name</label>
-            <input
-              id="middleName"
-              type="text"
-              className="form-control"
-              {...register("middleName")}
-            />
+      {/* Edit form */}
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="account-form-card">
+          <div className="account-form-card-header">Personal information</div>
+          <div className="account-form-card-body">
+            <div className="account-field-row">
+              <div>
+                <label className="form-label">First name</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  {...register("firstName", { required: true })}
+                />
+              </div>
+              <div>
+                <label className="form-label">Last name</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  {...register("lastName", { required: true })}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="form-label">
+                Middle name{" "}
+                <span
+                  style={{
+                    color: "var(--text-muted)",
+                    fontWeight: 400,
+                    fontSize: "11px",
+                  }}
+                >
+                  optional
+                </span>
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                {...register("middleName")}
+              />
+            </div>
           </div>
-
-          <div className="form-group">
-            <label htmlFor="lastName">Last Name</label>
-            <input
-              id="lastName"
-              type="text"
-              className="form-control"
-              {...register("lastName", { required: "Last name is required" })}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              className="form-control"
-              value={dbUser.email}
-              disabled
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="role">Role</label>
-            <input
-              id="role"
-              type="text"
-              className="form-control"
-              value={dbUser.roles?.map((r) => r.name).join(", ") || "User"}
-              disabled
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="org">Institution</label>
-            <input
-              id="org"
-              type="text"
-              className="form-control"
-              value={dbUser.institution?.name || "N/A"}
-              disabled
-            />
-          </div>
-
-          <div className="form-actions">
+          <div className="account-form-actions">
             <button
               type="submit"
               className="btn btn-primary"
               disabled={isUpdating}
             >
-              {isUpdating ? "Saving..." : "Save Changes"}
+              {isUpdating ? "Saving…" : "Save changes"}
             </button>
           </div>
-        </form>
+        </div>
+      </form>
+
+      {/* Read-only info */}
+      <div className="account-form-card">
+        <div className="account-form-card-header">Account details</div>
+        <div className="account-form-card-body" style={{ gap: 0 }}>
+          <div className="account-info-row">
+            <span className="account-info-label">Email</span>
+            <span className="account-info-value">{dbUser.email}</span>
+          </div>
+          <div className="account-info-row">
+            <span className="account-info-label">Institution</span>
+            <span className="account-info-value">
+              {dbUser.institution?.name || "—"}
+            </span>
+          </div>
+          <div className="account-info-row">
+            <span className="account-info-label">Campus</span>
+            <span className="account-info-value">
+              {dbUser.campus?.name || "—"}
+            </span>
+          </div>
+          <div className="account-info-row">
+            <span className="account-info-label">Department</span>
+            <span className="account-info-value">
+              {dbUser.department?.name || "—"}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

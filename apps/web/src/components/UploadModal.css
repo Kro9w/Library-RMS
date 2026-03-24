@@ -1,161 +1,266 @@
-/* apps/web/src/components/UploadModal.css */
+/* ============================================================
+   Upload Modal — Folio RMS
+   ============================================================ */
 
-.upload-modal-content {
-  max-width: 600px; /* Make this modal wider */
-}
-
-.upload-dropzone {
-  border: 2px dashed var(--card-border); /* USE VAR */
-  border-radius: 0.5rem;
-  padding: 2rem;
-  text-align: center;
-  cursor: pointer;
-  background-color: var(--hover-bg); /* USE VAR */
-  transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease;
-  margin: 1rem;
-}
-
-.upload-dropzone i {
-  font-size: 3rem;
-  color: var(--text-muted); /* USE VAR */
-}
-
-.upload-dropzone p {
-  margin: 0;
-  color: var(--text-muted); /* USE VAR */
-  font-weight: 500;
-}
-
-.upload-dropzone:hover {
-  border-color: var(--primary); /* This is correct */
-}
-
-.upload-dropzone.dropzone-active {
-  background-color: var(--hover-bg); /* USE VAR */
-  border-color: var(--primary);
-}
-
-.file-list {
-  margin-top: 1.5rem;
-  max-height: 150px;
-  overflow-y: auto;
-  border: 1px solid var(--card-border); /* USE VAR */
-  border-radius: 0.5rem;
-  padding: 0.5rem;
-}
-
-.file-list ul {
-  list-style: none;
-  padding-left: 0;
-  margin: 0;
-}
-
-.file-list li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem;
-  border-bottom: 1px solid var(--card-border); /* USE VAR */
-}
-
-.file-list li:last-child {
-  border-bottom: none;
-}
-
-.file-list li button {
-  background: none;
-  border: none;
-  color: var(--btn-icon-hover-red-text); /* USE VAR */
-  font-size: 1.25rem;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-/* --- Styles for the Warning --- */
-.upload-error-message {
-  color: var(--primary); /* USE VAR */
-  font-weight: 500;
-  /* We can create a light-red using a transparent primary color */
-  background-color: rgba(186, 59, 70, 0.1); /* USE VAR */
-  border: 1px solid var(--primary); /* USE VAR */
-  border-radius: 0.5rem;
-  padding: 1rem;
-  margin: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.upload-error-message i {
-  font-size: 1.25rem;
-  flex-shrink: 0;
-}
-
-/* --- ConfirmModal Styles (Refactored) --- */
-
-.custom-modal-backdrop {
+.upload-backdrop {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1100;
-}
-
-.custom-modal-content {
-  background: var(--card-background); /* USE VAR */
-  border: 1px solid var(--card-border); /* USE VAR */
-  border-radius: 8px;
-  width: 100%;
-  max-width: 500px;
-  box-shadow: var(--card-shadow); /* USE VAR */
-  animation: fadeIn 0.3s ease-out;
-}
-
-.custom-modal-title {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--card-border); /* USE VAR */
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0;
-  font-size: 1.5rem;
-  color: var(--text); /* USE VAR */
-}
-
-.custom-modal-message {
-  margin-bottom: 0;
-  padding: 1.5rem;
-  color: var(--text-muted); /* USE VAR */
-}
-
-.custom-modal-actions {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--card-border); /* USE VAR */
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
+  animation: fadeIn 120ms ease;
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(-20px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
-/*
- * --- ALL 'body[data-bs-theme="dark"]' STYLES ARE GONE! ---
- * They are no longer needed because 'index.css'
- * handles the theme change globally.
-*/
+.upload-dialog {
+  background-color: var(--bg-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 500px;
+  overflow: hidden;
+  animation: dialogIn 150ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes dialogIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Header */
+.upload-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.upload-dialog-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+
+.upload-dialog-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.upload-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 100ms ease;
+  flex-shrink: 0;
+}
+.upload-close-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Body */
+.upload-dialog-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* Dropzone */
+.upload-dropzone {
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease;
+  background-color: var(--bg-subtle);
+  overflow: hidden;
+}
+
+.upload-dropzone:hover,
+.upload-dropzone.active {
+  border-color: var(--brand-muted);
+  background-color: var(--brand-subtle);
+}
+
+.upload-dropzone.has-file {
+  border-style: solid;
+  border-color: var(--border);
+  background-color: var(--bg-surface);
+}
+
+/* Dropzone empty */
+.upload-dropzone-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 28px 20px;
+  text-align: center;
+}
+
+.upload-dropzone-icon i {
+  font-size: 28px;
+  color: var(--text-muted);
+}
+
+.upload-dropzone:hover .upload-dropzone-icon i,
+.upload-dropzone.active .upload-dropzone-icon i {
+  color: var(--brand);
+}
+
+.upload-dropzone-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.upload-dropzone-text strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.upload-dropzone-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* File selected */
+.upload-file-selected {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.upload-file-icon i {
+  font-size: 24px;
+  color: var(--brand);
+}
+
+.upload-file-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.upload-file-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-file-size {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  font-family: var(--font-mono);
+}
+
+.upload-file-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 100ms ease;
+}
+.upload-file-remove:hover {
+  background-color: var(--danger-subtle);
+  color: var(--danger);
+}
+
+/* Error */
+.upload-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background-color: var(--danger-subtle);
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  color: #991b1b;
+}
+.upload-error i {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Fields */
+.upload-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.upload-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.upload-field-optional {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.upload-field-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-left: 6px;
+}
+
+/* Footer */
+.upload-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  background-color: var(--bg-subtle);
+}

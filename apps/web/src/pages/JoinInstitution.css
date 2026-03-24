@@ -1,0 +1,308 @@
+/* ============================================================
+   Onboarding / Join Institution — Folio RMS
+   Split-panel: branded left, form right
+   ============================================================ */
+
+.onboarding-root {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  min-height: 100vh;
+  background-color: var(--bg-app);
+}
+
+@media (max-width: 800px) {
+  .onboarding-root {
+    grid-template-columns: 1fr;
+  }
+  .onboarding-aside {
+    display: none;
+  }
+}
+
+/* ── Left aside ── */
+.onboarding-aside {
+  background-color: var(--brand);
+  display: flex;
+  align-items: stretch;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle texture pattern */
+.onboarding-aside::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(255, 255, 255, 0.06) 0%,
+      transparent 50%
+    ),
+    radial-gradient(circle at 80% 80%, rgba(0, 0, 0, 0.12) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.onboarding-aside-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 48px 44px;
+  gap: 40px;
+  width: 100%;
+}
+
+/* Brand mark */
+.onboarding-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.onboarding-brand-logo {
+  width: 32px;
+  height: 32px;
+  fill: rgba(255, 255, 255, 0.9);
+}
+
+.onboarding-brand-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: -0.2px;
+}
+
+/* Copy */
+.onboarding-aside-copy {
+  flex: 1;
+}
+
+.onboarding-aside-copy h1 {
+  font-size: 34px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+  letter-spacing: -0.8px;
+  margin-bottom: 16px;
+}
+
+.onboarding-aside-copy p {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.7;
+  margin: 0;
+  max-width: 320px;
+}
+
+/* Quote */
+.onboarding-aside-quote blockquote {
+  border-left: 2px solid rgba(255, 255, 255, 0.3);
+  padding-left: 16px;
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.6;
+}
+
+/* ── Right panel ── */
+.onboarding-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 32px;
+}
+
+.onboarding-card {
+  width: 100%;
+  max-width: 440px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+/* Step indicator */
+.onboarding-step-header {
+  padding: 20px 28px 16px;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--bg-subtle);
+}
+
+.onboarding-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.onboarding-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.onboarding-step-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--bg-muted);
+  border: 1.5px solid var(--border-strong);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 200ms ease;
+}
+
+.onboarding-step.active .onboarding-step-circle {
+  background-color: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.onboarding-step.done .onboarding-step-circle {
+  background-color: var(--success-subtle);
+  border-color: #86efac;
+  color: var(--success);
+}
+
+.onboarding-step-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: color 200ms ease;
+}
+
+.onboarding-step.active .onboarding-step-label {
+  color: var(--text-primary);
+}
+.onboarding-step.done .onboarding-step-label {
+  color: var(--success);
+}
+
+.onboarding-step-line {
+  flex: 1;
+  height: 1px;
+  background-color: var(--border);
+  margin: 0 10px;
+  transition: background-color 200ms ease;
+}
+.onboarding-step-line.done {
+  background-color: var(--success);
+}
+
+/* Form area */
+.onboarding-form {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.onboarding-form-header h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.onboarding-form-header p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.onboarding-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Mode toggle */
+.onboarding-toggle-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  background-color: var(--bg-subtle);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+
+.onboarding-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+.onboarding-toggle i {
+  font-size: 12px;
+}
+.onboarding-toggle:hover {
+  color: var(--text-secondary);
+}
+.onboarding-toggle.active {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-xs);
+  border: 1px solid var(--border);
+}
+
+/* Actions */
+.onboarding-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.onboarding-actions-row {
+  justify-content: space-between;
+}
+
+.onboarding-next-btn {
+  gap: 8px;
+}
+
+/* Success state */
+.onboarding-success {
+  padding: 40px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.onboarding-success-icon i {
+  font-size: 48px;
+  color: var(--success);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.onboarding-success h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.onboarding-success p {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}

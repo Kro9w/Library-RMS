@@ -1,60 +1,75 @@
-/* --- ConfirmModal Styles (Refactored) --- */
+/* ============================================================
+   ConfirmModal — Folio RMS
+   ============================================================ */
 
 .custom-modal-backdrop {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1100;
+  animation: backdropIn 120ms ease forwards;
 }
 
-.custom-modal-content {
-  background: var(--card-background); /* USE VAR */
-  border: 1px solid var(--card-border); /* USE VAR */
-  border-radius: 8px;
-  width: 100%;
-  max-width: 500px;
-  box-shadow: var(--card-shadow); /* USE VAR */
-  animation: fadeIn 0.3s ease-out;
-}
-
-.custom-modal-title {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--card-border); /* USE VAR */
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0;
-  font-size: 1.5rem;
-  color: var(--text); /* USE VAR */
-}
-
-.custom-modal-message {
-  margin-bottom: 0;
-  padding: 1.5rem;
-  color: var(--text-muted); /* USE VAR */
-}
-
-.custom-modal-actions {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--card-border); /* USE VAR */
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-
-@keyframes fadeIn {
+@keyframes backdropIn {
   from {
     opacity: 0;
-    transform: translateY(-20px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
+}
+
+.custom-modal-content {
+  background-color: var(--bg-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 440px;
+  overflow: hidden;
+  animation: modalIn 150ms cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.custom-modal-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.custom-modal-message {
+  padding: 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.custom-modal-actions {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  background-color: var(--bg-subtle);
 }

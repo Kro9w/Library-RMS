@@ -1,0 +1,195 @@
+/* ============================================================
+   Notifications Panel — Folio RMS
+   Drops from the topbar bell button, right-aligned
+   ============================================================ */
+
+.notif-panel {
+  width: 360px;
+  background-color: var(--bg-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: ddIn 120ms ease forwards;
+  display: flex;
+  flex-direction: column;
+  max-height: 480px;
+}
+
+@keyframes ddIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Header */
+.notif-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.notif-panel-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.notif-panel-badge {
+  background-color: var(--brand);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 99px;
+  line-height: 1.5;
+}
+
+.notif-panel-mark-all {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--brand);
+  padding: 0;
+  transition: color var(--transition-fast);
+}
+.notif-panel-mark-all:hover {
+  color: var(--brand-hover);
+}
+
+/* Scrollable list */
+.notif-panel-list {
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Empty state */
+.notif-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  gap: 6px;
+}
+
+.notif-empty-icon {
+  font-size: 28px;
+  color: var(--text-muted);
+  opacity: 0.35;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.notif-empty p {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.notif-empty span {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Notification item */
+.notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-muted);
+  transition: background-color 100ms ease;
+  position: relative;
+}
+
+.notif-item:last-child {
+  border-bottom: none;
+}
+
+.notif-item:hover {
+  background-color: var(--bg-hover);
+}
+
+.notif-item.unread {
+  background-color: var(--brand-subtle);
+}
+.notif-item.unread:hover {
+  background-color: #edd8db;
+}
+
+body[data-bs-theme="dark"] .notif-item.unread {
+  background-color: rgba(155, 35, 53, 0.08);
+}
+body[data-bs-theme="dark"] .notif-item.unread:hover {
+  background-color: rgba(155, 35, 53, 0.14);
+}
+
+/* Unread dot */
+.notif-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--brand);
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+/* Item content */
+.notif-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.notif-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.notif-item-msg {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  overflow: hidden;
+  display: -webkit-box;
+  webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.notif-item-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* When dot is absent (read items), add left padding to align */
+.notif-item:not(.unread) .notif-item-body {
+  padding-left: 0;
+}
