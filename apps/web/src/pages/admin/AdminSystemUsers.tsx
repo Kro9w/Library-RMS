@@ -20,26 +20,33 @@ export default function AdminSystemUsers() {
   const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
   const [selectedRoleId, setSelectedRoleId] = useState("");
 
+  const updateHierarchy = trpc.user.updateUserHierarchy.useMutation({
+    onSuccess: () => {
+      refetch();
+      setEditingUserId(null);
+      setSelectedCampusId("");
+      setSelectedDepartmentId("");
+      setSelectedRoleId("");
+    },
+  });
+
   const { data: departments } = trpc.user.getDepartments.useQuery(
     { campusId: selectedCampusId },
     { enabled: !!selectedCampusId },
   );
 
   const { data: roles } = trpc.roles.getRoles.useQuery(undefined, {
-    enabled: !!selectedDepartmentId, // Roles exist per department, we will fetch the current dept's roles
+    enabled: !!selectedDepartmentId,
   });
 
-  const filteredRoles =
-    roles?.filter(
-      (r: { departmentId: string }) => r.departmentId === selectedDepartmentId,
-    ) || [];
+  const [expandedCampuses, setExpandedCampuses] = useState<
+    Record<string, boolean>
+  >({});
+  const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>(
+    {},
+  );
 
-  const updateHierarchy = trpc.user.updateUserHierarchy.useMutation({
-    onSuccess: () => {
-      refetch();
-      setEditingUserId(null);
-    },
-  });
+  if (isLoading) return <LoadingAnimation />;
 
   const handleEdit = (user: any) => {
     setEditingUserId(user.id);
@@ -49,79 +56,68 @@ export default function AdminSystemUsers() {
   };
 
   const handleSave = () => {
-    if (!editingUserId || !selectedCampusId || !selectedDepartmentId) return;
-
-    updateHierarchy.mutate({
-      userId: editingUserId,
-      campusId: selectedCampusId,
-      departmentId: selectedDepartmentId,
-      roleId: selectedRoleId || undefined,
-    });
+    if (editingUserId && selectedCampusId && selectedDepartmentId) {
+      updateHierarchy.mutate({
+        userId: editingUserId,
+        campusId: selectedCampusId,
+        departmentId: selectedDepartmentId,
+        roleId: selectedRoleId || undefined,
+      });
+    }
   };
 
-  if (isLoading) {
-    return <LoadingAnimation />;
-  }
+  const filteredRoles =
+    roles?.filter(
+      (r: { departmentId: string }) => r.departmentId === selectedDepartmentId,
+    ) || [];
 
-  // Sort Campuses: University Administration first, then alphabetical
-  const sortedCampuses = campuses
-    ? [...campuses].sort((a, b) => {
-        const isAAdmin = a.name
-          .toLowerCase()
-          .includes("university administration");
-        const isBAdmin = b.name
-          .toLowerCase()
-          .includes("university administration");
-        if (isAAdmin && !isBAdmin) return -1;
-        if (!isAAdmin && isBAdmin) return 1;
-        return a.name.localeCompare(b.name);
-      })
-    : [];
-
-  // Group users by Campus and Department
   const unassignedUsers =
     users?.filter((u) => !u.campusId || !u.departmentId) || [];
 
-  const renderUserTable = (departmentUsers: any[]) => {
-    if (departmentUsers.length === 0) {
-      return <div className="p-3 text-muted text-center">No users found.</div>;
-    }
+  const sortedCampuses = [...(campuses || [])].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
 
+  const toggleCampus = (id: string) => {
+    setExpandedCampuses((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const toggleDept = (id: string) => {
+    setExpandedDepts((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const renderUserTable = (userList: any[]) => {
+    if (!userList.length) return null;
     return (
       <div className="table-responsive">
-        <table className="table table-hover mb-0">
+        <table className="admin-table">
           <thead>
             <tr>
-              <th className="px-3" style={{ width: "25%" }}>
-                Name
-              </th>
-              <th className="px-3" style={{ width: "30%" }}>
-                Email
-              </th>
-              <th className="px-3" style={{ width: "20%" }}>
-                Role
-              </th>
-              <th className="px-3 text-end" style={{ width: "25%" }}>
-                Actions
-              </th>
+              <th style={{ width: "35%" }}>Name</th>
+              <th style={{ width: "25%" }}>Email</th>
+              <th style={{ width: "25%" }}>Roles</th>
+              <th style={{ width: "15%", textAlign: "right" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {departmentUsers.map((user) => (
-              <tr key={user.id} className="align-middle">
-                <td className="px-3">
-                  {user.firstName} {user.lastName}
-                  {user.isSuperAdmin && (
-                    <span className="badge bg-danger ms-2">Super Admin</span>
-                  )}
+            {userList.map((user) => (
+              <tr key={user.id}>
+                <td>
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="fw-semibold">
+                      {user.lastName}, {user.firstName} {user.middleName || ""}
+                    </span>
+                    {user.isSuperAdmin && (
+                      <span className="badge-superadmin">Super Admin</span>
+                    )}
+                  </div>
                 </td>
-                <td className="px-3">{user.email}</td>
-
+                <td>{user.email}</td>
                 {editingUserId === user.id ? (
-                  <td colSpan={2} className="px-3">
-                    <div className="d-flex flex-wrap gap-2 justify-content-end">
+                  <td colSpan={2}>
+                    <div className="reassign-form justify-content-end">
                       <select
-                        className="form-select form-select-sm w-auto"
+                        className="form-select"
                         value={selectedCampusId}
                         onChange={(e) => {
                           setSelectedCampusId(e.target.value);
@@ -137,7 +133,7 @@ export default function AdminSystemUsers() {
                         ))}
                       </select>
                       <select
-                        className="form-select form-select-sm w-auto"
+                        className="form-select"
                         value={selectedDepartmentId}
                         onChange={(e) => {
                           setSelectedDepartmentId(e.target.value);
@@ -145,7 +141,7 @@ export default function AdminSystemUsers() {
                         }}
                         disabled={!selectedCampusId}
                       >
-                        <option value="">-- Department --</option>
+                        <option value="">-- Dept --</option>
                         {departments?.map((d) => (
                           <option key={d.id} value={d.id}>
                             {d.name}
@@ -153,12 +149,12 @@ export default function AdminSystemUsers() {
                         ))}
                       </select>
                       <select
-                        className="form-select form-select-sm w-auto"
+                        className="form-select"
                         value={selectedRoleId}
                         onChange={(e) => setSelectedRoleId(e.target.value)}
                         disabled={!selectedDepartmentId}
                       >
-                        <option value="">-- Role (Optional) --</option>
+                        <option value="">-- Role (Opt) --</option>
                         {filteredRoles.map((r) => (
                           <option key={r.id} value={r.id}>
                             {r.name}
@@ -166,7 +162,7 @@ export default function AdminSystemUsers() {
                         ))}
                       </select>
                       <button
-                        className="btn btn-sm btn-success"
+                        className="btn topbar-btn topbar-btn-primary ms-2"
                         onClick={handleSave}
                         disabled={
                           !selectedCampusId ||
@@ -177,7 +173,7 @@ export default function AdminSystemUsers() {
                         Save
                       </button>
                       <button
-                        className="btn btn-sm btn-secondary"
+                        className="btn topbar-btn"
                         onClick={() => setEditingUserId(null)}
                       >
                         Cancel
@@ -186,16 +182,16 @@ export default function AdminSystemUsers() {
                   </td>
                 ) : (
                   <>
-                    <td className="px-3">
+                    <td>
                       {user.roles
                         ?.map((r: { name: string }) => r.name)
                         .join(", ") || "None"}
                     </td>
-                    <td className="px-3 text-end">
+                    <td style={{ textAlign: "right" }}>
                       <button
-                        className="btn btn-sm btn-outline-primary"
+                        className="btn topbar-btn"
                         onClick={() => handleEdit(user)}
-                        disabled={user.isSuperAdmin} // Disable editing other super admins
+                        disabled={user.isSuperAdmin}
                       >
                         Reassign
                       </button>
@@ -212,51 +208,33 @@ export default function AdminSystemUsers() {
 
   return (
     <div>
-      <h2 style={{ color: "var(--primary)" }}>Manage System Users</h2>
-      <p
-        style={{
-          color: "var(--text-muted)",
-          marginTop: "0.5rem",
-          marginBottom: "2rem",
-        }}
-      >
+      <h2 className="admin-page-title">Manage System Users</h2>
+      <p className="admin-page-desc">
         Super admin bird's-eye view of all users in the system, organized by
         campus and department.
       </p>
 
       {/* Unassigned Users */}
       {unassignedUsers.length > 0 && (
-        <div
-          className="card mb-4"
-          style={{ border: "1px solid var(--card-border)" }}
-        >
-          <div
-            className="card-header fw-bold d-flex justify-content-between align-items-center"
-            style={{
-              backgroundColor: "var(--card-background)",
-              borderBottom: "1px solid var(--card-border)",
-            }}
-          >
-            <span>Unassigned Users</span>
-            <span className="badge bg-secondary rounded-pill">
+        <div className="admin-card border-danger border-opacity-50">
+          <div className="admin-card-header bg-danger bg-opacity-10 text-danger">
+            <span className="admin-card-title text-danger">
+              Unassigned Users
+            </span>
+            <span className="admin-campus-count border-danger text-danger bg-white">
               {unassignedUsers.length}
             </span>
           </div>
-          <div className="card-body p-0">
-            {renderUserTable(unassignedUsers)}
-          </div>
+          <div className="p-0">{renderUserTable(unassignedUsers)}</div>
         </div>
       )}
 
       {/* Group by Campus -> Department */}
-      <div className="accordion" id="campusesAccordion">
+      <div>
         {sortedCampuses.map((campus) => {
-          // Get all departments for this campus from the users' data to show accurate counts
-          // Or we can just use the unique departments from the users in this campus
           const campusUsers =
             users?.filter((u) => u.campusId === campus.id) || [];
 
-          // Get unique departments for this campus from the users array
           const departmentMap = new Map();
           campusUsers.forEach((u) => {
             if (u.departmentId && u.department) {
@@ -272,122 +250,83 @@ export default function AdminSystemUsers() {
           });
 
           const departmentsWithUsers = Array.from(departmentMap.values());
-          // Sort departments alphabetically
           departmentsWithUsers.sort((a, b) => a.name.localeCompare(b.name));
 
-          const campusCollapseId = `collapseCampus-${campus.id}`;
+          const isCampusExpanded = !!expandedCampuses[campus.id];
 
           return (
-            <div
-              className="accordion-item shadow-sm mb-3 rounded overflow-hidden"
-              style={{ border: "1px solid var(--card-border)" }}
-              key={campus.id}
-            >
-              <h2
-                className="accordion-header"
-                id={`headingCampus-${campus.id}`}
-              >
-                <button
-                  className="accordion-button collapsed fw-bold fs-5"
-                  type="button"
-                  data-bs-toggle="collapse"
-                  data-bs-target={`#${campusCollapseId}`}
-                  aria-expanded="false"
-                  aria-controls={campusCollapseId}
-                  style={{
-                    backgroundColor: "var(--card-background)",
-                    color: "var(--text)",
-                  }}
-                >
-                  <div className="d-flex justify-content-between align-items-center w-100 pe-3">
-                    <div>
-                      <i
-                        className="bi bi-buildings me-2"
-                        style={{ color: "var(--primary)" }}
-                      ></i>
-                      {campus.name}
-                    </div>
-                    <span className="badge bg-secondary rounded-pill">
-                      {campusUsers.length} Users
-                    </span>
-                  </div>
-                </button>
-              </h2>
-
+            <div className="admin-campus-accordion" key={campus.id}>
               <div
-                id={campusCollapseId}
-                className="accordion-collapse collapse"
-                aria-labelledby={`headingCampus-${campus.id}`}
-                data-bs-parent="#campusesAccordion"
+                className="admin-campus-header"
+                onClick={() => toggleCampus(campus.id)}
               >
-                <div className="accordion-body p-3 bg-white">
+                <div className="d-flex align-items-center gap-2">
+                  <i
+                    className={`bi bi-chevron-${isCampusExpanded ? "down" : "right"} text-muted`}
+                    style={{ fontSize: "12px", width: "14px" }}
+                  ></i>
+                  <i
+                    className="bi bi-buildings"
+                    style={{ color: "var(--brand)" }}
+                  ></i>
+                  <span>{campus.name}</span>
+                </div>
+                <span className="admin-campus-count">
+                  {campusUsers.length} Users
+                </span>
+              </div>
+
+              {isCampusExpanded && (
+                <div className="admin-dept-accordion-wrapper mt-2 mb-3">
                   {departmentsWithUsers.length === 0 ? (
-                    <p className="text-muted mb-0">
-                      No users assigned to this campus yet.
-                    </p>
-                  ) : (
                     <div
-                      className="accordion"
-                      id={`departmentsAccordion-${campus.id}`}
+                      className="p-3 text-muted"
+                      style={{ fontSize: "13px", paddingLeft: "42px" }}
                     >
-                      {departmentsWithUsers.map((dept) => {
-                        const deptCollapseId = `collapseDept-${dept.id}`;
-                        return (
-                          <div
-                            className="accordion-item mb-2 rounded"
-                            style={{ border: "1px solid var(--card-border)" }}
-                            key={dept.id}
-                          >
-                            <h2
-                              className="accordion-header"
-                              id={`headingDept-${dept.id}`}
-                            >
-                              <button
-                                className="accordion-button collapsed py-2"
-                                type="button"
-                                data-bs-toggle="collapse"
-                                data-bs-target={`#${deptCollapseId}`}
-                                aria-expanded="false"
-                                aria-controls={deptCollapseId}
-                                style={{
-                                  backgroundColor: "var(--card-background)",
-                                  color: "var(--text)",
-                                }}
-                              >
-                                <div className="d-flex justify-content-between align-items-center w-100 pe-3">
-                                  <div>
-                                    <i className="bi bi-building me-2 text-muted"></i>
-                                    {dept.name}
-                                  </div>
-                                  <span className="badge rounded-pill bg-secondary">
-                                    {dept.users.length}
-                                  </span>
-                                </div>
-                              </button>
-                            </h2>
-                            <div
-                              id={deptCollapseId}
-                              className="accordion-collapse collapse"
-                              aria-labelledby={`headingDept-${dept.id}`}
-                              data-bs-parent={`#departmentsAccordion-${campus.id}`}
-                            >
-                              <div className="accordion-body p-0">
-                                {renderUserTable(dept.users)}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                      No users assigned to this campus yet.
                     </div>
+                  ) : (
+                    departmentsWithUsers.map((dept) => {
+                      const isDeptExpanded = !!expandedDepts[dept.id];
+                      return (
+                        <div className="admin-dept-accordion" key={dept.id}>
+                          <div
+                            className="admin-dept-header"
+                            onClick={() => toggleDept(dept.id)}
+                          >
+                            <div className="d-flex align-items-center gap-2">
+                              <i
+                                className={`bi bi-chevron-${isDeptExpanded ? "down" : "right"} text-muted`}
+                                style={{ fontSize: "10px", width: "12px" }}
+                              ></i>
+                              <span>{dept.name}</span>
+                            </div>
+                            <span className="admin-campus-count bg-white">
+                              {dept.users.length}
+                            </span>
+                          </div>
+
+                          {isDeptExpanded && (
+                            <div
+                              className="border-top"
+                              style={{ borderColor: "var(--border-muted)" }}
+                            >
+                              {renderUserTable(dept.users)}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
                   )}
                 </div>
-              </div>
+              )}
             </div>
           );
         })}
         {campuses?.length === 0 && (
-          <div className="alert alert-info">
-            No campuses found. Please create a campus first.
+          <div className="empty-state border rounded">
+            <i className="bi bi-buildings"></i>
+            <p>No campuses found. Please create a campus first.</p>
           </div>
         )}
       </div>

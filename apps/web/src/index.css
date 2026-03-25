@@ -1,9 +1,3 @@
-/* ============================================================
-   FOLIO RMS — Design System
-   Inspired by Supabase/Linear: clean, minimal, data-dense
-   Brand: Maroon (#9B2335) + Amber accent, toned-down palette
-   ============================================================ */
-
 @import url("https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap");
 
 /* ── Design Tokens ── */
@@ -517,6 +511,8 @@ button:focus-visible,
   opacity: 0.5;
   cursor: not-allowed;
   pointer-events: none;
+  background-color: var(--bg-muted);
+  border-color: var(--border-strong);
 }
 
 /* Sizes */
@@ -959,11 +955,6 @@ hr {
 .spinner-border-sm {
   width: 14px;
   height: 14px;
-}
-
-/* ── Tooltip-ish ── */
-[title] {
-  /* Removed cursor: help to prevent overriding native cursors on buttons/links */
 }
 
 /* ── Utility classes ── */

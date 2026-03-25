@@ -27,12 +27,12 @@
 }
 
 .step-dot.active {
-  background-color: var(--primary);
+  background-color: var(--brand);
   transform: scale(1.2);
 }
 
 .step-dot.completed {
-  background-color: var(--primary);
+  background-color: var(--brand);
   opacity: 0.5;
 }
 
@@ -104,7 +104,7 @@
 /* Step 1: Retention Periods */
 .info-block {
   background-color: rgba(var(--bs-primary-rgb), 0.05);
-  border-left: 3px solid var(--primary);
+  border-left: 3px solid var(--brand);
   padding: 12px;
   margin-bottom: 12px;
   border-radius: 0 4px 4px 0;
@@ -113,7 +113,7 @@
 .info-block h6 {
   margin-bottom: 4px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--brand);
 }
 
 .info-block p {

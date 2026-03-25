@@ -106,7 +106,7 @@ export function OwnershipGraph() {
                 name: campus.name,
                 type: "campus",
                 parentId: institutionHierarchy.id,
-                color: "var(--primary)",
+                color: "var(--brand)",
               };
               initialStack.push(campusNode);
 
@@ -115,7 +115,7 @@ export function OwnershipGraph() {
                 name: dept.name,
                 type: "department",
                 parentId: campus.id,
-                color: "var(--primary)",
+                color: "var(--brand)",
               };
               initialStack.push(deptNode);
 
@@ -153,7 +153,7 @@ export function OwnershipGraph() {
             name: campus.name,
             type: "campus",
             parentId: institutionHierarchy.id,
-            color: "var(--primary)",
+            color: "var(--brand)",
           };
           initialStack.push(campusNode);
 
@@ -170,7 +170,7 @@ export function OwnershipGraph() {
                 name: dept.name,
                 type: "department",
                 parentId: campus.id,
-                color: "var(--primary)",
+                color: "var(--brand)",
               };
               initialStack.push(deptNode);
 
@@ -240,7 +240,7 @@ export function OwnershipGraph() {
           name: c.name,
           type: "campus",
           parentId: currentRoot.id,
-          color: "var(--primary)",
+          color: "var(--brand)",
         });
       });
     } else if (currentRoot.type === "campus") {
@@ -254,7 +254,7 @@ export function OwnershipGraph() {
             name: d.name,
             type: "department",
             parentId: currentRoot.id,
-            color: "var(--primary)",
+            color: "var(--brand)",
           });
         });
       }
@@ -570,7 +570,7 @@ export function OwnershipGraph() {
       .style("fill", (d) => {
         if (d.type === "document" && d.color) return `#${d.color}`;
         if (d.type === "campus" || d.type === "department")
-          return "var(--primary)";
+          return "var(--brand)";
         if (d.type === "institution") return "var(--text)";
         return null;
       })

@@ -3,6 +3,7 @@ import { trpc } from "../trpc";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
+import "./NotificationsDropdown.css";
 
 interface NotificationsDropdownProps {
   isCollapsed: boolean;

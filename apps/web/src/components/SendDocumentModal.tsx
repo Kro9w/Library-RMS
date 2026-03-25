@@ -238,7 +238,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
   const modalHeaderStyle = {
     backgroundColor: "var(--background)",
     borderBottom: "1px solid var(--card-border)",
-    color: "var(--primary)",
+    color: "var(--brand)",
   };
 
   const modalBodyStyle = {

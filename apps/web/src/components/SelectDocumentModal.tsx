@@ -48,7 +48,7 @@ export const SelectDocumentModal: React.FC<SelectDocumentModalProps> = ({
   const modalHeaderStyle = {
     backgroundColor: "var(--background)",
     borderBottom: "1px solid var(--card-border)",
-    color: "var(--primary)",
+    color: "var(--brand)",
   };
 
   const modalBodyStyle = {

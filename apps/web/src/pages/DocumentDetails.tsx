@@ -518,7 +518,7 @@ export const DocumentDetails: React.FC = () => {
                             <strong
                               style={{
                                 fontSize: "0.85rem",
-                                color: "var(--primary)",
+                                color: "var(--brand)",
                               }}
                             >
                               {formatUserName(remark.author)}

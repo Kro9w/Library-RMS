@@ -2,6 +2,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { trpc } from "../trpc";
+import { LoadingAnimation } from "../components/ui/LoadingAnimation";
 
 // --- Imports ---
 import "./Documents.css";
@@ -58,9 +59,7 @@ export function Dashboard() {
   if (isLoading) {
     return (
       <div className="container mt-4 text-center">
-        <div className="spinner-border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
+        <LoadingAnimation />
       </div>
     );
   }

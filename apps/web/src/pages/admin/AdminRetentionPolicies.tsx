@@ -3,7 +3,7 @@ import { RetentionPolicyPanel } from "../../components/Retention/RetentionPolicy
 export default function AdminRetentionPolicies() {
   return (
     <div>
-      <h2 style={{ color: "var(--primary)", marginBottom: "0.5rem" }}>
+      <h2 style={{ color: "var(--brand)", marginBottom: "0.5rem" }}>
         Records Retention Policies
       </h2>
       <p style={{ color: "var(--text-muted)", marginBottom: "2rem" }}>

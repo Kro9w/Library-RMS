@@ -68,7 +68,7 @@
   cursor: pointer;
 }
 
-.active {
+.role-dropdown-item.active {
   display: none;
 }
 

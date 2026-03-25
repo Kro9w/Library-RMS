@@ -76,13 +76,13 @@
 
 .binder-tab:hover {
   background-color: var(--hover-bg);
-  color: var(--primary);
+  color: var(--brand);
   width: 40px; /* Grow slightly */
 }
 
 .binder-tab.active {
   background-color: var(--card-background);
-  color: var(--primary);
+  color: var(--brand);
   font-weight: 600;
   width: 42px;
   border-left-color: var(--card-background);
@@ -149,7 +149,7 @@
 }
 .tree-header .icon-type {
   font-size: 1rem;
-  color: var(--primary);
+  color: var(--brand);
 }
 .tree-children {
   padding-left: 1.25rem;
@@ -232,7 +232,7 @@ svg.grabbing {
 }
 .btn-back:hover {
   background-color: var(--hover-bg);
-  color: var(--primary);
+  color: var(--brand);
 }
 
 /* Tooltip - Fixed Position Top Right of PAGE */
@@ -256,7 +256,7 @@ svg.grabbing {
 }
 .info-tooltip-container:hover {
   background-color: var(--hover-bg);
-  color: var(--primary);
+  color: var(--brand);
 }
 .info-tooltip-text {
   visibility: hidden;
@@ -316,7 +316,7 @@ svg.grabbing {
   transition: color 0.2s ease;
 }
 .breadcrumb-item-text:hover {
-  color: var(--primary);
+  color: var(--brand);
 }
 .breadcrumb-item-text.active {
   font-weight: 600;
@@ -333,7 +333,7 @@ svg.grabbing {
 .details-content h4 {
   margin-bottom: 0.5rem;
   font-size: 1.25rem;
-  color: var(--primary);
+  color: var(--brand);
 }
 .details-content .list-group {
   list-style: none;
@@ -367,7 +367,7 @@ svg.grabbing {
   stroke-width: 3px;
 }
 .node-circle.mother-node {
-  stroke: var(--primary);
+  stroke: var(--brand);
   stroke-width: 4px;
   filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.2));
 }
@@ -375,10 +375,10 @@ svg.grabbing {
   fill: var(--text);
 }
 .node-circle.campus {
-  fill: var(--primary);
+  fill: var(--brand);
 }
 .node-circle.department {
-  fill: var(--primary);
+  fill: var(--brand);
 }
 .node-circle.user {
   fill: var(--accent);
@@ -391,11 +391,11 @@ svg.grabbing {
   stroke-width: 4px;
 }
 .node-circle.document.armed-for-drop {
-  fill: var(--primary);
+  fill: var(--brand);
   stroke-width: 3px;
 }
 .drop-magnet {
-  fill: var(--primary);
+  fill: var(--brand);
   opacity: 1;
 }
 .node-label {
@@ -417,7 +417,7 @@ svg.grabbing {
 
 /* --- Tether Line --- */
 .tether {
-  stroke: var(--primary);
+  stroke: var(--brand);
   stroke-width: 3px;
   stroke-dasharray: 4;
   animation: tether-dash 1s linear infinite;
@@ -455,8 +455,8 @@ svg.grabbing {
 
 .tool-item:hover {
   background-color: var(--hover-bg);
-  border-color: var(--primary);
-  color: var(--primary);
+  border-color: var(--brand);
+  color: var(--brand);
   transform: translateY(-2px);
   box-shadow: var(--card-shadow);
 }
@@ -479,7 +479,7 @@ svg.grabbing {
 /* --- Bubble Node --- */
 .node-circle.bubble {
   fill: rgba(255, 255, 255, 0.3); /* Translucent */
-  stroke: var(--primary);
+  stroke: var(--brand);
   stroke-width: 2px;
   stroke-dasharray: 5, 3; /* Dashed/Organic look */
 }
@@ -518,11 +518,11 @@ svg.grabbing {
 
 /* Bubble Hover State for Drop */
 .node.bubble path.bubble-hover {
-  fill: var(--primary);
+  fill: var(--brand);
   fill-opacity: 0.2;
-  stroke: var(--primary);
+  stroke: var(--brand);
   stroke-width: 4px;
-  filter: drop-shadow(0 0 10px var(--primary));
+  filter: drop-shadow(0 0 10px var(--brand));
   transition: all 0.2s ease-out;
 }
 
@@ -547,7 +547,7 @@ svg.grabbing {
 
 .document-list-item:hover {
   background-color: var(--hover-bg);
-  border-color: var(--primary);
+  border-color: var(--brand);
   transform: translateX(2px);
   box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.05);
 }

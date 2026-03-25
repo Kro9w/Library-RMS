@@ -3,7 +3,7 @@ import { DocumentTypesPanel } from "../../components/DocumentTypes/DocumentTypsP
 export default function AdminDocumentTypes() {
   return (
     <div>
-      <h2 style={{ color: "var(--primary)", marginBottom: "0.5rem" }}>
+      <h2 style={{ color: "var(--brand)", marginBottom: "0.5rem" }}>
         Manage Document Types
       </h2>
       <p style={{ color: "var(--text-muted)", marginBottom: "2rem" }}>

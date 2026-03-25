@@ -38,7 +38,7 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background-color: var(--primary);
+  background-color: var(--brand);
   border: 3px solid var(--background); /* Creates a gap effect */
   z-index: 1;
 }
