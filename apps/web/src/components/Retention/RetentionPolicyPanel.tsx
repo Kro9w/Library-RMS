@@ -43,7 +43,7 @@ export function RetentionPolicyPanel() {
           setEditingId(null);
           refetch();
         },
-      }
+      },
     );
   };
 
@@ -72,8 +72,8 @@ export function RetentionPolicyPanel() {
         </p>
 
         <div className="table-responsive">
-          <table className="table table-bordered table-hover align-middle">
-            <thead className="table-light">
+          <table className="table align-middle">
+            <thead>
               <tr>
                 <th>Document Type</th>
                 <th style={{ width: "15%" }}>Active (Years)</th>
@@ -134,7 +134,7 @@ export function RetentionPolicyPanel() {
                             value={dispositionAction}
                             onChange={(e) =>
                               setDispositionAction(
-                                e.target.value as "ARCHIVE" | "DESTROY"
+                                e.target.value as "ARCHIVE" | "DESTROY",
                               )
                             }
                           >

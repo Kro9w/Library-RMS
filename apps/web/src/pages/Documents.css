@@ -109,29 +109,24 @@
 }
 
 .document-table-card .table th {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 14px;
+  font-weight: 500;
   color: var(--text-muted);
-  padding: 10px 16px;
-  background-color: var(--bg-subtle);
+  padding: 16px 20px;
+  background-color: transparent;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 
 .document-table-card .table td {
-  padding: 11px 16px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border-muted);
   vertical-align: middle;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .document-table-card .table tbody tr:last-child td {
   border-bottom: none;
-}
-.document-table-card .table tbody tr:hover td {
-  background-color: var(--bg-hover);
 }
 
 /* Document title link */

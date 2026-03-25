@@ -610,24 +610,22 @@ button:focus-visible,
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 
 .table th {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 14px;
+  font-weight: 500;
   color: var(--text-muted);
-  padding: 10px 16px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border);
-  background-color: var(--bg-subtle);
+  background-color: transparent;
   white-space: nowrap;
 }
 
 .table td {
-  padding: 12px 16px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border-muted);
   vertical-align: middle;
   color: var(--text-secondary);
@@ -635,15 +633,6 @@ button:focus-visible,
 
 .table tbody tr:last-child td {
   border-bottom: none;
-}
-
-.table-hover tbody tr:hover td {
-  background-color: var(--bg-hover);
-  cursor: default;
-}
-
-.table tbody tr:hover {
-  background-color: var(--bg-hover);
 }
 
 /* ── Badges ── */
