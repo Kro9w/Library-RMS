@@ -216,7 +216,6 @@ export const DocumentDetails: React.FC = () => {
               src={previewUrl}
               className="pdf-preview-iframe"
               title={document.title}
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
             ></iframe>
           ) : (
             <div className="preview-fallback">
