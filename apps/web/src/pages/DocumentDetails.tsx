@@ -356,17 +356,21 @@ export const DocumentDetails: React.FC = () => {
                 <>
                   {document.lifecycleStatus === "Ready" && (
                     <div className="mt-3">
-                      <div className="alert alert-warning">
-                        <h6 className="alert-heading">Disposition Ready</h6>
-                        <p className="mb-2">
+                      <div className="disposition-block disposition-ready">
+                        <div className="disposition-header">
+                          <i className="bi bi-clock-history disposition-icon"></i>
+                          <h6 className="disposition-title">
+                            Disposition Ready
+                          </h6>
+                        </div>
+                        <p className="disposition-text">
                           This document has reached its retention limit.
-                        </p>
-                        <p className="mb-3">
+                          <br />
                           Action:{" "}
                           <strong>{document.dispositionActionSnapshot}</strong>
                         </p>
                         <button
-                          className="btn btn-warning w-100 fw-bold"
+                          className="btn btn-outline-secondary w-100 disposition-btn"
                           onClick={() => {
                             if (
                               window.confirm(
@@ -390,11 +394,14 @@ export const DocumentDetails: React.FC = () => {
 
                   {document.dispositionStatus === "PENDING_DISPOSITION" && (
                     <div className="mt-3">
-                      <div className="alert alert-info">
-                        <h6 className="alert-heading">
-                          Disposition Pending Approval
-                        </h6>
-                        <p className="mb-3">
+                      <div className="disposition-block disposition-pending">
+                        <div className="disposition-header">
+                          <i className="bi bi-hourglass-split disposition-icon text-primary"></i>
+                          <h6 className="disposition-title">
+                            Disposition Pending Approval
+                          </h6>
+                        </div>
+                        <p className="disposition-text">
                           A request to{" "}
                           <strong>{document.dispositionActionSnapshot}</strong>{" "}
                           this document is pending.
@@ -402,7 +409,7 @@ export const DocumentDetails: React.FC = () => {
 
                         {user?.id === document.dispositionRequesterId ? (
                           <button
-                            className="btn btn-outline-secondary w-100"
+                            className="btn btn-outline-secondary w-100 disposition-btn"
                             onClick={() => {
                               if (
                                 window.confirm("Cancel disposition request?")
@@ -419,7 +426,7 @@ export const DocumentDetails: React.FC = () => {
                         ) : (
                           <div className="d-flex gap-2">
                             <button
-                              className="btn btn-danger flex-grow-1"
+                              className="btn btn-outline-primary flex-grow-1 disposition-btn"
                               onClick={() => {
                                 if (
                                   window.confirm(
@@ -438,7 +445,7 @@ export const DocumentDetails: React.FC = () => {
                                 : "Approve & Execute"}
                             </button>
                             <button
-                              className="btn btn-outline-danger flex-grow-1"
+                              className="btn btn-outline-danger flex-grow-1 disposition-btn"
                               onClick={() => {
                                 if (
                                   window.confirm("Reject disposition request?")

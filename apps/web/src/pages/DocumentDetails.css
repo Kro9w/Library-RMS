@@ -203,3 +203,70 @@
   color: #7f1d1d;
   margin: 0;
 }
+
+/* Disposition Block */
+.disposition-block {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.disposition-ready {
+  background-color: var(--warning-subtle);
+  border-color: #fde047; /* slight warning border */
+}
+
+.disposition-pending {
+  background-color: var(--info-subtle);
+  border-color: #93c5fd; /* slight info border */
+}
+
+.disposition-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.disposition-icon {
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.disposition-ready .disposition-icon {
+  color: #854d0e; /* deeper warning icon */
+}
+
+.disposition-pending .disposition-icon {
+  color: #1e40af; /* deeper info icon */
+}
+
+.disposition-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.disposition-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.disposition-text strong {
+  color: var(--text-primary);
+}
+
+.disposition-btn {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+}

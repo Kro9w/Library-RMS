@@ -423,6 +423,16 @@ export function OwnershipGraph() {
       const zoomBehavior = d3
         .zoom<SVGSVGElement, unknown>()
         .scaleExtent([0.1, 5])
+        .filter((event) => {
+          // Prevent zoom from catching drag events on nodes
+          if (
+            (event.type === "mousedown" || event.type === "touchstart") &&
+            event.target.tagName !== "svg"
+          ) {
+            return false;
+          }
+          return !event.ctrlKey && !event.button;
+        })
         .on("start", () => svg.classed("grabbing", true))
         .on("zoom", (event) => g.attr("transform", event.transform))
         .on("end", () => svg.classed("grabbing", false));
@@ -554,6 +564,25 @@ export function OwnershipGraph() {
       });
 
     const nodeMerge = node.merge(nodeEnter);
+
+    const drag = d3
+      .drag<SVGGElement, Node>()
+      .on("start", (event, d) => {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+      })
+      .on("drag", (event, d) => {
+        d.fx = event.x;
+        d.fy = event.y;
+      })
+      .on("end", (event, d) => {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+      });
+
+    nodeMerge.call(drag);
 
     nodeMerge.on("click", (e, d) => handleNodeClick(e, d));
 
