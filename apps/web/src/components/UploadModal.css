@@ -1,7 +1,3 @@
-/* ============================================================
-   Upload Modal — Folio RMS
-   ============================================================ */
-
 .upload-backdrop {
   position: fixed;
   inset: 0;
@@ -251,6 +247,38 @@
   color: var(--text-muted);
   font-weight: 400;
   margin-left: 6px;
+}
+
+/* Scanning Animation */
+.scanning-input {
+  border: 1px solid transparent !important;
+  background:
+    linear-gradient(
+      90deg,
+      var(--bg-surface) 0%,
+      var(--brand-subtle) 50%,
+      var(--bg-surface) 100%
+    ),
+    linear-gradient(
+      90deg,
+      var(--border) 0%,
+      var(--brand) 50%,
+      var(--border) 100%
+    );
+  background-clip: padding-box, border-box;
+  background-origin: padding-box, border-box;
+  background-size: 200% 100%;
+  animation: scanGradient 1.5s infinite linear;
+  color: var(--brand) !important;
+}
+
+@keyframes scanGradient {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
 }
 
 /* Footer */

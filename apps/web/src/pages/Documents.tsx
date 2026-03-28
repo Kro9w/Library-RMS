@@ -4,7 +4,7 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { ConfirmModal } from "../components/ConfirmModal";
 // Lazy loaded modals
-import { LoadingAnimation } from "../components/ui/LoadingAnimation";
+
 import "./Documents.css";
 import { formatUserName } from "../utils/user";
 import { StatusBadge } from "../components/StatusBadge";
@@ -258,7 +258,7 @@ const Documents: React.FC = () => {
     (isLoadingRecent && !recentData) ||
     isLoadingTypes
   )
-    return <LoadingAnimation />;
+    return null;
 
   return (
     <div className="container mt-4">

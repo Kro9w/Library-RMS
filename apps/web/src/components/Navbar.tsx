@@ -13,6 +13,7 @@ import { trpc } from "../trpc";
 import { useOutsideClick } from "../hooks/useOutsideClick";
 import { usePermissions } from "../hooks/usePermissions";
 import { useQueryClient } from "@tanstack/react-query";
+import { useGlobalLoading } from "../hooks/useGlobalLoading";
 import "./Navbar.css";
 import { formatUserName } from "../utils/user";
 import { NotificationsDropdown } from "./NotificationsDropdown";
@@ -87,6 +88,8 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
   );
   const [isNotificationsOpen, setNotificationsOpen] = useState(false);
   const notifTriggerRef = useRef<HTMLButtonElement>(null);
+
+  const isGlobalLoading = useGlobalLoading();
 
   const displayName = dbUser ? formatUserName(dbUser) : user?.email || "User";
 
@@ -227,7 +230,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
       </aside>
 
       {/* ── Top bar ── */}
-      <header className="topbar">
+      <header className={`topbar ${isGlobalLoading ? "topbar-loading" : ""}`}>
         {/* Left: Logo and Breadcrumb */}
         <div className="topbar-left">
           <div className="topbar-brand">

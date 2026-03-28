@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { trpc } from "../../trpc";
-import { LoadingAnimation } from "../../components/ui/LoadingAnimation";
 
 export default function AdminSystemUsers() {
   const { data: dbUser } = trpc.user.getMe.useQuery();
@@ -46,7 +45,7 @@ export default function AdminSystemUsers() {
     {},
   );
 
-  if (isLoading) return <LoadingAnimation />;
+  if (isLoading) return null;
 
   const handleEdit = (user: any) => {
     setEditingUserId(user.id);

@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { trpc } from "../trpc";
 import { supabase } from "../supabase";
-import { LoadingAnimation } from "./ui/LoadingAnimation";
 
 interface CheckInModalProps {
   show: boolean;
@@ -100,7 +99,7 @@ export const CheckInModal: React.FC<CheckInModalProps> = ({
           <div className="modal-body">
             {uploading ? (
               <div className="text-center py-4">
-                <LoadingAnimation />
+                null
                 <p className="mt-3">Uploading new version...</p>
               </div>
             ) : (

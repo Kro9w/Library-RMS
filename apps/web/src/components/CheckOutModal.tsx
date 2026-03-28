@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { trpc } from "../trpc";
-import { LoadingAnimation } from "./ui/LoadingAnimation";
 
 interface CheckOutModalProps {
   show: boolean;
@@ -58,7 +57,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = ({
           <div className="modal-body">
             {checkOutMutation.isPending ? (
               <div className="text-center py-4">
-                <LoadingAnimation />
+                null
                 <p className="mt-3">Checking out document...</p>
               </div>
             ) : (

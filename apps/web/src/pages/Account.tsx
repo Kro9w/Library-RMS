@@ -7,7 +7,7 @@ import { useDropzone } from "react-dropzone";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "../supabase.ts";
 import "./Account.css";
-import { LoadingAnimation } from "../components/ui/LoadingAnimation";
+
 import { formatUserName } from "../utils/user";
 
 type ProfileFormData = {
@@ -89,7 +89,7 @@ const Account: React.FC = () => {
     });
   };
 
-  if (isLoading) return <LoadingAnimation />;
+  if (isLoading) return null;
   if (!authUser || !dbUser) return <Navigate to="/login" replace />;
 
   const displayName = formatUserName(dbUser);

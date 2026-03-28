@@ -18,7 +18,6 @@ import { Navbar } from "./components/Navbar";
 import { trpc } from "./trpc";
 import { TRPCClientError } from "@trpc/client";
 import { usePermissions } from "./hooks/usePermissions";
-import { LoadingAnimation } from "./components/ui/LoadingAnimation";
 
 // Lazy-loaded components
 const Dashboard = React.lazy(() =>
@@ -68,7 +67,7 @@ const AdminRoute: React.FC<{ children: React.ReactElement }> = ({
   const { canManageUsers, isLoading } = usePermissions();
 
   if (isLoading) {
-    return <LoadingAnimation />;
+    return null;
   }
 
   // Use granular permission rather than legacy isAdmin
@@ -132,7 +131,7 @@ const AppContent: React.FC = () => {
   const toggleNavbar = () => setIsCollapsed(!isCollapsed);
 
   if (isLoadingSession) {
-    return <LoadingAnimation />;
+    return null;
   }
 
   const showNavbar = session && location.pathname !== "/join";
@@ -150,7 +149,7 @@ const AppContent: React.FC = () => {
       )}
 
       <div className={mainContentClass}>
-        <Suspense fallback={<LoadingAnimation />}>
+        <Suspense fallback={null}>
           <Routes>
             <Route path="/word-auth" element={<WordAuth />} />
             <Route

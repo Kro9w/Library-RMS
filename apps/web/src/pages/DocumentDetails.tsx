@@ -3,7 +3,7 @@ import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { trpc } from "../trpc";
 import "./DocumentDetails.css";
-import { LoadingAnimation } from "../components/ui/LoadingAnimation";
+
 import { formatUserName } from "../utils/user";
 import {
   ClassificationBadge,
@@ -128,7 +128,7 @@ export const DocumentDetails: React.FC = () => {
     );
 
   if (isLoadingDoc || isLoadingUrl) {
-    return <LoadingAnimation />;
+    return null;
   }
 
   if (!document || !urlData) {

@@ -6,13 +6,13 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 120px;
+  min-height: 60vh;
   padding: 32px;
 }
 
 .plume-svg {
   width: 100%;
-  max-width: 128px;
+  max-width: 64px;
   height: auto;
   /* Prevents clipping when the plume moves near the viewbox edges */
   overflow: visible;

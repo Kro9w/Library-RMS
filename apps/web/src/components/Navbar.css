@@ -169,6 +169,34 @@ body[data-bs-theme="dark"] .sidebar-nav-link.active {
   align-items: center;
   padding: 0 16px;
   gap: 8px;
+  transition: border-bottom-color 150ms ease;
+}
+
+/* Global Loading Animation on Topbar Border */
+.topbar.topbar-loading {
+  border-bottom: 1px solid transparent;
+  background:
+    linear-gradient(var(--bg-surface), var(--bg-surface)) padding-box,
+    linear-gradient(
+        90deg,
+        var(--border) 0%,
+        var(--border) 35%,
+        var(--brand) 50%,
+        var(--border) 65%,
+        var(--border) 100%
+      )
+      border-box;
+  background-size: 200% 100%;
+  animation: scanGradient 1.5s infinite linear;
+}
+
+@keyframes scanGradient {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
 }
 
 .topbar-left {

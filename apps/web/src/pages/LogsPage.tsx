@@ -1,6 +1,6 @@
 import React from "react";
 import { trpc } from "../trpc";
-import { LoadingAnimation } from "../components/ui/LoadingAnimation";
+
 import RolePill from "../components/Roles/RolePill";
 import { formatUserName } from "../utils/user";
 
@@ -39,7 +39,7 @@ const LogsPage: React.FC = () => {
   return (
     <div className="container mt-4">
       <h2 className="mb-4">Audit Logs</h2>
-      {isLoading && <LoadingAnimation />}
+      {isLoading && null}
       {isError && <p>Error loading logs.</p>}
 
       {data && data.logs.length === 0 && (

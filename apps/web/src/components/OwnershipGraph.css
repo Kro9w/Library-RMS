@@ -200,7 +200,7 @@
   border-radius: 0.375rem !important;
 }
 
-svg {
+.graph-canvas-wrapper svg {
   background-color: var(--background);
   /* Use a translucent version of text-muted for the dots to keep it subtle */
   background-image: radial-gradient(
@@ -213,7 +213,7 @@ svg {
   height: 100%;
   cursor: auto;
 }
-svg.grabbing {
+.graph-canvas-wrapper svg.grabbing {
   cursor: grabbing !important;
 }
 

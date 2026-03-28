@@ -315,7 +315,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
                 </label>
                 <input
                   type="text"
-                  className="form-control"
+                  className={`form-control ${isScanning ? "scanning-input" : ""}`}
                   value={isScanning ? "Scanning..." : (controlNumber ?? "")}
                   onChange={(e) => setControlNumber(e.target.value)}
                   disabled={isScanning}

@@ -4,7 +4,7 @@ import { trpc } from "../trpc";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 import "../components/Roles/RolesModal.css";
 import { ConfirmModal } from "../components/ConfirmModal";
-import { LoadingAnimation } from "../components/ui/LoadingAnimation";
+
 import { formatUserName, formatUserNameLastFirst } from "../utils/user";
 
 type User = AppRouterOutputs["user"]["getUsersWithRoles"][0];
@@ -138,7 +138,7 @@ export function Users() {
     }
   };
 
-  if (isLoading) return <LoadingAnimation />;
+  if (isLoading) return null;
   if (isError)
     return (
       <div className="container mt-4 alert alert-danger">

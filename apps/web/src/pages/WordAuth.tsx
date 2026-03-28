@@ -4,7 +4,7 @@ import { useLocation } from "react-router-dom";
 import { supabase } from "../supabase";
 import LoginPage from "./LoginPage";
 import AuthLayout from "../components/AuthLayout";
-import { LoadingAnimation } from "../components/ui/LoadingAnimation";
+
 import "./Auth.css";
 
 /* global Office */
@@ -59,7 +59,7 @@ const WordAuth: React.FC = () => {
   };
 
   if (isLoading) {
-    return <LoadingAnimation />;
+    return null;
   }
 
   if (!session) {

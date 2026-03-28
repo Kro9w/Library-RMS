@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import * as d3 from "d3";
 import { trpc } from "../trpc";
 import "./OwnershipGraph.css";
-import { LoadingAnimation } from "./ui/LoadingAnimation";
+
 import { FileIcon } from "./FileIcon";
 import type { Node, LinkData, NodeType } from "../types/graph";
 
@@ -444,7 +444,18 @@ export function OwnershipGraph() {
           return !event.ctrlKey && !event.button;
         })
         .on("start", () => svg.classed("grabbing", true))
-        .on("zoom", (event) => g.attr("transform", event.transform))
+        .on("zoom", (event) => {
+          g.attr("transform", event.transform);
+          // Apply transform to the background grid so it pans and zooms with the graph
+          svg.style(
+            "background-position",
+            `${event.transform.x}px ${event.transform.y}px`,
+          );
+          svg.style(
+            "background-size",
+            `${20 * event.transform.k}px ${20 * event.transform.k}px`,
+          );
+        })
         .on("end", () => svg.classed("grabbing", false));
       svg.call(zoomBehavior).on("dblclick.zoom", null);
     }
@@ -679,7 +690,7 @@ export function OwnershipGraph() {
     simulation.alpha(1).restart();
   }, [graphData]);
 
-  if (isLoadingCurrentUser || isLoadingHierarchy) return <LoadingAnimation />;
+  if (isLoadingCurrentUser || isLoadingHierarchy) return null;
   if (isError)
     return <div className="text-danger">Error: {error?.message}</div>;
 

@@ -1,7 +1,7 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { trpc } from "../../trpc";
 import { useEffect } from "react";
-import { LoadingAnimation } from "../../components/ui/LoadingAnimation";
+
 import "./AdminLayout.css";
 
 const links = [
@@ -115,7 +115,7 @@ export default function AdminLayout() {
     }
   }, [dbUser, isLoading, navigate]);
 
-  if (isLoading) return <LoadingAnimation />;
+  if (isLoading) return null;
   if (!dbUser?.isSuperAdmin) return null;
 
   return (
