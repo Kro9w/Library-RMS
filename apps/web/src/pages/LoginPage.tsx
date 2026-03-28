@@ -91,8 +91,16 @@ const LoginPage: React.FC = () => {
             disabled={loading}
             className="form-control"
           />
-          <button type="submit" disabled={loading} className="btn btn-primary">
-            {loading ? "Logging in..." : "Login"}
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn btn-primary btn-auth-submit"
+          >
+            <span>{loading ? "Logging in..." : "Login"}</span>
+            <span className="auth-btn-icon">
+              <i className="bi bi-arrow-right auth-btn-arrow"></i>
+              <span className="auth-btn-line">|</span>
+            </span>
           </button>
           {error && <p className="auth-error">{error}</p>}
         </form>

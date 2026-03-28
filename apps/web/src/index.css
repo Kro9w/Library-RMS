@@ -408,6 +408,16 @@ button:focus-visible,
 
 /* Primary */
 .btn-primary {
+  --bs-btn-bg: var(--brand);
+  --bs-btn-border-color: var(--brand);
+  --bs-btn-hover-bg: var(--brand-hover);
+  --bs-btn-hover-border-color: var(--brand-hover);
+  --bs-btn-focus-shadow-rgb: 155, 35, 53;
+  --bs-btn-active-bg: var(--brand-hover);
+  --bs-btn-active-border-color: var(--brand-hover);
+  --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+  --bs-btn-disabled-bg: var(--brand-muted);
+  --bs-btn-disabled-border-color: var(--brand-muted);
   background-color: var(--brand);
   color: var(--text-inverse);
   border-color: var(--brand);

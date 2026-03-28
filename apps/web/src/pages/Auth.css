@@ -76,6 +76,63 @@
   margin-top: 4px;
 }
 
+.auth-form .btn-auth-submit {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.auth-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.auth-btn-arrow {
+  display: inline-block;
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+  margin-right: 1px; /* snugger overlap for visual continuity */
+  font-size: 16px; /* bump up size slightly */
+  font-weight: 900;
+  -webkit-text-stroke: 1px var(--text-inverse);
+  transform-origin: center;
+  position: relative;
+  top: 1px; /* visual vertical alignment fix */
+}
+
+.auth-btn-line {
+  display: inline-block;
+  font-weight: 900; /* thicker line */
+  font-size: 16px;
+  -webkit-text-stroke: 1px var(--text-inverse);
+  margin-left: 0;
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1) 0.05s;
+}
+
+/* Hover staggering: line moves first (due to shorter delay or reversed logic) */
+.auth-form .btn-auth-submit:hover .auth-btn-line {
+  transform: translateX(4px);
+  /* The line starts moving first, we'll give it a shorter delay or just move it. */
+  transition-delay: 0s;
+}
+
+.auth-form .btn-auth-submit:hover .auth-btn-arrow {
+  transform: translateX(4px);
+  /* The arrow moves slightly after the line */
+  transition-delay: 0.05s;
+}
+
+/* When not hovering, reset them back to normal staggering */
+.auth-form .btn-auth-submit:not(:hover) .auth-btn-arrow {
+  transition-delay: 0s;
+}
+
+.auth-form .btn-auth-submit:not(:hover) .auth-btn-line {
+  transition-delay: 0.05s;
+}
+
 /* Split name fields */
 .auth-name-row {
   display: grid;
