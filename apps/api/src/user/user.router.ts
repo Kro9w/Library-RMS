@@ -395,12 +395,14 @@ export class UserRouter {
             where: { id: input.userId },
           });
 
-          await this.logService.logAction(
-            ctx.dbUser.id,
-            ctx.dbUser.institutionId!,
-            `Deleted user: ${deletedUser.email}`,
-            ctx.dbUser.roles.map((r) => r.name),
-          );
+          if (ctx.dbUser.institutionId) {
+            await this.logService.logAction(
+              ctx.dbUser.id,
+              ctx.dbUser.institutionId,
+              `Deleted user: ${deletedUser.email ?? 'Unknown'}`,
+              ctx.dbUser.roles.map((r) => r.name),
+            );
+          }
 
           return deletedUser;
         }),
@@ -451,12 +453,14 @@ export class UserRouter {
             },
           });
 
-          await this.logService.logAction(
-            ctx.dbUser.id,
-            ctx.dbUser.institutionId!,
-            `Removed user: ${updatedUser.email} from institution`,
-            ctx.dbUser.roles.map((r) => r.name),
-          );
+          if (ctx.dbUser.institutionId) {
+            await this.logService.logAction(
+              ctx.dbUser.id,
+              ctx.dbUser.institutionId,
+              `Removed user: ${updatedUser.email ?? 'Unknown'} from institution`,
+              ctx.dbUser.roles.map((r) => r.name),
+            );
+          }
 
           return updatedUser;
         }),

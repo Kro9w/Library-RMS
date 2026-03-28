@@ -1,5 +1,5 @@
 /* ============================================================
-   Loading Animation — Folio RMS
+   Loading Animation — Plume RMS (Polished Version)
    ============================================================ */
 
 .loading-container {
@@ -10,49 +10,137 @@
   padding: 32px;
 }
 
-.loading-container svg {
-  width: 56px;
+.plume-svg {
+  width: 100%;
+  max-width: 128px;
   height: auto;
+  /* Prevents clipping when the plume moves near the viewbox edges */
+  overflow: visible;
 }
 
-.cls-1 {
-  fill: rgba(155, 35, 53, 0);
-  stroke: var(--brand);
-  stroke-width: 2;
-  stroke-dasharray: 1000;
-  stroke-dashoffset: 1000;
-  animation: drawAndReverse 3s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+/* =========================
+   Writing Line & Ink
+   ========================= */
+
+.ink-dot {
+  fill: var(--brand, #000);
+  opacity: 0;
+  animation: dropInk 2.5s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
 
-@keyframes drawAndReverse {
-  0% {
-    stroke-dashoffset: 1000;
-    fill: rgba(155, 35, 53, 0);
-    stroke-width: 2;
+.writing-line {
+  stroke: var(--brand, #000);
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+
+  /* Since pathLength is set to 100 in the SVG, 100 perfectly covers it */
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+
+  animation: drawLine 2.5s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+
+  /* Slightly heavier, wetter ink shadow */
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+}
+
+@keyframes dropInk {
+  0%,
+  14% {
+    opacity: 0;
+    transform: scale(0.5);
+    transform-origin: 40px 220px;
   }
-  30% {
-    stroke-dashoffset: 0;
-    fill: rgba(155, 35, 53, 0);
-    stroke-width: 2;
+  15% {
+    opacity: 1;
+    transform: scale(1);
   }
-  45% {
-    stroke-dashoffset: 0;
-    fill: rgba(155, 35, 53, 1);
-    stroke-width: 0;
+  85% {
+    opacity: 1;
   }
-  55% {
-    stroke-dashoffset: 0;
-    fill: rgba(155, 35, 53, 1);
-    stroke-width: 0;
+  92%,
+  100% {
+    opacity: 0;
   }
-  70% {
+}
+
+@keyframes drawLine {
+  0%,
+  14% {
+    stroke-dashoffset: 100;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
     stroke-dashoffset: 0;
-    fill: rgba(155, 35, 53, 0);
-    stroke-width: 2;
+    opacity: 1;
+  }
+  92% {
+    opacity: 0;
   }
   100% {
-    stroke-dashoffset: 1000;
-    fill: rgba(155, 35, 53, 0);
-    stroke-width: 2;
+    stroke-dashoffset: 100;
+    opacity: 0;
+  }
+}
+
+/* =========================
+   Plume (Motion Path Synced)
+   ========================= */
+
+.plume-group {
+  fill: var(--brand, #000);
+
+  /* CRITICAL FIX: Forces the motion path anchor to the exact tip of the plume */
+  transform-box: view-box;
+  transform-origin: 40px 220px;
+
+  offset-path: path(
+    "M 40,220 C 70,240 100,200 130,220 C 160,240 200,200 230,220"
+  );
+  offset-rotate: 0deg;
+
+  animation: movePlume 2.5s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes movePlume {
+  0%,
+  14% {
+    offset-distance: 0%;
+    opacity: 0;
+    /* Pen hovers, slightly tilted back */
+    transform: scale(1.05) translateY(-8px) rotate(-3deg);
+  }
+
+  15% {
+    opacity: 1;
+    /* Pen touches down, angle normalizes */
+    transform: scale(1) translateY(0) rotate(0deg);
+  }
+
+  50% {
+    /* Natural hand lean mid-stroke */
+    transform: scale(1) translateY(0) rotate(4deg);
+  }
+
+  85% {
+    offset-distance: 100%;
+    opacity: 1;
+    transform: scale(1) translateY(0) rotate(0deg);
+  }
+
+  92% {
+    offset-distance: 100%;
+    opacity: 0;
+    /* Pen lifts cleanly, tilting away */
+    transform: scale(1.05) translateY(-8px) rotate(3deg);
+  }
+
+  100% {
+    offset-distance: 0%;
+    opacity: 0;
   }
 }

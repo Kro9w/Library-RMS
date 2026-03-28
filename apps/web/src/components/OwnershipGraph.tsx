@@ -15,6 +15,16 @@ const truncateText = (name: string, type: NodeType, maxLength = 15) => {
   return name;
 };
 
+const generateAcronym = (name: string) => {
+  if (!name) return "";
+  const ignoredWords = ["of", "and", "the", "in", "for", "at", "to"];
+  const words = name.split(/[\s,.-]+/);
+  return words
+    .filter((w) => w.length > 0 && !ignoredWords.includes(w.toLowerCase()))
+    .map((w) => w.charAt(0).toUpperCase())
+    .join("");
+};
+
 export function OwnershipGraph() {
   const [searchParams] = useSearchParams();
   const targetUserIdParam = searchParams.get("targetUserId");
@@ -545,7 +555,15 @@ export function OwnershipGraph() {
       .attr("opacity", 0);
 
     nodeEnter.transition().duration(200).attr("opacity", 1);
-    nodeEnter.append("circle");
+
+    // Outer circle for avatar drop shadow/border effect
+    nodeEnter.append("circle").attr("class", "node-outer");
+
+    // Inner circle for avatar tint
+    nodeEnter.append("circle").attr("class", "node-inner");
+
+    // Initials text centered inside avatar
+    nodeEnter.append("text").attr("class", "node-initials");
 
     nodeEnter
       .append("text")
@@ -586,30 +604,75 @@ export function OwnershipGraph() {
 
     nodeMerge.on("click", (e, d) => handleNodeClick(e, d));
 
+    const getRadius = (type: string) => {
+      if (type === "institution") return 40;
+      if (type === "campus") return 35;
+      if (type === "department") return 30;
+      if (type === "user") return 25;
+      return 12; // document
+    };
+
     nodeMerge
-      .select("circle")
-      .attr("class", (d) => `node-circle ${d.type}`)
-      .attr("r", (d) => {
-        if (d.type === "institution") return 40;
-        if (d.type === "campus") return 35;
-        if (d.type === "department") return 30;
-        if (d.type === "user") return 25;
-        return 12;
-      })
-      .style("fill", (d) => {
-        if (d.type === "document" && d.color) return `#${d.color}`;
-        if (d.type === "campus" || d.type === "department")
-          return "var(--brand)";
-        if (d.type === "institution") return "var(--text)";
-        return null;
-      })
+      .select(".node-outer")
+      .attr("r", (d) => getRadius(d.type))
       .classed("selected", (d) => d.id === selectedUserNode?.id)
       .classed(
         "mother-node",
         (d) => d.id === viewStack[viewStack.length - 1]?.id,
       );
 
-    nodeMerge.select(".node-label").text((d) => truncateText(d.name, d.type));
+    nodeMerge
+      .select(".node-inner")
+      .attr("r", (d) => Math.max(0, getRadius(d.type) - 2)) // Slightly smaller for border effect
+      .style("fill", (d) => {
+        if (d.type === "document")
+          return d.color ? `#${d.color}` : "var(--text)";
+        return "var(--card-background)";
+      });
+
+    nodeMerge
+      .select(".node-initials")
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "central")
+      .text((d) => {
+        if (d.type === "document") return "";
+        if (d.type === "department") {
+          return generateAcronym(d.name).substring(0, 4); // Keep it within 4 letters for visual fit
+        }
+
+        // 1-2 letter initials
+        const parts = d.name.split(/[\s,]+/);
+        if (parts.length >= 2) {
+          return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+        }
+        return d.name.substring(0, 2).toUpperCase();
+      })
+      .style("fill", (d) => {
+        if (d.type === "institution") return "var(--text)";
+        if (d.type === "campus" || d.type === "department")
+          return "var(--brand)";
+        if (d.type === "user") return "var(--accent)";
+        return "transparent";
+      })
+      .style("font-size", (d) => {
+        if (d.type === "institution") return "18px";
+        if (d.type === "campus") return "16px";
+        if (d.type === "department") {
+          const len = generateAcronym(d.name).length;
+          return len >= 4 ? "12px" : "14px";
+        }
+        if (d.type === "user") return "12px";
+        return "10px";
+      })
+      .style("font-weight", "600")
+      .style("pointer-events", "none");
+
+    nodeMerge
+      .select(".node-label")
+      .attr("text-anchor", "middle")
+      .attr("dy", (d) => getRadius(d.type) + 15) // Position below node
+      .attr("dx", 0)
+      .text((d) => truncateText(d.name, d.type));
 
     simulation.nodes(nodes);
     simulation.force<d3.ForceLink<Node, LinkData>>("link")?.links(links);

@@ -357,60 +357,65 @@ svg.grabbing {
 }
 
 /* Node Styles */
-.node-circle {
+.node-outer,
+.node-inner {
   stroke: none;
   stroke-width: 0;
   cursor: grab;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
+
+.node-outer {
+  fill: var(--card-border);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.node:hover .node-outer {
+  fill: var(--brand);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+  stroke: var(--brand);
+  stroke-width: 2px;
+}
+
+.node-outer.selected {
+  stroke: var(--accent);
+  stroke-width: 3px;
+  fill: var(--accent);
+}
+
+.node-outer.mother-node {
+  stroke: var(--brand);
+  stroke-width: 4px;
+  fill: var(--brand);
+  filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.2));
+}
+
 .clickable-node {
   cursor: pointer !important;
 }
-.clickable-node .node-circle {
+.clickable-node .node-outer,
+.clickable-node .node-inner {
   cursor: pointer !important;
 }
-.node-circle.selected {
-  stroke: var(--accent);
-  stroke-width: 3px;
-}
-.node-circle.mother-node {
-  stroke: var(--brand);
-  stroke-width: 4px;
-  filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.2));
-}
-.node-circle.institution {
-  fill: var(--text);
-}
-.node-circle.campus {
-  fill: var(--brand);
-}
-.node-circle.department {
-  fill: var(--brand);
-}
-.node-circle.user {
-  fill: var(--accent);
-}
-.node-circle.document {
-  fill: var(--text);
-}
-.node-circle.user.drop-target {
-  transform: scale(1.3);
-  stroke-width: 4px;
-}
-.node-circle.document.armed-for-drop {
-  fill: var(--brand);
-  stroke-width: 3px;
-}
+
+/* User/Document drop states are obsolete, remove them if any remained */
 .drop-magnet {
   fill: var(--brand);
   opacity: 1;
 }
+
 .node-label {
   fill: var(--text);
-  font-size: 10px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
   pointer-events: none;
   text-anchor: start;
+  /* Thick subtle stroke to keep it perfectly readable over background dots & links */
+  paint-order: stroke;
+  stroke: var(--background);
+  stroke-width: 3px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .links line {
   stroke: var(--text);

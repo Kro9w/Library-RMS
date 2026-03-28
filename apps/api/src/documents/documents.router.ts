@@ -22,7 +22,14 @@ function computeLifecycleStatus(doc: {
   inactiveRetentionSnapshot: number | null;
   dispositionStatus: string | null;
   isUnderLegalHold: boolean;
-}): 'Active' | 'Inactive' | 'Ready' | 'Archived' | 'Destroyed' | 'Legal Hold' | null {
+}):
+  | 'Active'
+  | 'Inactive'
+  | 'Ready'
+  | 'Archived'
+  | 'Destroyed'
+  | 'Legal Hold'
+  | null {
   if (doc.isUnderLegalHold) return 'Legal Hold';
 
   if (doc.dispositionStatus === 'DESTROYED') return 'Destroyed';
@@ -1408,7 +1415,10 @@ export class DocumentsRouter {
           requirePermission(dbUser, 'canManageDocuments');
 
           const doc = await ctx.prisma.document.update({
-            where: { id: input.documentId, institutionId: dbUser.institutionId },
+            where: {
+              id: input.documentId,
+              institutionId: dbUser.institutionId,
+            },
             data: {
               isUnderLegalHold: true,
               legalHoldReason: input.reason,
@@ -1440,7 +1450,10 @@ export class DocumentsRouter {
           requirePermission(dbUser, 'canManageDocuments');
 
           const doc = await ctx.prisma.document.update({
-            where: { id: input.documentId, institutionId: dbUser.institutionId },
+            where: {
+              id: input.documentId,
+              institutionId: dbUser.institutionId,
+            },
             data: {
               isUnderLegalHold: false,
               legalHoldReason: null,
@@ -1476,11 +1489,17 @@ export class DocumentsRouter {
           });
 
           if (!doc || doc.institutionId !== dbUser.institutionId) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Document not found' });
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Document not found',
+            });
           }
 
           if (doc.isUnderLegalHold) {
-             throw new TRPCError({ code: 'FORBIDDEN', message: 'Document is under legal hold' });
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Document is under legal hold',
+            });
           }
 
           const status = computeLifecycleStatus(doc);
@@ -1530,17 +1549,24 @@ export class DocumentsRouter {
           if (!doc) throw new TRPCError({ code: 'NOT_FOUND' });
 
           if (doc.isUnderLegalHold) {
-             throw new TRPCError({ code: 'FORBIDDEN', message: 'Document is under legal hold' });
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Document is under legal hold',
+            });
           }
 
           if (doc.dispositionStatus !== 'PENDING_DISPOSITION') {
-            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Document is not pending disposition' });
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Document is not pending disposition',
+            });
           }
 
           if (user.id === doc.dispositionRequesterId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'Separation of duties violation: You cannot approve a disposition you requested.',
+              message:
+                'Separation of duties violation: You cannot approve a disposition you requested.',
             });
           }
 
@@ -1620,7 +1646,10 @@ export class DocumentsRouter {
           if (!doc) throw new TRPCError({ code: 'NOT_FOUND' });
 
           if (doc.dispositionStatus !== 'PENDING_DISPOSITION') {
-             throw new TRPCError({ code: 'BAD_REQUEST', message: 'Document is not pending disposition' });
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Document is not pending disposition',
+            });
           }
 
           const updatedDoc = await this.prisma.document.update({

@@ -14,13 +14,16 @@ export class AccessControlService {
    * - Their campus
    * - Their institution
    */
-  public generateAclWhereClause(userCtx: {
-    id: string;
-    institutionId?: string | null;
-    campusId?: string | null;
-    departmentId?: string | null;
-    roles?: { id: string }[];
-  }, requiredPermission: 'READ' | 'WRITE' = 'READ'): Prisma.DocumentWhereInput {
+  public generateAclWhereClause(
+    userCtx: {
+      id: string;
+      institutionId?: string | null;
+      campusId?: string | null;
+      departmentId?: string | null;
+      roles?: { id: string }[];
+    },
+    requiredPermission: 'READ' | 'WRITE' = 'READ',
+  ): Prisma.DocumentWhereInput {
     const roleIds = userCtx.roles?.map((r) => r.id) || [];
 
     const aclConditions: Prisma.DocumentAccessWhereInput[] = [

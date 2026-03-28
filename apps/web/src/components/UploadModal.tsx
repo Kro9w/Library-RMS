@@ -35,30 +35,69 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
   const highestRoleLevel =
     me?.roles && me.roles.length > 0
       ? me.roles.reduce(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (min: number, role: any) => Math.min(min, role.level),
           Infinity,
         )
       : 4;
   const canManageDocs =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     me?.roles?.some((r: any) => r.canManageDocuments) ?? false;
 
+  const [isScanning, setIsScanning] = useState(false);
+
   const scanForControlNumber = async (f: File) => {
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const arrayBuffer = event.target?.result;
-      if (arrayBuffer instanceof ArrayBuffer) {
-        try {
-          const result = await mammoth.extractRawText({ arrayBuffer });
-          const match = result.value.match(
-            /CSU\-([\s\S]*?)([a-zA-Z0-9-]+)\s*-FL/,
-          );
-          setControlNumber(match?.[2]?.trim() ?? null);
-        } catch {
+    setIsScanning(true);
+    setControlNumber(null);
+
+    if (f.name.endsWith(".docx")) {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const arrayBuffer = event.target?.result;
+        if (arrayBuffer instanceof ArrayBuffer) {
+          try {
+            const result = await mammoth.extractRawText({ arrayBuffer });
+            const match = result.value.match(
+              /CSU-([\s\S]*?)([a-zA-Z0-9-]+)\s*-FL/,
+            );
+            setControlNumber(match?.[0]?.trim() ?? null);
+          } catch {
+            setControlNumber(null);
+          } finally {
+            setIsScanning(false);
+          }
+        } else {
+          setIsScanning(false);
+        }
+      };
+      reader.onerror = () => setIsScanning(false);
+      reader.readAsArrayBuffer(f);
+    } else {
+      // PDF or Image
+      try {
+        const formData = new FormData();
+        formData.append("file", f);
+
+        const response = await fetch("/api/documents/extract-ocr", {
+          method: "POST",
+          body: formData,
+          // If you need auth headers (e.g., Bearer token), they might go here.
+          // Assuming proxy handles it or cookie auth is used.
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setControlNumber(data.controlNumber ?? null);
+        } else {
           setControlNumber(null);
         }
+      } catch (err) {
+        console.error("OCR API error:", err);
+        setControlNumber(null);
+      } finally {
+        setIsScanning(false);
       }
-    };
-    reader.readAsArrayBuffer(f);
+    }
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -66,9 +105,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
       if (acceptedFiles[0]) {
         setFile(acceptedFiles[0]);
         setError(null);
-        if (acceptedFiles[0].name.endsWith(".docx")) {
-          scanForControlNumber(acceptedFiles[0]);
-        }
+        scanForControlNumber(acceptedFiles[0]);
       }
     },
     accept: {
@@ -116,6 +153,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
       onClose();
       await utils.documents.invalidate();
       await utils.getDashboardStats.invalidate();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message || "Upload failed.");
     } finally {
@@ -221,6 +259,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
               <select
                 className="form-control form-select"
                 value={classification}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 onChange={(e) => setClassification(e.target.value as any)}
               >
                 {(highestRoleLevel <= 1 || canManageDocs) && (
@@ -254,6 +293,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
                 }
               >
                 <option value="">No type</option>
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {documentTypes?.map((type: any) => (
                   <option key={type.id} value={type.id}>
                     {type.name}
@@ -262,20 +302,24 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
               </select>
             </div>
 
-            {/* Control number (read-only, scanned) */}
-            {file?.name.endsWith(".docx") && (
+            {/* Control number */}
+            {file && (
               <div className="upload-field">
                 <label className="form-label">
                   Control number
                   <span className="upload-field-hint">
-                    Auto-scanned from document
+                    {isScanning
+                      ? "Scanning document..."
+                      : "Auto-extracted or enter manually"}
                   </span>
                 </label>
                 <input
                   type="text"
                   className="form-control"
-                  value={controlNumber ?? "Scanning…"}
-                  readOnly
+                  value={isScanning ? "Scanning..." : (controlNumber ?? "")}
+                  onChange={(e) => setControlNumber(e.target.value)}
+                  disabled={isScanning}
+                  placeholder="e.g. CSU-12345-A-FL"
                   style={{ fontFamily: "var(--font-mono)", fontSize: "12px" }}
                 />
               </div>

@@ -5,9 +5,11 @@ import { SupabaseModule } from '../supabase/supabase.module';
 import { UserModule } from '../user/user.module';
 import { LogModule } from '../log/log.module';
 import { AccessControlService } from './access-control.service';
+import { DocumentsController } from './documents.controller';
 
 @Module({
   imports: [PrismaModule, SupabaseModule, UserModule, LogModule],
+  controllers: [DocumentsController],
   providers: [DocumentsRouter, AccessControlService],
   exports: [DocumentsRouter, AccessControlService],
 })
