@@ -22,9 +22,10 @@ export default defineConfig({
     host: '0.0.0.0', // <-- ADD THIS LINE
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:2000',
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
   },

@@ -8,8 +8,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import 'multer'; // Imports the ambient types for Express.Multer
 import * as Tesseract from 'tesseract.js';
-import { fromBuffer } from 'pdf2pic';
-import * as pdfParse from 'pdf-parse';
+import { PDFParse } from 'pdf-parse';
 
 @Controller('documents')
 export class DocumentsController {
@@ -29,17 +28,13 @@ export class DocumentsController {
       // 1. FAST PATH: If the file is a PDF, try extracting text natively first
       if (isPdf) {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-          const pdfData = await (pdfParse as any)(file.buffer);
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          const parser = new PDFParse({ data: file.buffer });
+          const pdfData = await parser.getText();
           if (pdfData && pdfData.text) {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
             const textMatch = pdfData.text.match(
               /CSU-([\s\S]*?)([a-zA-Z0-9-]+)\s*-FL/,
             );
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             if (textMatch && textMatch[0]) {
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
               return { controlNumber: textMatch[0].trim() };
             }
           }
@@ -51,24 +46,25 @@ export class DocumentsController {
         }
 
         // 2. FALLBACK PATH: If PDF is image-based (no native text match), convert first page to image
-        const convertOptions = {
-          density: 300,
-          format: 'png',
-          width: 2550,
-          height: 3300,
-        };
-        const convert = fromBuffer(file.buffer, convertOptions);
-
         try {
-          const page1 = await convert(1, { responseType: 'buffer' });
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
-          imageBuffer = (page1 as any).buffer;
+          const parser = new PDFParse({ data: file.buffer });
+          const screenshot = await parser.getScreenshot({
+            imageBuffer: true,
+            scale: 2.0, // High resolution for OCR
+          });
+
+          if (screenshot && screenshot.pages && screenshot.pages.length > 0) {
+            imageBuffer = Buffer.from(screenshot.pages[0].data);
+          } else {
+            console.warn('PDF screenshot extraction returned no pages');
+            return { controlNumber: null };
+          }
         } catch (convertErr) {
-          console.error('pdf2pic conversion failed:', convertErr);
+          console.error('PDF to Image conversion failed:', convertErr);
           return { controlNumber: null };
         }
 
-        // Safeguard against empty buffers returned by pdf2pic
+        // Safeguard against empty buffers
         if (!imageBuffer || imageBuffer.length === 0) {
           console.warn('PDF to Image conversion returned empty buffer');
           return { controlNumber: null };
