@@ -40,7 +40,7 @@ export default function TitleUpdater() {
               .join(" - ");
     }
 
-    document.title = `${title} | Folio RMS`; // ✅ Final title format
+    document.title = `${title} | Plume RMS`; // ✅ Final title format
   }, [location, params]);
 
   return null; // No UI output

@@ -202,6 +202,11 @@ body {
   margin: 0;
 }
 
+.plume-logo-shape {
+  fill: var(--brand);
+  fill-rule: evenodd;
+}
+
 #root {
   width: 100%;
 }

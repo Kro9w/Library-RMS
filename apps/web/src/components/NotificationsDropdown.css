@@ -1,8 +1,3 @@
-/* ============================================================
-   Notifications Panel — Folio RMS
-   Drops from the topbar bell button, right-aligned
-   ============================================================ */
-
 .notif-panel {
   width: 360px;
   background-color: var(--bg-overlay);

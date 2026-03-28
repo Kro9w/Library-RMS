@@ -3,12 +3,16 @@
   <defs>
     <style>
       .plume-logo-shape {
-        fill: #ba3b46;
         fill-rule: evenodd;
+      }
+      @media (prefers-color-scheme: dark) {
+        .plume-logo-shape {
+          fill: #d4828c !important;
+        }
       }
     </style>
   </defs>
-  <g class="plume-logo-shape">
+  <g fill="#9b2335" class="plume-logo-shape">
     <polygon points="110,0 190,0 190,60 160,90 160,30 80,30" />
     <polygon points="70,40 150,40 150,100 120,130 120,70 40,70" />
     <polygon points="30,80 110,80 110,140 10,180 80,110 0,110" />

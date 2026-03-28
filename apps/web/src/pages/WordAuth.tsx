@@ -67,7 +67,7 @@ const WordAuth: React.FC = () => {
   }
 
   return (
-    <AuthLayout title="Send to Folio">
+    <AuthLayout title="Send to Plume">
       <div className="auth-container">
         <form className="auth-form" onSubmit={handleSubmit}>
           <div className="form-group">

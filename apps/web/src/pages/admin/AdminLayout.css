@@ -1,8 +1,3 @@
-/* ============================================================
-   Admin Panel — Folio RMS
-   Full-page layout: admin sidebar + scrollable content
-   ============================================================ */
-
 .admin-layout {
   display: grid;
   grid-template-columns: 216px 1fr;
