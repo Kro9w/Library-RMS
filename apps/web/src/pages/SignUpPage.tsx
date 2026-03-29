@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabase";
 import { trpc } from "../trpc";
 import AuthLayout from "../components/AuthLayout";
+import { AlertModal } from "../components/AlertModal";
 import "./Auth.css";
 
 const SignUpPage: React.FC = () => {
@@ -18,8 +19,14 @@ const SignUpPage: React.FC = () => {
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showAlert, setShowAlert] = useState(false);
   const navigate = useNavigate();
   const syncUser = trpc.user.syncUser.useMutation();
+
+  const handleAlertClose = () => {
+    setShowAlert(false);
+    navigate("/login");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,8 +63,7 @@ const SignUpPage: React.FC = () => {
 
       // 2. Handle email confirmation
       if (data.user && !data.session) {
-        alert("Signup successful! Please check your email to confirm.");
-        navigate("/login");
+        setShowAlert(true);
         setLoading(false);
         return;
       }
@@ -156,6 +162,14 @@ const SignUpPage: React.FC = () => {
           Already have an account? <Link to="/login">Login</Link>
         </p>
       </div>
+
+      <AlertModal
+        show={showAlert}
+        title="Signup Successful"
+        onClose={handleAlertClose}
+      >
+        Signup successful! Please check your email to confirm.
+      </AlertModal>
     </AuthLayout>
   );
 };

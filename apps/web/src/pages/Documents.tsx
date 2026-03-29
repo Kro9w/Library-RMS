@@ -150,6 +150,10 @@ const Documents: React.FC = () => {
     {},
   );
 
+  const [documentToDiscard, setDocumentToDiscard] = useState<Document | null>(
+    null,
+  );
+
   const toggleAccordion = (groupName: string) => {
     setOpenAccordions((prev) => ({
       ...prev,
@@ -237,12 +241,17 @@ const Documents: React.FC = () => {
   };
 
   const handleDiscardCheckOutClick = (doc: Document) => {
-    if (
-      window.confirm(
-        "Are you sure you want to discard this check out? This cannot be undone.",
-      )
-    ) {
-      discardCheckOutMutation.mutate({ documentId: doc.id });
+    setDocumentToDiscard(doc);
+  };
+
+  const confirmDiscardCheckOut = () => {
+    if (documentToDiscard) {
+      discardCheckOutMutation.mutate(
+        { documentId: documentToDiscard.id },
+        {
+          onSettled: () => setDocumentToDiscard(null),
+        },
+      );
     }
   };
   // ----------------------------------------------------

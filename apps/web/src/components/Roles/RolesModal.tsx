@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { trpc } from "../../trpc";
 import { Modal } from "bootstrap";
 import type { AppRouterOutputs } from "../../../../api/src/trpc/trpc.router";
+import { ConfirmModal } from "../ConfirmModal";
 import "./RolesModal.css";
 import { formatUserName } from "../../utils/user";
 import { getErrorMessage } from "../../utils/error";
@@ -20,6 +21,7 @@ export const RolesModal: React.FC = () => {
   });
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [roleToDelete, setRoleToDelete] = useState<string | null>(null);
 
   const { data: roles, refetch: refetchRoles } = trpc.roles.getRoles.useQuery();
   const { data: users, refetch: refetchUsers } =
@@ -111,13 +113,18 @@ export const RolesModal: React.FC = () => {
     }
   };
 
-  const handleDeleteRole = async (roleId: string) => {
-    if (confirm("Are you sure you want to delete this role?")) {
-      await deleteRoleMutation.mutateAsync(roleId);
+  const handleDeleteRole = (roleId: string) => {
+    setRoleToDelete(roleId);
+  };
+
+  const confirmDeleteRole = async () => {
+    if (roleToDelete) {
+      await deleteRoleMutation.mutateAsync(roleToDelete);
       refetchRoles();
-      if (selectedRole?.id === roleId) {
+      if (selectedRole?.id === roleToDelete) {
         resetForm();
       }
+      setRoleToDelete(null);
     }
   };
 
@@ -431,6 +438,16 @@ export const RolesModal: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        show={!!roleToDelete}
+        title="Delete Role"
+        onConfirm={confirmDeleteRole}
+        onClose={() => setRoleToDelete(null)}
+        isConfirming={deleteRoleMutation.isPending}
+      >
+        <p>Are you sure you want to delete this role?</p>
+      </ConfirmModal>
     </div>
   );
 };

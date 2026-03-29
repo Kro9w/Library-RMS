@@ -1,7 +1,9 @@
 // apps/web/src/pages/DocumentDetails.tsx
-import React from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { trpc } from "../trpc";
+import { AlertModal } from "../components/AlertModal";
+import { ConfirmModal } from "../components/ConfirmModal";
 import "./DocumentDetails.css";
 
 import { formatUserName } from "../utils/user";
@@ -117,6 +119,19 @@ export const DocumentDetails: React.FC = () => {
       utils.documents.getById.invalidate({ id: id! });
     },
   });
+
+  const [alertConfig, setAlertConfig] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+  }>({ show: false, title: "", message: "" });
+  const [confirmConfig, setConfirmConfig] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    isConfirming?: boolean;
+  }>({ show: false, title: "", message: "", onConfirm: () => {} });
 
   const { data: urlData, isLoading: isLoadingUrl } =
     trpc.documents.getSignedDocumentUrl.useQuery(
@@ -340,15 +355,21 @@ export const DocumentDetails: React.FC = () => {
                     className={`btn ${document.isUnderLegalHold ? "btn-outline-danger" : "btn-outline-dark"}`}
                     onClick={() => {
                       if (document.isUnderLegalHold) {
-                        if (
-                          window.confirm(
+                        setConfirmConfig({
+                          show: true,
+                          title: "Remove Legal Hold",
+                          message:
                             "Are you sure you want to remove the legal hold?",
-                          )
-                        ) {
-                          removeLegalHoldMutation.mutate({
-                            documentId: document.id,
-                          });
-                        }
+                          onConfirm: () => {
+                            removeLegalHoldMutation.mutate({
+                              documentId: document.id,
+                            });
+                            setConfirmConfig((prev: typeof confirmConfig) => ({
+                              ...prev,
+                              show: false,
+                            }));
+                          },
+                        });
                       } else {
                         const reason = window.prompt(
                           "Enter reason for Legal Hold:",
@@ -416,15 +437,23 @@ export const DocumentDetails: React.FC = () => {
                         <button
                           className="btn btn-outline-secondary w-100 disposition-btn"
                           onClick={() => {
-                            if (
-                              window.confirm(
+                            setConfirmConfig({
+                              show: true,
+                              title: "Request Disposition",
+                              message:
                                 "Request approval to execute disposition?",
-                              )
-                            ) {
-                              requestDispositionMutation.mutate({
-                                documentId: document.id,
-                              });
-                            }
+                              onConfirm: () => {
+                                requestDispositionMutation.mutate({
+                                  documentId: document.id,
+                                });
+                                setConfirmConfig(
+                                  (prev: typeof confirmConfig) => ({
+                                    ...prev,
+                                    show: false,
+                                  }),
+                                );
+                              },
+                            });
                           }}
                           disabled={requestDispositionMutation.isPending}
                         >
@@ -455,13 +484,22 @@ export const DocumentDetails: React.FC = () => {
                           <button
                             className="btn btn-outline-secondary w-100 disposition-btn"
                             onClick={() => {
-                              if (
-                                window.confirm("Cancel disposition request?")
-                              ) {
-                                rejectDispositionMutation.mutate({
-                                  documentId: document.id,
-                                });
-                              }
+                              setConfirmConfig({
+                                show: true,
+                                title: "Cancel Disposition Request",
+                                message: "Cancel disposition request?",
+                                onConfirm: () => {
+                                  rejectDispositionMutation.mutate({
+                                    documentId: document.id,
+                                  });
+                                  setConfirmConfig(
+                                    (prev: typeof confirmConfig) => ({
+                                      ...prev,
+                                      show: false,
+                                    }),
+                                  );
+                                },
+                              });
                             }}
                             disabled={rejectDispositionMutation.isPending}
                           >
@@ -472,15 +510,23 @@ export const DocumentDetails: React.FC = () => {
                             <button
                               className="btn btn-outline-primary flex-grow-1 disposition-btn"
                               onClick={() => {
-                                if (
-                                  window.confirm(
+                                setConfirmConfig({
+                                  show: true,
+                                  title: "Execute Disposition",
+                                  message:
                                     "Approve and execute disposition? This action is irreversible.",
-                                  )
-                                ) {
-                                  approveDispositionMutation.mutate({
-                                    documentId: document.id,
-                                  });
-                                }
+                                  onConfirm: () => {
+                                    approveDispositionMutation.mutate({
+                                      documentId: document.id,
+                                    });
+                                    setConfirmConfig(
+                                      (prev: typeof confirmConfig) => ({
+                                        ...prev,
+                                        show: false,
+                                      }),
+                                    );
+                                  },
+                                });
                               }}
                               disabled={approveDispositionMutation.isPending}
                             >
@@ -491,13 +537,22 @@ export const DocumentDetails: React.FC = () => {
                             <button
                               className="btn btn-outline-danger flex-grow-1 disposition-btn"
                               onClick={() => {
-                                if (
-                                  window.confirm("Reject disposition request?")
-                                ) {
-                                  rejectDispositionMutation.mutate({
-                                    documentId: document.id,
-                                  });
-                                }
+                                setConfirmConfig({
+                                  show: true,
+                                  title: "Reject Disposition",
+                                  message: "Reject disposition request?",
+                                  onConfirm: () => {
+                                    rejectDispositionMutation.mutate({
+                                      documentId: document.id,
+                                    });
+                                    setConfirmConfig(
+                                      (prev: typeof confirmConfig) => ({
+                                        ...prev,
+                                        show: false,
+                                      }),
+                                    );
+                                  },
+                                });
                               }}
                               disabled={rejectDispositionMutation.isPending}
                             >
@@ -733,7 +788,12 @@ export const DocumentDetails: React.FC = () => {
                               );
                             } catch (err) {
                               console.error("Failed to open version", err);
-                              alert("Could not retrieve document version URL.");
+                              setAlertConfig({
+                                show: true,
+                                title: "Error",
+                                message:
+                                  "Could not retrieve document version URL.",
+                              });
                             }
                           }}
                           title="Download / View Version"
@@ -775,6 +835,24 @@ export const DocumentDetails: React.FC = () => {
           documentId={document.id}
         />
       )}
+
+      <AlertModal
+        show={alertConfig.show}
+        title={alertConfig.title}
+        onClose={() => setAlertConfig({ ...alertConfig, show: false })}
+      >
+        {alertConfig.message}
+      </AlertModal>
+
+      <ConfirmModal
+        show={confirmConfig.show}
+        title={confirmConfig.title}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => setConfirmConfig({ ...confirmConfig, show: false })}
+        isConfirming={confirmConfig.isConfirming}
+      >
+        <p>{confirmConfig.message}</p>
+      </ConfirmModal>
     </div>
   );
 };

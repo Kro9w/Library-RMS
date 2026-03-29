@@ -101,6 +101,10 @@ export function Users() {
     }));
   };
 
+  const currentUserLevel = currentUser
+    ? getUserLevel(currentUser as unknown as User)
+    : 4;
+
   const canManageUsers =
     currentUser?.roles.some(
       (role: { canManageUsers: boolean }) => role.canManageUsers,
@@ -148,38 +152,6 @@ export function Users() {
 
   return (
     <>
-      <style>{`
-        /* Custom Shield with Star Icon */
-        .shield-icon-wrapper {
-            position: absolute;
-            bottom: -5px; /* Adjust vertical position */
-            left: -5px;   /* Adjust horizontal position */
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-        }
-        
-        .shield-base {
-            font-size: 20px;
-            color: #ED9B40; /* Using Theme Yellow/Orange for the shield itself, or grey? User said "same shield icon". Let's use Theme. */
-            /* Or maybe a dark grey shield looks more "Leadership"? Let's try Theme Yellow since user mentioned yellow for active state. */
-            color: #495057; /* Let's stick to a professional dark grey base for the shield */
-        }
-        
-        .shield-star {
-            font-size: 8px; /* Small star inside */
-            color: #FFD700; /* Gold star */
-            position: absolute;
-            top: 55%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 11;
-        }
-      `}</style>
-
       <div className="container mt-4">
         <h2 className="mb-4">
           Users
@@ -253,21 +225,34 @@ export function Users() {
                                           {/* Badge logic: Bottom-Left */}
                                           {level === 1 && (
                                             <div
-                                              className="shield-icon-wrapper"
+                                              className="position-absolute bottom-0 start-0 translate-middle rounded-circle bg-white shadow-sm d-flex align-items-center justify-content-center"
+                                              style={{
+                                                width: "22px",
+                                                height: "22px",
+                                                border: "1px solid #dee2e6",
+                                              }}
                                               title="Department Head"
                                             >
-                                              {/* Stacked Icon: Shield base + Star overlay */}
-                                              <i className="bi bi-shield-fill shield-base"></i>
-                                              <i className="bi bi-star-fill shield-star"></i>
+                                              <i
+                                                className="bi bi-star-fill text-warning"
+                                                style={{ fontSize: "11px" }}
+                                              ></i>
                                             </div>
                                           )}
                                           {level === 2 && (
                                             <div
-                                              className="shield-icon-wrapper"
+                                              className="position-absolute bottom-0 start-0 translate-middle rounded-circle bg-white shadow-sm d-flex align-items-center justify-content-center"
+                                              style={{
+                                                width: "22px",
+                                                height: "22px",
+                                                border: "1px solid #dee2e6",
+                                              }}
                                               title="Officer"
                                             >
-                                              {/* Plain Shield */}
-                                              <i className="bi bi-shield-fill shield-base"></i>
+                                              <i
+                                                className="bi bi-award-fill text-primary"
+                                                style={{ fontSize: "12px" }}
+                                              ></i>
                                             </div>
                                           )}
                                         </div>
@@ -304,19 +289,20 @@ export function Users() {
                                         >
                                           <i className="bi bi-send fs-5"></i>
                                         </button>
-                                        {canManageUsers && (
-                                          <>
-                                            <button
-                                              className="btn btn-sm btn-outline-danger border-0"
-                                              onClick={() =>
-                                                setUserToRemove(user)
-                                              }
-                                              title="Remove User"
-                                            >
-                                              <i className="bi bi-trash fs-5"></i>
-                                            </button>
-                                          </>
-                                        )}
+                                        {canManageUsers &&
+                                          level > currentUserLevel && (
+                                            <>
+                                              <button
+                                                className="btn btn-sm btn-outline-danger border-0"
+                                                onClick={() =>
+                                                  setUserToRemove(user)
+                                                }
+                                                title="Remove User"
+                                              >
+                                                <i className="bi bi-trash fs-5"></i>
+                                              </button>
+                                            </>
+                                          )}
                                       </div>
                                     </td>
                                   </tr>

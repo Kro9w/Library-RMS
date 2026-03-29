@@ -4,9 +4,11 @@ import { supabase } from "../supabase";
 import { trpc } from "../trpc";
 import { useSession } from "../contexts/SessionContext";
 import { v4 as uuidv4 } from "uuid";
+import { AlertModal } from "../components/AlertModal";
 
 const Upload: React.FC = () => {
   const [files, setFiles] = useState<File[]>([]);
+  const [showAlert, setShowAlert] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const session = useSession();
@@ -80,7 +82,7 @@ const Upload: React.FC = () => {
       });
 
       setFiles([]);
-      alert("Upload successful!");
+      setShowAlert(true);
 
       // Invalidate queries to refetch document list and dashboard stats
       await utils.documents.invalidate();
@@ -159,6 +161,14 @@ const Upload: React.FC = () => {
         {uploading ? "Uploading..." : "Upload"}
       </button>
       {error && <p className="error">{error}</p>}
+
+      <AlertModal
+        show={showAlert}
+        title="Success"
+        onClose={() => setShowAlert(false)}
+      >
+        Upload successful!
+      </AlertModal>
     </div>
   );
 };

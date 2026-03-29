@@ -63,7 +63,14 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({
       refetch();
     }
     onClose();
-    if (notif.documentId) navigate(`/documents/${notif.documentId}`);
+    if (notif.documentId) {
+      if (notif.title.toLowerCase().includes("received")) {
+        // Redirect to dashboard with query param to open receive modal
+        navigate(`/?openReceiveModal=true`);
+      } else {
+        navigate(`/documents/${notif.documentId}`);
+      }
+    }
   };
 
   const handleMarkAll = async (e: React.MouseEvent) => {

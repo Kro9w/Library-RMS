@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { trpc } from "../trpc";
 import { Modal } from "bootstrap";
+import { ConfirmModal } from "./ConfirmModal";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
 type Tag = AppRouterOutputs["documents"]["getTags"][0];
@@ -41,6 +42,7 @@ export function TagsManagementModal({
   const [tagName, setTagName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [tagToDelete, setTagToDelete] = useState<string | null>(null);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const modalInstanceRef = useRef<Modal | null>(null);
@@ -86,7 +88,7 @@ export function TagsManagementModal({
             setTagName("");
             setEditingId(null);
           },
-        }
+        },
       );
     } else {
       createTag.mutate(
@@ -95,7 +97,7 @@ export function TagsManagementModal({
           onSuccess: () => {
             setTagName("");
           },
-        }
+        },
       );
     }
   };
@@ -112,9 +114,18 @@ export function TagsManagementModal({
   };
 
   const handleDelete = (id: string) => {
-    // Basic confirmation
-    if (window.confirm("Are you sure you want to delete this tag?")) {
-      deleteTag.mutate(id);
+    setTagToDelete(id);
+  };
+
+  const confirmDeleteTag = () => {
+    if (tagToDelete) {
+      deleteTag.mutate(tagToDelete, {
+        onSuccess: () => {
+          refetch();
+          trpcCtx.documents.getTags.invalidate();
+          setTagToDelete(null);
+        },
+      });
     }
   };
 
@@ -165,8 +176,8 @@ export function TagsManagementModal({
                   {createTag.isPending || updateTag.isPending
                     ? "Saving..."
                     : editingId
-                    ? "Save Changes"
-                    : "Create Tag"}
+                      ? "Save Changes"
+                      : "Create Tag"}
                 </button>
 
                 {editingId && (
@@ -228,6 +239,16 @@ export function TagsManagementModal({
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        show={!!tagToDelete}
+        title="Delete Tag"
+        onConfirm={confirmDeleteTag}
+        onClose={() => setTagToDelete(null)}
+        isConfirming={deleteTag.isPending}
+      >
+        <p>Are you sure you want to delete this tag?</p>
+      </ConfirmModal>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 // apps/web/src/pages/Dashboard.tsx
-import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { trpc } from "../trpc";
 import { LoadingAnimation } from "../components/ui/LoadingAnimation";
 
@@ -38,10 +38,25 @@ export function Dashboard() {
   const [showSendModal, setShowSendModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showReceiveModal, setShowReceiveModal] = useState(false);
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [selectedDocId, _setSelectedDocId] = useState<string | null>(null);
 
   const { data: pendingDistributions } =
     trpc.documents.getMyPendingDistributions.useQuery();
+
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("openReceiveModal") === "true") {
+      setShowReceiveModal(true);
+      setSearchParams(
+        (params) => {
+          params.delete("openReceiveModal");
+          return params;
+        },
+        { replace: true },
+      );
+    }
+  }, [searchParams, setSearchParams]);
 
   // --- Greeting Logic ---
   const greeting = useMemo(() => {

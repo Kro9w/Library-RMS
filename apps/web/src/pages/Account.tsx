@@ -7,6 +7,7 @@ import { useDropzone } from "react-dropzone";
 import { usePermissions } from "../hooks/usePermissions";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "../supabase.ts";
+import { AlertModal } from "../components/AlertModal";
 import "./Account.css";
 
 import { formatUserName } from "../utils/user";
@@ -22,6 +23,11 @@ const AVATAR_BUCKET = "avatars";
 const Account: React.FC = () => {
   const authUser = useUser();
   const trpcCtx = trpc.useUtils();
+  const [alertConfig, setAlertConfig] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+  }>({ show: false, title: "", message: "" });
 
   const { data: dbUser, isLoading } = trpc.user.getMe.useQuery();
   const { canManageInstitution } = usePermissions();
@@ -31,7 +37,12 @@ const Account: React.FC = () => {
       onSuccess: () => {
         trpcCtx.user.getMe.invalidate();
       },
-      onError: (error: { message: any }) => alert(`Error: ${error.message}`),
+      onError: (error: { message: any }) =>
+        setAlertConfig({
+          show: true,
+          title: "Error",
+          message: `Error: ${error.message}`,
+        }),
     });
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -74,7 +85,11 @@ const Account: React.FC = () => {
         .from(AVATAR_BUCKET)
         .upload(key, avatarFile, { upsert: true });
       if (error) {
-        alert(`Avatar upload failed: ${(error as Error).message}`);
+        setAlertConfig({
+          show: true,
+          title: "Avatar Upload Failed",
+          message: (error as Error).message,
+        });
         return;
       }
       const { data: urlData } = supabase.storage
@@ -226,6 +241,14 @@ const Account: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <AlertModal
+        show={alertConfig.show}
+        title={alertConfig.title}
+        onClose={() => setAlertConfig({ ...alertConfig, show: false })}
+      >
+        {alertConfig.message}
+      </AlertModal>
     </div>
   );
 };

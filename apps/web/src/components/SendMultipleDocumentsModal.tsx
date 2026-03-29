@@ -3,6 +3,7 @@ import { Modal } from "bootstrap";
 import { trpc } from "../trpc";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 import { formatUserName } from "../utils/user";
+import { AlertModal } from "./AlertModal";
 
 type User = AppRouterOutputs["documents"]["getAppUsers"][0];
 type Tag = AppRouterOutputs["documents"]["getTags"][0];
@@ -54,6 +55,11 @@ export function SendMultipleDocumentsModal({
     initialRecipientId || "",
   );
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [alertConfig, setAlertConfig] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+  }>({ show: false, title: "", message: "" });
 
   const utils = trpc.useContext();
   const sendMultipleMutation =
@@ -214,7 +220,11 @@ export function SendMultipleDocumentsModal({
       onClose();
     } catch (error) {
       console.error("Failed to send documents:", error);
-      alert("Failed to send some documents. Please try again.");
+      setAlertConfig({
+        show: true,
+        title: "Error",
+        message: "Failed to send some documents. Please try again.",
+      });
     }
   };
 
@@ -455,6 +465,14 @@ export function SendMultipleDocumentsModal({
           </div>
         </div>
       </div>
+
+      <AlertModal
+        show={alertConfig.show}
+        title={alertConfig.title}
+        onClose={() => setAlertConfig({ ...alertConfig, show: false })}
+      >
+        {alertConfig.message}
+      </AlertModal>
     </div>
   );
 }

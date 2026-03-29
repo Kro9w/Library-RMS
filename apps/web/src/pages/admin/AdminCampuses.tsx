@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "../../trpc";
+import { ConfirmModal } from "../../components/ConfirmModal";
 
 export default function AdminCampuses() {
   const { data: dbUser } = trpc.user.getMe.useQuery();
@@ -33,6 +34,10 @@ export default function AdminCampuses() {
     name: string;
   } | null>(null);
   const [newCampusName, setNewCampusName] = useState("");
+  const [campusToDelete, setCampusToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const handleSave = () => {
     if (!newCampusName.trim()) return;
@@ -117,15 +122,7 @@ export default function AdminCampuses() {
                     </button>
                     <button
                       className="btn btn-sm btn-outline-danger"
-                      onClick={() => {
-                        if (
-                          confirm(
-                            `Are you sure you want to delete ${campus.name}?`,
-                          )
-                        ) {
-                          deleteCampus.mutate({ id: campus.id });
-                        }
-                      }}
+                      onClick={() => setCampusToDelete(campus)}
                       disabled={deleteCampus.isPending}
                     >
                       Delete
@@ -144,6 +141,25 @@ export default function AdminCampuses() {
           </table>
         </div>
       </div>
+
+      <ConfirmModal
+        show={!!campusToDelete}
+        title="Delete Campus"
+        onConfirm={() => {
+          if (campusToDelete) {
+            deleteCampus.mutate(
+              { id: campusToDelete.id },
+              {
+                onSuccess: () => setCampusToDelete(null),
+              },
+            );
+          }
+        }}
+        onClose={() => setCampusToDelete(null)}
+        isConfirming={deleteCampus.isPending}
+      >
+        <p>Are you sure you want to delete {campusToDelete?.name}?</p>
+      </ConfirmModal>
     </div>
   );
 }

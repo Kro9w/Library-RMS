@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { trpc } from "../trpc";
 import { useNavigate } from "react-router-dom";
+import { AlertModal } from "../components/AlertModal";
 import "./JoinInstitution.css";
 
 const JoinInstitution: React.FC = () => {
   const [step, setStep] = useState(1);
+  const [alertConfig, setAlertConfig] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+  }>({ show: false, title: "", message: "" });
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const [selectedCampusId, setSelectedCampusId] = useState("");
   const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
@@ -35,12 +41,22 @@ const JoinInstitution: React.FC = () => {
 
   const joinOrg = trpc.user.joinInstitution.useMutation({
     onSuccess: () => setStep(3),
-    onError: (error: any) => alert(`Error joining: ${error.message}`),
+    onError: (error: any) =>
+      setAlertConfig({
+        show: true,
+        title: "Error Joining",
+        message: error.message,
+      }),
   });
 
   const createDeptAndJoin = trpc.user.createDepartmentAndJoin.useMutation({
     onSuccess: () => setStep(3),
-    onError: (error: any) => alert(`Error: ${error.message}`),
+    onError: (error: any) =>
+      setAlertConfig({
+        show: true,
+        title: "Error Creating Department",
+        message: error.message,
+      }),
   });
 
   const handleNext = (e: React.FormEvent) => {
@@ -307,6 +323,14 @@ const JoinInstitution: React.FC = () => {
           )}
         </div>
       </div>
+
+      <AlertModal
+        show={alertConfig.show}
+        title={alertConfig.title}
+        onClose={() => setAlertConfig({ ...alertConfig, show: false })}
+      >
+        {alertConfig.message}
+      </AlertModal>
     </div>
   );
 };
