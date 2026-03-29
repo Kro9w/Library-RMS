@@ -30,6 +30,11 @@ enum RecordStatus {
   FINAL
 }
 
+enum DistributionStatus {
+  PENDING
+  RECEIVED
+}
+
 // apps/api/prisma/schema.prisma
 
 model User {
@@ -61,6 +66,9 @@ model User {
   notifications            Notification[]
   documentAccesses         DocumentAccess[]
   dispositionRequestedDocs Document[]        @relation("dispositionRequester")
+
+  sentDistributions     DocumentDistribution[] @relation("DistributionSender")
+  receivedDistributions DocumentDistribution[] @relation("DistributionRecipient")
 }
 
 model Notification {
@@ -205,6 +213,7 @@ model Document {
   dispositionRequester   User?   @relation("dispositionRequester", fields: [dispositionRequesterId], references: [id])
 
   documentAccesses DocumentAccess[]
+  distributions    DocumentDistribution[]
 
   @@index([institutionId])
   @@index([uploadedById])
@@ -282,4 +291,25 @@ model DocumentAccess {
   @@index([departmentId])
   @@index([campusId])
   @@index([institutionId])
+}
+
+model DocumentDistribution {
+  id         String   @id @default(cuid())
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String
+
+  sender   User   @relation("DistributionSender", fields: [senderId], references: [id])
+  senderId String
+
+  recipient   User   @relation("DistributionRecipient", fields: [recipientId], references: [id])
+  recipientId String
+
+  status DistributionStatus @default(PENDING) // Enum: PENDING, RECEIVED
+
+  createdAt  DateTime  @default(now())
+  receivedAt DateTime?
+
+  @@index([documentId])
+  @@index([senderId])
+  @@index([recipientId])
 }

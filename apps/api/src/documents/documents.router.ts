@@ -367,7 +367,7 @@ export class DocumentsRouter {
           const accessesToCreate: any[] = [];
 
           accessesToCreate.push({
-            documentId: document.id,
+            documentId: (document as any).id,
             userId: user.id,
             permission: PermissionLevel.WRITE,
           });
@@ -377,13 +377,13 @@ export class DocumentsRouter {
             dbUser.institutionId
           ) {
             accessesToCreate.push({
-              documentId: document.id,
+              documentId: (document as any).id,
               institutionId: dbUser.institutionId,
               permission: PermissionLevel.READ,
             });
           } else if (input.classification === 'CAMPUS' && dbUser.campusId) {
             accessesToCreate.push({
-              documentId: document.id,
+              documentId: (document as any).id,
               campusId: dbUser.campusId,
               permission: PermissionLevel.READ,
             });
@@ -392,7 +392,7 @@ export class DocumentsRouter {
             dbUser.departmentId
           ) {
             accessesToCreate.push({
-              documentId: document.id,
+              documentId: (document as any).id,
               departmentId: dbUser.departmentId,
               permission: PermissionLevel.READ,
             });
@@ -407,10 +407,10 @@ export class DocumentsRouter {
             dbUser.institutionId,
             'Created Document',
             dbUser.roles.map((r) => r.name),
-            document.title,
+            (document as any).title,
           );
 
-          return document;
+          return document as any;
         }),
 
       /**
@@ -856,10 +856,20 @@ export class DocumentsRouter {
             });
           }
 
+          // Create DocumentDistribution with status PENDING instead of transferring ownership
+          const distribution = await this.prisma.documentDistribution.create({
+            data: {
+              documentId: input.documentId,
+              senderId: user.id,
+              recipientId: recipient.id,
+              status: 'PENDING',
+            },
+          });
+
+          // Update status and tags
           const updatedDocument = await this.prisma.document.update({
             where: { id: input.documentId },
             data: {
-              uploadedById: recipient.id,
               reviewRequesterId: isReview ? user.id : null,
               status: isReview ? null : undefined, // Clear status if re-submitting for review
               tags: {
@@ -871,18 +881,10 @@ export class DocumentsRouter {
             },
           });
 
-          await this.prisma.documentAccess.create({
-            data: {
-              documentId: updatedDocument.id,
-              userId: recipient.id,
-              permission: PermissionLevel.WRITE,
-            },
-          });
-
           await this.logService.logAction(
             user.id,
             dbUser.institutionId,
-            `Sent Document to ${recipient.firstName} ${recipient.lastName}`,
+            `Sent Document to ${recipient.firstName} ${recipient.lastName} (Pending Receipt)`,
             dbUser.roles.map((r) => r.name),
             updatedDocument.title,
           );
@@ -894,7 +896,7 @@ export class DocumentsRouter {
               data: {
                 userId: recipient.id,
                 title: 'Review Requested',
-                message: `${senderName} has sent you a confidential document for review: "${updatedDocument.title}".`,
+                message: `${senderName} has sent you a confidential document for review: "${updatedDocument.title}". Action required.`,
                 documentId: updatedDocument.id,
               },
             });
@@ -903,7 +905,7 @@ export class DocumentsRouter {
               data: {
                 userId: recipient.id,
                 title: 'Document Received',
-                message: `${senderName} sent you a document: "${updatedDocument.title}".`,
+                message: `${senderName} sent you a document: "${updatedDocument.title}". Action required to receive it.`,
                 documentId: updatedDocument.id,
               },
             });
@@ -984,13 +986,22 @@ export class DocumentsRouter {
             }
           }
 
+          // Create DocumentDistribution with status PENDING for all documents
+          await this.prisma.documentDistribution.createMany({
+            data: input.documentIds.map((documentId) => ({
+              documentId,
+              senderId: user.id,
+              recipientId: recipient.id,
+              status: 'PENDING',
+            })),
+          });
+
           // Use transaction for atomicity: all documents are sent or none
           const results = await this.prisma.$transaction(
             input.documentIds.map((documentId) =>
               this.prisma.document.update({
                 where: { id: documentId },
                 data: {
-                  uploadedById: recipient.id,
                   reviewRequesterId: isReview ? user.id : null,
                   status: isReview ? null : undefined, // Clear status if re-submitting for review
                   tags: {
@@ -1001,23 +1012,15 @@ export class DocumentsRouter {
             ),
           );
 
-          await this.prisma.documentAccess.createMany({
-            data: results.map((doc) => ({
-              documentId: doc.id,
-              userId: recipient.id,
-              permission: PermissionLevel.WRITE,
-            })),
-          });
-
           // Log actions after successful transaction using batch logging
           const userRoles = dbUser.roles.map((r) => r.name);
           await this.logService.logActions(
-            results.map((updatedDocument) => ({
+            results.map((doc) => ({
               userId: user.id,
               institutionId: dbUser.institutionId!,
-              action: `Sent Document to ${recipient.firstName} ${recipient.lastName}`,
+              action: `Sent Document to ${recipient.firstName} ${recipient.lastName} (Pending Receipt)`,
               roles: userRoles,
-              targetName: updatedDocument.title,
+              targetName: doc.title,
             })),
           );
 
@@ -1028,13 +1031,316 @@ export class DocumentsRouter {
               userId: recipient.id,
               title: isReview ? 'Review Requested' : 'Document Received',
               message: isReview
-                ? `${senderName} has sent you a confidential document for review: "${doc.title}".`
-                : `${senderName} sent you a document: "${doc.title}".`,
+                ? `${senderName} has sent you a confidential document for review: "${doc.title}". Action required.`
+                : `${senderName} sent you a document: "${doc.title}". Action required to receive it.`,
               documentId: doc.id,
             })),
           });
 
           return results;
+        }),
+
+      /**
+       * Receive a document that was sent directly (via notification/distribution)
+       * or physically via Control Number.
+       */
+      receiveDocument: protectedProcedure
+        .input(
+          z.object({
+            controlNumber: z.string().optional(),
+            distributionId: z.string().optional(),
+          }),
+        )
+        .mutation(async ({ ctx, input }) => {
+          const { user, dbUser } = ctx;
+
+          if (!dbUser.institutionId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to an institution.',
+            });
+          }
+
+          if (!input.controlNumber && !input.distributionId) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message:
+                'Must provide either a control number or distribution ID.',
+            });
+          }
+
+          let document;
+          let senderId = '';
+
+          // Workflow A: Receiving from a pending distribution in the system
+          if (input.distributionId) {
+            const distribution =
+              await this.prisma.documentDistribution.findUnique({
+                where: { id: input.distributionId },
+                include: { document: true },
+              });
+
+            if (!distribution) {
+              throw new TRPCError({
+                code: 'NOT_FOUND',
+                message: 'Distribution not found.',
+              });
+            }
+
+            if (distribution.recipientId !== user.id) {
+              throw new TRPCError({
+                code: 'FORBIDDEN',
+                message: 'Not authorized to receive this document.',
+              });
+            }
+
+            if (distribution.status === 'RECEIVED') {
+              throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'Document has already been received.',
+              });
+            }
+
+            document = distribution.document as any;
+            senderId = distribution.senderId;
+
+            // Mark distribution as received
+            await this.prisma.documentDistribution.update({
+              where: { id: distribution.id },
+              data: {
+                status: 'RECEIVED',
+                receivedAt: new Date(),
+              },
+            });
+          }
+          // Workflow B: Receiving via Control Number directly
+          else if (input.controlNumber) {
+            document = (await this.prisma.document.findFirst({
+              where: {
+                controlNumber: input.controlNumber,
+                institutionId: dbUser.institutionId,
+              },
+            })) as any;
+
+            if (!document) {
+              throw new TRPCError({
+                code: 'NOT_FOUND',
+                message: 'Document with this Control Number not found.',
+              });
+            }
+
+            // Assume the owner/uploader is the sender in a physical exchange
+            senderId = (document as any).uploadedById;
+
+            // Prevent receiving a document you uploaded
+            if (senderId === user.id) {
+              throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'You cannot receive your own document.',
+              });
+            }
+
+            // Check if they already received it
+            const existingAccess = await this.prisma.documentAccess.findFirst({
+              where: {
+                documentId: (document as any).id,
+                userId: user.id,
+              },
+            });
+
+            if (existingAccess) {
+              throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'You already have access to this document.',
+              });
+            }
+
+            // Check if there is already a pending distribution for this control number and user to avoid duplicate logs
+            const pendingDistribution =
+              await this.prisma.documentDistribution.findFirst({
+                where: {
+                  documentId: (document as any).id,
+                  recipientId: user.id,
+                  status: 'PENDING',
+                },
+              });
+
+            if (pendingDistribution) {
+              await this.prisma.documentDistribution.update({
+                where: { id: pendingDistribution.id },
+                data: {
+                  status: 'RECEIVED',
+                  receivedAt: new Date(),
+                },
+              });
+            } else {
+              // Create a new received distribution record
+              await this.prisma.documentDistribution.create({
+                data: {
+                  documentId: (document as any).id,
+                  senderId,
+                  recipientId: user.id,
+                  status: 'RECEIVED',
+                  receivedAt: new Date(),
+                },
+              });
+            }
+          }
+
+          // Grant READ access
+          await this.prisma.documentAccess.create({
+            data: {
+              documentId: (document as any).id,
+              userId: user.id,
+              permission: PermissionLevel.READ,
+            },
+          });
+
+          await this.logService.logAction(
+            user.id,
+            dbUser.institutionId,
+            `Received Document via Control Number/Distribution`,
+            dbUser.roles.map((r) => r.name),
+            (document as any).title,
+          );
+
+          // Notify sender
+          await this.prisma.notification.create({
+            data: {
+              userId: senderId,
+              title: 'Document Received',
+              message: `${dbUser.firstName} ${dbUser.lastName} has successfully received "${(document as any).title}".`,
+              documentId: (document as any).id,
+            },
+          });
+
+          return document as any;
+        }),
+
+      /**
+       * Get pending distributions for the current user
+       */
+      getMyPendingDistributions: protectedProcedure.query(async ({ ctx }) => {
+        if (!ctx.dbUser.institutionId) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'User does not belong to an institution.',
+          });
+        }
+
+        return this.prisma.documentDistribution.findMany({
+          where: {
+            recipientId: ctx.user.id,
+            status: 'PENDING',
+            document: {
+              institutionId: ctx.dbUser.institutionId,
+            },
+          },
+          include: {
+            document: {
+              select: {
+                id: true,
+                title: true,
+                controlNumber: true,
+                classification: true,
+              },
+            },
+            sender: {
+              select: {
+                firstName: true,
+                lastName: true,
+                department: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        });
+      }),
+
+      /**
+       * Get distributions for a specific document
+       */
+      getDocumentDistributions: protectedProcedure
+        .input(z.object({ documentId: z.string() }))
+        .query(async ({ ctx, input }) => {
+          if (!ctx.dbUser.institutionId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to an institution.',
+            });
+          }
+
+          // Verify user has access to see distributions (either has READ access or is owner)
+          const aclWhere = this.accessControlService.generateAclWhereClause(
+            ctx.dbUser,
+          );
+          const doc = await this.prisma.document.findFirst({
+            where: {
+              id: input.documentId,
+              institutionId: ctx.dbUser.institutionId,
+              AND: [aclWhere],
+            },
+          });
+
+          if (!doc) {
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Document not found or access denied.',
+            });
+          }
+
+          const isOwner =
+            doc.uploadedById === ctx.user.id ||
+            doc.originalSenderId === ctx.user.id;
+          const isAdmin = checkPermission(ctx.dbUser, 'canManageDocuments');
+
+          let distributionWhere: any = {
+            documentId: input.documentId,
+          };
+
+          if (!isOwner && !isAdmin) {
+            distributionWhere.OR = [
+              { senderId: ctx.user.id },
+              { recipientId: ctx.user.id },
+            ];
+          }
+
+          return this.prisma.documentDistribution.findMany({
+            where: distributionWhere,
+            include: {
+              recipient: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  department: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
+              },
+              sender: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  department: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
+          });
         }),
 
       reviewDocument: protectedProcedure

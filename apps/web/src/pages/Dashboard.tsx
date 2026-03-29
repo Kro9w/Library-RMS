@@ -13,7 +13,7 @@ import { useForm } from "react-hook-form";
 
 import { UploadModal } from "../components/UploadModal";
 import { SendDocumentModal } from "../components/SendDocumentModal";
-import { SelectDocumentModal } from "../components/SelectDocumentModal";
+import { ReceiveDocumentModal } from "../components/ReceiveDocumentModal";
 
 // --- 1. IMPORT TRPC OUTPUT TYPE (Fixes 'any' errors) ---
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
@@ -37,8 +37,11 @@ export function Dashboard() {
 
   const [showSendModal, setShowSendModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [showSelectDocumentModal, setShowSelectDocumentModal] = useState(false);
+  const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+
+  const { data: pendingDistributions } =
+    trpc.documents.getMyPendingDistributions.useQuery();
 
   // --- Greeting Logic ---
   const greeting = useMemo(() => {
@@ -89,10 +92,19 @@ export function Dashboard() {
         <h1>{greeting}</h1>
         <div className="d-flex gap-2 align-items-center">
           <button
-            onClick={() => setShowSelectDocumentModal(true)}
-            className="btn btn-secondary"
+            onClick={() => setShowReceiveModal(true)}
+            className="btn btn-outline-primary position-relative"
           >
-            <i className="bi bi-send"></i> Send
+            <i className="bi bi-box-arrow-in-down me-2"></i> Receive Document
+            {pendingDistributions && pendingDistributions.length > 0 && (
+              <span
+                className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                style={{ fontSize: "0.6rem", padding: "0.25em 0.5em" }}
+              >
+                {pendingDistributions.length}
+                <span className="visually-hidden">pending documents</span>
+              </span>
+            )}
           </button>
           <button
             onClick={() => setShowUploadModal(true)}
@@ -320,19 +332,14 @@ export function Dashboard() {
         />
       )}
 
-      <SelectDocumentModal
-        show={showSelectDocumentModal}
-        onClose={() => setShowSelectDocumentModal(false)}
-        onSelect={(docId) => {
-          setSelectedDocId(docId);
-          setShowSelectDocumentModal(false);
-          setShowSendModal(true);
-        }}
-      />
-
       <UploadModal
         show={showUploadModal}
         onClose={() => setShowUploadModal(false)}
+      />
+
+      <ReceiveDocumentModal
+        show={showReceiveModal}
+        onClose={() => setShowReceiveModal(false)}
       />
     </div>
   );

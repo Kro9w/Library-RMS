@@ -21,6 +21,7 @@ describe('DocumentsRouter Security', () => {
   let router: DocumentsRouter;
 
   const mockPrismaService = {
+    documentDistribution: { create: jest.fn(), createMany: jest.fn(), findFirst: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), update: jest.fn() },
     documentAccess: { create: jest.fn(), createMany: jest.fn() },
     document: {
       findMany: jest.fn(),

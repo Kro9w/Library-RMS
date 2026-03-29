@@ -70,6 +70,7 @@ const formatFileTypeDisplay = (
 import { SendDocumentModal } from "../components/SendDocumentModal";
 import { ReviewDocumentModal } from "../components/ReviewDocumentModal";
 import { usePermissions } from "../hooks/usePermissions";
+import { format } from "date-fns";
 
 export const DocumentDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -125,6 +126,12 @@ export const DocumentDetails: React.FC = () => {
         staleTime: 1000 * 60 * 4, // Cache URL for 4 minutes
         refetchOnWindowFocus: false,
       },
+    );
+
+  const { data: distributions } =
+    trpc.documents.getDocumentDistributions.useQuery(
+      { documentId: id! },
+      { enabled: !!id },
     );
 
   if (isLoadingDoc || isLoadingUrl) {
@@ -201,12 +208,49 @@ export const DocumentDetails: React.FC = () => {
       )}
 
       <div className="page-header">
-        <h2>
-          {document.title}
-          <ClassificationBadge
-            classification={document.classification as ClassificationType}
-          />
-        </h2>
+        <div>
+          <h2 className="mb-2 d-flex align-items-center flex-wrap gap-2">
+            {document.title}
+            <ClassificationBadge
+              classification={document.classification as ClassificationType}
+            />
+          </h2>
+          {distributions &&
+            distributions.some(
+              (d: any) => d.recipientId === user?.id && d.status === "RECEIVED",
+            ) &&
+            (() => {
+              const myDist = distributions.find(
+                (d: any) =>
+                  d.recipientId === user?.id && d.status === "RECEIVED",
+              );
+              return (
+                <p
+                  className="mb-0 text-muted d-flex align-items-center gap-2"
+                  style={{ fontSize: "0.85rem" }}
+                >
+                  <i className="bi bi-file-earmark-arrow-down text-primary"></i>
+                  <span>
+                    Received from{" "}
+                    <strong>
+                      {myDist?.sender.firstName} {myDist?.sender.lastName}
+                    </strong>{" "}
+                    {myDist?.sender.department?.name
+                      ? `(${myDist.sender.department.name})`
+                      : ""}{" "}
+                    on{" "}
+                    {myDist?.receivedAt
+                      ? format(
+                          new Date(myDist?.receivedAt as string),
+                          "MMM d, yyyy h:mm a",
+                        )
+                      : "N/A"}
+                    .
+                  </span>
+                </p>
+              );
+            })()}
+        </div>
       </div>
 
       <div className="document-details-container">
@@ -577,6 +621,66 @@ export const DocumentDetails: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Distributions Section */}
+      {(user?.id === document.uploadedById ||
+        user?.id === document.originalSenderId ||
+        canManageDocuments) &&
+        distributions &&
+        distributions.length > 0 && (
+          <div className="document-table-card mt-4 mb-4">
+            <div className="card-body">
+              <h5 className="card-title d-flex align-items-center">
+                <i className="bi bi-send-check me-2"></i>
+                Distributions
+              </h5>
+              <hr />
+              <div className="table-responsive">
+                <table className="table table-hover align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Recipient</th>
+                      <th>Office / Department</th>
+                      <th>Status</th>
+                      <th>Date Received</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {distributions.map((dist: any) => (
+                      <tr key={dist.id}>
+                        <td>
+                          <strong>
+                            {dist.recipient.firstName} {dist.recipient.lastName}
+                          </strong>
+                        </td>
+                        <td>{dist.recipient.department?.name || "N/A"}</td>
+                        <td>
+                          <span
+                            className={`badge ${dist.status === "RECEIVED" ? "bg-success" : "bg-warning text-dark"}`}
+                          >
+                            {dist.status}
+                          </span>
+                        </td>
+                        <td>
+                          {dist.receivedAt ? (
+                            format(
+                              new Date(dist.receivedAt as string),
+                              "MMM d, yyyy h:mm a",
+                            )
+                          ) : (
+                            <span className="text-muted fst-italic">
+                              Pending
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
 
       {/* Version History Section Full Width */}
       <div className="document-table-card mt-4 mb-4">

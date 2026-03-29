@@ -108,9 +108,26 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({
               onClick={() => handleClick(notif)}
             >
               {!notif.isRead && <span className="notif-dot" />}
+              <div className="notif-item-icon-wrapper">
+                {notif.title.toLowerCase().includes("received") ? (
+                  <i className="bi bi-file-earmark-arrow-down notif-item-icon"></i>
+                ) : notif.title.toLowerCase().includes("review requested") ? (
+                  <i className="bi bi-eye notif-item-icon"></i>
+                ) : notif.title.toLowerCase().includes("review completed") ? (
+                  <i className="bi bi-check-circle notif-item-icon text-success"></i>
+                ) : notif.title.toLowerCase().includes("legal hold") ? (
+                  <i className="bi bi-shield-lock notif-item-icon text-danger"></i>
+                ) : notif.title.toLowerCase().includes("disposition") ? (
+                  <i className="bi bi-trash3 notif-item-icon text-warning"></i>
+                ) : (
+                  <i className="bi bi-bell notif-item-icon"></i>
+                )}
+              </div>
               <div className="notif-item-body">
-                <div className="notif-item-title">{notif.title}</div>
-                <div className="notif-item-msg">{notif.message}</div>
+                <div className="notif-item-msg">
+                  <span className="notif-item-title">{notif.title}: </span>
+                  {notif.message}
+                </div>
                 <div className="notif-item-time">
                   {formatDistanceToNow(new Date(notif.createdAt), {
                     addSuffix: true,
