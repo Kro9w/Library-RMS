@@ -4,6 +4,7 @@ import { trpc } from "../trpc";
 import { Navigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useDropzone } from "react-dropzone";
+import { usePermissions } from "../hooks/usePermissions";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "../supabase.ts";
 import "./Account.css";
@@ -23,13 +24,14 @@ const Account: React.FC = () => {
   const trpcCtx = trpc.useUtils();
 
   const { data: dbUser, isLoading } = trpc.user.getMe.useQuery();
+  const { canManageInstitution } = usePermissions();
 
   const { mutate: updateProfile, isPending: isUpdating } =
     trpc.user.updateProfile.useMutation({
       onSuccess: () => {
         trpcCtx.user.getMe.invalidate();
       },
-      onError: (error) => alert(`Error: ${error.message}`),
+      onError: (error: { message: any }) => alert(`Error: ${error.message}`),
     });
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -72,7 +74,7 @@ const Account: React.FC = () => {
         .from(AVATAR_BUCKET)
         .upload(key, avatarFile, { upsert: true });
       if (error) {
-        alert(`Avatar upload failed: ${error.message}`);
+        alert(`Avatar upload failed: ${(error as Error).message}`);
         return;
       }
       const { data: urlData } = supabase.storage
@@ -129,13 +131,13 @@ const Account: React.FC = () => {
         <div className="account-profile-body">
           <div className="account-profile-name">{displayName}</div>
           <div className="account-profile-role">
-            {dbUser.roles?.map((r: any) => (
+            {dbUser.roles?.map((r: { id: string; name: string }) => (
               <span key={r.id} className="badge bg-secondary">
                 {r.name}
               </span>
             ))}
-            {dbUser.isSuperAdmin && (
-              <span className="badge bg-danger">Super Admin</span>
+            {canManageInstitution && (
+              <span className="badge bg-danger">System Administrator</span>
             )}
           </div>
         </div>

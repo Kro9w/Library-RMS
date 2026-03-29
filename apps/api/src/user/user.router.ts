@@ -146,18 +146,18 @@ export class UserRouter {
                 canManageUsers: true,
                 canManageRoles: true,
                 canManageDocuments: true,
+                canManageInstitution: true,
                 departmentId: adminDept.id,
               },
             });
 
-            // Connect user to Org, Campus, Dept, Role. Make them super admin since they created the institution.
+            // Connect user to Org, Campus, Dept, Role. Make them admin since they created the institution.
             await tx.user.update({
               where: { id: ctx.dbUser.id },
               data: {
                 institutionId: newInstitution.id,
                 campusId: mainCampus.id,
                 departmentId: adminDept.id,
-                isSuperAdmin: true,
                 roles: {
                   connect: { id: adminRole.id },
                 },
@@ -408,7 +408,9 @@ export class UserRouter {
         }),
 
       getUsersWithRoles: protectedProcedure.query(async ({ ctx }) => {
-        if (ctx.dbUser.isSuperAdmin) {
+        const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+
+        if (canManageInstitution) {
           return ctx.prisma.user.findMany({
             where: { institutionId: ctx.dbUser.institutionId },
             include: { roles: true, campus: true, department: true },
@@ -506,10 +508,11 @@ export class UserRouter {
       updateCampus: protectedProcedure
         .input(z.object({ id: z.string(), name: z.string().min(1) }))
         .mutation(async ({ ctx, input }) => {
-          if (!ctx.dbUser.isSuperAdmin) {
+          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+          if (!canManageInstitution) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'Only Super Admins can update campuses.',
+              message: 'Only Institution Admins can update campuses.',
             });
           }
 
@@ -533,10 +536,11 @@ export class UserRouter {
       deleteCampus: protectedProcedure
         .input(z.object({ id: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          if (!ctx.dbUser.isSuperAdmin) {
+          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+          if (!canManageInstitution) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'Only Super Admins can delete campuses.',
+              message: 'Only Institution Admins can delete campuses.',
             });
           }
 
@@ -624,10 +628,11 @@ export class UserRouter {
       deleteDepartment: protectedProcedure
         .input(z.object({ id: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          if (!ctx.dbUser.isSuperAdmin) {
+          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+          if (!canManageInstitution) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'Only Super Admins can delete departments.',
+              message: 'Only Institution Admins can delete departments.',
             });
           }
 
@@ -658,10 +663,11 @@ export class UserRouter {
           }),
         )
         .mutation(async ({ ctx, input }) => {
-          if (!ctx.dbUser.isSuperAdmin) {
+          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+          if (!canManageInstitution) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'Only Super Admins can reassign users globally.',
+              message: 'Only Institution Admins can reassign users globally.',
             });
           }
 

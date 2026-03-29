@@ -106,9 +106,10 @@ export default function AdminSystemUsers() {
                     <span className="fw-semibold">
                       {user.lastName}, {user.firstName} {user.middleName || ""}
                     </span>
-                    {user.isSuperAdmin && (
-                      <span className="badge-superadmin">Super Admin</span>
-                    )}
+                    {user.roles?.some(
+                      (r: { canManageInstitution: boolean }) =>
+                        r.canManageInstitution,
+                    ) && <span className="badge-superadmin">System Admin</span>}
                   </div>
                 </td>
                 <td>{user.email}</td>
@@ -190,7 +191,10 @@ export default function AdminSystemUsers() {
                       <button
                         className="btn topbar-btn"
                         onClick={() => handleEdit(user)}
-                        disabled={user.isSuperAdmin}
+                        disabled={user.roles?.some(
+                          (r: { canManageInstitution: boolean }) =>
+                            r.canManageInstitution,
+                        )}
                       >
                         Reassign
                       </button>

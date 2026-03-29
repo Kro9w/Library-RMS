@@ -4,6 +4,7 @@ import { trpc } from "../trpc";
 import { AppearanceSettings } from "../components/Settings/AppearanceSettings";
 import { SystemSettings } from "../components/Settings/SystemSettings";
 import { RolesSettings } from "../components/Roles/RolesSettings";
+import { usePermissions } from "../hooks/usePermissions";
 import "./Settings.css";
 
 type SettingsTab = "appearance" | "system" | "roles";
@@ -13,9 +14,10 @@ export function Settings() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
 
   const { data: user } = trpc.user.getMe.useQuery();
+  const { canManageInstitution } = usePermissions();
 
   const canManageRoles =
-    user?.isSuperAdmin ||
+    canManageInstitution ||
     user?.roles.some(
       (role: { canManageRoles: boolean }) => role.canManageRoles,
     ) ||

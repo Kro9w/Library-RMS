@@ -6,6 +6,7 @@ const CAMPUS_DATA = [
   {
     name: 'Andrews',
     departments: [
+      'Office of the Campus Executive Officer',
       'College of Allied Health Sciences',
       'College of Business Entrepreneurship and Accountancy',
       'College of Hospitality Management',
@@ -16,6 +17,7 @@ const CAMPUS_DATA = [
   {
     name: 'Aparri',
     departments: [
+      'Office of the Campus Executive Officer',
       'College of Business Entrepreneurship and Accountancy',
       'College of Criminal Justice Education',
       'College of Fisheries and Aquatic Sciences',
@@ -29,6 +31,7 @@ const CAMPUS_DATA = [
   {
     name: 'Carig',
     departments: [
+      'Office of the Campus Executive Officer',
       'College of Information and Computing Sciences',
       'College of Engineering and Architecture',
       'College of Human Kinetics',
@@ -45,6 +48,7 @@ const CAMPUS_DATA = [
   {
     name: 'Gonzaga',
     departments: [
+      'Office of the Campus Executive Officer',
       'College of Agriculture',
       'College of Business Entrepreneurship and Accountancy',
       'College of Criminal Justice Education',
@@ -56,6 +60,7 @@ const CAMPUS_DATA = [
   {
     name: 'Lal-lo',
     departments: [
+      'Office of the Campus Executive Officer',
       'College of Agriculture',
       'College of Hospitality Management',
       'College of Information and Computing Sciences',
@@ -65,6 +70,7 @@ const CAMPUS_DATA = [
   {
     name: 'Lasam',
     departments: [
+      'Office of the Campus Executive Officer',
       'College of Industrial Technology',
       'College of Information and Computing Sciences',
       'College of Teacher Education',
@@ -73,6 +79,7 @@ const CAMPUS_DATA = [
   {
     name: 'Piat',
     departments: [
+      'Office of the Campus Executive Officer',
       'College of Agriculture',
       'College of Criminal Justice Education',
       'College of Information and Computing Sciences',
@@ -82,6 +89,7 @@ const CAMPUS_DATA = [
   {
     name: 'Sanchez Mira', 
     departments: [
+      'Office of the Campus Executive Officer',
       'College of Agriculture',
       'College of Business Entrepreneurship and Accountancy',
       'College of Criminal Justice Education',
@@ -96,6 +104,7 @@ const CAMPUS_DATA = [
   {
     name: 'Solana-Lara',
     departments: [
+      'Office of the Campus Executive Officer',
       'College of Agriculture',
       'College of Criminal Justice Education',
       'College of Information and Computing Sciences',
@@ -104,7 +113,13 @@ const CAMPUS_DATA = [
   },
   {
     name: 'University Administration',
-    departments: [],
+    departments: [
+      'Office of the University President',
+      'Office of the Vice President for Academic Affairs',
+      'Office of the Vice President for Research, Development, and Extension',
+      'Office of the Vice President for Administration and Finance',
+      'Office of the Vice President for Internationalization, Partnership, and Resource Mobilization',
+    ],
   }
 ];
 
@@ -186,29 +201,57 @@ async function main() {
             });
             console.log(`  Created Department: ${dept.name}`);
         }
-    }
 
-    // Special Case: Admin Department for Andrews Campus (Retained for backward compat/completeness)
-    if (campusData.name === 'Andrews') {
-        const adminDeptName = 'Admin Department';
-        let adminDept = await prisma.department.findFirst({
-            where: {
-                name: adminDeptName,
-                campusId: campus.id
-            }
-        });
+        // Seed Roles for this Department
+        const rolesToSeed: { name: string; level: number; canManageUsers: boolean; canManageRoles: boolean; canManageDocuments: boolean; canManageInstitution?: boolean; }[] = [];
 
-        if (!adminDept) {
-            adminDept = await prisma.department.create({
-                data: {
-                    name: adminDeptName,
-                    campusId: campus.id,
-                    icon: 'admin-icon.png' 
+        // Rules based on user requirements:
+        if (deptName === 'Office of the University President') {
+            rolesToSeed.push({ name: 'University President', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true, canManageInstitution: true });
+        } else if (deptName === 'Office of the Vice President for Academic Affairs') {
+            rolesToSeed.push({ name: 'VPAA', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
+        } else if (deptName === 'Office of the Vice President for Research, Development, and Extension') {
+            rolesToSeed.push({ name: 'VPRDE', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
+        } else if (deptName === 'Office of the Vice President for Administration and Finance') {
+            rolesToSeed.push({ name: 'VPAF', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
+        } else if (deptName === 'Office of the Vice President for Internationalization, Partnership, and Resource Mobilization') {
+            rolesToSeed.push({ name: 'VPIPRM', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
+        } else if (deptName === 'Office of the Campus Executive Officer') {
+            rolesToSeed.push({ name: 'CEO', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
+        } else if (deptName.startsWith('College of') || deptName === 'Graduate School') {
+            rolesToSeed.push(
+                { name: 'Dean', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true },
+                { name: 'Program Coordinator', level: 3, canManageUsers: false, canManageRoles: false, canManageDocuments: false },
+                { name: 'College Secretary', level: 3, canManageUsers: false, canManageRoles: false, canManageDocuments: false },
+                { name: 'Faculty', level: 4, canManageUsers: false, canManageRoles: false, canManageDocuments: false }
+            );
+        }
+
+        for (const roleData of rolesToSeed) {
+            let role = await prisma.role.findFirst({
+                where: {
+                    name: roleData.name,
+                    departmentId: dept.id
                 }
             });
-            console.log(`  Created Special Admin Department: ${adminDept.name}`);
+
+            if (!role) {
+                await prisma.role.create({
+                    data: {
+                        name: roleData.name,
+                        level: roleData.level,
+                        canManageUsers: roleData.canManageUsers,
+                        canManageRoles: roleData.canManageRoles,
+                        canManageDocuments: roleData.canManageDocuments,
+                        canManageInstitution: roleData.canManageInstitution ?? false,
+                        departmentId: dept.id
+                    }
+                });
+                console.log(`    Created Role: ${roleData.name}`);
+            }
         }
     }
+
   }
 
   console.log('Seeding finished.');

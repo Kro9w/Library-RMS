@@ -1,6 +1,7 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { trpc } from "../../trpc";
 import { useEffect } from "react";
+import { usePermissions } from "../../hooks/usePermissions";
 
 import "./AdminLayout.css";
 
@@ -105,18 +106,20 @@ const links = [
 ];
 
 export default function AdminLayout() {
-  const { data: dbUser, isLoading } = trpc.user.getMe.useQuery();
+  const { data: dbUser, isLoading: isUserLoading } = trpc.user.getMe.useQuery();
+  const { canManageInstitution, isLoading: isPermsLoading } = usePermissions();
   const navigate = useNavigate();
   const location = useLocation();
+  const isLoading = isUserLoading || isPermsLoading;
 
   useEffect(() => {
-    if (!isLoading && dbUser && !dbUser.isSuperAdmin) {
+    if (!isLoading && dbUser && !canManageInstitution) {
       navigate("/", { replace: true });
     }
-  }, [dbUser, isLoading, navigate]);
+  }, [dbUser, isLoading, canManageInstitution, navigate]);
 
   if (isLoading) return null;
-  if (!dbUser?.isSuperAdmin) return null;
+  if (!canManageInstitution) return null;
 
   return (
     <div className="admin-layout">

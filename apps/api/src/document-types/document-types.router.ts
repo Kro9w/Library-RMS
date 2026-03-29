@@ -37,8 +37,9 @@ export class DocumentTypesRouter {
           }),
         )
         .mutation(async ({ ctx, input }) => {
-          if (!ctx.dbUser.isSuperAdmin) {
-            throw new Error('Only Super Admins can manage document types.');
+          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+          if (!canManageInstitution) {
+            throw new Error('Only Institution Admins can manage document types.');
           }
           const institutionId = ctx.dbUser.institutionId as string;
           const newDocType = await ctx.prisma.documentType.create({
@@ -75,8 +76,9 @@ export class DocumentTypesRouter {
           }),
         )
         .mutation(async ({ ctx, input }) => {
-          if (!ctx.dbUser.isSuperAdmin) {
-            throw new Error('Only Super Admins can manage document types.');
+          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+          if (!canManageInstitution) {
+            throw new Error('Only Institution Admins can manage document types.');
           }
           return ctx.prisma.documentType.update({
             where: { id: input.id },
@@ -94,8 +96,9 @@ export class DocumentTypesRouter {
       delete: protectedProcedure
         .input(z.object({ id: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          if (!ctx.dbUser.isSuperAdmin) {
-            throw new Error('Only Super Admins can manage document types.');
+          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+          if (!canManageInstitution) {
+            throw new Error('Only Institution Admins can manage document types.');
           }
           const deletedDocType = await ctx.prisma.documentType.delete({
             where: { id: input.id },

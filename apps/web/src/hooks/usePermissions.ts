@@ -3,10 +3,18 @@ import { trpc } from "../trpc";
 export const usePermissions = () => {
   const { data: user, isLoading } = trpc.user.getMe.useQuery();
 
-  const isSuperAdmin = user?.isSuperAdmin ?? false;
-  const canManageDocuments = isSuperAdmin || (user?.roles.some((r) => r.canManageDocuments) ?? false);
-  const canManageUsers = isSuperAdmin || (user?.roles.some((r) => r.canManageUsers) ?? false);
-  const canManageRoles = isSuperAdmin || (user?.roles.some((r) => r.canManageRoles) ?? false);
+  // Defines a minimal role type to avoid using explicit 'any'
+  type BaseRole = {
+    canManageInstitution: boolean;
+    canManageDocuments: boolean;
+    canManageUsers: boolean;
+    canManageRoles: boolean;
+  };
+
+  const canManageInstitution = user?.roles.some((r: BaseRole) => r.canManageInstitution) ?? false;
+  const canManageDocuments = canManageInstitution || (user?.roles.some((r: BaseRole) => r.canManageDocuments) ?? false);
+  const canManageUsers = canManageInstitution || (user?.roles.some((r: BaseRole) => r.canManageUsers) ?? false);
+  const canManageRoles = canManageInstitution || (user?.roles.some((r: BaseRole) => r.canManageRoles) ?? false);
 
   const isUploader = (uploaderId: string | null | undefined): boolean => {
     if (!user || !uploaderId) return false;
@@ -14,7 +22,7 @@ export const usePermissions = () => {
   };
 
   return {
-    isSuperAdmin,
+    canManageInstitution,
     canManageDocuments,
     canManageUsers,
     canManageRoles,

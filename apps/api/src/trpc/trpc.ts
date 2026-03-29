@@ -71,11 +71,11 @@ export const checkPermission = (
   permission: keyof Role,
 ) => {
   if (!user) return false;
-  // Super Admins inherently have all permissions
-  if (user.isSuperAdmin) return true;
   if (!user.roles) return false;
+  // Super Admins inherently have all permissions via canManageInstitution
+  if (user.roles.some((role: Role) => role.canManageInstitution)) return true;
   // We only care if *any* role has the permission
-  return user.roles.some((role) => role[permission] === true);
+  return user.roles.some((role: Role) => role[permission] === true);
 };
 
 // Helper function to enforce permissions
@@ -86,7 +86,7 @@ export const requirePermission = (
   if (!checkPermission(user, permission)) {
     throw new TRPCError({
       code: 'FORBIDDEN',
-      message: `You do not have permission to ${permission}.`,
+      message: `You do not have permission to ${String(permission)}.`,
     });
   }
 };

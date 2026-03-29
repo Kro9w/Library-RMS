@@ -6,10 +6,10 @@ import { usePermissions } from "./usePermissions";
  * This hook is maintained for backward compatibility.
  */
 export function useIsAdmin() {
-  const { canManageRoles, isSuperAdmin, isLoading } = usePermissions();
+  const { canManageRoles, canManageInstitution, isLoading } = usePermissions();
 
-  // Previously, isAdmin arbitrarily meant "canManageRoles" or "isSuperAdmin"
-  const isAdmin = isSuperAdmin || canManageRoles;
+  // Previously, isAdmin arbitrarily meant "canManageRoles" or "isSuperAdmin/canManageInstitution"
+  const isAdmin = canManageInstitution || canManageRoles;
 
   return { isAdmin, isLoading };
 }

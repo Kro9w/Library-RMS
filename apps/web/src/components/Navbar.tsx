@@ -40,6 +40,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
   const { data: dbUser } = trpc.user.getMe.useQuery(undefined, {
     enabled: !!user,
   });
+  const { canManageInstitution } = usePermissions();
 
   const navigate = useNavigate();
   const [isAccountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -131,7 +132,7 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
         <i className="bi bi-gear" />
         Settings
       </NavLink>
-      {dbUser?.isSuperAdmin && (
+      {canManageInstitution && (
         <NavLink
           to="/admin"
           className="account-dropdown-item"

@@ -43,7 +43,8 @@ export class RolesRouter {
 
           let targetDeptId = ctx.dbUser.departmentId;
 
-          if (ctx.dbUser.isSuperAdmin && input.departmentId) {
+          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+          if (canManageInstitution && input.departmentId) {
             targetDeptId = input.departmentId;
           }
 
@@ -96,8 +97,9 @@ export class RolesRouter {
             });
           }
 
+          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (
-            !ctx.dbUser.isSuperAdmin &&
+            !canManageInstitution &&
             existingRole.departmentId !== ctx.dbUser.departmentId
           ) {
             throw new TRPCError({
@@ -156,8 +158,9 @@ export class RolesRouter {
             });
           }
 
+          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (
-            !ctx.dbUser.isSuperAdmin &&
+            !canManageInstitution &&
             role.departmentId !== ctx.dbUser.departmentId
           ) {
             throw new TRPCError({
@@ -184,8 +187,9 @@ export class RolesRouter {
             });
           }
 
+          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (
-            !ctx.dbUser.isSuperAdmin &&
+            !canManageInstitution &&
             role.departmentId !== ctx.dbUser.departmentId
           ) {
             throw new TRPCError({
@@ -207,7 +211,7 @@ export class RolesRouter {
           }
 
           if (
-            !ctx.dbUser.isSuperAdmin &&
+            !canManageInstitution &&
             targetUser.departmentId !== ctx.dbUser.departmentId
           ) {
             throw new TRPCError({
@@ -269,8 +273,9 @@ export class RolesRouter {
             });
           }
 
+          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (
-            !ctx.dbUser.isSuperAdmin &&
+            !canManageInstitution &&
             targetUser.departmentId !== ctx.dbUser.departmentId
           ) {
             throw new TRPCError({
@@ -291,7 +296,7 @@ export class RolesRouter {
           }
 
           if (
-            !ctx.dbUser.isSuperAdmin &&
+            !canManageInstitution &&
             role.departmentId !== ctx.dbUser.departmentId
           ) {
             throw new TRPCError({
