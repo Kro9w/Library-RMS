@@ -17,6 +17,7 @@ import { useGlobalLoading } from "../hooks/useGlobalLoading";
 import "./Navbar.css";
 import { formatUserName } from "../utils/user";
 import { NotificationsDropdown } from "./NotificationsDropdown";
+import type { SidebarMode } from "../App";
 
 const UploadModal = React.lazy(() =>
   import("./UploadModal").then((m) => ({ default: m.UploadModal })),
@@ -31,11 +32,11 @@ const SendDocumentModal = React.lazy(() =>
 );
 
 interface NavbarProps {
-  isCollapsed: boolean;
-  onToggle: () => void;
+  sidebarMode: SidebarMode;
+  setSidebarMode: (mode: SidebarMode) => void;
 }
 
-export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
+export function Navbar({ sidebarMode, setSidebarMode }: NavbarProps) {
   const user = useUser();
   const { data: dbUser } = trpc.user.getMe.useQuery(undefined, {
     enabled: !!user,
@@ -48,9 +49,17 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
 
+  const modeTriggerRef = useRef<HTMLButtonElement>(null);
+  const modeDropdownRef = useRef<HTMLDivElement>(null);
+  const [isModeMenuOpen, setIsModeMenuOpen] = useState(false);
+  const [modeMenuStyle, setModeMenuStyle] = useState<React.CSSProperties>({});
+
+  const [isHovered, setIsHovered] = useState(false);
+
   useEffect(() => {
     setAccountMenuOpen(false);
-  }, [isCollapsed]);
+    setIsModeMenuOpen(false);
+  }, [sidebarMode]);
 
   useLayoutEffect(() => {
     if (isAccountMenuOpen && triggerRef.current) {
@@ -64,8 +73,24 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
     }
   }, [isAccountMenuOpen]);
 
+  useLayoutEffect(() => {
+    if (isModeMenuOpen && modeTriggerRef.current) {
+      const rect = modeTriggerRef.current.getBoundingClientRect();
+      setModeMenuStyle({
+        position: "fixed",
+        left: `${rect.right + 6}px`,
+        bottom: `${window.innerHeight - rect.bottom}px`,
+        zIndex: 9999,
+      });
+    }
+  }, [isModeMenuOpen]);
+
   useOutsideClick([triggerRef, dropdownRef], () => {
     setAccountMenuOpen(false);
+  });
+
+  useOutsideClick([modeTriggerRef, modeDropdownRef], () => {
+    setIsModeMenuOpen(false);
   });
 
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -153,10 +178,62 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
     </div>
   );
 
+  const isActuallyExpanded =
+    sidebarMode === "expanded" ||
+    (sidebarMode === "hover" && (isHovered || isModeMenuOpen));
+
+  // When expanding on hover, add a specific class to overlay rather than push
+  const sidebarClassName = `sidebar ${isActuallyExpanded ? "expanded" : "collapsed"} ${
+    sidebarMode === "hover" && isActuallyExpanded ? "hover-overlay" : ""
+  }`;
+
+  const modeDropdown = (
+    <div
+      className="account-dropdown mode-dropdown"
+      ref={modeDropdownRef}
+      style={modeMenuStyle}
+    >
+      <button
+        className={`account-dropdown-item ${sidebarMode === "expanded" ? "active" : ""}`}
+        onClick={() => {
+          setSidebarMode("expanded");
+          setIsModeMenuOpen(false);
+        }}
+      >
+        <i className="bi bi-layout-sidebar-inset" />
+        Pin sidebar
+      </button>
+      <button
+        className={`account-dropdown-item ${sidebarMode === "hover" ? "active" : ""}`}
+        onClick={() => {
+          setSidebarMode("hover");
+          setIsModeMenuOpen(false);
+        }}
+      >
+        <i className="bi bi-layout-sidebar" />
+        Expand on hover
+      </button>
+      <button
+        className={`account-dropdown-item ${sidebarMode === "collapsed" ? "active" : ""}`}
+        onClick={() => {
+          setSidebarMode("collapsed");
+          setIsModeMenuOpen(false);
+        }}
+      >
+        <i className="bi bi-box-arrow-in-left" />
+        Collapse sidebar
+      </button>
+    </div>
+  );
+
   return (
     <>
       {/* ── Left sidebar ── */}
-      <aside className={`sidebar ${isCollapsed ? "collapsed" : "expanded"}`}>
+      <aside
+        className={sidebarClassName}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         {/* Nav links */}
         <nav className="sidebar-nav">
           <NavLink
@@ -216,19 +293,29 @@ export function Navbar({ isCollapsed, onToggle }: NavbarProps) {
           )}
         </nav>
 
-        {/* Sidebar footer: collapse toggle */}
+        {/* Sidebar footer: mode selector toggle */}
         <div className="sidebar-footer">
           <button
-            className="sidebar-toggle-btn"
-            onClick={onToggle}
-            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            ref={modeTriggerRef}
+            className="sidebar-toggle-btn active"
+            onClick={() => setIsModeMenuOpen(!isModeMenuOpen)}
+            title="Change sidebar mode"
           >
             <i
-              className={`bi ${isCollapsed ? "bi-layout-sidebar" : "bi-layout-sidebar-inset"}`}
+              className={`bi ${
+                sidebarMode === "expanded"
+                  ? "bi-layout-sidebar-inset"
+                  : sidebarMode === "hover"
+                    ? "bi-layout-sidebar"
+                    : "bi-box-arrow-in-left"
+              }`}
             />
           </button>
         </div>
       </aside>
+
+      {/* Mode dropdown portal */}
+      {isModeMenuOpen && createPortal(modeDropdown, document.body)}
 
       {/* ── Top bar ── */}
       <header className={`topbar ${isGlobalLoading ? "topbar-loading" : ""}`}>

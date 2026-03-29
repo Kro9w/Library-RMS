@@ -125,6 +125,21 @@ body[data-bs-theme="dark"] .sidebar-nav-link.active {
   justify-content: center;
 }
 
+.mode-dropdown {
+  width: auto;
+  min-width: 160px;
+}
+
+.mode-dropdown .account-dropdown-item.active {
+  background-color: var(--brand-subtle);
+  color: var(--brand);
+}
+
+body[data-bs-theme="dark"] .mode-dropdown .account-dropdown-item.active {
+  background-color: rgba(155, 35, 53, 0.15);
+  color: #d4828c;
+}
+
 .sidebar-toggle-btn {
   display: flex;
   align-items: center;
@@ -148,6 +163,13 @@ body[data-bs-theme="dark"] .sidebar-nav-link.active {
   color: var(--text-primary);
 }
 
+.sidebar-toggle-btn.active {
+  color: var(--brand);
+}
+body[data-bs-theme="dark"] .sidebar-toggle-btn.active {
+  color: #d4828c;
+}
+
 .sidebar.expanded .sidebar-footer {
   justify-content: flex-end;
 }
@@ -159,15 +181,15 @@ body[data-bs-theme="dark"] .sidebar-nav-link.active {
 .topbar {
   position: fixed;
   top: 0;
-  right: 0;
   left: 0;
+  width: 100vw;
   height: var(--topbar-h);
   z-index: 200;
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
-  padding: 0 16px;
+  padding: 0 24px 0 16px;
   gap: 8px;
   transition: border-bottom-color 150ms ease;
 }

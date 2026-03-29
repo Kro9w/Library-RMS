@@ -149,22 +149,37 @@
 .document-actions-dropdown {
   background-color: var(--bg-overlay);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   padding: 4px;
   min-width: 160px;
+  animation: ddIn 120ms ease forwards;
+}
+
+@keyframes ddIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .document-actions-dropdown .dropdown-item {
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
-  padding: 7px 10px;
+  padding: 7px 8px;
   font-size: 13px;
+  font-weight: 500;
   display: flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  transition: background-color var(--transition-fast);
+  transition:
+    background-color 100ms ease,
+    color 100ms ease;
   background: transparent;
   border: none;
   width: 100%;
@@ -174,14 +189,21 @@
   background-color: var(--bg-hover);
   color: var(--text-primary);
 }
+.document-actions-dropdown .dropdown-item.text-danger {
+  color: var(--danger);
+}
 .document-actions-dropdown .dropdown-item.text-danger:hover {
   background-color: var(--danger-subtle);
+  color: var(--danger);
+}
+.document-actions-dropdown .dropdown-item.text-danger i {
   color: var(--danger);
 }
 .document-actions-dropdown .dropdown-item i {
   font-size: 13px;
   color: var(--text-muted);
   width: 14px;
+  flex-shrink: 0;
 }
 
 .dropdown-container {

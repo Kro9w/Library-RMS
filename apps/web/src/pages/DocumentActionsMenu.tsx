@@ -101,108 +101,86 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
               zIndex: 1050, // Higher than most modals/tables
             }}
           >
-            <ul
-              className="dropdown-menu show"
-              style={{
-                position: "static",
-                minWidth: "150px",
-                display: "block",
+            <button
+              className="dropdown-item"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpen(false);
+                onSendClick(doc);
               }}
             >
-              <li>
-                <button
-                  className="dropdown-item d-flex align-items-center gap-2"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsOpen(false);
-                    onSendClick(doc);
-                  }}
-                >
-                  <i className="bi bi-send text-primary"></i> Send
-                </button>
-              </li>
-              {canManageDocuments && hasReviewTag && (
-                <li>
-                  <button
-                    className="dropdown-item d-flex align-items-center gap-2"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsOpen(false);
-                      onReviewClick(doc);
-                    }}
-                  >
-                    <i className="bi bi-eye text-info"></i> Review
-                  </button>
-                </li>
-              )}
+              <i className="bi bi-send text-primary"></i> Send
+            </button>
+            {canManageDocuments && hasReviewTag && (
+              <button
+                className="dropdown-item"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsOpen(false);
+                  onReviewClick(doc);
+                }}
+              >
+                <i className="bi bi-eye text-info"></i> Review
+              </button>
+            )}
 
-              {/* Version Control Actions */}
-              {doc.recordStatus !== "FINAL" &&
-                !doc.isCheckedOut &&
-                onCheckOutClick && (
-                  <li>
-                    <button
-                      className="dropdown-item d-flex align-items-center gap-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsOpen(false);
-                        onCheckOutClick(doc);
-                      }}
-                    >
-                      <i className="bi bi-cloud-arrow-down text-success"></i>{" "}
-                      Check Out
-                    </button>
-                  </li>
-                )}
-              {doc.isCheckedOut &&
-                doc.checkedOutById === currentUserId &&
-                onCheckInClick && (
-                  <li>
-                    <button
-                      className="dropdown-item d-flex align-items-center gap-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsOpen(false);
-                        onCheckInClick(doc);
-                      }}
-                    >
-                      <i className="bi bi-cloud-arrow-up text-primary"></i>{" "}
-                      Check In
-                    </button>
-                  </li>
-                )}
-              {doc.isCheckedOut &&
-                (doc.checkedOutById === currentUserId ||
-                  doc.uploadedById === currentUserId ||
-                  canManageDocuments) &&
-                onDiscardCheckOutClick && (
-                  <li>
-                    <button
-                      className="dropdown-item d-flex align-items-center gap-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsOpen(false);
-                        onDiscardCheckOutClick(doc);
-                      }}
-                    >
-                      <i className="bi bi-x-circle text-warning"></i> Discard
-                      Check Out
-                    </button>
-                  </li>
-                )}
-              <li>
+            {/* Version Control Actions */}
+            {doc.recordStatus !== "FINAL" &&
+              !doc.isCheckedOut &&
+              onCheckOutClick && (
                 <button
-                  className="dropdown-item d-flex align-items-center gap-2 text-danger"
+                  className="dropdown-item"
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsOpen(false);
-                    onDeleteClick(doc);
+                    onCheckOutClick(doc);
                   }}
                 >
-                  <i className="bi bi-trash"></i> Delete
+                  <i className="bi bi-cloud-arrow-down text-success"></i> Check
+                  Out
                 </button>
-              </li>
-            </ul>
+              )}
+            {doc.isCheckedOut &&
+              doc.checkedOutById === currentUserId &&
+              onCheckInClick && (
+                <button
+                  className="dropdown-item"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsOpen(false);
+                    onCheckInClick(doc);
+                  }}
+                >
+                  <i className="bi bi-cloud-arrow-up text-primary"></i> Check In
+                </button>
+              )}
+            {doc.isCheckedOut &&
+              (doc.checkedOutById === currentUserId ||
+                doc.uploadedById === currentUserId ||
+                canManageDocuments) &&
+              onDiscardCheckOutClick && (
+                <button
+                  className="dropdown-item"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsOpen(false);
+                    onDiscardCheckOutClick(doc);
+                  }}
+                >
+                  <i className="bi bi-x-circle text-warning"></i> Discard Check
+                  Out
+                </button>
+              )}
+            <button
+              className="dropdown-item text-danger"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpen(false);
+                onDeleteClick(doc);
+              }}
+            >
+              <i className="bi bi-trash"></i> Delete
+            </button>
           </div>,
           document.body,
         )}

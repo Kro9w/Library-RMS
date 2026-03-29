@@ -125,13 +125,14 @@ const AuthRedirectHandler: React.FC = () => {
   return null;
 };
 
+export type SidebarMode = "expanded" | "collapsed" | "hover";
+
 const AppContent: React.FC = () => {
   const session = useSession();
   const { isLoading: isLoadingSession } = useSessionContext();
   const location = useLocation();
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const toggleNavbar = () => setIsCollapsed(!isCollapsed);
+  const [sidebarMode, setSidebarMode] = useState<SidebarMode>("expanded");
 
   if (isLoadingSession) {
     return null;
@@ -140,7 +141,7 @@ const AppContent: React.FC = () => {
   const showNavbar = session && location.pathname !== "/join";
 
   const mainContentClass = showNavbar
-    ? `main-content ${isCollapsed ? "collapsed" : "expanded"}`
+    ? `main-content ${sidebarMode === "expanded" ? "expanded" : "collapsed"}`
     : "main-content-logged-out";
 
   return (
@@ -148,7 +149,7 @@ const AppContent: React.FC = () => {
       {session && <AuthRedirectHandler />}
 
       {showNavbar && (
-        <Navbar isCollapsed={isCollapsed} onToggle={toggleNavbar} />
+        <Navbar sidebarMode={sidebarMode} setSidebarMode={setSidebarMode} />
       )}
 
       <div className={mainContentClass}>
