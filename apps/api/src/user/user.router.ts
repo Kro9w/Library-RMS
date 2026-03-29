@@ -222,6 +222,9 @@ export class UserRouter {
             institution.id,
             `Joined institution: ${institution.name}, Campus: ${dept.campus.name}, Dept: ${dept.name} as ${targetRoleRecord.name}`,
             [targetRoleRecord.name],
+            undefined, // No target name
+            dept.campusId, // campusId
+            dept.id, // departmentId
           );
 
           return institution;
@@ -328,6 +331,9 @@ export class UserRouter {
             input.institutionId,
             `Created/Joined Department: ${dept.name}, Campus: ${campus.name} as ${targetRoleRecord.name}`,
             [targetRoleRecord.name],
+            undefined,
+            campus.id,
+            dept.id,
           );
 
           return { success: true };
@@ -370,11 +376,24 @@ export class UserRouter {
               ctx.dbUser.institutionId,
               `Deleted user: ${deletedUser.email ?? 'Unknown'}`,
               ctx.dbUser.roles.map((r) => r.name),
+              undefined,
+              ctx.dbUser.campusId || undefined,
+              ctx.dbUser.departmentId || undefined,
             );
           }
 
           return deletedUser;
         }),
+
+      getDepartmentUsers: protectedProcedure.query(async ({ ctx }) => {
+        if (!ctx.dbUser.departmentId) {
+          return [];
+        }
+        return ctx.prisma.user.findMany({
+          where: { departmentId: ctx.dbUser.departmentId },
+          include: { roles: true, campus: true, department: true },
+        });
+      }),
 
       getUsersWithRoles: protectedProcedure.query(async ({ ctx }) => {
         const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
@@ -430,6 +449,9 @@ export class UserRouter {
               ctx.dbUser.institutionId,
               `Removed user: ${updatedUser.email ?? 'Unknown'} from institution`,
               ctx.dbUser.roles.map((r) => r.name),
+              undefined,
+              ctx.dbUser.campusId || undefined,
+              ctx.dbUser.departmentId || undefined,
             );
           }
 

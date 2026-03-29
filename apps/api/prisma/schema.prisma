@@ -118,6 +118,7 @@ model Campus {
   users            User[]
   documents        Document[]
   documentAccesses DocumentAccess[]
+  logs             Log[]
 }
 
 model Department {
@@ -130,6 +131,7 @@ model Department {
   roles            Role[]
   documents        Document[]
   documentAccesses DocumentAccess[]
+  logs             Log[]
 }
 
 model Log {
@@ -139,6 +141,10 @@ model Log {
   action        String
   institution   Institution @relation(fields: [institutionId], references: [id])
   institutionId String
+  campus        Campus?     @relation(fields: [campusId], references: [id])
+  campusId      String?
+  department    Department? @relation(fields: [departmentId], references: [id])
+  departmentId  String?
   userRole      String
   createdAt     DateTime    @default(now())
 }

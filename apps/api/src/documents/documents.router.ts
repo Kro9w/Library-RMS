@@ -408,6 +408,8 @@ export class DocumentsRouter {
             'Created Document',
             dbUser.roles.map((r) => r.name),
             (document as any).title,
+            dbUser.campusId || undefined,
+            dbUser.departmentId || undefined,
           );
 
           return document as any;
@@ -781,6 +783,8 @@ export class DocumentsRouter {
             'Deleted Document',
             ctx.dbUser.roles.map((r) => r.name),
             doc.title,
+            ctx.dbUser.campusId || undefined,
+            ctx.dbUser.departmentId || undefined,
           );
 
           return this.prisma.document.delete({
@@ -887,6 +891,8 @@ export class DocumentsRouter {
             `Sent Document to ${recipient.firstName} ${recipient.lastName} (Pending Receipt)`,
             dbUser.roles.map((r) => r.name),
             updatedDocument.title,
+            dbUser.campusId || undefined,
+            dbUser.departmentId || undefined,
           );
 
           // Notifications
@@ -1021,6 +1027,8 @@ export class DocumentsRouter {
               action: `Sent Document to ${recipient.firstName} ${recipient.lastName} (Pending Receipt)`,
               roles: userRoles,
               targetName: doc.title,
+              campusId: dbUser.campusId || undefined,
+              departmentId: dbUser.departmentId || undefined,
             })),
           );
 
@@ -1202,6 +1210,8 @@ export class DocumentsRouter {
             `Received Document via Control Number/Distribution`,
             dbUser.roles.map((r) => r.name),
             (document as any).title,
+            dbUser.campusId || undefined,
+            dbUser.departmentId || undefined,
           );
 
           // Notify sender
@@ -1463,6 +1473,8 @@ export class DocumentsRouter {
             `Reviewed Document (Status: ${input.status})`,
             dbUser.roles.map((r) => r.name),
             updatedDocument.title,
+            dbUser.campusId || undefined,
+            dbUser.departmentId || undefined,
           );
 
           // Notification to the requester
@@ -1737,6 +1749,8 @@ export class DocumentsRouter {
             `Applied Legal Hold: ${input.reason}`,
             dbUser.roles.map((r) => r.name),
             doc.title,
+            dbUser.campusId || undefined,
+            dbUser.departmentId || undefined,
           );
 
           return doc;
@@ -1772,6 +1786,8 @@ export class DocumentsRouter {
             'Removed Legal Hold',
             dbUser.roles.map((r) => r.name),
             doc.title,
+            dbUser.campusId || undefined,
+            dbUser.departmentId || undefined,
           );
 
           return doc;
@@ -1830,6 +1846,8 @@ export class DocumentsRouter {
             'Disposition Approval Requested',
             dbUser.roles.map((r) => r.name),
             doc.title,
+            dbUser.campusId || undefined,
+            dbUser.departmentId || undefined,
           );
 
           return updatedDoc;
@@ -1911,6 +1929,8 @@ export class DocumentsRouter {
               'Approved and Executed Disposition (DESTROY)',
               dbUser.roles.map((r) => r.name),
               doc.title,
+              dbUser.campusId || undefined,
+              dbUser.departmentId || undefined,
             );
             return updatedDoc;
           } else if (action === 'ARCHIVE') {
@@ -1925,6 +1945,8 @@ export class DocumentsRouter {
               'Approved and Executed Disposition (ARCHIVE)',
               dbUser.roles.map((r) => r.name),
               doc.title,
+              dbUser.campusId || undefined,
+              dbUser.departmentId || undefined,
             );
             return updatedDoc;
           }
@@ -1972,6 +1994,8 @@ export class DocumentsRouter {
             'Rejected Disposition Request',
             dbUser.roles.map((r) => r.name),
             doc.title,
+            dbUser.campusId || undefined,
+            dbUser.departmentId || undefined,
           );
 
           return updatedDoc;
@@ -2070,6 +2094,8 @@ export class DocumentsRouter {
             'Checked Out Document',
             dbUser.roles.map((r) => r.name),
             doc.title,
+            dbUser.campusId || undefined,
+            dbUser.departmentId || undefined,
           );
 
           return updatedDoc;
@@ -2178,6 +2204,8 @@ export class DocumentsRouter {
             `Checked In Document (v${nextVersionNumber})`,
             dbUser.roles.map((r) => r.name),
             doc.title,
+            dbUser.campusId || undefined,
+            dbUser.departmentId || undefined,
           );
 
           return updatedDoc;
@@ -2246,6 +2274,8 @@ export class DocumentsRouter {
             'Discarded Check Out',
             dbUser.roles.map((r) => r.name),
             doc.title,
+            dbUser.campusId || undefined,
+            dbUser.departmentId || undefined,
           );
 
           return updatedDoc;

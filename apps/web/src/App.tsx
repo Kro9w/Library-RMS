@@ -60,6 +60,9 @@ const AdminRetentionPolicies = React.lazy(
 const AdminSystemUsers = React.lazy(
   () => import("./pages/admin/AdminSystemUsers"),
 );
+const AdminMasterLogs = React.lazy(
+  () => import("./pages/admin/AdminMasterLogs"),
+);
 
 const AdminRoute: React.FC<{ children: React.ReactElement }> = ({
   children,
@@ -193,6 +196,7 @@ const AppContent: React.FC = () => {
               <Route path="document-types" element={<AdminDocumentTypes />} />
               <Route path="retention" element={<AdminRetentionPolicies />} />
               <Route path="users" element={<AdminSystemUsers />} />
+              <Route path="logs" element={<AdminMasterLogs />} />
             </Route>
 
             <Route

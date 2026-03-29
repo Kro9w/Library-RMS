@@ -58,6 +58,9 @@ export class DocumentTypesRouter {
             institutionId,
             `Created document type: ${newDocType.name}`,
             ctx.dbUser.roles.map((r) => r.name),
+            undefined,
+            ctx.dbUser.campusId || undefined,
+            ctx.dbUser.departmentId || undefined,
           );
 
           return newDocType;
@@ -109,6 +112,9 @@ export class DocumentTypesRouter {
             deletedDocType.institutionId,
             `Deleted document type: ${deletedDocType.name}`,
             ctx.dbUser.roles.map((r) => r.name),
+            undefined,
+            ctx.dbUser.campusId || undefined,
+            ctx.dbUser.departmentId || undefined,
           );
 
           return deletedDocType;

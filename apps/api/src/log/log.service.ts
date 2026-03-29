@@ -11,6 +11,8 @@ export class LogService {
     action: string,
     roles: string[],
     targetName?: string, // Optional parameter for enriched logging
+    campusId?: string,
+    departmentId?: string,
   ) {
     const actionString = targetName ? `${action}: '${targetName}'` : action;
 
@@ -19,6 +21,8 @@ export class LogService {
         action: actionString,
         userId,
         institutionId,
+        campusId,
+        departmentId,
         userRole: roles.join(', '),
       },
     });
@@ -31,6 +35,8 @@ export class LogService {
       action: string;
       roles: string[];
       targetName?: string;
+      campusId?: string;
+      departmentId?: string;
     }[],
   ) {
     const data = logs.map((log) => ({
@@ -39,6 +45,8 @@ export class LogService {
         : log.action,
       userId: log.userId,
       institutionId: log.institutionId,
+      campusId: log.campusId,
+      departmentId: log.departmentId,
       userRole: log.roles.join(', '),
     }));
 
