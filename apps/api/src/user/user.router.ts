@@ -91,92 +91,6 @@ export class UserRouter {
           };
         }),
 
-      createInstitution: protectedProcedure
-        .meta({
-          openapi: {
-            method: 'POST',
-            path: '/user.createInstitution',
-            tags: ['user', 'institution'],
-            summary: 'Create a new institution',
-          },
-        })
-        .input(
-          z.object({
-            institutionName: z.string().min(1),
-            institutionAcronym: z.string().min(1),
-          }),
-        )
-        .output(z.any())
-        .mutation(async ({ ctx, input }) => {
-          if (ctx.dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: 'User already belongs to an institution.',
-            });
-          }
-
-          const result = await this.prisma.$transaction(async (tx) => {
-            const newInstitution = await tx.institution.create({
-              data: {
-                name: input.institutionName,
-                acronym: input.institutionAcronym,
-              },
-            });
-
-            // Default Main Campus
-            const mainCampus = await tx.campus.create({
-              data: {
-                name: 'Main Campus',
-                institutionId: newInstitution.id,
-              },
-            });
-
-            // Default Admin Department
-            const adminDept = await tx.department.create({
-              data: {
-                name: 'Admin Department',
-                campusId: mainCampus.id,
-                icon: 'admin-default.png',
-              },
-            });
-
-            const adminRole = await tx.role.create({
-              data: {
-                name: 'Admin',
-                canManageUsers: true,
-                canManageRoles: true,
-                canManageDocuments: true,
-                canManageInstitution: true,
-                departmentId: adminDept.id,
-              },
-            });
-
-            // Connect user to Org, Campus, Dept, Role. Make them admin since they created the institution.
-            await tx.user.update({
-              where: { id: ctx.dbUser.id },
-              data: {
-                institutionId: newInstitution.id,
-                campusId: mainCampus.id,
-                departmentId: adminDept.id,
-                roles: {
-                  connect: { id: adminRole.id },
-                },
-              },
-            });
-
-            return newInstitution;
-          });
-
-          await this.logService.logAction(
-            ctx.dbUser.id,
-            result.id,
-            `Created institution: ${result.name}`,
-            ['Admin'], // They just became admin
-          );
-
-          return result;
-        }),
-
       joinInstitution: protectedProcedure
         .meta({
           openapi: {
@@ -233,28 +147,62 @@ export class UserRouter {
             });
           }
 
-          // We no longer auto-assign Admin based on being the first user.
-          // Everyone joins as a regular User. A Super Admin or Dept Admin must elevate them.
-          const roleName = 'User';
+          let targetRoleRecord: { id: string, name: string } | null = null;
 
-          // Find or Create Role for this Department
-          let roleRecord = await this.prisma.role.findFirst({
-            where: {
-              departmentId: input.departmentId,
-              name: roleName,
-            },
-          });
-
-          if (!roleRecord) {
-            roleRecord = await this.prisma.role.create({
-              data: {
-                name: roleName,
-                canManageUsers: false,
-                canManageRoles: false,
-                canManageDocuments: false,
+          // 1. Check for specific email to get University President role
+          if (ctx.dbUser.email === 'jakecalantas.blis@gmail.com' && dept.name === 'Office of the University President') {
+            const presidentRole = await this.prisma.role.findFirst({
+              where: {
                 departmentId: input.departmentId,
+                name: 'University President',
               },
             });
+            if (presidentRole) {
+              targetRoleRecord = presidentRole;
+            }
+          }
+
+          // 2. If not president, check if this department has a level 1 role and if it's currently vacant.
+          // IMPORTANT: Do NOT auto-assign the University President role to a random first user.
+          if (!targetRoleRecord && dept.name !== 'Office of the University President') {
+            const level1Role = await this.prisma.role.findFirst({
+              where: {
+                departmentId: input.departmentId,
+                level: 1,
+              },
+              include: {
+                users: true,
+              },
+            });
+
+            // If there's a level 1 role, and it has NO users assigned yet, assign it to this first user
+            if (level1Role && level1Role.users.length === 0) {
+              targetRoleRecord = level1Role;
+            }
+          }
+
+          // 3. Fallback to default 'User' role
+          if (!targetRoleRecord) {
+            const roleName = 'User';
+            let userRole = await this.prisma.role.findFirst({
+              where: {
+                departmentId: input.departmentId,
+                name: roleName,
+              },
+            });
+
+            if (!userRole) {
+              userRole = await this.prisma.role.create({
+                data: {
+                  name: roleName,
+                  canManageUsers: false,
+                  canManageRoles: false,
+                  canManageDocuments: false,
+                  departmentId: input.departmentId,
+                },
+              });
+            }
+            targetRoleRecord = userRole;
           }
 
           await this.prisma.user.update({
@@ -264,7 +212,7 @@ export class UserRouter {
               campusId: input.campusId,
               departmentId: input.departmentId,
               roles: {
-                connect: { id: roleRecord.id },
+                connect: { id: targetRoleRecord.id },
               },
             },
           });
@@ -272,8 +220,8 @@ export class UserRouter {
           await this.logService.logAction(
             ctx.dbUser.id,
             institution.id,
-            `Joined institution: ${institution.name}, Campus: ${dept.campus.name}, Dept: ${dept.name} as ${roleName}`,
-            [roleName],
+            `Joined institution: ${institution.name}, Campus: ${dept.campus.name}, Dept: ${dept.name} as ${targetRoleRecord.name}`,
+            [targetRoleRecord.name],
           );
 
           return institution;
@@ -326,22 +274,43 @@ export class UserRouter {
             });
           }
 
-          const roleName = 'User';
+          let targetRoleRecord: { id: string, name: string } | null = null;
 
-          let roleRecord = await ctx.prisma.role.findFirst({
-            where: { departmentId: dept.id, name: roleName },
-          });
-
-          if (!roleRecord) {
-            roleRecord = await ctx.prisma.role.create({
-              data: {
-                name: roleName,
-                canManageUsers: false,
-                canManageRoles: false,
-                canManageDocuments: false,
+          // For dynamically created departments, it's very likely they don't have a level 1 role seeded,
+          // but we still apply the same logic for consistency, or just fallback to 'User'.
+          // IMPORTANT: Do NOT auto-assign the University President role to a random first user.
+          if (dept.name !== 'Office of the University President') {
+            const level1Role = await ctx.prisma.role.findFirst({
+              where: {
                 departmentId: dept.id,
+                level: 1,
               },
+              include: { users: true },
             });
+
+            if (level1Role && level1Role.users.length === 0) {
+              targetRoleRecord = level1Role;
+            }
+          }
+
+          if (!targetRoleRecord) {
+            const roleName = 'User';
+            let userRole = await ctx.prisma.role.findFirst({
+              where: { departmentId: dept.id, name: roleName },
+            });
+
+            if (!userRole) {
+              userRole = await ctx.prisma.role.create({
+                data: {
+                  name: roleName,
+                  canManageUsers: false,
+                  canManageRoles: false,
+                  canManageDocuments: false,
+                  departmentId: dept.id,
+                },
+              });
+            }
+            targetRoleRecord = userRole;
           }
 
           await ctx.prisma.user.update({
@@ -350,15 +319,15 @@ export class UserRouter {
               institutionId: input.institutionId,
               campusId: input.campusId,
               departmentId: dept.id,
-              roles: { connect: { id: roleRecord.id } },
+              roles: { connect: { id: targetRoleRecord.id } },
             },
           });
 
           await this.logService.logAction(
             ctx.dbUser.id,
             input.institutionId,
-            `Created/Joined Department: ${dept.name}, Campus: ${campus.name} as ${roleName}`,
-            [roleName],
+            `Created/Joined Department: ${dept.name}, Campus: ${campus.name} as ${targetRoleRecord.name}`,
+            [targetRoleRecord.name],
           );
 
           return { success: true };
