@@ -372,7 +372,11 @@ export function Navbar({ sidebarMode, setSidebarMode }: NavbarProps) {
             <i className="bi bi-journal-text" />
           </button>
 
-          <button className="topbar-icon-btn" title="FAQs">
+          <button
+            className="topbar-icon-btn"
+            title="Help & FAQs"
+            onClick={() => navigate("/faq")}
+          >
             <i className="bi bi-question-circle" />
           </button>
 

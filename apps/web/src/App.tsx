@@ -44,6 +44,7 @@ const Users = React.lazy(() =>
 );
 const LogsPage = React.lazy(() => import("./pages/LogsPage"));
 const WordAuth = React.lazy(() => import("./pages/WordAuth"));
+const FAQpage = React.lazy(() => import("./pages/FAQpage"));
 
 // Admin Pages
 const AdminLayout = React.lazy(() => import("./pages/admin/AdminLayout"));
@@ -183,6 +184,10 @@ const AppContent: React.FC = () => {
               }
             />
             <Route path="/graph" element={<GraphView />} />
+            <Route
+              path="/faq"
+              element={session ? <FAQpage /> : <Navigate to="/login" replace />}
+            />
 
             {/* Super Admin Routes */}
             <Route
