@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useOutsideClick } from "../hooks/useOutsideClick";
+import { usePermissions } from "../hooks/usePermissions";
+import { trpc } from "../trpc";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
 type Document = AppRouterOutputs["documents"]["getAll"]["documents"][0];
@@ -68,6 +70,29 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
     (tag: { tag: { name: string } }) => tag.tag.name === "for review",
   );
 
+  const isTransit =
+    doc.classification === "FOR_APPROVAL" && doc.recordStatus === "IN_TRANSIT";
+
+  // Determine if the current user belongs to the currently active office in the transit route
+  const currentTransitStop = isTransit
+    ? doc.transitRoutes?.find((r: any) => r.status === "CURRENT")
+    : null;
+
+  // Note: we can't reliably get currentUserDept directly from `doc` props without passing it.
+  // We'll rely on trpc Context here since it's lightweight
+  const trpcCtx = trpc.useContext();
+  const currentUser = trpcCtx.user.getMe.getData();
+  const { canManageDocuments: _canManageDocsLocal } = usePermissions();
+
+  const isCurrentTransitOffice =
+    currentTransitStop &&
+    currentUser?.departmentId === currentTransitStop.departmentId;
+
+  // Level 1 users of the current transit office should be able to review
+  const hasTransitReviewAccess =
+    isCurrentTransitOffice &&
+    currentUser?.roles?.some((r: any) => r.level === 1);
+
   const hasAccess = isUploader(doc.uploadedById);
 
   if (!hasAccess) {
@@ -111,7 +136,8 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
             >
               <i className="bi bi-send text-primary"></i> Send
             </button>
-            {canManageDocuments && hasReviewTag && (
+            {((canManageDocuments && hasReviewTag) ||
+              hasTransitReviewAccess) && (
               <button
                 className="dropdown-item"
                 onClick={(e) => {

@@ -31,6 +31,16 @@ const SUPPORTED_PREVIEW_TYPES = {
   "application/vnd.ms-powerpoint": "office",
 };
 
+const getDepartmentAcronym = (name: string | null | undefined): string => {
+  if (!name) return "N/A";
+  const stopWords = ["of", "the", "for", "and"];
+  return name
+    .split(" ")
+    .filter((word) => !stopWords.includes(word.toLowerCase()))
+    .map((word) => word.charAt(0).toUpperCase())
+    .join("");
+};
+
 const formatFileTypeDisplay = (
   fileType: string | null | undefined,
   title: string,
@@ -70,13 +80,16 @@ const formatFileTypeDisplay = (
 // ------------------------------
 
 import { SendDocumentModal } from "../components/SendDocumentModal";
+import { ReviewDocumentModal } from "../components/ReviewDocumentModal";
 import { usePermissions } from "../hooks/usePermissions";
+import RolePill from "../components/Roles/RolePill";
 import { format } from "date-fns";
 
 export const DocumentDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [showResubmitModal, setShowResubmitModal] = React.useState(false);
+  const [showReviewModal, setShowReviewModal] = React.useState(false);
 
   const { data: user } = trpc.user.getMe.useQuery();
   const { canManageDocuments } = usePermissions();
@@ -156,6 +169,29 @@ export const DocumentDetails: React.FC = () => {
   }
 
   // This function is type-safe and correct
+  // Calculate Review permissions logic
+  const isTransit =
+    document.classification === "FOR_APPROVAL" &&
+    document.recordStatus === "IN_TRANSIT";
+
+  const currentTransitStop = isTransit
+    ? document.transitRoutes?.find((r: any) => r.status === "CURRENT")
+    : null;
+
+  const isCurrentTransitOffice =
+    currentTransitStop &&
+    user?.departmentId === currentTransitStop.departmentId;
+
+  const hasTransitReviewAccess =
+    isCurrentTransitOffice && user?.roles?.some((r: any) => r.level === 1);
+
+  const hasReviewTag = document.tags?.some(
+    (t: any) => (t.tag?.name || t.name) === "for review",
+  );
+
+  const canReview =
+    (canManageDocuments && hasReviewTag) || hasTransitReviewAccess;
+
   const getPreviewDetails = (doc: Document) => {
     let previewType: string | null = null;
 
@@ -331,15 +367,15 @@ export const DocumentDetails: React.FC = () => {
                   <i className="bi bi-download me-2"></i>
                   Download
                 </a>
-                <button
-                  className="btn btn-outline-secondary"
-                  onClick={() =>
-                    navigate(`/graph?targetUserId=${document.uploadedById}`)
-                  }
-                >
-                  <i className="bi bi-diagram-3 me-2"></i>
-                  Show in Graph
-                </button>
+                {canReview && (
+                  <button
+                    className="btn btn-outline-primary"
+                    onClick={() => setShowReviewModal(true)}
+                  >
+                    <i className="bi bi-eye me-2"></i>
+                    Review Document
+                  </button>
+                )}
                 {canManageDocuments && (
                   <button
                     className={`btn ${document.isUnderLegalHold ? "btn-outline-danger" : "btn-outline-dark"}`}
@@ -557,103 +593,206 @@ export const DocumentDetails: React.FC = () => {
               )}
             </div>
           </div>
-
-          {/* Review Status Section */}
-          {document.status && (
-            <div className="document-table-card mt-4">
-              <div className="card-body">
-                <h5 className="card-title d-flex align-items-center">
-                  <i className="bi bi-clipboard-check me-2"></i>
-                  Review Details
-                </h5>
-                <hr />
-                <div className="mb-3">
-                  <span className="text-muted fw-bold me-2">Status:</span>
-                  <span
-                    className={`badge ${
-                      document.status === "approved"
-                        ? "bg-success"
-                        : document.status === "returned"
-                          ? "bg-warning text-dark"
-                          : document.status === "disapproved"
-                            ? "bg-danger"
-                            : "bg-secondary"
-                    }`}
-                    style={{ fontSize: "0.9rem", padding: "0.5em 0.8em" }}
-                  >
-                    {document.status.toUpperCase()}
-                  </span>
-                </div>
-
-                {document.remarks && document.remarks.length > 0 ? (
-                  <div>
-                    <span className="text-muted fw-bold d-block mb-2">
-                      Remarks:
-                    </span>
-                    <div className="d-flex flex-column gap-2">
-                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                      {document.remarks.map((remark: any) => (
-                        <div
-                          key={remark.id}
-                          className="p-3 bg-light border rounded"
-                        >
-                          <div className="d-flex justify-content-between mb-1">
-                            <strong
-                              style={{
-                                fontSize: "0.85rem",
-                                color: "var(--brand)",
-                              }}
-                            >
-                              {formatUserName(remark.author)}
-                            </strong>
-                            <small
-                              className="text-muted"
-                              style={{ fontSize: "0.75rem" }}
-                            >
-                              {new Date(remark.createdAt).toLocaleString()}
-                            </small>
-                          </div>
-                          <p
-                            className="mb-0 text-dark"
-                            style={{
-                              fontSize: "0.9rem",
-                              whiteSpace: "pre-wrap",
-                            }}
-                          >
-                            {remark.message}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-muted fst-italic mb-0 mt-3">
-                    No remarks were left during the review.
-                  </p>
-                )}
-
-                {document.status === "returned" &&
-                  (document.uploadedById === user?.id ||
-                    document.originalSenderId === user?.id) && (
-                    <div className="d-flex justify-content-end mt-4">
-                      <button
-                        className="btn btn-outline-primary"
-                        style={{
-                          fontSize: "0.85rem",
-                          padding: "0.4rem 0.8rem",
-                        }}
-                        onClick={() => setShowResubmitModal(true)}
-                      >
-                        <i className="bi bi-arrow-repeat me-1"></i> Resubmit for
-                        Review
-                      </button>
-                    </div>
-                  )}
-              </div>
-            </div>
-          )}
         </div>
       </div>
+
+      {/* Unified Review Details Section (Full Width, Above Distributions) */}
+      {(document.status ||
+        (document.transitRoutes && document.transitRoutes.length > 0) ||
+        (document.remarks && document.remarks.length > 0)) && (
+        <div className="document-table-card mt-4 mb-4">
+          <div className="card-body">
+            <h5 className="card-title d-flex justify-content-between align-items-center">
+              <div>
+                <i className="bi bi-clipboard-check me-2"></i>
+                Review Details
+              </div>
+              <div>
+                <span className="text-muted fw-bold me-2 fs-6">Status:</span>
+                <span
+                  className={`badge ${
+                    document.status === "Approved" ||
+                    document.status === "Endorsed"
+                      ? "bg-success"
+                      : document.status ===
+                          "Returned for Corrections/Revision/Clarification"
+                        ? "bg-warning text-dark"
+                        : document.status === "Disapproved"
+                          ? "bg-danger"
+                          : "bg-secondary"
+                  }`}
+                  style={{ fontSize: "0.85rem", padding: "0.5em 0.8em" }}
+                >
+                  {document.status
+                    ? document.status.toUpperCase()
+                    : "IN PROGRESS"}
+                </span>
+              </div>
+            </h5>
+            <hr />
+
+            {/* A. Horizontal Routing Progress visualization */}
+            {document.transitRoutes && document.transitRoutes.length > 0 && (
+              <div className="mb-5 mt-4">
+                <span className="text-muted fw-bold d-block mb-3 fs-6">
+                  Routing Progress
+                </span>
+                <div
+                  className="d-flex align-items-center justify-content-center flex-wrap w-100"
+                  style={{ rowGap: "1rem" }}
+                >
+                  {document.transitRoutes.map((route: any, index: number) => {
+                    let badgeClass = "bg-secondary text-light";
+                    let iconClass = "bi-circle";
+                    if (route.status === "APPROVED") {
+                      badgeClass = "bg-success text-light";
+                      iconClass = "bi-check-circle-fill";
+                    } else if (route.status === "CURRENT") {
+                      badgeClass = "bg-primary text-light";
+                      iconClass = "bi-record-circle-fill";
+                    } else if (route.status === "REJECTED") {
+                      badgeClass = "bg-danger text-light";
+                      iconClass = "bi-x-circle-fill";
+                    }
+
+                    return (
+                      <React.Fragment key={route.id}>
+                        <div
+                          className="d-flex flex-column align-items-center"
+                          style={{ maxWidth: "120px", textAlign: "center" }}
+                        >
+                          <div
+                            className={`badge ${badgeClass} rounded-pill p-2 mb-1 shadow-sm`}
+                          >
+                            <i className={`bi ${iconClass} fs-5`}></i>
+                          </div>
+                          <span
+                            style={{
+                              fontSize: "0.75rem",
+                              fontWeight:
+                                route.status === "CURRENT" ? "bold" : "normal",
+                            }}
+                          >
+                            {route.department?.name || "Unknown Office"}
+                          </span>
+                        </div>
+                        {index < document.transitRoutes.length - 1 && (
+                          <div
+                            className="flex-grow-1 mx-3"
+                            style={{
+                              height: "2px",
+                              backgroundColor:
+                                route.status === "APPROVED"
+                                  ? "var(--bs-success)"
+                                  : "var(--bs-gray-300)",
+                              minWidth: "40px",
+                            }}
+                          ></div>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* B. Review History Table */}
+            {document.remarks && document.remarks.length > 0 && (
+              <>
+                <div className="table-responsive mt-3">
+                  <table className="table table-hover align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Reviewer</th>
+                        <th>Date & Time</th>
+                        <th>Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      {document.remarks.map((remark: any) => (
+                        <tr key={remark.id}>
+                          <td>
+                            <strong>{formatUserName(remark.author)}</strong>
+                            <div
+                              className="text-muted mt-1 d-flex flex-wrap align-items-center gap-1"
+                              style={{ fontSize: "0.8rem" }}
+                            >
+                              {remark.author.roles &&
+                              remark.author.roles.length > 0 ? (
+                                remark.author.roles.map((r: any) => (
+                                  <RolePill
+                                    key={r.id || r.name}
+                                    roleName={r.name}
+                                  />
+                                ))
+                              ) : (
+                                <span className="badge bg-secondary">User</span>
+                              )}
+                              {remark.author.department?.name && (
+                                <span
+                                  className="ms-1 border-start ps-2 border-secondary fw-bold"
+                                  title={remark.author.department.name}
+                                >
+                                  {getDepartmentAcronym(
+                                    remark.author.department.name,
+                                  )}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td style={{ whiteSpace: "nowrap" }}>
+                            <div>
+                              {new Date(remark.createdAt).toLocaleDateString()}
+                            </div>
+                            <small className="text-muted">
+                              {new Date(remark.createdAt).toLocaleTimeString(
+                                [],
+                                { hour: "2-digit", minute: "2-digit" },
+                              )}
+                            </small>
+                          </td>
+                          <td>
+                            <div
+                              className="p-2 bg-light rounded border"
+                              style={{
+                                fontSize: "0.9rem",
+                                whiteSpace: "pre-wrap",
+                              }}
+                            >
+                              {remark.message}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            {/* Resubmit Action for the Sender */}
+            {document.status ===
+              "Returned for Corrections/Revision/Clarification" &&
+              (document.uploadedById === user?.id ||
+                document.originalSenderId === user?.id) && (
+                <div className="d-flex justify-content-end mt-4">
+                  <button
+                    className="btn btn-outline-primary"
+                    style={{
+                      fontSize: "0.85rem",
+                      padding: "0.4rem 0.8rem",
+                    }}
+                    onClick={() => setShowResubmitModal(true)}
+                  >
+                    <i className="bi bi-arrow-repeat me-1"></i> Resubmit for
+                    Review
+                  </button>
+                </div>
+              )}
+          </div>
+        </div>
+      )}
 
       {/* Distributions Section */}
       {(user?.id === document.uploadedById ||
@@ -803,6 +942,14 @@ export const DocumentDetails: React.FC = () => {
               : undefined
           }
           forceRecipientLock={true}
+        />
+      )}
+
+      {showReviewModal && (
+        <ReviewDocumentModal
+          show={showReviewModal}
+          onClose={() => setShowReviewModal(false)}
+          documentId={document.id}
         />
       )}
 

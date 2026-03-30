@@ -10,14 +10,20 @@ interface ReviewDocumentModalProps {
   documentId: string;
 }
 
+type ReviewStatus =
+  | "Approved"
+  | "Noted"
+  | "For Endorsement"
+  | "Returned for Corrections/Revision/Clarification"
+  | "For the review of the Executive Committee"
+  | "Disapproved";
+
 export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
   show,
   onClose,
   documentId,
 }) => {
-  const [status, setStatus] = useState<"approved" | "returned" | "disapproved">(
-    "approved",
-  );
+  const [status, setStatus] = useState<ReviewStatus | "">("");
   const [remarks, setRemarks] = useState("");
   const [showSendModal, setShowSendModal] = useState(false);
   const reviewDocumentMutation = trpc.documents.reviewDocument.useMutation();
@@ -25,6 +31,7 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
     id: documentId,
   });
   const { data: globalTags } = trpc.documents.getGlobalTags.useQuery();
+  const { data: user } = trpc.user.getMe.useQuery();
 
   const sendDocumentMutation = trpc.documents.sendDocument.useMutation();
 
@@ -43,44 +50,116 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
     };
   }, []);
 
+  const isTransit =
+    document?.classification === "FOR_APPROVAL" &&
+    document?.recordStatus === "IN_TRANSIT";
+
+  const isFinalStop = React.useMemo(() => {
+    if (!isTransit || !document?.transitRoutes || !user) return false;
+    const currentRoute = document.transitRoutes.find(
+      (r: any) => r.status === "CURRENT",
+    );
+    if (!currentRoute) return false;
+
+    // Check if the current route stop is the last one in the sequence
+    const maxSequence = Math.max(
+      ...document.transitRoutes.map((r: any) => r.sequenceOrder),
+    );
+    return currentRoute.sequenceOrder === maxSequence;
+  }, [isTransit, document?.transitRoutes, user]);
+
+  const allowedStatuses = React.useMemo(() => {
+    const baseStatuses = [
+      "Noted",
+      "For Endorsement",
+      "Returned for Corrections/Revision/Clarification",
+      "For the review of the Executive Committee",
+      "Disapproved",
+    ];
+
+    if (!isTransit || isFinalStop) {
+      return ["Approved", ...baseStatuses];
+    }
+    return baseStatuses;
+  }, [isTransit, isFinalStop]);
+
   useEffect(() => {
     if (show) {
+      if (!status || !allowedStatuses.includes(status)) {
+        setStatus(allowedStatuses[0] as ReviewStatus);
+      }
       modalInstanceRef.current?.show();
     } else {
       modalInstanceRef.current?.hide();
     }
-  }, [show]);
+  }, [show, allowedStatuses, status]);
 
-  const handleSendBack = async () => {
-    if (!documentId || !document?.reviewRequesterId) return;
+  const handleSubmit = async () => {
+    if (!documentId) return;
 
     await reviewDocumentMutation.mutateAsync({
       documentId,
-      status,
+      status: status as ReviewStatus,
       remarks,
     });
 
-    const statusTag = globalTags?.find(
-      (tag: { name: string }) => tag.name === status,
-    );
+    if (status === "Returned for Corrections/Revision/Clarification") {
+      // Find the appropriate fallback recipient:
+      // reviewRequesterId -> originalSenderId -> uploadedById
+      const targetRecipientId =
+        document?.reviewRequesterId ||
+        document?.originalSenderId ||
+        document?.uploadedById;
 
-    await sendDocumentMutation.mutateAsync({
-      documentId,
-      recipientId: document.reviewRequesterId,
-      tagIds: [],
-      tagsToKeep: statusTag ? [statusTag.id] : [],
-    });
+      if (targetRecipientId) {
+        const statusTag = globalTags?.find(
+          (tag: { name: string }) => tag.name === status,
+        );
 
-    onClose();
+        await sendDocumentMutation.mutateAsync({
+          documentId,
+          recipientId: targetRecipientId,
+          tagIds: [],
+          tagsToKeep: statusTag ? [statusTag.id] : [],
+        });
+      }
+      onClose();
+    } else {
+      onClose();
+    }
   };
 
-  const handleSendToSomeoneElse = async () => {
-    await reviewDocumentMutation.mutateAsync({
-      documentId,
-      status,
-      remarks,
-    });
-    setShowSendModal(true);
+  // Determine dynamic button text and icon
+  const getButtonText = () => {
+    switch (status) {
+      case "Approved":
+        return "Approve Document";
+      case "Noted":
+        return "Note Document";
+      case "For Endorsement":
+        return "Endorse Document";
+      case "Returned for Corrections/Revision/Clarification":
+        return "Return Document";
+      case "For the review of the Executive Committee":
+        return "Send to Executive Committee";
+      case "Disapproved":
+        return "Disapprove Document";
+      default:
+        return "Submit Review";
+    }
+  };
+
+  const getButtonIcon = () => {
+    switch (status) {
+      case "Approved":
+        return "bi-check-circle-fill";
+      case "Returned for Corrections/Revision/Clarification":
+        return "bi-arrow-return-left";
+      case "Disapproved":
+        return "bi-x-circle-fill";
+      default:
+        return "bi-send-fill";
+    }
   };
 
   // --- Inline Styles for Theme Compliance ---
@@ -116,11 +195,17 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
 
   const getStatusIcon = (currentStatus: string) => {
     switch (currentStatus) {
-      case "approved":
+      case "Approved":
         return <i className="bi bi-check-circle-fill text-success"></i>;
-      case "returned":
+      case "Noted":
+        return <i className="bi bi-journal-check text-info"></i>;
+      case "For Endorsement":
+        return <i className="bi bi-forward-fill text-primary"></i>;
+      case "Returned for Corrections/Revision/Clarification":
         return <i className="bi bi-arrow-return-left text-warning"></i>;
-      case "disapproved":
+      case "For the review of the Executive Committee":
+        return <i className="bi bi-people-fill text-secondary"></i>;
+      case "Disapproved":
         return <i className="bi bi-x-circle-fill text-danger"></i>;
       default:
         return <i className="bi bi-info-circle-fill text-secondary"></i>;
@@ -174,17 +259,14 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
                       className="form-select border-start-0 ps-0"
                       value={status}
                       onChange={(e) =>
-                        setStatus(
-                          e.target.value as
-                            | "approved"
-                            | "returned"
-                            | "disapproved",
-                        )
+                        setStatus(e.target.value as ReviewStatus)
                       }
                     >
-                      <option value="approved">Approved</option>
-                      <option value="returned">Returned</option>
-                      <option value="disapproved">Disapproved</option>
+                      {allowedStatuses.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -211,32 +293,18 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
               >
                 Cancel
               </button>
-              {document && document.reviewRequesterId && (
-                <button
-                  type="button"
-                  className="btn btn-primary px-4"
-                  onClick={handleSendBack}
-                  disabled={
-                    reviewDocumentMutation.isPending ||
-                    sendDocumentMutation.isPending
-                  }
-                >
-                  <i className="bi bi-send-fill me-2"></i>
-                  Return to Originator (
-                  {formatUserName(document.reviewRequester)})
-                </button>
-              )}
               <button
                 type="button"
-                className="btn btn-secondary px-4"
-                onClick={handleSendToSomeoneElse}
+                className="btn btn-primary px-4"
+                onClick={handleSubmit}
                 disabled={
                   reviewDocumentMutation.isPending ||
-                  sendDocumentMutation.isPending
+                  sendDocumentMutation.isPending ||
+                  !status
                 }
               >
-                <i className="bi bi-people-fill me-2"></i>
-                Forward to Sender
+                <i className={`bi ${getButtonIcon()} me-2`}></i>
+                {getButtonText()}
               </button>
             </div>
           </div>

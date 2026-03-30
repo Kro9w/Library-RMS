@@ -145,6 +145,12 @@ export class DocumentsRouter {
                     select: {
                       firstName: true,
                       lastName: true,
+                      department: {
+                        select: { name: true }
+                      },
+                      roles: {
+                        select: { id: true, name: true, level: true }
+                      }
                     },
                   },
                 },
@@ -171,6 +177,12 @@ export class DocumentsRouter {
                     select: {
                       firstName: true,
                       lastName: true,
+                      department: {
+                        select: { name: true }
+                      },
+                      roles: {
+                        select: { id: true, name: true, level: true }
+                      }
                     },
                   },
                 },
@@ -880,7 +892,7 @@ export class DocumentsRouter {
             });
           }
 
-          const tags = await this.prisma.tag.findMany({
+          let tags = await this.prisma.tag.findMany({
             where: {
               id: {
                 in: input.tagIds,
@@ -888,9 +900,21 @@ export class DocumentsRouter {
             },
           });
 
-          const isReview = tags.some((tag) => tag.name === 'for review');
+          let isReview = tags.some((tag) => tag.name === 'for review');
 
-          if (isReview && documents[0].classification !== 'CONFIDENTIAL') {
+          // If the document is IN_TRANSIT and FOR_APPROVAL, automatically enforce the "for review" tag
+          if (
+            documents[0].recordStatus === 'IN_TRANSIT' &&
+            documents[0].classification === 'FOR_APPROVAL'
+          ) {
+            isReview = true;
+            const forReviewTag = await this.prisma.tag.findUnique({
+              where: { name: 'for review' },
+            });
+            if (forReviewTag && !input.tagIds.includes(forReviewTag.id)) {
+              input.tagIds.push(forReviewTag.id);
+            }
+          } else if (isReview && documents[0].classification !== 'CONFIDENTIAL') {
             throw new TRPCError({
               code: 'BAD_REQUEST',
               message: 'Only confidential documents can be sent for review.',
@@ -934,7 +958,20 @@ export class DocumentsRouter {
 
           // Notifications
           const senderName = `${dbUser.firstName} ${dbUser.lastName}`.trim();
-          if (isReview) {
+          const isTransit =
+            updatedDocument.recordStatus === 'IN_TRANSIT' &&
+            updatedDocument.classification === 'FOR_APPROVAL';
+
+          if (isTransit) {
+            await this.prisma.notification.create({
+              data: {
+                userId: recipient.id,
+                title: 'Review Requested (In Transit)',
+                message: `${senderName} has forwarded the document "${updatedDocument.title}" to your office for review and endorsement. Action required.`,
+                documentId: updatedDocument.id,
+              },
+            });
+          } else if (isReview) {
             await this.prisma.notification.create({
               data: {
                 userId: recipient.id,
@@ -1015,9 +1052,22 @@ export class DocumentsRouter {
             },
           });
 
-          const isReview = tags.some((tag) => tag.name === 'for review');
+          let isReview = tags.some((tag) => tag.name === 'for review');
 
-          if (isReview) {
+          // If the document is IN_TRANSIT and FOR_APPROVAL, automatically enforce the "for review" tag
+          const hasTransitDocs = documents.some(
+            (doc) => doc.recordStatus === 'IN_TRANSIT' && doc.classification === 'FOR_APPROVAL'
+          );
+
+          if (hasTransitDocs) {
+            isReview = true;
+            const forReviewTag = await this.prisma.tag.findUnique({
+              where: { name: 'for review' },
+            });
+            if (forReviewTag && !input.tagIds.includes(forReviewTag.id)) {
+              input.tagIds.push(forReviewTag.id);
+            }
+          } else if (isReview) {
             const hasNonConfidential = documents.some(
               (doc) => doc.classification !== 'CONFIDENTIAL',
             );
@@ -1071,15 +1121,28 @@ export class DocumentsRouter {
 
           // Notifications
           const senderName = `${dbUser.firstName} ${dbUser.lastName}`.trim();
+          
           await this.prisma.notification.createMany({
-            data: results.map((doc) => ({
-              userId: recipient.id,
-              title: isReview ? 'Review Requested' : 'Document Received',
-              message: isReview
-                ? `${senderName} has sent you a confidential document for review: "${doc.title}". Action required.`
-                : `${senderName} sent you a document: "${doc.title}". Action required to receive it.`,
-              documentId: doc.id,
-            })),
+            data: results.map((doc) => {
+              const isTransit = doc.recordStatus === 'IN_TRANSIT' && doc.classification === 'FOR_APPROVAL';
+              let title = 'Document Received';
+              let message = `${senderName} sent you a document: "${doc.title}". Action required to receive it.`;
+
+              if (isTransit) {
+                title = 'Review Requested (In Transit)';
+                message = `${senderName} has forwarded the document "${doc.title}" to your office for review and endorsement. Action required.`;
+              } else if (isReview) {
+                title = 'Review Requested';
+                message = `${senderName} has sent you a confidential document for review: "${doc.title}". Action required.`;
+              }
+
+              return {
+                userId: recipient.id,
+                title,
+                message,
+                documentId: doc.id,
+              };
+            }),
           });
 
           return results;
@@ -1394,7 +1457,14 @@ export class DocumentsRouter {
         .input(
           z.object({
             documentId: z.string(),
-            status: z.enum(['approved', 'returned', 'disapproved']),
+            status: z.enum([
+              'Approved',
+              'Noted',
+              'For Endorsement',
+              'Returned for Corrections/Revision/Clarification',
+              'For the review of the Executive Committee',
+              'Disapproved',
+            ]),
             remarks: z.string().optional(),
             finalFileType: z.string().optional(),
             finalFileSize: z.number().optional(),
@@ -1411,10 +1481,9 @@ export class DocumentsRouter {
             });
           }
 
-          requirePermission(dbUser, 'canManageDocuments');
-
           const document = await this.prisma.document.findUnique({
             where: { id: input.documentId },
+            include: { transitRoutes: true },
           });
 
           if (!document) {
@@ -1424,8 +1493,37 @@ export class DocumentsRouter {
             });
           }
 
+          // Verify permissions for transit route vs standard approval
+          const isTransit =
+            document.classification === 'FOR_APPROVAL' &&
+            document.recordStatus === 'IN_TRANSIT';
+
+          if (isTransit) {
+            const currentRouteStop = document.transitRoutes.find(
+              (r) => r.status === 'CURRENT',
+            );
+            
+            let hasTransitAccess = false;
+            if (currentRouteStop && dbUser.departmentId === currentRouteStop.departmentId) {
+              // Allow Level 1 users of the active department to review
+              if (dbUser.roles.some((r) => r.level === 1 && r.departmentId === currentRouteStop.departmentId)) {
+                hasTransitAccess = true;
+              }
+            }
+            
+            // Allow fallback to global admins
+            if (!hasTransitAccess && !checkPermission(dbUser, 'canManageDocuments')) {
+              throw new TRPCError({
+                code: 'FORBIDDEN',
+                message: 'Only Level 1 users of the currently active office in the transit route (or Admins) can review this document.',
+              });
+            }
+          } else {
+            requirePermission(dbUser, 'canManageDocuments');
+          }
+
           // Format Immutability: You cannot approve a draft (editable format)
-          if (input.status === 'approved') {
+          if (input.status === 'Approved') {
             const allowedFinalFormats = [
               'application/pdf',
               'image/jpeg',
@@ -1485,18 +1583,116 @@ export class DocumentsRouter {
             },
           };
 
-          if (input.status === 'approved' && input.finalStorageKey) {
+          if (input.status === 'Approved') {
             updateData.recordStatus = 'FINAL';
-            updateData.versions = {
-              create: {
-                versionNumber: nextVersionNumber,
-                s3Key: input.finalStorageKey,
-                s3Bucket: env.SUPABASE_BUCKET_NAME,
-                fileType: input.finalFileType,
-                fileSize: input.finalFileSize,
-                uploadedById: user.id,
-              },
-            };
+            updateData.classification = 'CONFIDENTIAL';
+            
+            if (input.finalStorageKey) {
+              updateData.versions = {
+                create: {
+                  versionNumber: nextVersionNumber,
+                  s3Key: input.finalStorageKey,
+                  s3Bucket: env.SUPABASE_BUCKET_NAME,
+                  fileType: input.finalFileType,
+                  fileSize: input.finalFileSize,
+                  uploadedById: user.id,
+                },
+              };
+            }
+          }
+
+          const isAdvancingRoute = input.status === 'Noted' || input.status === 'For Endorsement';
+          let logActionString = `Reviewed Document (Status: ${input.status})`;
+
+          if (isTransit) {
+            const currentRouteStop = document.transitRoutes.find(
+              (r) => r.status === 'CURRENT',
+            );
+
+            if (currentRouteStop) {
+              if (isAdvancingRoute) {
+                // Update current stop to APPROVED
+                await this.prisma.documentTransitRoute.update({
+                  where: { id: currentRouteStop.id },
+                  data: {
+                    status: 'APPROVED',
+                    approvedById: user.id,
+                    approvedAt: new Date(),
+                  },
+                });
+
+                // Find next stop and set to CURRENT
+                const nextRouteStop = document.transitRoutes.find(
+                  (r) => r.sequenceOrder === currentRouteStop.sequenceOrder + 1,
+                );
+                
+                if (nextRouteStop) {
+                  await this.prisma.documentTransitRoute.update({
+                    where: { id: nextRouteStop.id },
+                    data: {
+                      status: 'CURRENT',
+                    },
+                  });
+
+                  // Find Level 1 users in the next department
+                  const nextDeptUsers = await this.prisma.user.findMany({
+                    where: {
+                      departmentId: nextRouteStop.departmentId,
+                      roles: {
+                        some: { level: 1 },
+                      },
+                    },
+                  });
+
+                  if (nextDeptUsers.length > 0) {
+                    // Give READ access to the next department
+                    await this.prisma.documentAccess.create({
+                      data: {
+                        documentId: document.id,
+                        departmentId: nextRouteStop.departmentId,
+                        permission: PermissionLevel.READ,
+                      },
+                    });
+
+                    // Create pending distributions for Level 1 users to receive
+                    await this.prisma.documentDistribution.createMany({
+                      data: nextDeptUsers.map((targetUser) => ({
+                        documentId: document.id,
+                        senderId: user.id,
+                        recipientId: targetUser.id,
+                        status: 'PENDING',
+                      })),
+                    });
+
+                    // Send notifications explicitly
+                    await this.prisma.notification.createMany({
+                      data: nextDeptUsers.map((targetUser) => ({
+                        userId: targetUser.id,
+                        title: 'Review Requested (In Transit)',
+                        message: `${dbUser.firstName} ${dbUser.lastName} has forwarded the document "${document.title}" to your office for review and endorsement. Action required.`,
+                        documentId: document.id,
+                      })),
+                    });
+                  }
+
+                  // Update log action string for advancing
+                  const currentDept = await this.prisma.department.findUnique({ where: { id: currentRouteStop.departmentId }});
+                  const nextDept = await this.prisma.department.findUnique({ where: { id: nextRouteStop.departmentId }});
+                  logActionString = `${currentDept?.name || 'An office'} has endorsed the document to ${nextDept?.name || 'the next office'}`;
+                }
+              } else if (input.status === 'Approved') {
+                // Mark final stop as approved
+                await this.prisma.documentTransitRoute.update({
+                  where: { id: currentRouteStop.id },
+                  data: {
+                    status: 'APPROVED',
+                    approvedById: user.id,
+                    approvedAt: new Date(),
+                  },
+                });
+              }
+              // If Returning or Disapproved, we do not update transit routes (route halts)
+            }
           }
 
           const updatedDocument = await this.prisma.document.update({
@@ -1507,7 +1703,7 @@ export class DocumentsRouter {
           await this.logService.logAction(
             user.id,
             dbUser.institutionId,
-            `Reviewed Document (Status: ${input.status})`,
+            logActionString,
             dbUser.roles.map((r) => r.name),
             updatedDocument.title,
             dbUser.campusId || undefined,
@@ -2099,7 +2295,14 @@ export class DocumentsRouter {
             });
             const currentRouteStop = documentWithRoutes?.transitRoutes.find(r => r.status === 'CURRENT');
             
-            if (currentRouteStop && dbUser.departmentId === currentRouteStop.departmentId) {
+            // Allow originators to check out if the document has been returned/disapproved so they can fix it
+            if (doc.status === 'Returned for Corrections/Revision/Clarification' || doc.status === 'Disapproved') {
+              if (doc.uploadedById === user.id || doc.originalSenderId === user.id) {
+                hasWriteAccess = true;
+              }
+            }
+
+            if (!hasWriteAccess && currentRouteStop && dbUser.departmentId === currentRouteStop.departmentId) {
               // Allow Level 1 and Level 2 users of the active department to check out
               const hasLevel1Or2 = dbUser.roles.some((r) => (r.level === 1 || r.level === 2) && r.departmentId === currentRouteStop.departmentId);
               if (hasLevel1Or2) {
@@ -2107,7 +2310,7 @@ export class DocumentsRouter {
               }
             }
 
-            if (!hasWriteAccess) {
+            if (!hasWriteAccess && !checkPermission(dbUser, 'canManageDocuments')) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
                 message: 'Only Level 1 or 2 users of the currently active office in the transit route can check out this document.',

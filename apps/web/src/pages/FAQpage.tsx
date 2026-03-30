@@ -280,6 +280,199 @@ const FAQ_CATEGORIES: FAQCategory[] = [
           </>
         ),
       },
+    ],
+  },
+  {
+    id: "document-routing",
+    label: "Approval Routing",
+    icon: "bi-signpost-split",
+    items: [
+      {
+        id: "dr-1",
+        question: "How does prescribed approval routing work?",
+        answer: (
+          <>
+            <p>
+              When a document is classified as <strong>FOR_APPROVAL</strong>,
+              you must define a prescribed sequence of offices (a transit route)
+              that the document must pass through. The document state becomes{" "}
+              <strong>IN_TRANSIT</strong>.
+            </p>
+            <ul>
+              <li>
+                The document moves from one office to the next sequentially.
+                Only the <strong>currently active</strong> office in the route
+                can review the document.
+              </li>
+              <li>
+                Level 1 users (e.g. Dean, CEO) of the currently active office
+                have exclusive permission to review and advance the document.
+              </li>
+            </ul>
+            <p>
+              When reviewing a document, intermediate offices have different
+              options than the final destination office:
+            </p>
+            <div className="faq-classification-list mt-3">
+              <div className="faq-class-item">
+                <span className="badge bg-primary text-light me-2 px-2 py-1">
+                  <i className="bi bi-forward-fill me-1" /> Endorsed / Noted
+                </span>
+                <span>
+                  Available to intermediate offices. Automatically forwards the
+                  document and notifies the <strong>next office</strong> in the
+                  sequence.
+                </span>
+              </div>
+              <div className="faq-class-item">
+                <span className="badge bg-warning text-dark me-2 px-2 py-1">
+                  <i className="bi bi-arrow-return-left me-1" /> Returned
+                </span>
+                <span>
+                  Available to all offices. Halts the route and sends the
+                  document back to the original sender for revisions.
+                </span>
+              </div>
+              <div className="faq-class-item">
+                <span className="badge bg-success text-light me-2 px-2 py-1">
+                  <i className="bi bi-check-circle-fill me-1" /> Approved
+                </span>
+                <span>
+                  Available <strong>only</strong> to the final office in the
+                  prescribed route. Permanently finalizes the document.
+                </span>
+              </div>
+            </div>
+          </>
+        ),
+      },
+      {
+        id: "dr-2",
+        question: "What happens when a document is 'Returned for Corrections'?",
+        answer: (
+          <>
+            <p>
+              If a reviewing office finds issues, they can select{" "}
+              <strong>Returned for Corrections/Revision/Clarification</strong>.
+              When this happens:
+            </p>
+            <ol>
+              <li>
+                The prescribed route halts. The document is not sent to the next
+                office.
+              </li>
+              <li>
+                The document is immediately sent back to the originator (the
+                person who uploaded or requested the review), accompanied by a
+                notification.
+              </li>
+              <li>
+                The originator temporarily regains write access. They must{" "}
+                <strong>Check Out</strong> the document, make the necessary
+                fixes, and <strong>Check In</strong> a new version.
+              </li>
+              <li>
+                Once fixed, the originator resubmits it. The route resumes
+                exactly where it paused, returning to the office that requested
+                the corrections.
+              </li>
+            </ol>
+          </>
+        ),
+      },
+      {
+        id: "dr-3",
+        question: "What happens when a document reaches final approval?",
+        answer: (
+          <p>
+            When the final office in the prescribed route selects{" "}
+            <strong>Approved</strong>, the document's transit lifecycle ends.
+            Its record status is automatically finalized as{" "}
+            <strong>FINAL</strong>, and its classification reverts to{" "}
+            <strong>CONFIDENTIAL</strong>. This secures the document, locking it
+            from further edits, and gives the original owner the ability to
+            broadcast the final approved document (e.g., as Institutional or
+            Campus level) depending on their standard role permissions.
+          </p>
+        ),
+      },
+      {
+        id: "dr-4",
+        question: "Where can I see the progress of an approval route?",
+        answer: (
+          <>
+            <p>
+              Open the document from your Dashboard or Documents list to view
+              its <strong>Document Details</strong>. At the top of the Review
+              Details section, you will see a horizontal{" "}
+              <strong>Routing Progress</strong> visualization mapping out every
+              office the document must pass through.
+            </p>
+            <div
+              className="p-3 bg-light border rounded mt-3 mb-3 d-flex align-items-center justify-content-center flex-wrap"
+              style={{ rowGap: "1rem" }}
+            >
+              {/* Mock Routing Progress */}
+              <div
+                className="d-flex flex-column align-items-center"
+                style={{ maxWidth: "120px", textAlign: "center" }}
+              >
+                <div className="badge bg-success text-light rounded-pill p-2 mb-1 shadow-sm">
+                  <i className="bi bi-check-circle-fill fs-5"></i>
+                </div>
+                <span style={{ fontSize: "0.75rem", fontWeight: "normal" }}>
+                  OSDW
+                </span>
+              </div>
+              <div
+                className="flex-grow-1 mx-3"
+                style={{
+                  height: "2px",
+                  backgroundColor: "var(--bs-success)",
+                  minWidth: "40px",
+                }}
+              ></div>
+
+              <div
+                className="d-flex flex-column align-items-center"
+                style={{ maxWidth: "120px", textAlign: "center" }}
+              >
+                <div className="badge bg-primary text-light rounded-pill p-2 mb-1 shadow-sm">
+                  <i className="bi bi-record-circle-fill fs-5"></i>
+                </div>
+                <span style={{ fontSize: "0.75rem", fontWeight: "bold" }}>
+                  CDAA
+                </span>
+              </div>
+              <div
+                className="flex-grow-1 mx-3"
+                style={{
+                  height: "2px",
+                  backgroundColor: "var(--bs-gray-300)",
+                  minWidth: "40px",
+                }}
+              ></div>
+
+              <div
+                className="d-flex flex-column align-items-center"
+                style={{ maxWidth: "120px", textAlign: "center" }}
+              >
+                <div className="badge bg-secondary text-light rounded-pill p-2 mb-1 shadow-sm">
+                  <i className="bi bi-circle fs-5"></i>
+                </div>
+                <span style={{ fontSize: "0.75rem", fontWeight: "normal" }}>
+                  CEO
+                </span>
+              </div>
+            </div>
+            <p className="mb-0">
+              Below the visualization is the <strong>Review History</strong>{" "}
+              timeline, documenting exact timestamps, reviewer names, roles, and
+              remarks at each step of the journey.
+            </p>
+          </>
+        ),
+      },
       {
         id: "doc-6",
         question:

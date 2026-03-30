@@ -12,6 +12,9 @@ const CAMPUS_DATA = [
       'College of Hospitality Management',
       'College of Teacher Education',
       'Graduate School',
+      'Office of the Campus Director for Academic Affairs',
+      'Office of Student Development and Welfare',
+      'Office of the Campus Director for Administration and Finance',
     ],
   },
   {
@@ -26,6 +29,9 @@ const CAMPUS_DATA = [
       'College of Information and Computing Sciences',
       'College of Teacher Education',
       'Graduate School',
+      'Office of the Campus Director for Academic Affairs',
+      'Office of Student Development and Welfare',
+      'Office of the Campus Director for Administration and Finance',
     ],
   },
   {
@@ -43,6 +49,9 @@ const CAMPUS_DATA = [
       'College of Natural Science and Mathematics',
       'College of Nursing',
       'Graduate School',
+      'Office of the Campus Director for Academic Affairs',
+      'Office of Student Development and Welfare',
+      'Office of the Campus Director for Administration and Finance',
     ],
   },
   {
@@ -55,6 +64,9 @@ const CAMPUS_DATA = [
       'College of Hospitality Management',
       'College of Information and Computing Sciences',
       'College of Teacher Education',
+      'Office of the Campus Director for Academic Affairs',
+      'Office of Student Development and Welfare',
+      'Office of the Campus Director for Administration and Finance',
     ],
   },
   {
@@ -65,6 +77,9 @@ const CAMPUS_DATA = [
       'College of Hospitality Management',
       'College of Information and Computing Sciences',
       'College of Teacher Education',
+      'Office of the Campus Director for Academic Affairs',
+      'Office of Student Development and Welfare',
+      'Office of the Campus Director for Administration and Finance',
     ],
   },
   {
@@ -74,6 +89,9 @@ const CAMPUS_DATA = [
       'College of Industrial Technology',
       'College of Information and Computing Sciences',
       'College of Teacher Education',
+      'Office of the Campus Director for Academic Affairs',
+      'Office of Student Development and Welfare',
+      'Office of the Campus Director for Administration and Finance',
     ],
   },
   {
@@ -84,6 +102,9 @@ const CAMPUS_DATA = [
       'College of Criminal Justice Education',
       'College of Information and Computing Sciences',
       'College of Teacher Education',
+      'Office of the Campus Director for Academic Affairs',
+      'Office of Student Development and Welfare',
+      'Office of the Campus Director for Administration and Finance',
     ],
   },
   {
@@ -99,6 +120,9 @@ const CAMPUS_DATA = [
       'College of Information and Computing Sciences',
       'College of Teacher Education',
       'Graduate School',
+      'Office of the Campus Director for Academic Affairs',
+      'Office of Student Development and Welfare',
+      'Office of the Campus Director for Administration and Finance',
     ],
   },
   {
@@ -109,6 +133,9 @@ const CAMPUS_DATA = [
       'College of Criminal Justice Education',
       'College of Information and Computing Sciences',
       'College of Teacher Education',
+      'Office of the Campus Director for Academic Affairs',
+      'Office of Student Development and Welfare',
+      'Office of the Campus Director for Administration and Finance',
     ],
   },
   {
@@ -130,9 +157,12 @@ async function main() {
   const globalTags = [
     { name: 'for review', isGlobal: true, isLocked: true },
     { name: 'communication', isGlobal: true, isLocked: false },
-    { name: 'approved', isGlobal: true, isLocked: true },
-    { name: 'returned', isGlobal: true, isLocked: true },
-    { name: 'disapproved', isGlobal: true, isLocked: true },
+    { name: 'Approved', isGlobal: true, isLocked: true },
+    { name: 'Noted', isGlobal: true, isLocked: true },
+    { name: 'For Endorsement', isGlobal: true, isLocked: true },
+    { name: 'Returned for Corrections/Revision/Clarification', isGlobal: true, isLocked: true },
+    { name: 'For the review of the Executive Committee', isGlobal: true, isLocked: true },
+    { name: 'Disapproved', isGlobal: true, isLocked: true },
   ];
 
   for (const tag of globalTags) {
@@ -218,6 +248,12 @@ async function main() {
             rolesToSeed.push({ name: 'VPIPRM', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
         } else if (deptName === 'Office of the Campus Executive Officer') {
             rolesToSeed.push({ name: 'CEO', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
+        } else if (deptName === 'Office of the Campus Director for Academic Affairs') {
+            rolesToSeed.push({ name: 'CDAA', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
+        } else if (deptName === 'Office of Student Development and Welfare') {
+            rolesToSeed.push({ name: 'OSDW Coordinator', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
+        } else if (deptName === 'Office of the Campus Director for Administration and Finance') {
+            rolesToSeed.push({ name: 'CDAF', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
         } else if (deptName.startsWith('College of') || deptName === 'Graduate School') {
             rolesToSeed.push(
                 { name: 'Dean', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true },

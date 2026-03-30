@@ -73,23 +73,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
   const isTransitDocument =
     document?.recordStatus === "IN_TRANSIT" &&
     document?.classification === "FOR_APPROVAL";
-  const nextRouteStop = useMemo(() => {
-    if (!isTransitDocument || !document?.transitRoutes) return null;
-    // If we're an active office (the current stop), we're likely sending it to the NEXT pending office.
-    // However, if it was just uploaded or transferred and the CURRENT office hasn't received it yet,
-    // the system might still consider the "CURRENT" office as the primary target.
-    // The most reliable check is:
-    // 1. Is there a PENDING office? Send to the first one.
-    // 2. If no PENDING offices, check if CURRENT hasn't received it (e.g. initial upload).
-    // Let's target the very first stop that hasn't been approved yet.
-    return (
-      document.transitRoutes.find((r: any) => r.status === "PENDING") ||
-      document.transitRoutes.find((r: any) => r.status === "CURRENT") ||
-      null
-    );
-  }, [document, isTransitDocument]);
 
-  const hasPrescribedRoute = !!nextRouteStop;
   const { data: fetchedGlobalTags } = trpc.documents.getGlobalTags.useQuery(
     undefined,
     { enabled: !propGlobalTags && show },
@@ -106,6 +90,46 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
   const campuses = propCampuses || fetchedOrgHierarchy?.campuses || [];
   const tags = propTags || fetchedTags;
   const globalTags = propGlobalTags || fetchedGlobalTags;
+
+  const trpcCtx = trpc.useContext();
+
+  const nextRouteStop = useMemo(() => {
+    if (!isTransitDocument || !document?.transitRoutes) return null;
+
+    // Check if the current user/department has already received this document.
+    const currentUser = users?.find(
+      (u: { id: string | undefined }) =>
+        u.id === trpcCtx.user.getMe.getData()?.id,
+    );
+    const currentUserDept =
+      currentUser?.departmentId || trpcCtx.user.getMe.getData()?.departmentId;
+
+    const currentStop = document.transitRoutes.find(
+      (r: any) => r.status === "CURRENT",
+    );
+
+    // If the person opening this modal is IN the CURRENT stop's department,
+    // they are likely trying to send it to the NEXT office (the PENDING one).
+    // Otherwise, they are an outsider (or originator) trying to send it to the CURRENT office.
+    if (currentStop && currentUserDept === currentStop.departmentId) {
+      const nextPending = document.transitRoutes.find(
+        (r: any) =>
+          r.status === "PENDING" && r.sequenceOrder > currentStop.sequenceOrder,
+      );
+      if (nextPending) return nextPending;
+    }
+
+    if (currentStop) {
+      return currentStop;
+    }
+
+    // Fallback if there is no current stop
+    return (
+      document.transitRoutes.find((r: any) => r.status === "PENDING") || null
+    );
+  }, [document, isTransitDocument, users, trpcCtx]);
+
+  const hasPrescribedRoute = !!nextRouteStop;
 
   // Derive Dropdowns Options
   const departments = useMemo(() => {
