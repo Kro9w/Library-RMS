@@ -391,8 +391,8 @@ const FAQ_CATEGORIES: FAQCategory[] = [
             <strong>FINAL</strong>, and its classification reverts to{" "}
             <strong>CONFIDENTIAL</strong>. This secures the document, locking it
             from further edits, and gives the original owner the ability to
-            broadcast the final approved document (e.g., as Institutional or
-            Campus level) depending on their standard role permissions.
+            broadcast the final approved document depending on their standard
+            role permissions.
           </p>
         ),
       },
@@ -409,61 +409,72 @@ const FAQ_CATEGORIES: FAQCategory[] = [
               office the document must pass through.
             </p>
             <div
-              className="p-3 bg-light border rounded mt-3 mb-3 d-flex align-items-center justify-content-center flex-wrap"
-              style={{ rowGap: "1rem" }}
+              className="p-3 rounded mt-3 mb-3 d-flex align-items-center justify-content-center flex-wrap"
+              style={{
+                rowGap: "1rem",
+                background: "var(--bg-subtle)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-lg)",
+              }}
             >
-              {/* Mock Routing Progress */}
-              <div
-                className="d-flex flex-column align-items-center"
-                style={{ maxWidth: "120px", textAlign: "center" }}
-              >
-                <div className="badge bg-success text-light rounded-pill p-2 mb-1 shadow-sm">
-                  <i className="bi bi-check-circle-fill fs-5"></i>
-                </div>
-                <span style={{ fontSize: "0.75rem", fontWeight: "normal" }}>
-                  OSDW
-                </span>
-              </div>
-              <div
-                className="flex-grow-1 mx-3"
-                style={{
-                  height: "2px",
-                  backgroundColor: "var(--bs-success)",
-                  minWidth: "40px",
-                }}
-              ></div>
-
-              <div
-                className="d-flex flex-column align-items-center"
-                style={{ maxWidth: "120px", textAlign: "center" }}
-              >
-                <div className="badge bg-primary text-light rounded-pill p-2 mb-1 shadow-sm">
-                  <i className="bi bi-record-circle-fill fs-5"></i>
-                </div>
-                <span style={{ fontSize: "0.75rem", fontWeight: "bold" }}>
-                  CDAA
-                </span>
-              </div>
-              <div
-                className="flex-grow-1 mx-3"
-                style={{
-                  height: "2px",
-                  backgroundColor: "var(--bs-gray-300)",
-                  minWidth: "40px",
-                }}
-              ></div>
-
-              <div
-                className="d-flex flex-column align-items-center"
-                style={{ maxWidth: "120px", textAlign: "center" }}
-              >
-                <div className="badge bg-secondary text-light rounded-pill p-2 mb-1 shadow-sm">
-                  <i className="bi bi-circle fs-5"></i>
-                </div>
-                <span style={{ fontSize: "0.75rem", fontWeight: "normal" }}>
-                  CEO
-                </span>
-              </div>
+              {[
+                { label: "OSDW", status: "approved" },
+                { label: "CDAA", status: "current" },
+                { label: "CEO", status: "pending" },
+              ].map((step, i, arr) => (
+                <React.Fragment key={step.label}>
+                  <div
+                    className="d-flex flex-column align-items-center"
+                    style={{ maxWidth: "120px", textAlign: "center" }}
+                  >
+                    <div
+                      className={`routing-step-icon mb-1 ${
+                        step.status === "approved"
+                          ? "routing-step-approved"
+                          : step.status === "current"
+                            ? "routing-step-current"
+                            : "routing-step-pending"
+                      }`}
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 18,
+                      }}
+                    >
+                      <i
+                        className={`bi ${step.status === "approved" ? "bi-check-circle-fill" : step.status === "current" ? "bi-record-circle-fill" : "bi-circle"}`}
+                      ></i>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: "0.75rem",
+                        fontWeight:
+                          step.status === "current" ? "bold" : "normal",
+                      }}
+                    >
+                      {step.label}
+                    </span>
+                  </div>
+                  {i < arr.length - 1 && (
+                    <div
+                      style={{
+                        flex: 1,
+                        height: 2,
+                        background:
+                          step.status === "approved"
+                            ? "var(--success)"
+                            : "var(--border)",
+                        minWidth: 40,
+                        opacity: step.status === "approved" ? 0.4 : 1,
+                      }}
+                    />
+                  )}
+                </React.Fragment>
+              ))}
             </div>
             <p className="mb-0">
               Below the visualization is the <strong>Review History</strong>{" "}
@@ -581,8 +592,8 @@ const FAQ_CATEGORIES: FAQCategory[] = [
               </li>
               <li>
                 A <em>different</em> administrator reviews and either{" "}
-                <strong>Approves & Executes</strong> or <strong>Rejects</strong>{" "}
-                the request.
+                <strong>Approves &amp; Executes</strong> or{" "}
+                <strong>Rejects</strong> the request.
               </li>
               <li>
                 If the disposition action is <strong>Archive</strong>, the
@@ -883,12 +894,10 @@ const FAQPage: React.FC = () => {
       <div className="faq-page">
         {/* Page header */}
         <div className="faq-page-header">
-          <div>
-            <h2>Help & FAQ</h2>
-            <p className="text-muted">
-              Find answers to common questions about Plume RMS.
-            </p>
-          </div>
+          <h2>Help &amp; FAQ</h2>
+          <p className="text-muted">
+            Find answers to common questions about Plume RMS.
+          </p>
         </div>
 
         <div className="faq-layout">
@@ -945,7 +954,7 @@ const FAQPage: React.FC = () => {
               </div>
             )}
 
-            {/* Accordion items */}
+            {/* Accordion */}
             <div className="faq-accordion">
               {filteredItems.length === 0 && (
                 <div className="faq-empty">
@@ -969,9 +978,12 @@ const FAQPage: React.FC = () => {
                       <span className="faq-accordion-question">
                         {item.question}
                       </span>
-                      <i
-                        className={`bi ${isOpen ? "bi-dash" : "bi-plus"} faq-accordion-chevron`}
-                      />
+                      {/* ── Updated: boxed chevron icon ── */}
+                      <div className="faq-accordion-chevron">
+                        <i
+                          className={`bi ${isOpen ? "bi-dash" : "bi-chevron-down"}`}
+                        />
+                      </div>
                     </button>
                     {isOpen && (
                       <div className="faq-accordion-body">{item.answer}</div>
@@ -981,7 +993,7 @@ const FAQPage: React.FC = () => {
               })}
             </div>
 
-            {/* Footer note */}
+            {/* Footer */}
             <div className="faq-footer-note">
               <i className="bi bi-envelope" />
               <span>

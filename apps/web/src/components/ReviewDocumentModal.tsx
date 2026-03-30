@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { trpc } from "../trpc";
 import { SendDocumentModal } from "./SendDocumentModal";
 import { Modal } from "bootstrap";
+import "./ReviewDocumentModal.css";
 
 interface ReviewDocumentModalProps {
   show: boolean;
@@ -59,8 +60,6 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
       (r: any) => r.status === "CURRENT",
     );
     if (!currentRoute) return false;
-
-    // Check if the current route stop is the last one in the sequence
     const maxSequence = Math.max(
       ...document.transitRoutes.map((r: any) => r.sequenceOrder),
     );
@@ -75,10 +74,7 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
       "For the review of the Executive Committee",
       "Disapproved",
     ];
-
-    if (!isTransit || isFinalStop) {
-      return ["Approved", ...baseStatuses];
-    }
+    if (!isTransit || isFinalStop) return ["Approved", ...baseStatuses];
     return baseStatuses;
   }, [isTransit, isFinalStop]);
 
@@ -95,7 +91,6 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
 
   const handleSubmit = async () => {
     if (!documentId) return;
-
     await reviewDocumentMutation.mutateAsync({
       documentId,
       status: status as ReviewStatus,
@@ -103,8 +98,6 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
     });
 
     if (status === "Returned for Corrections/Revision/Clarification") {
-      // Find the appropriate fallback recipient:
-      // reviewRequesterId -> originalSenderId -> uploadedById
       const targetRecipientId =
         document?.reviewRequesterId ||
         document?.originalSenderId ||
@@ -114,7 +107,6 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
         const statusTag = globalTags?.find(
           (tag: { name: string }) => tag.name === status,
         );
-
         await sendDocumentMutation.mutateAsync({
           documentId,
           recipientId: targetRecipientId,
@@ -122,96 +114,50 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
           tagsToKeep: statusTag ? [statusTag.id] : [],
         });
       }
-      onClose();
-    } else {
-      onClose();
     }
+    onClose();
   };
 
-  // Determine dynamic button text and icon
-  const getButtonText = () => {
-    switch (status) {
-      case "Approved":
-        return "Approve Document";
-      case "Noted":
-        return "Note Document";
-      case "For Endorsement":
-        return "Endorse Document";
-      case "Returned for Corrections/Revision/Clarification":
-        return "Return Document";
-      case "For the review of the Executive Committee":
-        return "Send to Executive Committee";
-      case "Disapproved":
-        return "Disapprove Document";
-      default:
-        return "Submit Review";
-    }
+  // Status metadata
+  const STATUS_META: Record<
+    string,
+    { icon: string; colorClass: string; btnLabel: string }
+  > = {
+    Approved: {
+      icon: "bi-check-circle-fill",
+      colorClass: "text-success",
+      btnLabel: "Approve Document",
+    },
+    Noted: {
+      icon: "bi-journal-check",
+      colorClass: "text-info",
+      btnLabel: "Note Document",
+    },
+    "For Endorsement": {
+      icon: "bi-forward-fill",
+      colorClass: "text-primary",
+      btnLabel: "Endorse Document",
+    },
+    "Returned for Corrections/Revision/Clarification": {
+      icon: "bi-arrow-return-left",
+      colorClass: "text-warning",
+      btnLabel: "Return Document",
+    },
+    "For the review of the Executive Committee": {
+      icon: "bi-people-fill",
+      colorClass: "text-secondary",
+      btnLabel: "Send to Executive Committee",
+    },
+    Disapproved: {
+      icon: "bi-x-circle-fill",
+      colorClass: "text-danger",
+      btnLabel: "Disapprove Document",
+    },
   };
 
-  const getButtonIcon = () => {
-    switch (status) {
-      case "Approved":
-        return "bi-check-circle-fill";
-      case "Returned for Corrections/Revision/Clarification":
-        return "bi-arrow-return-left";
-      case "Disapproved":
-        return "bi-x-circle-fill";
-      default:
-        return "bi-send-fill";
-    }
-  };
+  const meta = status ? STATUS_META[status] : null;
 
-  // --- Inline Styles for Theme Compliance ---
-  const modalHeaderStyle = {
-    backgroundColor: "var(--background)",
-    borderBottom: "1px solid var(--card-border)",
-    color: "var(--brand)",
-  };
-
-  const modalBodyStyle = {
-    backgroundColor: "var(--background)",
-    color: "var(--text)",
-  };
-
-  const modalFooterStyle = {
-    backgroundColor: "var(--background)",
-    borderTop: "1px solid var(--card-border)",
-  };
-
-  const labelStyle = {
-    color: "var(--text-muted)",
-    fontSize: "0.8rem",
-    textTransform: "uppercase" as const,
-    fontWeight: "bold" as const,
-    marginBottom: "0.5rem",
-  };
-
-  const inputGroupTextStyle = {
-    backgroundColor: "var(--input-bg)",
-    borderColor: "var(--card-border)",
-    color: "var(--text-muted)",
-  };
-
-  const getStatusIcon = (currentStatus: string) => {
-    switch (currentStatus) {
-      case "Approved":
-        return <i className="bi bi-check-circle-fill text-success"></i>;
-      case "Noted":
-        return <i className="bi bi-journal-check text-info"></i>;
-      case "For Endorsement":
-        return <i className="bi bi-forward-fill text-primary"></i>;
-      case "Returned for Corrections/Revision/Clarification":
-        return <i className="bi bi-arrow-return-left text-warning"></i>;
-      case "For the review of the Executive Committee":
-        return <i className="bi bi-people-fill text-secondary"></i>;
-      case "Disapproved":
-        return <i className="bi bi-x-circle-fill text-danger"></i>;
-      default:
-        return <i className="bi bi-info-circle-fill text-secondary"></i>;
-    }
-  };
-
-  // Calculate Routing Progress logic
+  // Routing progress for transit docs
   const renderRoutingProgress = () => {
     if (
       !isTransit ||
@@ -225,116 +171,76 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
       (a: any, b: any) => a.sequenceOrder - b.sequenceOrder,
     );
 
-    const currentIndex = sortedRoutes.findIndex(
-      (r: any) => r.status === "CURRENT",
-    );
-
-    // If currentIndex is not found, default to length (all done)
-    const activeIdx = currentIndex === -1 ? sortedRoutes.length : currentIndex;
-
-    // Append virtual 'Original Sender' or 'User' node for the final return step
     const timelineNodes = [
       ...sortedRoutes,
       {
-        id: "virtual-end-node",
+        id: "virtual-end",
         isVirtual: true,
         department: { name: "Original Sender" },
       },
     ];
 
+    const currentIndex = sortedRoutes.findIndex(
+      (r: any) => r.status === "CURRENT",
+    );
+    const activeIdx = currentIndex === -1 ? sortedRoutes.length : currentIndex;
+
+    const getStepStyle = (route: any, _index: number) => {
+      if (route.isVirtual)
+        return {
+          iconClass: "bi-person-fill",
+          stepClass: "routing-step-pending",
+        };
+      if (route.status === "APPROVED")
+        return {
+          iconClass: "bi-check-circle-fill",
+          stepClass: "routing-step-approved",
+        };
+      if (route.status === "CURRENT")
+        return {
+          iconClass: "bi-record-circle-fill",
+          stepClass: "routing-step-current",
+        };
+      if (route.status === "REJECTED")
+        return {
+          iconClass: "bi-x-circle-fill",
+          stepClass: "routing-step-rejected",
+        };
+      return { iconClass: "bi-circle", stepClass: "routing-step-pending" };
+    };
+
     return (
-      <div className="mb-4">
-        <div
-          className="d-flex align-items-center flex-nowrap w-100 pb-2"
-          style={{
-            overflowX: "auto",
-            paddingBottom: "10px",
-            gap: "0.5rem",
-          }}
-        >
+      <div className="review-modal-route-wrap">
+        <p className="review-modal-route-label">
+          <i className="bi bi-signpost-split"></i>
+          Routing Progress
+        </p>
+        <div className="review-modal-route-steps">
           {timelineNodes.map((route: any, index: number) => {
-            const isFinished = index < activeIdx;
+            const { iconClass, stepClass } = getStepStyle(route, index);
             const isNext = index === activeIdx + 1;
-
-            let badgeClass = "bg-secondary text-light";
-            let iconClass = "bi-circle";
-            let nodeStyle: React.CSSProperties = {
-              maxWidth: "120px",
-              textAlign: "center",
-              minWidth: "100px",
-            };
-
-            if (route.isVirtual) {
-              badgeClass = "bg-light text-dark border border-secondary";
-              iconClass = "bi-person-fill";
-            } else if (route.status === "APPROVED") {
-              badgeClass = "bg-success text-light";
-              iconClass = "bi-check-circle-fill";
-            } else if (route.status === "CURRENT") {
-              badgeClass = "bg-primary text-light shadow";
-              iconClass = "bi-record-circle-fill";
-            } else if (route.status === "REJECTED") {
-              badgeClass = "bg-danger text-light";
-              iconClass = "bi-x-circle-fill";
-            }
-
-            if (!isNext) {
-              nodeStyle.opacity = 0.5;
-              nodeStyle.filter = "grayscale(100%)";
-            }
-
-            let extraClasses = "";
-            if (isNext) {
-              // Subtle highlight for next office
-              badgeClass =
-                "bg-primary bg-opacity-10 text-primary border border-primary";
-              extraClasses = "fw-bold text-primary";
-              iconClass = "bi-circle-half";
-            }
 
             return (
               <React.Fragment key={route.id}>
                 <div
-                  className="d-flex flex-column align-items-center position-relative"
-                  style={nodeStyle}
+                  className={`review-route-step ${stepClass} ${isNext ? "review-route-step-next" : ""}`}
                 >
                   {isNext && (
-                    <span
-                      className="badge bg-primary text-white position-absolute"
-                      style={{ top: "-20px", fontSize: "0.6rem" }}
-                    >
-                      NEXT
-                    </span>
+                    <span className="review-route-next-badge">NEXT</span>
                   )}
-                  <div
-                    className={`badge ${badgeClass} rounded-pill p-2 mb-1`}
-                    style={{ transition: "all 0.2s" }}
-                  >
-                    <i className={`bi ${iconClass} fs-5`}></i>
+                  <div className="review-route-icon">
+                    <i className={`bi ${iconClass}`}></i>
                   </div>
-                  <span
-                    style={{
-                      fontSize: "0.75rem",
-                      fontWeight: "normal",
-                    }}
-                    className={extraClasses}
-                  >
-                    {route.department?.name || "Unknown Office"}
+                  <span className="review-route-name">
+                    {route.department?.name || "Unknown"}
                   </span>
                 </div>
                 {index < timelineNodes.length - 1 && (
                   <div
-                    className="flex-grow-1 mx-2"
-                    style={{
-                      height: "2px",
-                      backgroundColor: isFinished
-                        ? "var(--bs-success)"
-                        : "var(--bs-gray-300)",
-                      minWidth: "30px",
-                      opacity: 0.5,
-                      filter: "grayscale(100%)",
-                    }}
-                  ></div>
+                    className={`review-route-connector ${
+                      index < activeIdx ? "review-route-connector-done" : ""
+                    }`}
+                  />
                 )}
               </React.Fragment>
             );
@@ -349,87 +255,94 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
       <div
         className="modal fade"
         ref={modalRef}
-        id="reviewDocumentModal"
         tabIndex={-1}
         aria-hidden="true"
       >
         <div className="modal-dialog modal-dialog-centered modal-lg">
-          <div
-            className="modal-content"
-            style={{
-              backgroundColor: "var(--card-background)",
-              border: "1px solid var(--card-border)",
-              boxShadow: "var(--card-shadow)",
-            }}
-          >
-            <div className="modal-header" style={modalHeaderStyle}>
-              <h5 className="modal-title">
-                <i className="bi bi-clipboard-check me-2"></i>Review Document
-              </h5>
+          <div className="modal-content review-modal-content">
+            {/* Header */}
+            <div className="review-modal-header">
+              <div className="review-modal-header-left">
+                <div className="review-modal-icon-wrap">
+                  <i className="bi bi-clipboard-check"></i>
+                </div>
+                <div>
+                  <h5 className="review-modal-title">Review Document</h5>
+                  {document?.title && (
+                    <p className="review-modal-subtitle">{document.title}</p>
+                  )}
+                </div>
+              </div>
               <button
                 type="button"
                 className="btn-close"
                 onClick={onClose}
                 aria-label="Close"
-              ></button>
+              />
             </div>
-            <div className="modal-body p-4" style={modalBodyStyle}>
+
+            {/* Body */}
+            <div className="review-modal-body">
+              {/* Routing progress */}
               {renderRoutingProgress()}
 
-              <div className="row g-3">
-                <div className="col-12">
-                  <label htmlFor="status" style={labelStyle}>
-                    Status
-                  </label>
-                  <div className="input-group">
-                    <span
-                      className="input-group-text border-end-0"
-                      style={inputGroupTextStyle}
-                    >
-                      {getStatusIcon(status)}
-                    </span>
-                    <select
-                      id="status"
-                      className="form-select border-start-0 ps-0"
-                      value={status}
-                      onChange={(e) =>
-                        setStatus(e.target.value as ReviewStatus)
-                      }
-                    >
-                      {allowedStatuses.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="col-12 mt-4">
-                  <label htmlFor="remarks" style={labelStyle}>
-                    Remarks
-                  </label>
-                  <textarea
-                    id="remarks"
-                    className="form-control"
-                    rows={4}
-                    placeholder="Enter any feedback or notes..."
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                  ></textarea>
+              {/* Status selector */}
+              <div className="review-modal-field">
+                <label className="review-modal-label">Decision</label>
+                <div className="review-status-selector">
+                  {allowedStatuses.map((s) => {
+                    const m = STATUS_META[s];
+                    const isSelected = status === s;
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        className={`review-status-option ${isSelected ? "review-status-option-active" : ""}`}
+                        onClick={() => setStatus(s as ReviewStatus)}
+                      >
+                        <i
+                          className={`bi ${m.icon} ${isSelected ? m.colorClass : "text-muted"}`}
+                        ></i>
+                        <span>{s}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
+
+              {/* Remarks */}
+              <div className="review-modal-field">
+                <label className="review-modal-label">
+                  Remarks
+                  <span className="review-modal-label-optional">optional</span>
+                </label>
+                <textarea
+                  className="review-modal-textarea"
+                  rows={4}
+                  placeholder="Enter any feedback, notes, or instructions for the sender…"
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                />
+              </div>
             </div>
-            <div className="modal-footer" style={modalFooterStyle}>
+
+            {/* Footer */}
+            <div className="review-modal-footer">
               <button
                 type="button"
-                className="btn btn-outline-secondary px-4"
+                className="btn btn-secondary px-4"
                 onClick={onClose}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                className="btn btn-primary px-4"
+                className={`btn btn-primary px-4 ${
+                  status === "Disapproved" ||
+                  status === "Returned for Corrections/Revision/Clarification"
+                    ? "btn-danger"
+                    : "btn-primary"
+                }`}
                 onClick={handleSubmit}
                 disabled={
                   reviewDocumentMutation.isPending ||
@@ -437,13 +350,24 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
                   !status
                 }
               >
-                <i className={`bi ${getButtonIcon()} me-2`}></i>
-                {getButtonText()}
+                {reviewDocumentMutation.isPending ||
+                sendDocumentMutation.isPending ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" />
+                    Submitting…
+                  </>
+                ) : (
+                  <>
+                    {meta && <i className={`bi ${meta.icon} me-2`}></i>}
+                    {meta?.btnLabel || "Submit Review"}
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
       </div>
+
       {showSendModal && (
         <SendDocumentModal
           show={showSendModal}

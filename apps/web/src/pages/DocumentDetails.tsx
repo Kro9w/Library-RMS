@@ -16,16 +16,12 @@ import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 type Document = AppRouterOutputs["documents"]["getById"];
 
 const SUPPORTED_PREVIEW_TYPES = {
-  // PDF
   "application/pdf": "pdf",
-  // Microsoft Word
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
     "office",
   "application/msword": "office",
-  // Microsoft Excel
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "office",
   "application/vnd.ms-excel": "office",
-  // Microsoft PowerPoint
   "application/vnd.openxmlformats-officedocument.presentationml.presentation":
     "office",
   "application/vnd.ms-powerpoint": "office",
@@ -45,7 +41,6 @@ const formatFileTypeDisplay = (
   fileType: string | null | undefined,
   title: string,
 ): string => {
-  // First, try to read the explicit fileType (for new documents)
   if (fileType) {
     switch (fileType) {
       case "application/pdf":
@@ -66,18 +61,14 @@ const formatFileTypeDisplay = (
       case "text/plain":
         return "TXT";
       default: {
-        // If we don't recognize the type, try to split it
         const simpleType = fileType.split("/")[1];
         if (simpleType) return simpleType.toUpperCase();
       }
     }
   }
-
-  // If fileType is null (for old documents), fall back to the title
   const extension = title.split(".").pop();
   return extension ? extension.toUpperCase() : "N/A";
 };
-// ------------------------------
 
 import { SendDocumentModal } from "../components/SendDocumentModal";
 import { ReviewDocumentModal } from "../components/ReviewDocumentModal";
@@ -135,6 +126,7 @@ export const DocumentDetails: React.FC = () => {
     title: string;
     message: string;
   }>({ show: false, title: "", message: "" });
+
   const [confirmConfig, setConfirmConfig] = useState<{
     show: boolean;
     title: string;
@@ -146,11 +138,7 @@ export const DocumentDetails: React.FC = () => {
   const { data: urlData, isLoading: isLoadingUrl } =
     trpc.documents.getSignedDocumentUrl.useQuery(
       { documentId: id! },
-      {
-        enabled: !!id,
-        staleTime: 1000 * 60 * 4, // Cache URL for 4 minutes
-        refetchOnWindowFocus: false,
-      },
+      { enabled: !!id, staleTime: 1000 * 60 * 4, refetchOnWindowFocus: false },
     );
 
   const { data: distributions } =
@@ -159,16 +147,11 @@ export const DocumentDetails: React.FC = () => {
       { enabled: !!id },
     );
 
-  if (isLoadingDoc || isLoadingUrl) {
-    return null;
-  }
-
+  if (isLoadingDoc || isLoadingUrl) return null;
   if (!document || !urlData) {
     return <div className="container mt-4">Document not found.</div>;
   }
 
-  // This function is type-safe and correct
-  // Calculate Review permissions logic
   const isTransit =
     document.classification === "FOR_APPROVAL" &&
     document.recordStatus === "IN_TRANSIT";
@@ -193,60 +176,63 @@ export const DocumentDetails: React.FC = () => {
 
   const getPreviewDetails = (doc: Document) => {
     let previewType: string | null = null;
-
     if (doc.fileType) {
       previewType =
         SUPPORTED_PREVIEW_TYPES[
           doc.fileType as keyof typeof SUPPORTED_PREVIEW_TYPES
         ];
     }
-
     if (!previewType) {
       const title = doc.title.toLowerCase();
       if (title.endsWith(".pdf")) {
         previewType = "pdf";
-      } else if (
-        title.endsWith(".docx") ||
-        title.endsWith(".doc") ||
-        title.endsWith(".xlsx") ||
-        title.endsWith(".xls") ||
-        title.endsWith(".pptx") ||
-        title.endsWith(".ppt")
-      ) {
+      } else if (title.match(/\.(docx?|xlsx?|pptx?)$/)) {
         previewType = "office";
       }
     }
-
-    let url = null;
-    if (previewType === "pdf") {
-      url = urlData.signedUrl;
-    } else if (previewType === "office") {
-      url = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(
-        urlData.signedUrl,
-      )}`;
+    if (previewType === "pdf") return urlData.signedUrl;
+    if (previewType === "office") {
+      return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(urlData.signedUrl)}`;
     }
-    return url;
+    return null;
   };
 
   const previewUrl = getPreviewDetails(document);
 
+  // Helper: get step class/icon for transit routes
+  const getStepProps = (status: string) => {
+    switch (status) {
+      case "APPROVED":
+        return {
+          className: "routing-step-approved",
+          icon: "bi-check-circle-fill",
+        };
+      case "CURRENT":
+        return {
+          className: "routing-step-current",
+          icon: "bi-record-circle-fill",
+        };
+      case "REJECTED":
+        return { className: "routing-step-rejected", icon: "bi-x-circle-fill" };
+      default:
+        return { className: "routing-step-pending", icon: "bi-circle" };
+    }
+  };
+
   return (
     <div className="container mt-4">
+      {/* Legal hold banner */}
       {document.isUnderLegalHold && (
-        <div
-          className="alert alert-danger d-flex align-items-center mb-4 shadow-sm"
-          role="alert"
-        >
-          <i className="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+        <div className="legal-hold-banner" role="alert">
+          <i className="bi bi-shield-lock-fill"></i>
           <div>
-            <h5 className="alert-heading mb-1">Document is under Legal Hold</h5>
-            <p className="mb-0">
-              {document.legalHoldReason || "No reason provided."}
-            </p>
+            <h5>Document is under Legal Hold</h5>
+            <p>{document.legalHoldReason || "No reason provided."}</p>
           </div>
         </div>
       )}
 
+      {/* Page header */}
       <div className="page-header">
         <div>
           <h2 className="mb-2 d-flex align-items-center flex-wrap gap-2">
@@ -255,6 +241,8 @@ export const DocumentDetails: React.FC = () => {
               classification={document.classification as ClassificationType}
             />
           </h2>
+
+          {/* Received-from note */}
           {distributions &&
             distributions.some(
               (d: any) => d.recipientId === user?.id && d.status === "RECEIVED",
@@ -281,7 +269,7 @@ export const DocumentDetails: React.FC = () => {
                     on{" "}
                     {myDist?.receivedAt
                       ? format(
-                          new Date(myDist?.receivedAt as string),
+                          new Date(myDist.receivedAt as string),
                           "MMM d, yyyy h:mm a",
                         )
                       : "N/A"}
@@ -293,70 +281,86 @@ export const DocumentDetails: React.FC = () => {
         </div>
       </div>
 
+      {/* Two-column layout */}
       <div className="document-details-container">
+        {/* Left: document viewer */}
         <div className="document-viewer">
           {previewUrl ? (
             <iframe
               src={previewUrl}
               className="pdf-preview-iframe"
               title={document.title}
-            ></iframe>
+            />
           ) : (
             <div className="preview-fallback">
               <i className="bi bi-file-earmark-lock"></i>
               <p>Cannot preview this file type.</p>
-              <p className="text-muted">
-                This file must be downloaded to be viewed.
+              <p className="text-muted" style={{ fontSize: "12px" }}>
+                Download the file to view it.
               </p>
             </div>
           )}
         </div>
+
+        {/* Right: metadata sidebar */}
         <div className="document-metadata">
           <div className="document-table-card">
             <div className="card-body">
-              <h4 className="card-title">Details</h4>
-              <hr />
-              <p>
-                <strong>Location:</strong>{" "}
-                {document.uploadedBy.department?.campus?.name} /{" "}
-                {document.uploadedBy.department?.name}
-              </p>
-              <p>
-                <strong>Owner:</strong> {formatUserName(document.uploadedBy)}
-              </p>
-              <p>
-                <strong>Created:</strong>{" "}
-                {new Date(document.createdAt).toLocaleDateString()}
-              </p>
+              <h4 className="card-title">
+                <i className="bi bi-info-circle"></i>
+                Details
+              </h4>
+              <hr style={{ margin: "0 0 12px" }} />
 
-              <p>
-                <strong>Status:</strong>{" "}
+              <div className="detail-row">
+                <strong>Location</strong>
+                <span>
+                  {document.uploadedBy.department?.campus?.name} /{" "}
+                  {document.uploadedBy.department?.name}
+                </span>
+              </div>
+              <div className="detail-row">
+                <strong>Owner</strong>
+                <span>{formatUserName(document.uploadedBy)}</span>
+              </div>
+              <div className="detail-row">
+                <strong>Created</strong>
+                <span>{new Date(document.createdAt).toLocaleDateString()}</span>
+              </div>
+              <div className="detail-row">
+                <strong>Status</strong>
                 <span
-                  className={`badge ${document.recordStatus === "FINAL" ? "bg-success" : "bg-warning text-dark"}`}
+                  className={`badge ${
+                    document.recordStatus === "FINAL"
+                      ? "bg-success"
+                      : "bg-warning text-dark"
+                  }`}
                 >
                   {document.recordStatus}
                 </span>
-              </p>
+              </div>
 
               {document.isCheckedOut && (
-                <p>
-                  <strong>Checked Out By:</strong>{" "}
-                  <span className="text-danger">
+                <div className="detail-row">
+                  <strong>Checked Out</strong>
+                  <span className="text-danger" style={{ fontSize: "13px" }}>
                     <i className="bi bi-lock-fill me-1"></i>
                     {document.checkedOutBy
                       ? formatUserName(document.checkedOutBy)
                       : "Unknown User"}
                   </span>
-                </p>
+                </div>
               )}
 
-              {/* This now calls our new, safe function */}
-              <p>
-                <strong>File Type:</strong>{" "}
-                {formatFileTypeDisplay(document.fileType, document.title)}
-              </p>
+              <div className="detail-row">
+                <strong>File Type</strong>
+                <span>
+                  {formatFileTypeDisplay(document.fileType, document.title)}
+                </span>
+              </div>
 
-              <div className="d-grid gap-2 mt-4 mb-3">
+              {/* Action buttons */}
+              <div className="doc-actions-stack mt-3">
                 <a
                   href={urlData.signedUrl}
                   target="_blank"
@@ -377,7 +381,11 @@ export const DocumentDetails: React.FC = () => {
                 )}
                 {canManageDocuments && (
                   <button
-                    className={`btn ${document.isUnderLegalHold ? "btn-outline-danger" : "btn-outline-dark"}`}
+                    className={`btn ${
+                      document.isUnderLegalHold
+                        ? "btn-outline-danger"
+                        : "btn-outline-dark"
+                    }`}
                     onClick={() => {
                       if (document.isUnderLegalHold) {
                         setConfirmConfig({
@@ -420,9 +428,13 @@ export const DocumentDetails: React.FC = () => {
                 )}
               </div>
 
-              <hr />
-              <p>
-                <strong>Lifecycle:</strong>{" "}
+              {/* Lifecycle */}
+              <hr style={{ margin: "16px 0 12px" }} />
+              <div
+                className="detail-row"
+                style={{ border: "none", padding: "0" }}
+              >
+                <strong>Lifecycle</strong>
                 <span
                   className={`badge ${
                     document.lifecycleStatus === "Active"
@@ -440,35 +452,70 @@ export const DocumentDetails: React.FC = () => {
                 >
                   {document.lifecycleStatus}
                 </span>
-              </p>
+              </div>
 
+              {/* Disposition blocks */}
               {canManageDocuments && !document.isUnderLegalHold && (
                 <>
                   {document.lifecycleStatus === "Ready" && (
-                    <div className="mt-3">
-                      <div className="disposition-block disposition-ready">
-                        <div className="disposition-header">
-                          <i className="bi bi-clock-history disposition-icon"></i>
-                          <h6 className="disposition-title">
-                            Disposition Ready
-                          </h6>
-                        </div>
-                        <p className="disposition-text">
-                          This document has reached its retention limit.
-                          <br />
-                          Action:{" "}
-                          <strong>{document.dispositionActionSnapshot}</strong>
-                        </p>
+                    <div className="disposition-block disposition-ready mt-3">
+                      <div className="disposition-header">
+                        <i className="bi bi-clock-history disposition-icon"></i>
+                        <h6 className="disposition-title">Disposition Ready</h6>
+                      </div>
+                      <p className="disposition-text">
+                        Retention period elapsed. Action:{" "}
+                        <strong>{document.dispositionActionSnapshot}</strong>
+                      </p>
+                      <button
+                        className="btn btn-outline-secondary w-100 disposition-btn"
+                        onClick={() => {
+                          setConfirmConfig({
+                            show: true,
+                            title: "Request Disposition",
+                            message: "Request approval to execute disposition?",
+                            onConfirm: () => {
+                              requestDispositionMutation.mutate({
+                                documentId: document.id,
+                              });
+                              setConfirmConfig(
+                                (prev: typeof confirmConfig) => ({
+                                  ...prev,
+                                  show: false,
+                                }),
+                              );
+                            },
+                          });
+                        }}
+                        disabled={requestDispositionMutation.isPending}
+                      >
+                        {requestDispositionMutation.isPending
+                          ? "Requesting…"
+                          : "Request Disposition Approval"}
+                      </button>
+                    </div>
+                  )}
+
+                  {document.dispositionStatus === "PENDING_DISPOSITION" && (
+                    <div className="disposition-block disposition-pending mt-3">
+                      <div className="disposition-header">
+                        <i className="bi bi-hourglass-split disposition-icon"></i>
+                        <h6 className="disposition-title">Pending Approval</h6>
+                      </div>
+                      <p className="disposition-text">
+                        <strong>{document.dispositionActionSnapshot}</strong>{" "}
+                        disposition request is awaiting approval.
+                      </p>
+                      {user?.id === document.dispositionRequesterId ? (
                         <button
                           className="btn btn-outline-secondary w-100 disposition-btn"
                           onClick={() => {
                             setConfirmConfig({
                               show: true,
-                              title: "Request Disposition",
-                              message:
-                                "Request approval to execute disposition?",
+                              title: "Cancel Disposition Request",
+                              message: "Cancel disposition request?",
                               onConfirm: () => {
-                                requestDispositionMutation.mutate({
+                                rejectDispositionMutation.mutate({
                                   documentId: document.id,
                                 });
                                 setConfirmConfig(
@@ -480,39 +527,46 @@ export const DocumentDetails: React.FC = () => {
                               },
                             });
                           }}
-                          disabled={requestDispositionMutation.isPending}
+                          disabled={rejectDispositionMutation.isPending}
                         >
-                          {requestDispositionMutation.isPending
-                            ? "Requesting..."
-                            : "Request Disposition Approval"}
+                          Cancel Request
                         </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {document.dispositionStatus === "PENDING_DISPOSITION" && (
-                    <div className="mt-3">
-                      <div className="disposition-block disposition-pending">
-                        <div className="disposition-header">
-                          <i className="bi bi-hourglass-split disposition-icon text-primary"></i>
-                          <h6 className="disposition-title">
-                            Disposition Pending Approval
-                          </h6>
-                        </div>
-                        <p className="disposition-text">
-                          A request to{" "}
-                          <strong>{document.dispositionActionSnapshot}</strong>{" "}
-                          this document is pending.
-                        </p>
-
-                        {user?.id === document.dispositionRequesterId ? (
+                      ) : (
+                        <div className="d-flex gap-2">
                           <button
-                            className="btn btn-outline-secondary w-100 disposition-btn"
+                            className="btn btn-outline-primary flex-grow-1 disposition-btn"
                             onClick={() => {
                               setConfirmConfig({
                                 show: true,
-                                title: "Cancel Disposition Request",
-                                message: "Cancel disposition request?",
+                                title: "Execute Disposition",
+                                message:
+                                  "Approve and execute? This is irreversible.",
+                                onConfirm: () => {
+                                  approveDispositionMutation.mutate({
+                                    documentId: document.id,
+                                  });
+                                  setConfirmConfig(
+                                    (prev: typeof confirmConfig) => ({
+                                      ...prev,
+                                      show: false,
+                                    }),
+                                  );
+                                },
+                              });
+                            }}
+                            disabled={approveDispositionMutation.isPending}
+                          >
+                            {approveDispositionMutation.isPending
+                              ? "Executing…"
+                              : "Approve & Execute"}
+                          </button>
+                          <button
+                            className="btn btn-outline-danger flex-grow-1 disposition-btn"
+                            onClick={() => {
+                              setConfirmConfig({
+                                show: true,
+                                title: "Reject Disposition",
+                                message: "Reject disposition request?",
                                 onConfirm: () => {
                                   rejectDispositionMutation.mutate({
                                     documentId: document.id,
@@ -528,64 +582,10 @@ export const DocumentDetails: React.FC = () => {
                             }}
                             disabled={rejectDispositionMutation.isPending}
                           >
-                            Cancel Request
+                            Reject
                           </button>
-                        ) : (
-                          <div className="d-flex gap-2">
-                            <button
-                              className="btn btn-outline-primary flex-grow-1 disposition-btn"
-                              onClick={() => {
-                                setConfirmConfig({
-                                  show: true,
-                                  title: "Execute Disposition",
-                                  message:
-                                    "Approve and execute disposition? This action is irreversible.",
-                                  onConfirm: () => {
-                                    approveDispositionMutation.mutate({
-                                      documentId: document.id,
-                                    });
-                                    setConfirmConfig(
-                                      (prev: typeof confirmConfig) => ({
-                                        ...prev,
-                                        show: false,
-                                      }),
-                                    );
-                                  },
-                                });
-                              }}
-                              disabled={approveDispositionMutation.isPending}
-                            >
-                              {approveDispositionMutation.isPending
-                                ? "Executing..."
-                                : "Approve & Execute"}
-                            </button>
-                            <button
-                              className="btn btn-outline-danger flex-grow-1 disposition-btn"
-                              onClick={() => {
-                                setConfirmConfig({
-                                  show: true,
-                                  title: "Reject Disposition",
-                                  message: "Reject disposition request?",
-                                  onConfirm: () => {
-                                    rejectDispositionMutation.mutate({
-                                      documentId: document.id,
-                                    });
-                                    setConfirmConfig(
-                                      (prev: typeof confirmConfig) => ({
-                                        ...prev,
-                                        show: false,
-                                      }),
-                                    );
-                                  },
-                                });
-                              }}
-                              disabled={rejectDispositionMutation.isPending}
-                            >
-                              Reject
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </>
@@ -595,19 +595,20 @@ export const DocumentDetails: React.FC = () => {
         </div>
       </div>
 
-      {/* Unified Review Details Section (Full Width, Above Distributions) */}
+      {/* ── Review Details (full-width) ── */}
       {(document.status ||
         (document.transitRoutes && document.transitRoutes.length > 0) ||
         (document.remarks && document.remarks.length > 0)) && (
         <div className="document-table-card mt-4 mb-4">
           <div className="card-body">
-            <h5 className="card-title d-flex justify-content-between align-items-center">
-              <div>
-                <i className="bi bi-clipboard-check me-2"></i>
+            {/* Section header */}
+            <div className="review-section-header">
+              <h5 className="card-title mb-0">
+                <i className="bi bi-clipboard-check"></i>
                 Review Details
-              </div>
-              <div>
-                <span className="text-muted fw-bold me-2 fs-6">Status:</span>
+              </h5>
+              <div className="review-section-status">
+                <span className="review-status-label">Status</span>
                 <span
                   className={`badge ${
                     document.status === "Approved" ||
@@ -620,73 +621,45 @@ export const DocumentDetails: React.FC = () => {
                           ? "bg-danger"
                           : "bg-secondary"
                   }`}
-                  style={{ fontSize: "0.85rem", padding: "0.5em 0.8em" }}
+                  style={{ fontSize: "11px", padding: "4px 10px" }}
                 >
                   {document.status
                     ? document.status.toUpperCase()
                     : "IN PROGRESS"}
                 </span>
               </div>
-            </h5>
-            <hr />
+            </div>
 
-            {/* A. Horizontal Routing Progress visualization */}
+            <hr style={{ margin: "0 0 20px" }} />
+
+            {/* Routing progress */}
             {document.transitRoutes && document.transitRoutes.length > 0 && (
-              <div className="mb-5 mt-4">
-                <span className="text-muted fw-bold d-block mb-3 fs-6">
-                  Routing Progress
-                </span>
-                <div
-                  className="d-flex align-items-center justify-content-center flex-wrap w-100"
-                  style={{ rowGap: "1rem" }}
-                >
+              <div className="routing-progress-wrap">
+                <p className="routing-progress-label">
+                  <i className="bi bi-signpost-split"></i>
+                  Approval Route
+                </p>
+                <div className="routing-steps">
                   {document.transitRoutes.map((route: any, index: number) => {
-                    let badgeClass = "bg-secondary text-light";
-                    let iconClass = "bi-circle";
-                    if (route.status === "APPROVED") {
-                      badgeClass = "bg-success text-light";
-                      iconClass = "bi-check-circle-fill";
-                    } else if (route.status === "CURRENT") {
-                      badgeClass = "bg-primary text-light";
-                      iconClass = "bi-record-circle-fill";
-                    } else if (route.status === "REJECTED") {
-                      badgeClass = "bg-danger text-light";
-                      iconClass = "bi-x-circle-fill";
-                    }
-
+                    const { className, icon } = getStepProps(route.status);
                     return (
                       <React.Fragment key={route.id}>
-                        <div
-                          className="d-flex flex-column align-items-center"
-                          style={{ maxWidth: "120px", textAlign: "center" }}
-                        >
-                          <div
-                            className={`badge ${badgeClass} rounded-pill p-2 mb-1 shadow-sm`}
-                          >
-                            <i className={`bi ${iconClass} fs-5`}></i>
+                        <div className={`routing-step ${className}`}>
+                          <div className="routing-step-icon">
+                            <i className={`bi ${icon}`}></i>
                           </div>
-                          <span
-                            style={{
-                              fontSize: "0.75rem",
-                              fontWeight:
-                                route.status === "CURRENT" ? "bold" : "normal",
-                            }}
-                          >
+                          <span className="routing-step-name">
                             {route.department?.name || "Unknown Office"}
                           </span>
                         </div>
                         {index < document.transitRoutes.length - 1 && (
                           <div
-                            className="flex-grow-1 mx-3"
-                            style={{
-                              height: "2px",
-                              backgroundColor:
-                                route.status === "APPROVED"
-                                  ? "var(--bs-success)"
-                                  : "var(--bs-gray-300)",
-                              minWidth: "40px",
-                            }}
-                          ></div>
+                            className={`routing-connector ${
+                              route.status === "APPROVED"
+                                ? "routing-connector-done"
+                                : ""
+                            }`}
+                          />
                         )}
                       </React.Fragment>
                     );
@@ -695,82 +668,84 @@ export const DocumentDetails: React.FC = () => {
               </div>
             )}
 
-            {/* B. Review History Table */}
+            {/* Review history table */}
             {document.remarks && document.remarks.length > 0 && (
-              <>
-                <div className="table-responsive mt-3">
-                  <table className="table table-hover align-middle mb-0">
-                    <thead>
-                      <tr>
-                        <th>Reviewer</th>
-                        <th>Date & Time</th>
-                        <th>Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                      {document.remarks.map((remark: any) => (
-                        <tr key={remark.id}>
-                          <td>
-                            <strong>{formatUserName(remark.author)}</strong>
-                            <div
-                              className="text-muted mt-1 d-flex flex-wrap align-items-center gap-1"
-                              style={{ fontSize: "0.8rem" }}
-                            >
-                              {remark.author.roles &&
-                              remark.author.roles.length > 0 ? (
-                                remark.author.roles.map((r: any) => (
+              <div className="table-responsive mt-2">
+                <table className="table table-hover align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Reviewer</th>
+                      <th>Date &amp; Time</th>
+                      <th>Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {document.remarks.map((remark: any) => (
+                      <tr key={remark.id}>
+                        <td>
+                          <div className="d-flex align-items-center gap-2">
+                            <div className="reviewer-avatar">
+                              {remark.author?.firstName?.charAt(0) || "?"}
+                            </div>
+                            <div>
+                              <p
+                                className="mb-0 fw-semibold"
+                                style={{ fontSize: "13px" }}
+                              >
+                                {formatUserName(remark.author)}
+                              </p>
+                              <div
+                                className="d-flex flex-wrap align-items-center gap-1 mt-1"
+                                style={{ fontSize: "11px" }}
+                              >
+                                {remark.author.roles?.map((r: any) => (
                                   <RolePill
                                     key={r.id || r.name}
                                     roleName={r.name}
                                   />
-                                ))
-                              ) : (
-                                <span className="badge bg-secondary">User</span>
-                              )}
-                              {remark.author.department?.name && (
-                                <span
-                                  className="ms-1 border-start ps-2 border-secondary fw-bold"
-                                  title={remark.author.department.name}
-                                >
-                                  {getDepartmentAcronym(
-                                    remark.author.department.name,
-                                  )}
-                                </span>
-                              )}
+                                ))}
+                                {remark.author.department?.name && (
+                                  <span
+                                    className="text-muted ms-1 border-start ps-2"
+                                    title={remark.author.department.name}
+                                    style={{ fontSize: "11px" }}
+                                  >
+                                    {getDepartmentAcronym(
+                                      remark.author.department.name,
+                                    )}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          </td>
-                          <td style={{ whiteSpace: "nowrap" }}>
-                            <div>
-                              {new Date(remark.createdAt).toLocaleDateString()}
-                            </div>
-                            <small className="text-muted">
-                              {new Date(remark.createdAt).toLocaleTimeString(
-                                [],
-                                { hour: "2-digit", minute: "2-digit" },
-                              )}
-                            </small>
-                          </td>
-                          <td>
-                            <div
-                              className="p-2 bg-light rounded border"
-                              style={{
-                                fontSize: "0.9rem",
-                                whiteSpace: "pre-wrap",
-                              }}
-                            >
-                              {remark.message}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
+                          </div>
+                        </td>
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          <p className="mb-0" style={{ fontSize: "13px" }}>
+                            {new Date(remark.createdAt).toLocaleDateString()}
+                          </p>
+                          <p
+                            className="mb-0 text-muted"
+                            style={{ fontSize: "11px" }}
+                          >
+                            {new Date(remark.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </td>
+                        <td>
+                          <p className="review-history-remark mb-0">
+                            {remark.message}
+                          </p>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
 
-            {/* Resubmit Action for the Sender */}
+            {/* Resubmit action */}
             {document.status ===
               "Returned for Corrections/Revision/Clarification" &&
               (document.uploadedById === user?.id ||
@@ -778,14 +753,11 @@ export const DocumentDetails: React.FC = () => {
                 <div className="d-flex justify-content-end mt-4">
                   <button
                     className="btn btn-outline-primary"
-                    style={{
-                      fontSize: "0.85rem",
-                      padding: "0.4rem 0.8rem",
-                    }}
+                    style={{ fontSize: "13px", padding: "6px 14px" }}
                     onClick={() => setShowResubmitModal(true)}
                   >
-                    <i className="bi bi-arrow-repeat me-1"></i> Resubmit for
-                    Review
+                    <i className="bi bi-arrow-repeat me-1"></i>
+                    Resubmit for Review
                   </button>
                 </div>
               )}
@@ -793,7 +765,7 @@ export const DocumentDetails: React.FC = () => {
         </div>
       )}
 
-      {/* Distributions Section */}
+      {/* ── Distributions ── */}
       {(user?.id === document.uploadedById ||
         user?.id === document.originalSenderId ||
         canManageDocuments) &&
@@ -801,11 +773,11 @@ export const DocumentDetails: React.FC = () => {
         distributions.length > 0 && (
           <div className="document-table-card mt-4 mb-4">
             <div className="card-body">
-              <h5 className="card-title d-flex align-items-center">
-                <i className="bi bi-send-check me-2"></i>
+              <h5 className="card-title">
+                <i className="bi bi-send-check"></i>
                 Distributions
               </h5>
-              <hr />
+              <hr style={{ margin: "0 0 16px" }} />
               <div className="table-responsive">
                 <table className="table table-hover align-middle mb-0">
                   <thead>
@@ -820,19 +792,25 @@ export const DocumentDetails: React.FC = () => {
                     {distributions.map((dist: any) => (
                       <tr key={dist.id}>
                         <td>
-                          <strong>
+                          <strong style={{ fontSize: "13px" }}>
                             {dist.recipient.firstName} {dist.recipient.lastName}
                           </strong>
                         </td>
-                        <td>{dist.recipient.department?.name || "N/A"}</td>
+                        <td style={{ fontSize: "13px" }}>
+                          {dist.recipient.department?.name || "N/A"}
+                        </td>
                         <td>
                           <span
-                            className={`badge ${dist.status === "RECEIVED" ? "bg-success" : "bg-warning text-dark"}`}
+                            className={`badge ${
+                              dist.status === "RECEIVED"
+                                ? "bg-success"
+                                : "bg-warning text-dark"
+                            }`}
                           >
                             {dist.status}
                           </span>
                         </td>
-                        <td>
+                        <td style={{ fontSize: "13px" }}>
                           {dist.receivedAt ? (
                             format(
                               new Date(dist.receivedAt as string),
@@ -853,14 +831,14 @@ export const DocumentDetails: React.FC = () => {
           </div>
         )}
 
-      {/* Version History Section Full Width */}
+      {/* ── Version History ── */}
       <div className="document-table-card mt-4 mb-4">
         <div className="card-body">
-          <h5 className="card-title d-flex align-items-center">
-            <i className="bi bi-clock-history me-2"></i>
+          <h5 className="card-title">
+            <i className="bi bi-clock-history"></i>
             Version History
           </h5>
-          <hr />
+          <hr style={{ margin: "0 0 16px" }} />
           {document.versions && document.versions.length > 0 ? (
             <div className="table-responsive">
               <table className="table table-hover align-middle mb-0">
@@ -874,17 +852,22 @@ export const DocumentDetails: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                   {document.versions.map((v: any) => (
                     <tr key={v.id}>
                       <td>
-                        <span className="badge bg-secondary">
+                        <span className="version-badge">
                           v{v.versionNumber}
                         </span>
                       </td>
-                      <td>{new Date(v.createdAt).toLocaleDateString()}</td>
-                      <td>{formatUserName(v.uploadedBy)}</td>
-                      <td>{formatFileTypeDisplay(v.fileType, "File")}</td>
+                      <td style={{ fontSize: "13px" }}>
+                        {new Date(v.createdAt).toLocaleDateString()}
+                      </td>
+                      <td style={{ fontSize: "13px" }}>
+                        {formatUserName(v.uploadedBy)}
+                      </td>
+                      <td style={{ fontSize: "13px" }}>
+                        {formatFileTypeDisplay(v.fileType, "File")}
+                      </td>
                       <td className="text-end">
                         <button
                           className="btn btn-sm btn-outline-primary"
@@ -902,8 +885,7 @@ export const DocumentDetails: React.FC = () => {
                                 "_blank",
                                 "noopener,noreferrer",
                               );
-                            } catch (err) {
-                              console.error("Failed to open version", err);
+                            } catch {
                               setAlertConfig({
                                 show: true,
                                 title: "Error",
@@ -912,7 +894,6 @@ export const DocumentDetails: React.FC = () => {
                               });
                             }
                           }}
-                          title="Download / View Version"
                         >
                           <i className="bi bi-download me-1"></i> Download
                         </button>
@@ -923,13 +904,14 @@ export const DocumentDetails: React.FC = () => {
               </table>
             </div>
           ) : (
-            <p className="text-muted mb-0" style={{ fontSize: "0.85rem" }}>
+            <p className="text-muted mb-0" style={{ fontSize: "13px" }}>
               No version history available.
             </p>
           )}
         </div>
       </div>
 
+      {/* Modals */}
       {showResubmitModal && (
         <SendDocumentModal
           show={showResubmitModal}

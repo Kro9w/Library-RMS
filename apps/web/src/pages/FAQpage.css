@@ -1,8 +1,7 @@
-/* apps/web/src/pages/FAQPage.css */
+/* ── FAQ Page ── */
 
-/* ── Page shell ── */
 .faq-page {
-  max-width: 1100px;
+  max-width: 1060px;
 }
 
 .faq-page-header {
@@ -147,7 +146,7 @@ body[data-bs-theme="dark"] .faq-sidebar-item.active .faq-sidebar-count {
 
 .faq-search-input {
   width: 100%;
-  height: 38px;
+  height: 40px;
   padding: 0 36px 0 36px;
   font-size: 13px;
   font-family: var(--font-sans);
@@ -197,27 +196,25 @@ body[data-bs-theme="dark"] .faq-sidebar-item.active .faq-sidebar-count {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   color: var(--text-muted);
 }
 
 .faq-category-heading i {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--brand);
+  opacity: 0.7;
 }
 
-/* ── Accordion ── */
+/* ── Accordion card ── */
 .faq-accordion {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
   background-color: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
@@ -268,16 +265,30 @@ body[data-bs-theme="dark"] .faq-accordion-item.open {
 }
 
 .faq-accordion-chevron {
-  font-size: 16px;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
   color: var(--text-muted);
   flex-shrink: 0;
-  transition: color var(--transition-fast);
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .faq-accordion-item.open .faq-accordion-chevron {
+  background-color: var(--brand-subtle);
+  border-color: var(--brand-muted);
   color: var(--brand);
 }
 
+/* Body */
 .faq-accordion-body {
   padding: 0 20px 20px;
   font-size: 13px;
@@ -313,7 +324,7 @@ body[data-bs-theme="dark"] .faq-accordion-item.open {
 .faq-accordion-body code {
   font-family: var(--font-mono);
   font-size: 12px;
-  background-color: var(--bg-muted);
+  background-color: var(--bg-subtle);
   border: 1px solid var(--border);
   padding: 1px 5px;
   border-radius: var(--radius-xs);
@@ -413,11 +424,11 @@ body[data-bs-theme="dark"] .faq-badge-warning {
 .faq-role-table {
   display: flex;
   flex-direction: column;
-  gap: 0;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   margin: 10px 0;
+  background-color: var(--bg-surface);
 }
 
 .faq-role-row {
@@ -484,7 +495,6 @@ body[data-bs-theme="dark"] .faq-badge-warning {
   color: #166534;
   border-color: #86efac;
 }
-
 body[data-bs-theme="dark"] .faq-class-institutional {
   background-color: #052e16;
   color: #4ade80;
@@ -496,7 +506,6 @@ body[data-bs-theme="dark"] .faq-class-institutional {
   color: #1e40af;
   border-color: #93c5fd;
 }
-
 body[data-bs-theme="dark"] .faq-class-campus {
   background-color: #0c1a3d;
   color: #60a5fa;
@@ -508,7 +517,6 @@ body[data-bs-theme="dark"] .faq-class-campus {
   color: #854d0e;
   border-color: #fde047;
 }
-
 body[data-bs-theme="dark"] .faq-class-internal {
   background-color: #1a1300;
   color: #fbbf24;
@@ -520,7 +528,6 @@ body[data-bs-theme="dark"] .faq-class-internal {
   color: #9f1239;
   border-color: #fda4af;
 }
-
 body[data-bs-theme="dark"] .faq-class-confidential {
   background-color: #1a0a0f;
   color: #fb7185;
@@ -570,7 +577,7 @@ body[data-bs-theme="dark"] .faq-class-confidential {
 
 .faq-empty i {
   font-size: 28px;
-  opacity: 0.3;
+  opacity: 0.25;
 }
 
 .faq-empty p {
@@ -594,5 +601,6 @@ body[data-bs-theme="dark"] .faq-class-confidential {
 .faq-footer-note i {
   font-size: 13px;
   color: var(--brand);
+  opacity: 0.7;
   flex-shrink: 0;
 }
