@@ -17,7 +17,7 @@
   top: 0;
   left: 0;
   bottom: 0;
-  z-index: 100;
+  z-index: 1;
   display: flex; /* Side-by-side layout: Body + Tabs */
   align-items: flex-start; /* Align tabs to top */
   transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);

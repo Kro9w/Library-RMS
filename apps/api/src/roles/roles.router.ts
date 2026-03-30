@@ -43,7 +43,8 @@ export class RolesRouter {
 
           let targetDeptId = ctx.dbUser.departmentId;
 
-          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+          const canManageInstitution =
+            ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (canManageInstitution && input.departmentId) {
             targetDeptId = input.departmentId;
           }
@@ -97,7 +98,8 @@ export class RolesRouter {
             });
           }
 
-          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+          const canManageInstitution =
+            ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (
             !canManageInstitution &&
             existingRole.departmentId !== ctx.dbUser.departmentId
@@ -158,7 +160,8 @@ export class RolesRouter {
             });
           }
 
-          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+          const canManageInstitution =
+            ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (
             !canManageInstitution &&
             role.departmentId !== ctx.dbUser.departmentId
@@ -187,7 +190,8 @@ export class RolesRouter {
             });
           }
 
-          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+          const canManageInstitution =
+            ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (
             !canManageInstitution &&
             role.departmentId !== ctx.dbUser.departmentId
@@ -273,7 +277,8 @@ export class RolesRouter {
             });
           }
 
-          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+          const canManageInstitution =
+            ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (
             !canManageInstitution &&
             targetUser.departmentId !== ctx.dbUser.departmentId

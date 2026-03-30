@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from "react";
 import { trpc } from "../trpc";
 import { SendDocumentModal } from "./SendDocumentModal";
 import { Modal } from "bootstrap";
-import { formatUserName } from "../utils/user";
 
 interface ReviewDocumentModalProps {
   show: boolean;

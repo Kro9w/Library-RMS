@@ -9,7 +9,7 @@ type Props = {
 export function UserAvatar({ user, size = 48 }: Props) {
   const displayName = formatUserName(user);
   const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-    displayName
+    displayName,
   )}&background=ED9B40&color=fff&size=${size * 2}`; // Request higher-res for retina
 
   return (

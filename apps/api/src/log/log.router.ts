@@ -19,7 +19,8 @@ export class LogRouter {
           }),
         )
         .query(async ({ ctx, input }) => {
-          const { page, limit, userId, actionQuery, startDate, endDate } = input;
+          const { page, limit, userId, actionQuery, startDate, endDate } =
+            input;
           const institutionId = ctx.dbUser.institutionId as string;
           const departmentId = ctx.dbUser.departmentId;
 
@@ -79,12 +80,23 @@ export class LogRouter {
         )
         .query(async ({ ctx, input }) => {
           // Check for super admin privileges
-          const hasMasterAccess = ctx.dbUser.roles.some((r) => r.canManageInstitution);
+          const hasMasterAccess = ctx.dbUser.roles.some(
+            (r) => r.canManageInstitution,
+          );
           if (!hasMasterAccess) {
             throw new Error('Unauthorized');
           }
 
-          const { page, limit, campusId, departmentId, userId, actionQuery, startDate, endDate } = input;
+          const {
+            page,
+            limit,
+            campusId,
+            departmentId,
+            userId,
+            actionQuery,
+            startDate,
+            endDate,
+          } = input;
           const institutionId = ctx.dbUser.institutionId as string;
 
           const whereClause: any = {

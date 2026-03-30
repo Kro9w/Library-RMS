@@ -3,7 +3,7 @@ import { useState } from "react";
 
 export function SystemSettings() {
   const [dbStatus, setDbStatus] = useState<"checked" | "unchecked" | "error">(
-    "unchecked"
+    "unchecked",
   );
 
   const checkDbHealth = () => {

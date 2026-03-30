@@ -93,6 +93,14 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
     isCurrentTransitOffice &&
     currentUser?.roles?.some((r: any) => r.level === 1);
 
+  // Allow originators to send it to the first office
+  const isOriginatorSendingInTransit =
+    isTransit &&
+    doc.uploadedById === currentUser?.id &&
+    (!doc.status ||
+      doc.status === "Returned for Corrections/Revision/Clarification" ||
+      doc.status === "Disapproved");
+
   const hasAccess = isUploader(doc.uploadedById);
 
   if (!hasAccess) {
@@ -126,16 +134,18 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
               zIndex: 1050, // Higher than most modals/tables
             }}
           >
-            <button
-              className="dropdown-item"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsOpen(false);
-                onSendClick(doc);
-              }}
-            >
-              <i className="bi bi-send text-primary"></i> Send
-            </button>
+            {(!isTransit || isOriginatorSendingInTransit) && (
+              <button
+                className="dropdown-item"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsOpen(false);
+                  onSendClick(doc);
+                }}
+              >
+                <i className="bi bi-send text-primary"></i> Send
+              </button>
+            )}
             {((canManageDocuments && hasReviewTag) ||
               hasTransitReviewAccess) && (
               <button

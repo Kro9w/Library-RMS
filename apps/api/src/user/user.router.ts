@@ -147,10 +147,13 @@ export class UserRouter {
             });
           }
 
-          let targetRoleRecord: { id: string, name: string } | null = null;
+          let targetRoleRecord: { id: string; name: string } | null = null;
 
           // 1. Check for specific email to get University President role
-          if (ctx.dbUser.email === 'jakecalantas.blis@gmail.com' && dept.name === 'Office of the University President') {
+          if (
+            ctx.dbUser.email === 'jakecalantas.blis@gmail.com' &&
+            dept.name === 'Office of the University President'
+          ) {
             const presidentRole = await this.prisma.role.findFirst({
               where: {
                 departmentId: input.departmentId,
@@ -164,7 +167,10 @@ export class UserRouter {
 
           // 2. If not president, check if this department has a level 1 role and if it's currently vacant.
           // IMPORTANT: Do NOT auto-assign the University President role to a random first user.
-          if (!targetRoleRecord && dept.name !== 'Office of the University President') {
+          if (
+            !targetRoleRecord &&
+            dept.name !== 'Office of the University President'
+          ) {
             const level1Role = await this.prisma.role.findFirst({
               where: {
                 departmentId: input.departmentId,
@@ -277,7 +283,7 @@ export class UserRouter {
             });
           }
 
-          let targetRoleRecord: { id: string, name: string } | null = null;
+          let targetRoleRecord: { id: string; name: string } | null = null;
 
           // For dynamically created departments, it's very likely they don't have a level 1 role seeded,
           // but we still apply the same logic for consistency, or just fallback to 'User'.
@@ -396,7 +402,8 @@ export class UserRouter {
       }),
 
       getUsersWithRoles: protectedProcedure.query(async ({ ctx }) => {
-        const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+        const canManageInstitution =
+          ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
 
         if (canManageInstitution) {
           return ctx.prisma.user.findMany({
@@ -499,7 +506,8 @@ export class UserRouter {
       updateCampus: protectedProcedure
         .input(z.object({ id: z.string(), name: z.string().min(1) }))
         .mutation(async ({ ctx, input }) => {
-          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+          const canManageInstitution =
+            ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (!canManageInstitution) {
             throw new TRPCError({
               code: 'FORBIDDEN',
@@ -527,7 +535,8 @@ export class UserRouter {
       deleteCampus: protectedProcedure
         .input(z.object({ id: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+          const canManageInstitution =
+            ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (!canManageInstitution) {
             throw new TRPCError({
               code: 'FORBIDDEN',
@@ -619,7 +628,8 @@ export class UserRouter {
       deleteDepartment: protectedProcedure
         .input(z.object({ id: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+          const canManageInstitution =
+            ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (!canManageInstitution) {
             throw new TRPCError({
               code: 'FORBIDDEN',
@@ -654,7 +664,8 @@ export class UserRouter {
           }),
         )
         .mutation(async ({ ctx, input }) => {
-          const canManageInstitution = ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
+          const canManageInstitution =
+            ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (!canManageInstitution) {
             throw new TRPCError({
               code: 'FORBIDDEN',

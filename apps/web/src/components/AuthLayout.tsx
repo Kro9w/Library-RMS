@@ -1,9 +1,6 @@
 // apps/web/src/components/AuthLayout.tsx
-import React from 'react';
-// --- 1. THIS IS THE FIX ---
-// Import our new, single, theme-aware CSS file
-import '../pages/Auth.css'; 
-// ------------------------
+import React from "react";
+import "../pages/Auth.css";
 
 type AuthLayoutProps = {
   children: React.ReactNode;

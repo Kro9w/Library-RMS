@@ -64,7 +64,7 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({
     }
     onClose();
     if (notif.documentId) {
-      if (notif.title.toLowerCase().includes("received")) {
+      if (notif.title.toLowerCase() === "document received") {
         // Redirect to dashboard with query param to open receive modal
         navigate(`/?openReceiveModal=true`);
       } else {
@@ -116,7 +116,7 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({
             >
               {!notif.isRead && <span className="notif-dot" />}
               <div className="notif-item-icon-wrapper">
-                {notif.title.toLowerCase().includes("received") ? (
+                {notif.title.toLowerCase() === "document received" ? (
                   <i className="bi bi-file-earmark-arrow-down notif-item-icon"></i>
                 ) : notif.title.toLowerCase().includes("review requested") ? (
                   <i className="bi bi-eye notif-item-icon"></i>

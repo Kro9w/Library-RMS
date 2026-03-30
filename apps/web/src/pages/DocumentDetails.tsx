@@ -1,6 +1,6 @@
 // apps/web/src/pages/DocumentDetails.tsx
 import React, { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { trpc } from "../trpc";
 import { AlertModal } from "../components/AlertModal";
 import { ConfirmModal } from "../components/ConfirmModal";
@@ -87,7 +87,6 @@ import { format } from "date-fns";
 
 export const DocumentDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [showResubmitModal, setShowResubmitModal] = React.useState(false);
   const [showReviewModal, setShowReviewModal] = React.useState(false);
 
