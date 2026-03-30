@@ -65,3 +65,15 @@ body[data-bs-theme="dark"] .classification-badge-restricted {
   color: #fb7185;
   border-color: #881337;
 }
+
+/* FOR_APPROVAL — purple family */
+.classification-badge-approval {
+  background-color: #faf5ff;
+  color: #6b21a8;
+  border-color: #d8b4fe;
+}
+body[data-bs-theme="dark"] .classification-badge-approval {
+  background-color: #1f102a;
+  color: #c084fc;
+  border-color: #581c87;
+}

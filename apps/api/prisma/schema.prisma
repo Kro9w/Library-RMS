@@ -18,6 +18,7 @@ enum Classification {
   CAMPUS
   INTERNAL
   CONFIDENTIAL
+  FOR_APPROVAL
 }
 
 enum PermissionLevel {
@@ -28,11 +29,19 @@ enum PermissionLevel {
 enum RecordStatus {
   DRAFT
   FINAL
+  IN_TRANSIT
 }
 
 enum DistributionStatus {
   PENDING
   RECEIVED
+}
+
+enum TransitStatus {
+  PENDING
+  CURRENT
+  APPROVED
+  REJECTED
 }
 
 // apps/api/prisma/schema.prisma
@@ -67,6 +76,7 @@ model User {
 
   sentDistributions     DocumentDistribution[] @relation("DistributionSender")
   receivedDistributions DocumentDistribution[] @relation("DistributionRecipient")
+  approvedTransitRoutes DocumentTransitRoute[] @relation("RouteApprovedBy")
 }
 
 model Notification {
@@ -131,6 +141,7 @@ model Department {
   roles            Role[]
   documents        Document[]
   documentAccesses DocumentAccess[]
+  transitRoutes    DocumentTransitRoute[]
   logs             Log[]
 }
 
@@ -219,6 +230,7 @@ model Document {
 
   documentAccesses DocumentAccess[]
   distributions    DocumentDistribution[]
+  transitRoutes    DocumentTransitRoute[]
 
   @@index([institutionId])
   @@index([uploadedById])
@@ -317,4 +329,27 @@ model DocumentDistribution {
   @@index([documentId])
   @@index([senderId])
   @@index([recipientId])
+}
+
+model DocumentTransitRoute {
+  id           String        @id @default(cuid())
+  document     Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId   String
+
+  department   Department    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  departmentId String
+
+  sequenceOrder Int
+  status        TransitStatus @default(PENDING)
+
+  approvedBy   User?         @relation("RouteApprovedBy", fields: [approvedById], references: [id])
+  approvedById String?
+
+  approvedAt   DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([documentId])
+  @@index([departmentId])
+  @@index([approvedById])
 }

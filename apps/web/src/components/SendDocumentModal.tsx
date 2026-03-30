@@ -3,6 +3,7 @@ import { trpc } from "../trpc";
 import { Modal } from "bootstrap";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 import { formatUserName } from "../utils/user";
+import "./SendDocumentModal.css";
 
 type User = AppRouterOutputs["documents"]["getAppUsers"][0];
 type Tag = AppRouterOutputs["documents"]["getTags"][0];
@@ -67,6 +68,28 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
     { id: documentId },
     { enabled: !!documentId && show },
   );
+
+  // Figure out prescribed routing
+  const isTransitDocument =
+    document?.recordStatus === "IN_TRANSIT" &&
+    document?.classification === "FOR_APPROVAL";
+  const nextRouteStop = useMemo(() => {
+    if (!isTransitDocument || !document?.transitRoutes) return null;
+    // If we're an active office (the current stop), we're likely sending it to the NEXT pending office.
+    // However, if it was just uploaded or transferred and the CURRENT office hasn't received it yet,
+    // the system might still consider the "CURRENT" office as the primary target.
+    // The most reliable check is:
+    // 1. Is there a PENDING office? Send to the first one.
+    // 2. If no PENDING offices, check if CURRENT hasn't received it (e.g. initial upload).
+    // Let's target the very first stop that hasn't been approved yet.
+    return (
+      document.transitRoutes.find((r: any) => r.status === "PENDING") ||
+      document.transitRoutes.find((r: any) => r.status === "CURRENT") ||
+      null
+    );
+  }, [document, isTransitDocument]);
+
+  const hasPrescribedRoute = !!nextRouteStop;
   const { data: fetchedGlobalTags } = trpc.documents.getGlobalTags.useQuery(
     undefined,
     { enabled: !propGlobalTags && show },
@@ -160,42 +183,73 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
     }
     return () => {
       modalInstanceRef.current?.dispose();
+      modalInstanceRef.current = null;
     };
-  }, []);
+  }, [onClose]);
 
   useEffect(() => {
-    if (show) {
-      modalInstanceRef.current?.show();
-    } else {
-      modalInstanceRef.current?.hide();
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    if (show && modalInstanceRef.current) {
+      // Ensure React has painted the modal content before showing it
+      timeoutId = setTimeout(() => {
+        modalInstanceRef.current?.show();
+      }, 50);
+    } else if (!show && modalInstanceRef.current) {
+      modalInstanceRef.current.hide();
     }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [show]);
+
+  // Use simple primitives to avoid deep object dependency loops
+  const targetDeptId = nextRouteStop?.departmentId;
+  const initialRecipientIdSafe = initialRecipientId || "";
+  const isInitializedRef = useRef(false);
 
   // Initialize State on Open
   useEffect(() => {
-    if (show) {
-      if (initialRecipientId) {
-        setRecipientId(initialRecipientId);
+    if (!show) {
+      isInitializedRef.current = false;
+      return;
+    }
+
+    if (show && !isInitializedRef.current && campuses && campuses.length > 0) {
+      if (hasPrescribedRoute && targetDeptId) {
+        // Pre-fill next prescribed office in transit route
+        setSelectedDeptId(targetDeptId);
+
+        // Find campus for this dept
+        const campus = campuses.find((c: Campus) =>
+          c.departments.some((d) => d.id === targetDeptId),
+        );
+        if (campus) setSelectedCampusId(campus.id);
+
+        setRecipientId(""); // clear specific recipient so user selects one in that locked dept
+      } else if (initialRecipientIdSafe) {
+        setRecipientId(initialRecipientIdSafe);
         // Pre-fill dropdowns based on recipient
         let found = false;
         // Search in hierarchy if available
-        if (campuses) {
-          for (const c of campuses) {
-            for (const d of c.departments) {
-              const u = d.users?.find((u: any) => u.id === initialRecipientId);
-              if (u) {
-                setSelectedCampusId(c.id);
-                setSelectedDeptId(d.id);
-                found = true;
-                break;
-              }
+        for (const c of campuses) {
+          for (const d of c.departments) {
+            const u = d.users?.find(
+              (u: any) => u.id === initialRecipientIdSafe,
+            );
+            if (u) {
+              setSelectedCampusId(c.id);
+              setSelectedDeptId(d.id);
+              found = true;
+              break;
             }
-            if (found) break;
           }
+          if (found) break;
         }
         // Fallback to flat list check
-        if (!found && users) {
-          const u = users.find((u: any) => u.id === initialRecipientId);
+        if (!found && users && users.length > 0) {
+          const u = users.find((u: any) => u.id === initialRecipientIdSafe);
           if (u) {
             setSelectedCampusId((u as any).campusId || "");
             setSelectedDeptId((u as any).departmentId || "");
@@ -207,8 +261,16 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
         setSelectedDeptId("");
       }
       setSelectedTags(new Set());
+      isInitializedRef.current = true;
     }
-  }, [show, initialRecipientId, campuses, users]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    show,
+    initialRecipientIdSafe,
+    hasPrescribedRoute,
+    targetDeptId,
+    campuses,
+  ]); // We need to depend on campuses since they load asynchronously!
 
   const handleSend = async () => {
     if (!documentId || !recipientId) return;
@@ -316,7 +378,12 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
                       setSelectedDeptId("");
                       setRecipientId("");
                     }}
-                    disabled={forceRecipientLock}
+                    disabled={forceRecipientLock || hasPrescribedRoute}
+                    title={
+                      hasPrescribedRoute
+                        ? "This route is prescribed for approval"
+                        : undefined
+                    }
                   >
                     <option value="">Select Campus...</option>
                     {campuses.map((campus: Campus) => (
@@ -348,7 +415,16 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
                       setSelectedDeptId(e.target.value);
                       setRecipientId("");
                     }}
-                    disabled={!selectedCampusId || forceRecipientLock}
+                    disabled={
+                      !selectedCampusId ||
+                      forceRecipientLock ||
+                      hasPrescribedRoute
+                    }
+                    title={
+                      hasPrescribedRoute
+                        ? "This route is prescribed for approval"
+                        : undefined
+                    }
                   >
                     <option value="">Select Department...</option>
                     {departments.map((dept: Department) => (

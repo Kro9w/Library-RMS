@@ -188,6 +188,19 @@ export class DocumentsRouter {
               isUnderLegalHold: true,
               legalHoldReason: true,
               dispositionRequesterId: true,
+              transitRoutes: {
+                orderBy: { sequenceOrder: 'asc' },
+                include: {
+                  department: true,
+                  approvedBy: {
+                    select: {
+                      firstName: true,
+                      middleName: true,
+                      lastName: true,
+                    }
+                  }
+                }
+              }
             },
           });
 
@@ -228,9 +241,10 @@ export class DocumentsRouter {
             documentTypeId: z.string().optional(),
             controlNumber: z.string().optional().nullable(),
             classification: z
-              .enum(['INSTITUTIONAL', 'CAMPUS', 'INTERNAL', 'CONFIDENTIAL'])
+              .enum(['INSTITUTIONAL', 'CAMPUS', 'INTERNAL', 'CONFIDENTIAL', 'FOR_APPROVAL'])
               .optional()
               .default('CONFIDENTIAL'),
+            transitRoute: z.array(z.string()).optional(),
           }),
         )
         .output(z.any())
@@ -252,6 +266,13 @@ export class DocumentsRouter {
               : 4; // Default to lowest privilege if no roles are assigned
 
           const canManageDocs = checkPermission(dbUser, 'canManageDocuments');
+
+          if (input.classification === 'FOR_APPROVAL' && (!input.transitRoute || input.transitRoute.length === 0)) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'A transit route is required for documents marked FOR_APPROVAL.',
+            });
+          }
 
           // Allow Level 1 users OR Admin equivalents (canManageDocuments) to broadcast wide
           if (
@@ -336,6 +357,11 @@ export class DocumentsRouter {
             }
           }
 
+          let finalRecordStatus = isFinal;
+          if (input.classification === 'FOR_APPROVAL') {
+            finalRecordStatus = 'IN_TRANSIT';
+          }
+
           const document = await this.prisma.document.create({
             data: {
               title: input.title,
@@ -348,8 +374,8 @@ export class DocumentsRouter {
               departmentId: dbUser.departmentId,
               documentTypeId: input.documentTypeId,
               controlNumber: input.controlNumber,
-              classification: input.classification,
-              recordStatus: isFinal,
+              classification: input.classification as any,
+              recordStatus: finalRecordStatus as any,
               ...retentionSnapshot,
               versions: {
                 create: {
@@ -363,6 +389,17 @@ export class DocumentsRouter {
               },
             },
           });
+
+          if (input.classification === 'FOR_APPROVAL' && input.transitRoute && input.transitRoute.length > 0) {
+            await this.prisma.documentTransitRoute.createMany({
+              data: input.transitRoute.map((deptId, index) => ({
+                documentId: document.id,
+                departmentId: deptId,
+                sequenceOrder: index,
+                status: index === 0 ? 'CURRENT' : 'PENDING',
+              })),
+            });
+          }
 
           const accessesToCreate: any[] = [];
 
@@ -861,7 +898,7 @@ export class DocumentsRouter {
           }
 
           // Create DocumentDistribution with status PENDING instead of transferring ownership
-          const distribution = await this.prisma.documentDistribution.create({
+          await this.prisma.documentDistribution.create({
             data: {
               documentId: input.documentId,
               senderId: user.id,
@@ -2053,31 +2090,57 @@ export class DocumentsRouter {
 
           // Verify write access
           let hasWriteAccess = false;
-          if (
-            checkPermission(dbUser, 'canManageDocuments') ||
-            doc.uploadedById === user.id
-          ) {
-            hasWriteAccess = true;
+
+          // Transit routing logic check
+          if (doc.recordStatus === 'IN_TRANSIT') {
+            const documentWithRoutes = await this.prisma.document.findUnique({
+              where: { id: doc.id },
+              include: { transitRoutes: true },
+            });
+            const currentRouteStop = documentWithRoutes?.transitRoutes.find(r => r.status === 'CURRENT');
+            
+            if (currentRouteStop && dbUser.departmentId === currentRouteStop.departmentId) {
+              // Allow Level 1 and Level 2 users of the active department to check out
+              const hasLevel1Or2 = dbUser.roles.some((r) => (r.level === 1 || r.level === 2) && r.departmentId === currentRouteStop.departmentId);
+              if (hasLevel1Or2) {
+                hasWriteAccess = true;
+              }
+            }
+
+            if (!hasWriteAccess) {
+              throw new TRPCError({
+                code: 'FORBIDDEN',
+                message: 'Only Level 1 or 2 users of the currently active office in the transit route can check out this document.',
+              });
+            }
           } else {
-            // Correctly verify using AccessControlService write clause
-            const writeAclWhere =
-              this.accessControlService.generateAclWhereClause(dbUser, 'WRITE');
+            // Standard Verify write access
+            if (
+              checkPermission(dbUser, 'canManageDocuments') ||
+              doc.uploadedById === user.id
+            ) {
+              hasWriteAccess = true;
+            } else {
+              // Correctly verify using AccessControlService write clause
+              const writeAclWhere =
+                this.accessControlService.generateAclWhereClause(dbUser, 'WRITE');
 
-            const writeAccessCheck = await this.prisma.document.findFirst({
-              where: {
-                id: input.documentId,
-                institutionId: dbUser.institutionId,
-                AND: [writeAclWhere],
-              },
-            });
-            if (writeAccessCheck) hasWriteAccess = true;
-          }
+              const writeAccessCheck = await this.prisma.document.findFirst({
+                where: {
+                  id: input.documentId,
+                  institutionId: dbUser.institutionId,
+                  AND: [writeAclWhere],
+                },
+              });
+              if (writeAccessCheck) hasWriteAccess = true;
+            }
 
-          if (!hasWriteAccess) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'You do not have write access to this document.',
-            });
+            if (!hasWriteAccess) {
+              throw new TRPCError({
+                code: 'FORBIDDEN',
+                message: 'You do not have write access to this document.',
+              });
+            }
           }
 
           const updatedDoc = await this.prisma.document.update({
@@ -2162,10 +2225,14 @@ export class DocumentsRouter {
             'image/png',
             'image/tiff',
           ];
-          const isFinal =
+          let isFinal =
             input.fileType && allowedFinalFormats.includes(input.fileType)
               ? 'FINAL'
               : 'DRAFT';
+
+          if (doc.classification === 'FOR_APPROVAL' && doc.recordStatus === 'IN_TRANSIT') {
+            isFinal = 'IN_TRANSIT'; // Never automatically finalize transit docs on check-in
+          }
 
           const maxVersion = await this.prisma.documentVersion.aggregate({
             where: { documentId: input.documentId },
@@ -2178,7 +2245,7 @@ export class DocumentsRouter {
             data: {
               isCheckedOut: false,
               checkedOutById: null,
-              recordStatus: isFinal,
+              recordStatus: isFinal as any,
               versions: {
                 create: {
                   versionNumber: nextVersionNumber,

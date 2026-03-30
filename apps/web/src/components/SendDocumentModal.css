@@ -1,0 +1,23 @@
+/* apps/web/src/components/SendDocumentModal.css */
+#sendDocumentModal .form-select {
+  appearance: auto;
+  -webkit-appearance: menulist;
+  -moz-appearance: menulist;
+  line-height: normal;
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+  background-color: var(--input-bg);
+  color: var(--text);
+  border-color: var(--card-border);
+}
+
+#sendDocumentModal .form-select:disabled {
+  background-color: var(--bg-subtle);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+#sendDocumentModal .form-select:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 0.25rem rgba(var(--brand-rgb), 0.25);
+}

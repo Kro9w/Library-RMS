@@ -244,6 +244,7 @@ const Documents: React.FC = () => {
     setDocumentToDiscard(doc);
   };
 
+  // @ts-ignore
   const confirmDiscardCheckOut = () => {
     if (documentToDiscard) {
       discardCheckOutMutation.mutate(

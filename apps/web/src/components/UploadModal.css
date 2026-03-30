@@ -249,6 +249,30 @@
   margin-left: 6px;
 }
 
+/* Transit Route Builder */
+.transit-route-builder {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-top: 4px;
+}
+
+.transit-route-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.transit-route-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.transit-route-item select {
+  flex: 1;
+}
+
 /* Scanning Animation */
 .scanning-input {
   border: 1px solid transparent !important;

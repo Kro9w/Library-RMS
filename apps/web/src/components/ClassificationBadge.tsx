@@ -5,7 +5,8 @@ export type ClassificationType =
   | "INSTITUTIONAL"
   | "CAMPUS"
   | "INTERNAL"
-  | "CONFIDENTIAL";
+  | "CONFIDENTIAL"
+  | "FOR_APPROVAL";
 
 interface ClassificationBadgeProps {
   classification?: ClassificationType | null;
@@ -19,7 +20,10 @@ export const ClassificationBadge: React.FC<ClassificationBadgeProps> = ({
   }
 
   // Define properties mapping to custom CSS classes
-  const badgeProps = {
+  const badgeProps: Record<
+    string,
+    { label: string; className: string; icon: string }
+  > = {
     INSTITUTIONAL: {
       label: "Institutional",
       className: "classification-badge-public",
@@ -40,9 +44,20 @@ export const ClassificationBadge: React.FC<ClassificationBadgeProps> = ({
       className: "classification-badge-restricted",
       icon: "bi-incognito",
     },
+    FOR_APPROVAL: {
+      label: "For Approval",
+      className: "classification-badge-approval",
+      icon: "bi-file-earmark-check-fill",
+    },
   };
 
-  const { label, className, icon } = badgeProps[classification];
+  const badgeConfig = badgeProps[classification];
+
+  if (!badgeConfig) {
+    return null;
+  }
+
+  const { label, className, icon } = badgeConfig;
 
   return (
     <span className={`classification-badge ${className}`}>

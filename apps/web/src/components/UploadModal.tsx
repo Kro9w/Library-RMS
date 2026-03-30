@@ -21,8 +21,9 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
   >();
   const [controlNumber, setControlNumber] = useState<string | null>(null);
   const [classification, setClassification] = useState<
-    "INSTITUTIONAL" | "CAMPUS" | "INTERNAL" | "CONFIDENTIAL"
+    "INSTITUTIONAL" | "CAMPUS" | "INTERNAL" | "CONFIDENTIAL" | "FOR_APPROVAL"
   >("CONFIDENTIAL");
+  const [transitRoute, setTransitRoute] = useState<string[]>([]);
 
   const user = useUser();
   const { data: me } = trpc.user.getMe.useQuery();
@@ -30,6 +31,10 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
   const createDocMutation = trpc.documents.createDocumentRecord.useMutation();
   const { data: documentTypes } = trpc.documentTypes.getAll.useQuery();
   const { data: storageConfig } = trpc.documents.getStorageConfig.useQuery();
+  const { data: departmentsResponse } = trpc.user.getDepartments.useQuery(
+    { campusId: me?.campusId as string },
+    { enabled: !!me?.campusId },
+  );
   const bucketName = storageConfig?.bucketName;
 
   const highestRoleLevel =
@@ -146,10 +151,14 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
         fileSize: file.size,
         classification,
         controlNumber: controlNumber ?? null,
+        transitRoute:
+          classification === "FOR_APPROVAL" ? transitRoute : undefined,
       });
 
       setFile(null);
       setControlNumber(null);
+      setTransitRoute([]);
+      setClassification("CONFIDENTIAL");
       onClose();
       await utils.documents.invalidate();
       await utils.getDashboardStats.invalidate();
@@ -260,7 +269,14 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
                 className="form-control form-select"
                 value={classification}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                onChange={(e) => setClassification(e.target.value as any)}
+                onChange={(e) => {
+                  setClassification(e.target.value as any);
+                  if (e.target.value !== "FOR_APPROVAL") {
+                    setTransitRoute([]);
+                  } else {
+                    if (transitRoute.length === 0) setTransitRoute([""]);
+                  }
+                }}
               >
                 {(highestRoleLevel <= 1 || canManageDocs) && (
                   <>
@@ -276,8 +292,69 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
                 <option value="CONFIDENTIAL">
                   Confidential — sender & recipient only
                 </option>
+                <option value="FOR_APPROVAL">
+                  For Approval — requires approval routing
+                </option>
               </select>
             </div>
+
+            {/* Transit Route Builder */}
+            {classification === "FOR_APPROVAL" && (
+              <div className="upload-field transit-route-builder">
+                <label className="form-label">Approval Route</label>
+                <div className="transit-route-list">
+                  {transitRoute.map((deptId, index) => {
+                    return (
+                      <div
+                        key={index}
+                        className="transit-route-item d-flex align-items-center mb-2"
+                      >
+                        <span className="badge bg-secondary me-2">
+                          {index + 1}
+                        </span>
+                        <select
+                          className="form-select form-select-sm"
+                          value={deptId}
+                          onChange={(e) => {
+                            const newRoute = [...transitRoute];
+                            newRoute[index] = e.target.value;
+                            setTransitRoute(newRoute);
+                          }}
+                        >
+                          <option value="" disabled>
+                            Select Department
+                          </option>
+                          {departmentsResponse?.map((d: any) => (
+                            <option key={d.id} value={d.id}>
+                              {d.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="btn btn-link text-danger p-0 ms-2"
+                          onClick={() => {
+                            const newRoute = transitRoute.filter(
+                              (_, i) => i !== index,
+                            );
+                            setTransitRoute(newRoute);
+                          }}
+                        >
+                          <i className="bi bi-x-circle-fill"></i>
+                        </button>
+                      </div>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary btn-sm mt-1"
+                    onClick={() => setTransitRoute([...transitRoute, ""])}
+                  >
+                    <i className="bi bi-plus me-1"></i> Add Stop
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Document type */}
             <div className="upload-field">

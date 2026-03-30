@@ -70,7 +70,6 @@ const formatFileTypeDisplay = (
 // ------------------------------
 
 import { SendDocumentModal } from "../components/SendDocumentModal";
-import { ReviewDocumentModal } from "../components/ReviewDocumentModal";
 import { usePermissions } from "../hooks/usePermissions";
 import { format } from "date-fns";
 
@@ -78,7 +77,6 @@ export const DocumentDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [showResubmitModal, setShowResubmitModal] = React.useState(false);
-  const [showReviewModal, setShowReviewModal] = React.useState(false);
 
   const { data: user } = trpc.user.getMe.useQuery();
   const { canManageDocuments } = usePermissions();
@@ -196,14 +194,6 @@ export const DocumentDetails: React.FC = () => {
   };
 
   const previewUrl = getPreviewDetails(document);
-
-  // Check if document needs review
-  const hasReviewTag = document.tags?.some(
-    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-    (t: any) =>
-      t.tag?.name?.toLowerCase() === "for review" ||
-      t.name?.toLowerCase() === "for review",
-  );
 
   return (
     <div className="container mt-4">
@@ -568,18 +558,6 @@ export const DocumentDetails: React.FC = () => {
             </div>
           </div>
 
-          {canManageDocuments && hasReviewTag && (
-            <div className="d-grid mt-3 mb-3">
-              <button
-                className="btn btn-primary fw-bold py-2 shadow-sm"
-                onClick={() => setShowReviewModal(true)}
-              >
-                <i className="bi bi-eye-fill me-2"></i>
-                Review Document
-              </button>
-            </div>
-          )}
-
           {/* Review Status Section */}
           {document.status && (
             <div className="document-table-card mt-4">
@@ -825,14 +803,6 @@ export const DocumentDetails: React.FC = () => {
               : undefined
           }
           forceRecipientLock={true}
-        />
-      )}
-
-      {showReviewModal && (
-        <ReviewDocumentModal
-          show={showReviewModal}
-          onClose={() => setShowReviewModal(false)}
-          documentId={document.id}
         />
       )}
 
