@@ -20,258 +20,198 @@ function App() {
   };
 
   return (
-    <div className="container py-5">
-      <div className="row justify-content-center">
-        <div className="col-12 col-md-10 col-lg-8 col-xl-6">
-          <div className="text-center mb-5 d-flex flex-column align-items-center">
-            <img
-              src="/plume.svg"
-              alt="Plume RMS Logo"
-              width="64"
-              height="64"
-              className="mb-4"
-            />
-            <h1
-              className="fw-bold mb-3"
-              style={{ fontSize: "28px", letterSpacing: "-0.5px" }}
-            >
-              Plume RMS Lookup
-            </h1>
-            <p className="text-muted" style={{ fontSize: "15px" }}>
-              Enter a document control number to track its routing and approval
-              progress.
-            </p>
+    <div className="lookup-root">
+      {/* Centered hero column */}
+      <div className="lookup-container">
+        {/* Brand header */}
+        <div className="lookup-brand">
+          <img src="/plume.svg" alt="Plume RMS" className="lookup-brand-logo" />
+          <div className="lookup-brand-text">
+            <span className="lookup-brand-name">Plume RMS</span>
+            <span className="lookup-brand-tagline">
+              Public Document Tracker
+            </span>
           </div>
+        </div>
 
-          <form onSubmit={handleSearch} className="mb-5 d-flex">
-            <input
-              type="text"
-              className="search-bar flex-grow-1"
-              placeholder="e.g. DOC-2023-0001"
-              value={controlNumber}
-              onChange={(e) => setControlNumber(e.target.value)}
-              required
-            />
-            <button
-              className="btn btn-primary btn-search shadow-sm"
-              type="submit"
-              disabled={isLoading}
-            >
+        {/* Hero card */}
+        <div className="lookup-hero-card">
+          <h1 className="lookup-hero-title">Track Document Progress</h1>
+          <p className="lookup-hero-desc">
+            Enter a control number to view the routing and approval status of a
+            document in transit.
+          </p>
+
+          <form onSubmit={handleSearch} className="lookup-form">
+            <div className="lookup-input-wrap">
+              <i className="bi bi-hash lookup-input-icon"></i>
+              <input
+                type="text"
+                className="lookup-input"
+                placeholder="e.g. CSU-2024-001-FL"
+                value={controlNumber}
+                onChange={(e) => setControlNumber(e.target.value)}
+                required
+              />
+            </div>
+            <button className="lookup-btn" type="submit" disabled={isLoading}>
               {isLoading ? (
-                <span className="spinner-border spinner-border-sm" />
+                <span className="lookup-spinner" />
               ) : (
-                <i className="bi bi-search me-2"></i>
+                <i className="bi bi-search"></i>
               )}
-              Search
+              {isLoading ? "Searching…" : "Search"}
             </button>
           </form>
-
-          {error && (
-            <div className="alert alert-warning shadow-sm border-warning-subtle text-center">
-              <i className="bi bi-exclamation-triangle-fill me-2 text-warning"></i>
-              {error.message ||
-                "No routing progress found for this Control Number."}
-            </div>
-          )}
-
-          {data && (
-            <div className="document-table-card mt-4 mb-4">
-              <div className="card-body">
-                <h5 className="card-title d-flex justify-content-between align-items-center">
-                  <div>
-                    <i className="bi bi-clipboard-check me-2"></i>
-                    Review Details
-                  </div>
-                  <div>
-                    <span className="text-muted fw-bold me-2 fs-6">
-                      Status:
-                    </span>
-                    <span
-                      className={`badge ${
-                        data.status === "Approved" || data.status === "Endorsed"
-                          ? "bg-success"
-                          : data.status ===
-                              "Returned for Corrections/Revision/Clarification"
-                            ? "bg-warning text-dark"
-                            : data.status === "Disapproved"
-                              ? "bg-danger"
-                              : "bg-secondary"
-                      }`}
-                      style={{ fontSize: "0.85rem", padding: "0.5em 0.8em" }}
-                    >
-                      {data.status ? data.status.toUpperCase() : "IN PROGRESS"}
-                    </span>
-                  </div>
-                </h5>
-                <hr />
-
-                <div className="mb-4">
-                  <h6 className="fw-bold mb-1" style={{ fontSize: "1.1rem" }}>
-                    {data.title}
-                  </h6>
-                  <p
-                    className="text-muted mb-0"
-                    style={{ fontSize: "0.85rem" }}
-                  >
-                    Control Number: {data.controlNumber}
-                  </p>
-                </div>
-
-                {data.transitRoutes && data.transitRoutes.length > 0 && (
-                  <div className="mb-5 mt-4">
-                    <span className="text-muted fw-bold d-block mb-3 fs-6">
-                      Routing Progress
-                    </span>
-                    <div
-                      className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-sm-center w-100 position-relative"
-                      style={{ gap: "1.5rem" }}
-                    >
-                      {/* Vertical line for mobile */}
-                      <div
-                        className="d-block d-sm-none position-absolute"
-                        style={{
-                          left: "20px",
-                          top: "20px",
-                          bottom: "20px",
-                          width: "2px",
-                          backgroundColor: "var(--border-strong)",
-                          zIndex: 0,
-                        }}
-                      ></div>
-
-                      {data.transitRoutes.map((route: any, index: number) => {
-                        let badgeClass = "bg-secondary text-light";
-                        let iconClass = "bi-circle";
-                        if (route.status === "APPROVED") {
-                          badgeClass = "bg-success text-light";
-                          iconClass = "bi-check-circle-fill";
-                        } else if (route.status === "CURRENT") {
-                          badgeClass = "bg-primary text-light";
-                          iconClass = "bi-record-circle-fill";
-                        } else if (route.status === "REJECTED") {
-                          badgeClass = "bg-danger text-light";
-                          iconClass = "bi-x-circle-fill";
-                        }
-
-                        return (
-                          <React.Fragment key={route.id}>
-                            <div
-                              className="d-flex flex-row flex-sm-column align-items-center position-relative"
-                              style={{ zIndex: 1, minWidth: "120px" }}
-                            >
-                              <div
-                                className={`badge ${badgeClass} rounded-pill p-2 mb-0 mb-sm-2 me-3 me-sm-0 shadow-sm`}
-                                style={{
-                                  width: "40px",
-                                  height: "40px",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                }}
-                              >
-                                <i className={`bi ${iconClass} fs-5`}></i>
-                              </div>
-                              <span
-                                className="text-sm-center"
-                                style={{
-                                  fontSize: "0.8rem",
-                                  fontWeight:
-                                    route.status === "CURRENT"
-                                      ? "bold"
-                                      : "normal",
-                                  lineHeight: "1.2",
-                                }}
-                              >
-                                {route.department?.name || "Unknown Office"}
-                              </span>
-                            </div>
-                            {index < data.transitRoutes.length - 1 && (
-                              <div
-                                className="d-none d-sm-block flex-grow-1 mx-2"
-                                style={{
-                                  height: "2px",
-                                  backgroundColor:
-                                    route.status === "APPROVED"
-                                      ? "var(--success)"
-                                      : "var(--border-strong)",
-                                  minWidth: "30px",
-                                }}
-                              ></div>
-                            )}
-                          </React.Fragment>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {data.remarks && data.remarks.length > 0 && (
-                  <div className="mt-3">
-                    <span className="text-muted fw-bold d-block mb-3 fs-6">
-                      Review History
-                    </span>
-                    <div className="table-responsive">
-                      <table className="table table-hover align-middle mb-0">
-                        <thead>
-                          <tr>
-                            <th>Reviewer</th>
-                            <th>Date & Time</th>
-                            <th>Remarks</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {data.remarks.map((remark: any) => (
-                            <tr key={remark.id}>
-                              <td>
-                                <strong>
-                                  {remark.author?.firstName}{" "}
-                                  {remark.author?.lastName}
-                                </strong>
-                                <div
-                                  className="text-muted mt-1"
-                                  style={{ fontSize: "0.8rem" }}
-                                >
-                                  {remark.author?.department?.name || ""}
-                                </div>
-                              </td>
-                              <td style={{ whiteSpace: "nowrap" }}>
-                                <div>
-                                  {new Date(
-                                    remark.createdAt,
-                                  ).toLocaleDateString()}
-                                </div>
-                                <small className="text-muted">
-                                  {new Date(
-                                    remark.createdAt,
-                                  ).toLocaleTimeString([], {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                                </small>
-                              </td>
-                              <td>
-                                <div
-                                  className="p-2 bg-light rounded border"
-                                  style={{
-                                    fontSize: "0.9rem",
-                                    whiteSpace: "pre-wrap",
-                                    backgroundColor: "var(--bg-subtle)",
-                                  }}
-                                >
-                                  {remark.message}
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
+
+        {/* Error state */}
+        {error && (
+          <div className="lookup-empty-card">
+            <div className="lookup-empty-icon">
+              <i className="bi bi-exclamation-circle"></i>
+            </div>
+            <p className="lookup-empty-title">No results found</p>
+            <p className="lookup-empty-desc">
+              {error.message ||
+                "No routing progress found for this control number."}
+            </p>
+          </div>
+        )}
+
+        {/* Results card */}
+        {data && (
+          <div className="lookup-result-card">
+            {/* Document header */}
+            <div className="lookup-doc-header">
+              <div className="lookup-doc-meta">
+                <h2 className="lookup-doc-title">{data.title}</h2>
+                <span className="lookup-control-badge">
+                  <i className="bi bi-hash"></i>
+                  {data.controlNumber}
+                </span>
+              </div>
+              <span
+                className={`lookup-status-badge ${
+                  data.status === "Approved"
+                    ? "lookup-status-approved"
+                    : data.status ===
+                        "Returned for Corrections/Revision/Clarification"
+                      ? "lookup-status-returned"
+                      : data.status === "Disapproved"
+                        ? "lookup-status-disapproved"
+                        : "lookup-status-inprogress"
+                }`}
+              >
+                {data.status ? data.status : "In Progress"}
+              </span>
+            </div>
+
+            {/* Routing progress */}
+            {data.transitRoutes && data.transitRoutes.length > 0 && (
+              <div className="lookup-section">
+                <p className="lookup-section-label">
+                  <i className="bi bi-signpost-split"></i>
+                  Approval Route
+                </p>
+                <div className="lookup-route">
+                  {data.transitRoutes.map((route: any, index: number) => {
+                    let stepClass = "lookup-step-pending";
+                    let iconClass = "bi-circle";
+
+                    if (route.status === "APPROVED") {
+                      stepClass = "lookup-step-approved";
+                      iconClass = "bi-check-circle-fill";
+                    } else if (route.status === "CURRENT") {
+                      stepClass = "lookup-step-current";
+                      iconClass = "bi-record-circle-fill";
+                    } else if (route.status === "REJECTED") {
+                      stepClass = "lookup-step-rejected";
+                      iconClass = "bi-x-circle-fill";
+                    }
+
+                    return (
+                      <React.Fragment key={route.id}>
+                        <div className={`lookup-step ${stepClass}`}>
+                          <div className="lookup-step-icon">
+                            <i className={`bi ${iconClass}`}></i>
+                          </div>
+                          <span className="lookup-step-label">
+                            {route.department?.name || "Unknown Office"}
+                          </span>
+                        </div>
+                        {index < data.transitRoutes.length - 1 && (
+                          <div
+                            className={`lookup-route-line ${
+                              route.status === "APPROVED"
+                                ? "lookup-route-line-done"
+                                : ""
+                            }`}
+                          />
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Review history */}
+            {data.remarks && data.remarks.length > 0 && (
+              <div className="lookup-section lookup-section-top">
+                <p className="lookup-section-label">
+                  <i className="bi bi-clipboard-check"></i>
+                  Review History
+                </p>
+                <div className="lookup-remarks">
+                  {data.remarks.map((remark: any) => (
+                    <div key={remark.id} className="lookup-remark">
+                      <div className="lookup-remark-header">
+                        <div className="lookup-remark-author">
+                          <div className="lookup-remark-avatar">
+                            {remark.author?.firstName?.charAt(0) || "?"}
+                          </div>
+                          <div>
+                            <p className="lookup-remark-name">
+                              {remark.author?.firstName}{" "}
+                              {remark.author?.lastName}
+                            </p>
+                            {remark.author?.department?.name && (
+                              <p className="lookup-remark-dept">
+                                {remark.author.department.name}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="lookup-remark-time">
+                          <p>
+                            {new Date(remark.createdAt).toLocaleDateString()}
+                          </p>
+                          <p>
+                            {new Date(remark.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                      {remark.message && (
+                        <p className="lookup-remark-message">
+                          {remark.message}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Footer */}
+        <p className="lookup-footer">
+          Cagayan State University · Plume Records Management System
+        </p>
       </div>
     </div>
   );
