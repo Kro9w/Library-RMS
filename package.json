@@ -5,7 +5,8 @@
   "scripts": {
     "dev:api": "pnpm --filter api dev",
     "dev:web": "pnpm --filter web dev",
-    "dev:all": "concurrently \"pnpm run dev:api\" \"pnpm run dev:web\""
+    "dev:public": "pnpm --filter public-lookup dev",
+    "dev:all": "concurrently \"pnpm run dev:api\" \"pnpm run dev:web\" \"pnpm run dev:public\""
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.8.4",

@@ -211,6 +211,139 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
     }
   };
 
+  // Calculate Routing Progress logic
+  const renderRoutingProgress = () => {
+    if (
+      !isTransit ||
+      !document?.transitRoutes ||
+      document.transitRoutes.length === 0
+    ) {
+      return null;
+    }
+
+    const sortedRoutes = [...document.transitRoutes].sort(
+      (a: any, b: any) => a.sequenceOrder - b.sequenceOrder,
+    );
+
+    const currentIndex = sortedRoutes.findIndex(
+      (r: any) => r.status === "CURRENT",
+    );
+
+    // If currentIndex is not found, default to length (all done)
+    const activeIdx = currentIndex === -1 ? sortedRoutes.length : currentIndex;
+
+    // Append virtual 'Original Sender' or 'User' node for the final return step
+    const timelineNodes = [
+      ...sortedRoutes,
+      {
+        id: "virtual-end-node",
+        isVirtual: true,
+        department: { name: "Original Sender" },
+      },
+    ];
+
+    return (
+      <div className="mb-4">
+        <div
+          className="d-flex align-items-center flex-nowrap w-100 pb-2"
+          style={{
+            overflowX: "auto",
+            paddingBottom: "10px",
+            gap: "0.5rem",
+          }}
+        >
+          {timelineNodes.map((route: any, index: number) => {
+            const isFinished = index < activeIdx;
+            const isNext = index === activeIdx + 1;
+
+            let badgeClass = "bg-secondary text-light";
+            let iconClass = "bi-circle";
+            let nodeStyle: React.CSSProperties = {
+              maxWidth: "120px",
+              textAlign: "center",
+              minWidth: "100px",
+            };
+
+            if (route.isVirtual) {
+              badgeClass = "bg-light text-dark border border-secondary";
+              iconClass = "bi-person-fill";
+            } else if (route.status === "APPROVED") {
+              badgeClass = "bg-success text-light";
+              iconClass = "bi-check-circle-fill";
+            } else if (route.status === "CURRENT") {
+              badgeClass = "bg-primary text-light shadow";
+              iconClass = "bi-record-circle-fill";
+            } else if (route.status === "REJECTED") {
+              badgeClass = "bg-danger text-light";
+              iconClass = "bi-x-circle-fill";
+            }
+
+            if (!isNext) {
+              nodeStyle.opacity = 0.5;
+              nodeStyle.filter = "grayscale(100%)";
+            }
+
+            let extraClasses = "";
+            if (isNext) {
+              // Subtle highlight for next office
+              badgeClass =
+                "bg-primary bg-opacity-10 text-primary border border-primary";
+              extraClasses = "fw-bold text-primary";
+              iconClass = "bi-circle-half";
+            }
+
+            return (
+              <React.Fragment key={route.id}>
+                <div
+                  className="d-flex flex-column align-items-center position-relative"
+                  style={nodeStyle}
+                >
+                  {isNext && (
+                    <span
+                      className="badge bg-primary text-white position-absolute"
+                      style={{ top: "-20px", fontSize: "0.6rem" }}
+                    >
+                      NEXT
+                    </span>
+                  )}
+                  <div
+                    className={`badge ${badgeClass} rounded-pill p-2 mb-1`}
+                    style={{ transition: "all 0.2s" }}
+                  >
+                    <i className={`bi ${iconClass} fs-5`}></i>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: "0.75rem",
+                      fontWeight: "normal",
+                    }}
+                    className={extraClasses}
+                  >
+                    {route.department?.name || "Unknown Office"}
+                  </span>
+                </div>
+                {index < timelineNodes.length - 1 && (
+                  <div
+                    className="flex-grow-1 mx-2"
+                    style={{
+                      height: "2px",
+                      backgroundColor: isFinished
+                        ? "var(--bs-success)"
+                        : "var(--bs-gray-300)",
+                      minWidth: "30px",
+                      opacity: 0.5,
+                      filter: "grayscale(100%)",
+                    }}
+                  ></div>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <div
@@ -220,7 +353,7 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
         tabIndex={-1}
         aria-hidden="true"
       >
-        <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-dialog modal-dialog-centered modal-lg">
           <div
             className="modal-content"
             style={{
@@ -241,6 +374,8 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
               ></button>
             </div>
             <div className="modal-body p-4" style={modalBodyStyle}>
+              {renderRoutingProgress()}
+
               <div className="row g-3">
                 <div className="col-12">
                   <label htmlFor="status" style={labelStyle}>

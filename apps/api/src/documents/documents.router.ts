@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { Prisma, PermissionLevel } from '@prisma/client';
 import {
   protectedProcedure,
+  publicProcedure,
   router,
   requirePermission,
   checkPermission,
@@ -74,6 +75,70 @@ export class DocumentsRouter {
 
   createRouter() {
     return router({
+      /**
+       * Public lookup of document progress by Control Number
+       */
+      lookupByControlNumber: publicProcedure
+        .input(z.object({ controlNumber: z.string() }))
+        .output(z.any())
+        .query(async ({ input }) => {
+          // Find any document by control number that matches the criteria (has transit routes or remarks/approval status)
+          const doc = await this.prisma.document.findFirst({
+            where: {
+              controlNumber: input.controlNumber,
+              OR: [
+                { recordStatus: 'IN_TRANSIT' },
+                { classification: 'FOR_APPROVAL' },
+                { status: { not: null } },
+              ],
+            },
+            select: {
+              id: true,
+              title: true,
+              controlNumber: true,
+              recordStatus: true,
+              status: true,
+              classification: true,
+              createdAt: true,
+              transitRoutes: {
+                orderBy: { sequenceOrder: 'asc' },
+                include: {
+                  department: {
+                    select: { name: true },
+                  },
+                },
+              },
+              remarks: {
+                orderBy: { createdAt: 'desc' },
+                include: {
+                  author: {
+                    select: {
+                      firstName: true,
+                      lastName: true,
+                      department: {
+                        select: { name: true },
+                      },
+                      roles: {
+                        select: { id: true, name: true, level: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          });
+
+          if (!doc) {
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'No active document or routing progress found for this Control Number.',
+            });
+          }
+
+          // Return only non-sensitive data needed for the progress view
+          return doc;
+        }),
+
       /**
        * Get storage configuration (bucket name)
        */
