@@ -224,8 +224,8 @@ export class RolesRouter {
             });
           }
 
-          // 1. Check if trying to assign Level 1
-          if (role.level === 1) {
+          // 1. Check if trying to assign Level 0 or 1
+          if (role.level <= 1) {
             // 2. Get target user's department
             if (!targetUser.departmentId) {
               throw new TRPCError({
@@ -234,12 +234,12 @@ export class RolesRouter {
               });
             }
 
-            // 3. Check if this Department already has a Level 1 leader
+            // 3. Check if this Department already has a Level 0 or 1 leader
             const existingLeader = await ctx.prisma.user.findFirst({
               where: {
                 departmentId: targetUser.departmentId,
                 roles: {
-                  some: { level: 1 },
+                  some: { level: { lte: 1 } },
                 },
                 id: { not: targetUser.id }, // Exclude self (re-assignment is fine)
               },
@@ -322,6 +322,7 @@ export class RolesRouter {
 
   private getPermissionsForLevel(level: number) {
     switch (level) {
+      case 0: // Executive
       case 1: // Leader
         return {
           canManageUsers: true,

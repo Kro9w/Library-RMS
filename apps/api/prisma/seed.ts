@@ -237,7 +237,7 @@ async function main() {
 
         // Rules based on user requirements:
         if (deptName === 'Office of the University President') {
-            rolesToSeed.push({ name: 'University President', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true, canManageInstitution: true });
+            rolesToSeed.push({ name: 'University President', level: 0, canManageUsers: true, canManageRoles: true, canManageDocuments: true, canManageInstitution: true });
         } else if (deptName === 'Office of the Vice President for Academic Affairs') {
             rolesToSeed.push({ name: 'VPAA', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
         } else if (deptName === 'Office of the Vice President for Research, Development, and Extension') {
@@ -247,7 +247,7 @@ async function main() {
         } else if (deptName === 'Office of the Vice President for Internationalization, Partnership, and Resource Mobilization') {
             rolesToSeed.push({ name: 'VPIPRM', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
         } else if (deptName === 'Office of the Campus Executive Officer') {
-            rolesToSeed.push({ name: 'CEO', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
+            rolesToSeed.push({ name: 'CEO', level: 0, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
         } else if (deptName === 'Office of the Campus Director for Academic Affairs') {
             rolesToSeed.push({ name: 'CDAA', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
         } else if (deptName === 'Office of Student Development and Welfare') {

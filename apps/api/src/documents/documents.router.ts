@@ -371,7 +371,7 @@ export class DocumentsRouter {
               throw new TRPCError({
                 code: 'FORBIDDEN',
                 message:
-                  'Only Level 1 users or Admins can broadcast Institutional or Campus documents.',
+                  'Only Executives, Level 1 users, or Admins can broadcast Institutional or Campus documents.',
               });
             }
           }

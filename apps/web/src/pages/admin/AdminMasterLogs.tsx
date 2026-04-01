@@ -46,7 +46,7 @@ export default function AdminMasterLogs() {
     return true;
   });
 
-  const { data, isLoading, isError } = trpc.logs.getMasterLogs.useQuery({
+  const { data, isLoading, isError } = trpc.logs.getLogs.useQuery({
     page,
     limit,
     campusId: campusId || undefined,
@@ -55,6 +55,7 @@ export default function AdminMasterLogs() {
     actionQuery: actionQuery || undefined,
     startDate: startDate || undefined,
     endDate: endDate || undefined,
+    scope: "INSTITUTION",
   });
 
   React.useEffect(() => {
@@ -87,7 +88,7 @@ export default function AdminMasterLogs() {
               }}
             >
               <option value="">All Campuses</option>
-              {campusesData?.map((c: any) => (
+              {campusesData?.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
@@ -225,19 +226,19 @@ export default function AdminMasterLogs() {
                     </td>
                     <td>
                       <div className="d-flex flex-column">
-                        {(log as any).campus ? (
+                        {log.campus ? (
                           <span className="text-dark fw-medium">
-                            {(log as any).campus.name}
+                            {log.campus.name}
                           </span>
                         ) : (
                           <span className="text-muted fst-italic">Global</span>
                         )}
-                        {(log as any).department && (
+                        {log.department && (
                           <span
                             className="text-muted small"
                             style={{ fontSize: "0.8rem" }}
                           >
-                            {(log as any).department.name}
+                            {log.department.name}
                           </span>
                         )}
                       </div>

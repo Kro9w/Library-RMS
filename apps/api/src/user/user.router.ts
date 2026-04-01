@@ -171,19 +171,19 @@ export class UserRouter {
             !targetRoleRecord &&
             dept.name !== 'Office of the University President'
           ) {
-            const level1Role = await this.prisma.role.findFirst({
+            const apexRole = await this.prisma.role.findFirst({
               where: {
                 departmentId: input.departmentId,
-                level: 1,
+                level: { lte: 1 },
               },
               include: {
                 users: true,
               },
             });
 
-            // If there's a level 1 role, and it has NO users assigned yet, assign it to this first user
-            if (level1Role && level1Role.users.length === 0) {
-              targetRoleRecord = level1Role;
+            // If there's an apex role (Level 0 or 1), and it has NO users assigned yet, assign it to this first user
+            if (apexRole && apexRole.users.length === 0) {
+              targetRoleRecord = apexRole;
             }
           }
 
@@ -285,20 +285,20 @@ export class UserRouter {
 
           let targetRoleRecord: { id: string; name: string } | null = null;
 
-          // For dynamically created departments, it's very likely they don't have a level 1 role seeded,
+          // For dynamically created departments, it's very likely they don't have a level 0 or 1 role seeded,
           // but we still apply the same logic for consistency, or just fallback to 'User'.
           // IMPORTANT: Do NOT auto-assign the University President role to a random first user.
           if (dept.name !== 'Office of the University President') {
-            const level1Role = await ctx.prisma.role.findFirst({
+            const apexRole = await ctx.prisma.role.findFirst({
               where: {
                 departmentId: dept.id,
-                level: 1,
+                level: { lte: 1 },
               },
               include: { users: true },
             });
 
-            if (level1Role && level1Role.users.length === 0) {
-              targetRoleRecord = level1Role;
+            if (apexRole && apexRole.users.length === 0) {
+              targetRoleRecord = apexRole;
             }
           }
 

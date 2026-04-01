@@ -6,6 +6,12 @@ import { formatUserName } from "../utils/user";
 import { getActionDetails } from "../utils/logAction";
 
 const LogsPage: React.FC = () => {
+  const { data: me } = trpc.user.getMe.useQuery();
+  const isCampusExecutive = me?.roles.some((r) => r.level === 0) ?? false;
+  const [activeTab, setActiveTab] = useState<"DEPARTMENT" | "CAMPUS">(
+    "DEPARTMENT",
+  );
+
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [limit] = useState(25);
@@ -19,8 +25,14 @@ const LogsPage: React.FC = () => {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
 
-  // Use the new getDepartmentUsers endpoint to ensure we only get users from the current department
-  const { data: usersData } = trpc.user.getDepartmentUsers.useQuery();
+  // Get all users in the institution so we can filter based on the active tab
+  const { data: allUsersData } = trpc.user.getUsersWithRoles.useQuery();
+
+  const usersData = allUsersData?.filter((u) => {
+    if (activeTab === "DEPARTMENT") return u.departmentId === me?.departmentId;
+    if (activeTab === "CAMPUS") return u.campusId === me?.campusId;
+    return true;
+  });
 
   const { data, isLoading, isError } = trpc.logs.getLogs.useQuery({
     page,
@@ -29,6 +41,7 @@ const LogsPage: React.FC = () => {
     actionQuery: actionQuery || undefined,
     startDate: startDate || undefined,
     endDate: endDate || undefined,
+    scope: activeTab,
   });
 
   React.useEffect(() => {
@@ -40,7 +53,26 @@ const LogsPage: React.FC = () => {
   return (
     <div className="container mt-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Department Audit Logs</h2>
+        <h2>
+          {activeTab === "CAMPUS" ? "Campus Audit Logs" : "Office Audit Logs"}
+        </h2>
+        {isCampusExecutive && (
+          <div className="header-actions">
+            <select
+              className="form-select border-0 shadow-sm"
+              style={{ width: "auto", cursor: "pointer", fontWeight: 500 }}
+              value={activeTab}
+              onChange={(e) => {
+                setActiveTab(e.target.value as "DEPARTMENT" | "CAMPUS");
+                setPage(1);
+                setUserId("");
+              }}
+            >
+              <option value="DEPARTMENT">Office Logs</option>
+              <option value="CAMPUS">Campus Logs</option>
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="card shadow-sm border-0 mb-4 p-3 bg-white rounded">
@@ -134,9 +166,15 @@ const LogsPage: React.FC = () => {
                 return (
                   <tr key={log.id}>
                     <td>
-                      <div className="d-flex align-items-center gap-2">
+                      <div className="d-flex flex-column">
                         <span className="fw-medium text-dark">
                           {formatUserName(log.user)}
+                        </span>
+                        <span
+                          className="text-muted small"
+                          style={{ fontSize: "0.8rem" }}
+                        >
+                          {log.user.email}
                         </span>
                       </div>
                     </td>
