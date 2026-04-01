@@ -184,8 +184,6 @@ export const DocumentDetails: React.FC = () => {
 
   const hasBeenSent = distributions && distributions.length > 0;
 
-  // Originator can send if it has never been sent OR if it is returned/disapproved.
-  // Grey out if it's currently in transit and not returned.
   const canSendOrResubmit = isOriginator || canManageDocuments;
   const isSendDisabled =
     document.isCheckedOut || (hasBeenSent && !isReturnedOrDisapproved);
@@ -226,7 +224,6 @@ export const DocumentDetails: React.FC = () => {
       return { className: "routing-step-pending", icon: "bi-circle" };
     }
 
-    // Rely on the newly introduced 'decision' field directly logged to the route step.
     const decision =
       route.decision || (route.status === "CURRENT" ? doc.status : null);
 
@@ -274,7 +271,6 @@ export const DocumentDetails: React.FC = () => {
           icon: "bi-check-circle-fill",
         };
       }
-      // Fallback
       return {
         className: "routing-step-approved text-success",
         icon: "bi-check-circle-fill",
@@ -412,30 +408,26 @@ export const DocumentDetails: React.FC = () => {
                 </span>
               </div>
 
+              {/* Checked-out indicator */}
               {document.isCheckedOut && (
-                <div className="detail-row">
-                  <strong>Checked Out</strong>
-                  <span className="text-danger" style={{ fontSize: "13px" }}>
-                    <i className="bi bi-lock-fill me-1"></i>
-                    {document.checkedOutBy
-                      ? formatUserName(document.checkedOutBy)
-                      : "Unknown User"}
+                <div className="checked-out-indicator">
+                  <i className="bi bi-lock-fill"></i>
+                  <span>
+                    Checked out by{" "}
+                    <strong>
+                      {document.checkedOutBy
+                        ? formatUserName(document.checkedOutBy)
+                        : "Unknown User"}
+                    </strong>
                   </span>
                 </div>
               )}
-
-              <div className="detail-row">
-                <strong>File Type</strong>
-                <span>
-                  {formatFileTypeDisplay(document.fileType, document.title)}
-                </span>
-              </div>
 
               {/* Action buttons */}
               <div className="doc-actions-stack mt-3">
                 {canSendOrResubmit && (
                   <button
-                    className="btn btn-animated-submit btn-primary"
+                    className={`doc-action-btn ${!isSendDisabled ? "doc-action-btn-primary" : ""}`}
                     onClick={() => setShowResubmitModal(true)}
                     disabled={isSendDisabled}
                     title={
@@ -446,68 +438,64 @@ export const DocumentDetails: React.FC = () => {
                           : ""
                     }
                   >
-                    {isReturnedOrDisapproved ? (
-                      <>
-                        <i className="bi bi-arrow-repeat me-2"></i>
-                        Resubmit for Review
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-send-fill me-2"></i>
-                        Send Document
-                      </>
-                    )}
+                    <i
+                      className={`bi ${isReturnedOrDisapproved ? "bi-arrow-repeat" : "bi-send"}`}
+                    ></i>
+                    {isReturnedOrDisapproved
+                      ? "Resubmit for Review"
+                      : "Send Document"}
                   </button>
                 )}
+
                 <a
                   href={urlData.signedUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn btn-primary"
+                  className="doc-action-btn doc-action-btn-download"
                 >
-                  <i className="bi bi-download me-2"></i>
+                  <i className="bi bi-download"></i>
                   Download
                 </a>
+
                 {canReview && (
                   <button
-                    className="btn btn-outline-primary"
+                    className="doc-action-btn"
                     onClick={() => setShowReviewModal(true)}
                   >
-                    <i className="bi bi-eye me-2"></i>
+                    <i className="bi bi-eye"></i>
                     Review Document
                   </button>
                 )}
+
                 {document.recordStatus !== "FINAL" &&
                   !document.isCheckedOut &&
                   (document.uploadedById === user?.id ||
                     document.originalSenderId === user?.id ||
                     canManageDocuments) && (
                     <button
-                      className="btn btn-outline-success"
+                      className="doc-action-btn"
                       onClick={() => setShowCheckOutModal(true)}
                     >
-                      <i className="bi bi-cloud-arrow-down me-2"></i>
+                      <i className="bi bi-cloud-arrow-down"></i>
                       Check Out
                     </button>
                   )}
+
                 {document.isCheckedOut &&
                   (document.checkedOutById === user?.id ||
                     document.checkedOutBy?.id === user?.id) && (
                     <button
-                      className="btn btn-outline-primary"
+                      className="doc-action-btn"
                       onClick={() => setShowCheckInModal(true)}
                     >
-                      <i className="bi bi-cloud-arrow-up me-2"></i>
+                      <i className="bi bi-cloud-arrow-up"></i>
                       Check In
                     </button>
                   )}
+
                 {canManageDocuments && (
                   <button
-                    className={`btn ${
-                      document.isUnderLegalHold
-                        ? "btn-outline-danger"
-                        : "btn-outline-dark"
-                    }`}
+                    className={`doc-action-btn ${document.isUnderLegalHold ? "doc-action-btn-danger" : ""}`}
                     onClick={() => {
                       if (document.isUnderLegalHold) {
                         setConfirmConfig({
@@ -542,7 +530,7 @@ export const DocumentDetails: React.FC = () => {
                       removeLegalHoldMutation.isPending
                     }
                   >
-                    <i className="bi bi-shield-lock me-2"></i>
+                    <i className="bi bi-shield-lock"></i>
                     {document.isUnderLegalHold
                       ? "Remove Legal Hold"
                       : "Apply Legal Hold"}

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { trpc } from "../trpc";
+import "./CheckModal.css";
 
 interface CheckOutModalProps {
   show: boolean;
@@ -34,59 +35,77 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = ({
 
   return (
     <div
-      className="modal fade show d-block"
-      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-      tabIndex={-1}
+      className="check-modal-backdrop"
       onClick={!checkOutMutation.isPending ? onClose : undefined}
     >
-      <div
-        className="modal-dialog modal-dialog-centered"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="modal-content border-0 shadow-lg">
-          <div className="modal-header bg-light border-bottom-0 pb-0">
-            <h5 className="modal-title fw-bold">Check Out Document</h5>
-            {!checkOutMutation.isPending && (
-              <button
-                type="button"
-                className="btn-close"
-                onClick={onClose}
-              ></button>
-            )}
+      <div className="check-modal-dialog" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="check-modal-header">
+          <div className="check-modal-icon check-modal-icon-checkout">
+            <i className="bi bi-cloud-arrow-down"></i>
           </div>
-          <div className="modal-body">
-            {checkOutMutation.isPending ? (
-              <div className="text-center py-4">
-                null
-                <p className="mt-3">Checking out document...</p>
-              </div>
-            ) : (
-              <div>
-                <div className="alert alert-warning">
-                  You are about to check out this document. This will lock it so
-                  no one else can upload a new version until you check it back
-                  in.
-                </div>
-                {error && <div className="alert alert-danger">{error}</div>}
-              </div>
-            )}
+          <div className="check-modal-header-text">
+            <h5 className="check-modal-title">Check Out Document</h5>
+            <p className="check-modal-subtitle">
+              Lock the document for editing
+            </p>
           </div>
-          <div className="modal-footer border-top-0 pt-0">
+          {!checkOutMutation.isPending && (
             <button
-              className="btn btn-secondary"
+              type="button"
+              className="check-modal-close"
               onClick={onClose}
-              disabled={checkOutMutation.isPending}
+              aria-label="Close"
             >
-              Cancel
+              <i className="bi bi-x"></i>
             </button>
-            <button
-              className="btn btn-success"
-              onClick={handleCheckOut}
-              disabled={checkOutMutation.isPending}
-            >
-              Check Out
-            </button>
+          )}
+        </div>
+
+        {/* Body */}
+        <div className="check-modal-body">
+          <div className="check-modal-notice check-modal-notice-warning">
+            <i className="bi bi-lock"></i>
+            <p>
+              Checking out this document will lock it so no one else can upload
+              a new version until you check it back in.
+            </p>
           </div>
+
+          {error && (
+            <div className="check-modal-notice check-modal-notice-error">
+              <i className="bi bi-exclamation-circle"></i>
+              <p>{error}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="check-modal-footer">
+          <button
+            className="check-modal-btn check-modal-btn-ghost"
+            onClick={onClose}
+            disabled={checkOutMutation.isPending}
+          >
+            Cancel
+          </button>
+          <button
+            className="check-modal-btn check-modal-btn-confirm"
+            onClick={handleCheckOut}
+            disabled={checkOutMutation.isPending}
+          >
+            {checkOutMutation.isPending ? (
+              <>
+                <span className="check-modal-spinner" />
+                Checking out…
+              </>
+            ) : (
+              <>
+                <i className="bi bi-cloud-arrow-down"></i>
+                Check Out
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>

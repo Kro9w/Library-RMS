@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { trpc } from "../trpc";
 import { supabase } from "../supabase";
+import "./CheckModal.css";
 
 interface CheckInModalProps {
   show: boolean;
@@ -40,6 +41,15 @@ export const CheckInModal: React.FC<CheckInModalProps> = ({
     }
   };
 
+  const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    const dropped = e.dataTransfer.files[0];
+    if (dropped) {
+      setFile(dropped);
+      setError(null);
+    }
+  };
+
   const handleUpload = async () => {
     if (!file || !user || !config) return;
 
@@ -72,81 +82,153 @@ export const CheckInModal: React.FC<CheckInModalProps> = ({
     }
   };
 
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+  };
+
+  const getFileIcon = (fileType: string) => {
+    if (fileType.includes("pdf")) return "bi-file-earmark-pdf-fill";
+    if (fileType.includes("word") || fileType.includes("document"))
+      return "bi-file-earmark-word-fill";
+    if (fileType.includes("image")) return "bi-file-earmark-image-fill";
+    return "bi-file-earmark-fill";
+  };
+
   if (!show) return null;
+
+  const isProcessing = uploading || checkInMutation.isPending;
 
   return (
     <div
-      className="modal fade show d-block"
-      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-      tabIndex={-1}
-      onClick={!uploading ? onClose : undefined}
+      className="check-modal-backdrop"
+      onClick={!isProcessing ? onClose : undefined}
     >
-      <div
-        className="modal-dialog modal-dialog-centered"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="modal-content border-0 shadow-lg">
-          <div className="modal-header bg-light border-bottom-0 pb-0">
-            <h5 className="modal-title fw-bold">Check In Document</h5>
-            {!uploading && (
-              <button
-                type="button"
-                className="btn-close"
-                onClick={onClose}
-              ></button>
-            )}
+      <div className="check-modal-dialog" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="check-modal-header">
+          <div className="check-modal-icon check-modal-icon-checkin">
+            <i className="bi bi-cloud-arrow-up"></i>
           </div>
-          <div className="modal-body">
-            {uploading ? (
-              <div className="text-center py-4">
-                null
-                <p className="mt-3">Uploading new version...</p>
-              </div>
-            ) : (
-              <div>
-                <div
-                  className="alert alert-info"
-                  style={{ fontSize: "0.9rem" }}
-                >
-                  Upload the updated file to check it in as a new version.
-                  <br />
-                  <small className="d-block mt-1">
-                    Note: Uploading a final format (PDF or image) will
-                    transition this document's status to FINAL and lock it from
-                    further editing.
-                  </small>
-                </div>
-                {error && <div className="alert alert-danger">{error}</div>}
-                <div className="mb-3">
-                  <label htmlFor="fileUpload" className="form-label fw-bold">
-                    Select File
-                  </label>
-                  <input
-                    type="file"
-                    className="form-control"
-                    id="fileUpload"
-                    onChange={handleFileChange}
-                  />
-                </div>
-              </div>
-            )}
+          <div className="check-modal-header-text">
+            <h5 className="check-modal-title">Check In Document</h5>
+            <p className="check-modal-subtitle">
+              Upload a revised version and release the lock
+            </p>
           </div>
-          <div className="modal-footer border-top-0 pt-0">
+          {!isProcessing && (
             <button
-              className="btn btn-secondary"
+              type="button"
+              className="check-modal-close"
               onClick={onClose}
-              disabled={uploading}
+              aria-label="Close"
             >
-              Cancel
+              <i className="bi bi-x"></i>
             </button>
-            <button
-              className="btn btn-primary"
-              onClick={handleUpload}
-              disabled={!file || uploading}
-            >
-              Check In
-            </button>
+          )}
+        </div>
+
+        {/* Body */}
+        <div className="check-modal-body">
+          {/* Info notice */}
+          <div className="check-modal-notice check-modal-notice-info">
+            <i className="bi bi-info-circle"></i>
+            <p>
+              Uploading a PDF or image will finalize this document and lock it
+              from further edits.
+            </p>
           </div>
+
+          {/* Error */}
+          {error && (
+            <div className="check-modal-notice check-modal-notice-error">
+              <i className="bi bi-exclamation-circle"></i>
+              <p>{error}</p>
+            </div>
+          )}
+
+          {/* Drop zone / file selector */}
+          {!file ? (
+            <label
+              className="check-modal-dropzone"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDrop}
+            >
+              <input
+                type="file"
+                className="check-modal-file-input"
+                onChange={handleFileChange}
+                disabled={isProcessing}
+              />
+              <div className="check-modal-dropzone-content">
+                <i className="bi bi-cloud-arrow-up check-modal-dropzone-icon"></i>
+                <span className="check-modal-dropzone-label">
+                  Click to select or drag &amp; drop
+                </span>
+                <span className="check-modal-dropzone-hint">
+                  PDF, DOCX, PNG, JPG, TIFF
+                </span>
+              </div>
+            </label>
+          ) : (
+            <div className="check-modal-file-selected">
+              <i
+                className={`bi ${getFileIcon(file.type)} check-modal-file-icon`}
+              ></i>
+              <div className="check-modal-file-meta">
+                <span className="check-modal-file-name">{file.name}</span>
+                <span className="check-modal-file-size">
+                  {formatBytes(file.size)}
+                </span>
+              </div>
+              {!isProcessing && (
+                <button
+                  className="check-modal-file-remove"
+                  onClick={() => setFile(null)}
+                  aria-label="Remove file"
+                >
+                  <i className="bi bi-x"></i>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Upload progress */}
+          {isProcessing && (
+            <div className="check-modal-uploading">
+              <span className="check-modal-spinner" />
+              <span>Uploading new version…</span>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="check-modal-footer">
+          <button
+            className="check-modal-btn check-modal-btn-ghost"
+            onClick={onClose}
+            disabled={isProcessing}
+          >
+            Cancel
+          </button>
+          <button
+            className="check-modal-btn check-modal-btn-confirm"
+            onClick={handleUpload}
+            disabled={!file || isProcessing}
+          >
+            {isProcessing ? (
+              <>
+                <span className="check-modal-spinner" />
+                Uploading…
+              </>
+            ) : (
+              <>
+                <i className="bi bi-cloud-arrow-up"></i>
+                Check In
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>
