@@ -72,6 +72,8 @@ const formatFileTypeDisplay = (
 
 import { SendDocumentModal } from "../components/SendDocumentModal";
 import { ReviewDocumentModal } from "../components/ReviewDocumentModal";
+import { CheckOutModal } from "../components/CheckOutModal";
+import { CheckInModal } from "../components/CheckInModal";
 import { usePermissions } from "../hooks/usePermissions";
 import RolePill from "../components/Roles/RolePill";
 import { format } from "date-fns";
@@ -80,6 +82,8 @@ export const DocumentDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [showResubmitModal, setShowResubmitModal] = React.useState(false);
   const [showReviewModal, setShowReviewModal] = React.useState(false);
+  const [showCheckOutModal, setShowCheckOutModal] = React.useState(false);
+  const [showCheckInModal, setShowCheckInModal] = React.useState(false);
 
   const { data: user } = trpc.user.getMe.useQuery();
   const { canManageDocuments } = usePermissions();
@@ -171,8 +175,25 @@ export const DocumentDetails: React.FC = () => {
     (t: any) => (t.tag?.name || t.name) === "for review",
   );
 
+  const isReturnedOrDisapproved =
+    document.status === "Returned for Corrections/Revision/Clarification" ||
+    document.status === "Disapproved";
+  const isOriginator =
+    user?.id === document.uploadedById ||
+    user?.id === document.originalSenderId;
+
+  const hasBeenSent = distributions && distributions.length > 0;
+
+  // Originator can send if it has never been sent OR if it is returned/disapproved.
+  // Grey out if it's currently in transit and not returned.
+  const canSendOrResubmit = isOriginator || canManageDocuments;
+  const isSendDisabled =
+    document.isCheckedOut || (hasBeenSent && !isReturnedOrDisapproved);
+
   const canReview =
-    (canManageDocuments && hasReviewTag) || hasTransitReviewAccess;
+    ((canManageDocuments && hasReviewTag) || hasTransitReviewAccess) &&
+    !isReturnedOrDisapproved &&
+    !isOriginator;
 
   const getPreviewDetails = (doc: Document) => {
     let previewType: string | null = null;
@@ -200,23 +221,74 @@ export const DocumentDetails: React.FC = () => {
   const previewUrl = getPreviewDetails(document);
 
   // Helper: get step class/icon for transit routes
-  const getStepProps = (status: string) => {
-    switch (status) {
-      case "APPROVED":
+  const getStepProps = (route: any, doc: any) => {
+    if (route.status === "PENDING") {
+      return { className: "routing-step-pending", icon: "bi-circle" };
+    }
+
+    // Rely on the newly introduced 'decision' field directly logged to the route step.
+    const decision =
+      route.decision || (route.status === "CURRENT" ? doc.status : null);
+
+    if (route.status === "CURRENT") {
+      if (decision === "Returned for Corrections/Revision/Clarification") {
         return {
-          className: "routing-step-approved",
+          className: "routing-step-rejected text-warning",
+          icon: "bi-arrow-return-left",
+        };
+      }
+      if (decision === "Disapproved") {
+        return {
+          className: "routing-step-rejected text-danger",
+          icon: "bi-x-circle-fill",
+        };
+      }
+      if (decision === "For the review of the Executive Committee") {
+        return {
+          className: "routing-step-current text-secondary",
+          icon: "bi-people-fill",
+        };
+      }
+      return {
+        className: "routing-step-current",
+        icon: "bi-record-circle-fill",
+      };
+    }
+
+    if (route.status === "APPROVED") {
+      if (decision === "Noted") {
+        return {
+          className: "routing-step-approved text-info",
+          icon: "bi-journal-check",
+        };
+      }
+      if (decision === "For Endorsement") {
+        return {
+          className: "routing-step-approved text-primary",
+          icon: "bi-forward-fill",
+        };
+      }
+      if (decision === "Approved") {
+        return {
+          className: "routing-step-approved text-success",
           icon: "bi-check-circle-fill",
         };
-      case "CURRENT":
-        return {
-          className: "routing-step-current",
-          icon: "bi-record-circle-fill",
-        };
-      case "REJECTED":
-        return { className: "routing-step-rejected", icon: "bi-x-circle-fill" };
-      default:
-        return { className: "routing-step-pending", icon: "bi-circle" };
+      }
+      // Fallback
+      return {
+        className: "routing-step-approved text-success",
+        icon: "bi-check-circle-fill",
+      };
     }
+
+    if (route.status === "REJECTED") {
+      return {
+        className: "routing-step-rejected text-danger",
+        icon: "bi-x-circle-fill",
+      };
+    }
+
+    return { className: "routing-step-pending", icon: "bi-circle" };
   };
 
   return (
@@ -361,6 +433,32 @@ export const DocumentDetails: React.FC = () => {
 
               {/* Action buttons */}
               <div className="doc-actions-stack mt-3">
+                {canSendOrResubmit && (
+                  <button
+                    className="btn btn-animated-submit btn-primary"
+                    onClick={() => setShowResubmitModal(true)}
+                    disabled={isSendDisabled}
+                    title={
+                      document.isCheckedOut
+                        ? "Check in the document first before sending."
+                        : isSendDisabled
+                          ? "Document is currently in transit."
+                          : ""
+                    }
+                  >
+                    {isReturnedOrDisapproved ? (
+                      <>
+                        <i className="bi bi-arrow-repeat me-2"></i>
+                        Resubmit for Review
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-send-fill me-2"></i>
+                        Send Document
+                      </>
+                    )}
+                  </button>
+                )}
                 <a
                   href={urlData.signedUrl}
                   target="_blank"
@@ -379,6 +477,30 @@ export const DocumentDetails: React.FC = () => {
                     Review Document
                   </button>
                 )}
+                {document.recordStatus !== "FINAL" &&
+                  !document.isCheckedOut &&
+                  (document.uploadedById === user?.id ||
+                    document.originalSenderId === user?.id ||
+                    canManageDocuments) && (
+                    <button
+                      className="btn btn-outline-success"
+                      onClick={() => setShowCheckOutModal(true)}
+                    >
+                      <i className="bi bi-cloud-arrow-down me-2"></i>
+                      Check Out
+                    </button>
+                  )}
+                {document.isCheckedOut &&
+                  (document.checkedOutById === user?.id ||
+                    document.checkedOutBy?.id === user?.id) && (
+                    <button
+                      className="btn btn-outline-primary"
+                      onClick={() => setShowCheckInModal(true)}
+                    >
+                      <i className="bi bi-cloud-arrow-up me-2"></i>
+                      Check In
+                    </button>
+                  )}
                 {canManageDocuments && (
                   <button
                     className={`btn ${
@@ -641,7 +763,7 @@ export const DocumentDetails: React.FC = () => {
                 </p>
                 <div className="routing-steps">
                   {document.transitRoutes.map((route: any, index: number) => {
-                    const { className, icon } = getStepProps(route.status);
+                    const { className, icon } = getStepProps(route, document);
                     return (
                       <React.Fragment key={route.id}>
                         <div className={`routing-step ${className}`}>
@@ -744,23 +866,6 @@ export const DocumentDetails: React.FC = () => {
                 </table>
               </div>
             )}
-
-            {/* Resubmit action */}
-            {document.status ===
-              "Returned for Corrections/Revision/Clarification" &&
-              (document.uploadedById === user?.id ||
-                document.originalSenderId === user?.id) && (
-                <div className="d-flex justify-content-end mt-4">
-                  <button
-                    className="btn btn-outline-primary"
-                    style={{ fontSize: "13px", padding: "6px 14px" }}
-                    onClick={() => setShowResubmitModal(true)}
-                  >
-                    <i className="bi bi-arrow-repeat me-1"></i>
-                    Resubmit for Review
-                  </button>
-                </div>
-              )}
           </div>
         </div>
       )}
@@ -918,11 +1023,13 @@ export const DocumentDetails: React.FC = () => {
           onClose={() => setShowResubmitModal(false)}
           documentId={document.id}
           initialRecipientId={
-            document.remarks && document.remarks.length > 0
+            isReturnedOrDisapproved &&
+            document.remarks &&
+            document.remarks.length > 0
               ? document.remarks[0].authorId
               : undefined
           }
-          forceRecipientLock={true}
+          forceRecipientLock={isReturnedOrDisapproved}
         />
       )}
 
@@ -930,6 +1037,22 @@ export const DocumentDetails: React.FC = () => {
         <ReviewDocumentModal
           show={showReviewModal}
           onClose={() => setShowReviewModal(false)}
+          documentId={document.id}
+        />
+      )}
+
+      {showCheckOutModal && (
+        <CheckOutModal
+          show={showCheckOutModal}
+          onClose={() => setShowCheckOutModal(false)}
+          documentId={document.id}
+        />
+      )}
+
+      {showCheckInModal && (
+        <CheckInModal
+          show={showCheckInModal}
+          onClose={() => setShowCheckInModal(false)}
           documentId={document.id}
         />
       )}

@@ -604,3 +604,89 @@ body[data-bs-theme="dark"] .faq-class-confidential {
   opacity: 0.7;
   flex-shrink: 0;
 }
+
+/* ── Routing progress (from DocumentDetails) ── */
+.routing-steps {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  row-gap: 16px;
+}
+
+.routing-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 80px;
+  max-width: 140px;
+  text-align: center;
+}
+
+.routing-step-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  transition: transform 150ms ease;
+}
+
+.routing-step-name {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+/* States */
+.routing-step-pending .routing-step-icon {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.routing-step-pending .routing-step-name {
+  color: var(--text-muted);
+}
+
+.routing-step-approved .routing-step-icon {
+  background-color: var(--success-subtle);
+  color: var(--success);
+  border: 1px solid #86efac;
+}
+
+.routing-step-current .routing-step-icon {
+  background-color: var(--brand-subtle);
+  color: var(--brand);
+  border: 1.5px solid var(--brand-muted);
+}
+.routing-step-current .routing-step-name {
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.routing-step-rejected .routing-step-icon {
+  background-color: var(--danger-subtle);
+  color: var(--danger);
+  border: 1px solid #fca5a5;
+}
+.routing-step-rejected .routing-step-name {
+  color: var(--danger);
+}
+
+.routing-connector {
+  flex: 1;
+  height: 2px;
+  background-color: var(--border);
+  align-self: center;
+  margin-top: -22px;
+  min-width: 12px;
+}
+
+.routing-connector-done {
+  background-color: var(--success);
+  opacity: 0.45;
+}

@@ -341,6 +341,7 @@ model DocumentTransitRoute {
 
   sequenceOrder Int
   status        TransitStatus @default(PENDING)
+  decision      String?       // e.g. "Noted", "For Endorsement", "Approved"
 
   approvedBy   User?         @relation("RouteApprovedBy", fields: [approvedById], references: [id])
   approvedById String?

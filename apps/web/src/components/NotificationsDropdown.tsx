@@ -64,7 +64,11 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({
     }
     onClose();
     if (notif.documentId) {
-      if (notif.title.toLowerCase() === "document received") {
+      const titleStr = notif.title.toLowerCase();
+      if (
+        titleStr === "document received" ||
+        titleStr.includes("review requested")
+      ) {
         // Redirect to dashboard with query param to open receive modal
         navigate(`/?openReceiveModal=true`);
       } else {
@@ -116,19 +120,60 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({
             >
               {!notif.isRead && <span className="notif-dot" />}
               <div className="notif-item-icon-wrapper">
-                {notif.title.toLowerCase() === "document received" ? (
-                  <i className="bi bi-file-earmark-arrow-down notif-item-icon"></i>
-                ) : notif.title.toLowerCase().includes("review requested") ? (
-                  <i className="bi bi-eye notif-item-icon"></i>
-                ) : notif.title.toLowerCase().includes("review completed") ? (
-                  <i className="bi bi-check-circle notif-item-icon text-success"></i>
-                ) : notif.title.toLowerCase().includes("legal hold") ? (
-                  <i className="bi bi-shield-lock notif-item-icon text-danger"></i>
-                ) : notif.title.toLowerCase().includes("disposition") ? (
-                  <i className="bi bi-trash3 notif-item-icon text-warning"></i>
-                ) : (
-                  <i className="bi bi-bell notif-item-icon"></i>
-                )}
+                {(() => {
+                  const titleStr = notif.title.toLowerCase();
+                  const msgStr = notif.message.toLowerCase();
+
+                  if (titleStr === "document received") {
+                    return (
+                      <i className="bi bi-file-earmark-arrow-down notif-item-icon"></i>
+                    );
+                  }
+                  if (titleStr.includes("review requested")) {
+                    return <i className="bi bi-eye notif-item-icon"></i>;
+                  }
+                  if (titleStr.includes("review completed")) {
+                    if (msgStr.includes("returned for corrections")) {
+                      return (
+                        <i className="bi bi-arrow-return-left notif-item-icon text-warning"></i>
+                      );
+                    }
+                    if (msgStr.includes("disapproved")) {
+                      return (
+                        <i className="bi bi-x-circle-fill notif-item-icon text-danger"></i>
+                      );
+                    }
+                    if (msgStr.includes("noted")) {
+                      return (
+                        <i className="bi bi-journal-check notif-item-icon text-info"></i>
+                      );
+                    }
+                    if (msgStr.includes("for endorsement")) {
+                      return (
+                        <i className="bi bi-forward-fill notif-item-icon text-primary"></i>
+                      );
+                    }
+                    if (msgStr.includes("executive committee")) {
+                      return (
+                        <i className="bi bi-people-fill notif-item-icon text-secondary"></i>
+                      );
+                    }
+                    return (
+                      <i className="bi bi-check-circle-fill notif-item-icon text-success"></i>
+                    );
+                  }
+                  if (titleStr.includes("legal hold")) {
+                    return (
+                      <i className="bi bi-shield-lock notif-item-icon text-danger"></i>
+                    );
+                  }
+                  if (titleStr.includes("disposition")) {
+                    return (
+                      <i className="bi bi-trash3 notif-item-icon text-warning"></i>
+                    );
+                  }
+                  return <i className="bi bi-bell notif-item-icon"></i>;
+                })()}
               </div>
               <div className="notif-item-body">
                 <div className="notif-item-msg">

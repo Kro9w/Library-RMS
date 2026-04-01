@@ -409,72 +409,50 @@ const FAQ_CATEGORIES: FAQCategory[] = [
               office the document must pass through.
             </p>
             <div
-              className="p-3 rounded mt-3 mb-3 d-flex align-items-center justify-content-center flex-wrap"
+              className="p-3 rounded mt-3 mb-3"
               style={{
-                rowGap: "1rem",
                 background: "var(--bg-subtle)",
                 border: "1px solid var(--border)",
                 borderRadius: "var(--radius-lg)",
               }}
             >
-              {[
-                { label: "OSDW", status: "approved" },
-                { label: "CDAA", status: "current" },
-                { label: "CEO", status: "pending" },
-              ].map((step, i, arr) => (
-                <React.Fragment key={step.label}>
-                  <div
-                    className="d-flex flex-column align-items-center"
-                    style={{ maxWidth: "120px", textAlign: "center" }}
-                  >
-                    <div
-                      className={`routing-step-icon mb-1 ${
-                        step.status === "approved"
-                          ? "routing-step-approved"
-                          : step.status === "current"
-                            ? "routing-step-current"
-                            : "routing-step-pending"
-                      }`}
-                      style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: "50%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 18,
-                      }}
-                    >
-                      <i
-                        className={`bi ${step.status === "approved" ? "bi-check-circle-fill" : step.status === "current" ? "bi-record-circle-fill" : "bi-circle"}`}
-                      ></i>
-                    </div>
-                    <span
-                      style={{
-                        fontSize: "0.75rem",
-                        fontWeight:
-                          step.status === "current" ? "bold" : "normal",
-                      }}
-                    >
-                      {step.label}
-                    </span>
-                  </div>
-                  {i < arr.length - 1 && (
-                    <div
-                      style={{
-                        flex: 1,
-                        height: 2,
-                        background:
-                          step.status === "approved"
-                            ? "var(--success)"
-                            : "var(--border)",
-                        minWidth: 40,
-                        opacity: step.status === "approved" ? 0.4 : 1,
-                      }}
-                    />
-                  )}
-                </React.Fragment>
-              ))}
+              <div className="routing-steps">
+                {[
+                  { label: "OSDW", status: "approved" },
+                  { label: "CDAA", status: "current" },
+                  { label: "CEO", status: "pending" },
+                ].map((step, i, arr) => {
+                  let className = "routing-step-pending";
+                  let icon = "bi-circle";
+                  if (step.status === "approved") {
+                    className = "routing-step-approved";
+                    icon = "bi-check-circle-fill";
+                  } else if (step.status === "current") {
+                    className = "routing-step-current";
+                    icon = "bi-record-circle-fill";
+                  }
+
+                  return (
+                    <React.Fragment key={step.label}>
+                      <div className={`routing-step ${className}`}>
+                        <div className="routing-step-icon">
+                          <i className={`bi ${icon}`}></i>
+                        </div>
+                        <span className="routing-step-name">{step.label}</span>
+                      </div>
+                      {i < arr.length - 1 && (
+                        <div
+                          className={`routing-connector ${
+                            step.status === "approved"
+                              ? "routing-connector-done"
+                              : ""
+                          }`}
+                        />
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
             </div>
             <p className="mb-0">
               Below the visualization is the <strong>Review History</strong>{" "}

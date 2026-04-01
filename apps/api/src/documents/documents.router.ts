@@ -196,6 +196,7 @@ export class DocumentsRouter {
               documentType: true,
               recordStatus: true,
               isCheckedOut: true,
+              checkedOutById: true,
               checkedOutBy: {
                 select: {
                   id: true,
@@ -981,10 +982,25 @@ export class DocumentsRouter {
 
           let isReview = tags.some((tag) => tag.name === 'for review');
 
+          // If sending back to originator, they are fixing it, not reviewing it
+          if (
+            documents[0].uploadedById === recipient.id ||
+            documents[0].originalSenderId === recipient.id
+          ) {
+            isReview = false;
+            // Filter out 'for review' tag if it was inadvertently passed
+            const forReviewTag = await this.prisma.tag.findUnique({ where: { name: 'for review' } });
+            if (forReviewTag && input.tagIds) {
+              input.tagIds = input.tagIds.filter(id => id !== forReviewTag.id);
+            }
+          }
+
           // If the document is IN_TRANSIT and FOR_APPROVAL, automatically enforce the "for review" tag
           if (
             documents[0].recordStatus === 'IN_TRANSIT' &&
-            documents[0].classification === 'FOR_APPROVAL'
+            documents[0].classification === 'FOR_APPROVAL' &&
+            documents[0].uploadedById !== recipient.id &&
+            documents[0].originalSenderId !== recipient.id
           ) {
             isReview = true;
             const forReviewTag = await this.prisma.tag.findUnique({
@@ -1003,15 +1019,70 @@ export class DocumentsRouter {
             });
           }
 
-          // Create DocumentDistribution with status PENDING instead of transferring ownership
-          await this.prisma.documentDistribution.create({
-            data: {
-              documentId: input.documentId,
-              senderId: user.id,
-              recipientId: recipient.id,
-              status: 'PENDING',
-            },
-          });
+          const isReturningToOriginator = documents[0].uploadedById === recipient.id || documents[0].originalSenderId === recipient.id;
+          const isOriginatorResubmitting = 
+            documents[0].recordStatus === 'IN_TRANSIT' &&
+            documents[0].classification === 'FOR_APPROVAL' &&
+            (user.id === documents[0].uploadedById || user.id === documents[0].originalSenderId) &&
+            (documents[0].status === 'Returned for Corrections/Revision/Clarification' || documents[0].status === 'Disapproved');
+            
+          const isAutoReceive = isReturningToOriginator || isOriginatorResubmitting;
+
+          // ONLY create a DocumentDistribution if it is a formal, first-time transfer.
+          // If the document is being sent back and forth between the originator and reviewer, bypass the distribution table to reduce redundancy.
+          if (!isAutoReceive) {
+            await this.prisma.documentDistribution.create({
+              data: {
+                documentId: input.documentId,
+                senderId: user.id,
+                recipientId: recipient.id,
+                status: 'PENDING',
+              },
+            });
+          } else {
+            // Ensure they have access if we bypassed the formal distribution process
+            const existingAccess = await this.prisma.documentAccess.findFirst({
+              where: {
+                documentId: input.documentId,
+                userId: recipient.id,
+              },
+            });
+
+            if (!existingAccess) {
+              await this.prisma.documentAccess.create({
+                data: {
+                  documentId: input.documentId,
+                  userId: recipient.id,
+                  permission: 'READ',
+                },
+              });
+            }
+          }
+
+          // When an originator resubmits a returned/disapproved IN_TRANSIT document, 
+          // we must clear the historical "decision" logged on the CURRENT transit route stop 
+          // so the UI correctly reverts to a generic pending "Current" state icon instead of sticking to the "Returned" icon.
+          if (
+            documents[0].recordStatus === 'IN_TRANSIT' &&
+            documents[0].classification === 'FOR_APPROVAL' &&
+            (user.id === documents[0].uploadedById || user.id === documents[0].originalSenderId) &&
+            (documents[0].status === 'Returned for Corrections/Revision/Clarification' || documents[0].status === 'Disapproved')
+          ) {
+            // Find the CURRENT route stop for this document
+            const currentStop = await this.prisma.documentTransitRoute.findFirst({
+              where: {
+                documentId: documents[0].id,
+                status: 'CURRENT'
+              }
+            });
+
+            if (currentStop && currentStop.departmentId === recipient.departmentId) {
+              await this.prisma.documentTransitRoute.update({
+                where: { id: currentStop.id },
+                data: { decision: null }
+              });
+            }
+          }
 
           // Update status and tags
           const updatedDocument = await this.prisma.document.update({
@@ -1044,7 +1115,25 @@ export class DocumentsRouter {
             updatedDocument.recordStatus === 'IN_TRANSIT' &&
             updatedDocument.classification === 'FOR_APPROVAL';
 
-          if (isTransit) {
+          if (isReturningToOriginator) {
+            await this.prisma.notification.create({
+              data: {
+                userId: recipient.id,
+                title: 'Document Returned',
+                message: `${senderName} has returned the document "${updatedDocument.title}" to you for corrections/review.`,
+                documentId: updatedDocument.id,
+              },
+            });
+          } else if (isOriginatorResubmitting) {
+            await this.prisma.notification.create({
+              data: {
+                userId: recipient.id,
+                title: 'Document Resubmitted (In Transit)',
+                message: `${senderName} has resubmitted the document "${updatedDocument.title}" to your office. Action required.`,
+                documentId: updatedDocument.id,
+              },
+            });
+          } else if (isTransit) {
             await this.prisma.notification.create({
               data: {
                 userId: recipient.id,
@@ -1136,11 +1225,25 @@ export class DocumentsRouter {
 
           let isReview = tags.some((tag) => tag.name === 'for review');
 
+          // If sending back to originator, they are fixing it, not reviewing it
+          if (
+            documents.some(doc => doc.uploadedById === recipient.id || doc.originalSenderId === recipient.id)
+          ) {
+            isReview = false;
+            // Filter out 'for review' tag if it was inadvertently passed
+            const forReviewTag = await this.prisma.tag.findUnique({ where: { name: 'for review' } });
+            if (forReviewTag && input.tagIds) {
+              input.tagIds = input.tagIds.filter(id => id !== forReviewTag.id);
+            }
+          }
+
           // If the document is IN_TRANSIT and FOR_APPROVAL, automatically enforce the "for review" tag
           const hasTransitDocs = documents.some(
             (doc) =>
               doc.recordStatus === 'IN_TRANSIT' &&
-              doc.classification === 'FOR_APPROVAL',
+              doc.classification === 'FOR_APPROVAL' &&
+              doc.uploadedById !== recipient.id &&
+              doc.originalSenderId !== recipient.id,
           );
 
           if (hasTransitDocs) {
@@ -1163,15 +1266,62 @@ export class DocumentsRouter {
             }
           }
 
-          // Create DocumentDistribution with status PENDING for all documents
-          await this.prisma.documentDistribution.createMany({
-            data: input.documentIds.map((documentId) => ({
-              documentId,
-              senderId: user.id,
-              recipientId: recipient.id,
-              status: 'PENDING',
-            })),
+          // Only create DocumentDistributions for documents that are NOT being returned or resubmitted (bypassed)
+          const docsToDistribute = documents.filter(doc => {
+            const isReturning = doc.uploadedById === recipient.id || doc.originalSenderId === recipient.id;
+            const isResubmitting = doc.recordStatus === 'IN_TRANSIT' &&
+              doc.classification === 'FOR_APPROVAL' &&
+              (user.id === doc.uploadedById || user.id === doc.originalSenderId) &&
+              (doc.status === 'Returned for Corrections/Revision/Clarification' || doc.status === 'Disapproved');
+            return !isReturning && !isResubmitting;
           });
+
+          if (docsToDistribute.length > 0) {
+            await this.prisma.documentDistribution.createMany({
+              data: docsToDistribute.map((doc) => ({
+                documentId: doc.id,
+                senderId: user.id,
+                recipientId: recipient.id,
+                status: 'PENDING',
+              })),
+            });
+          }
+
+          // Ensure recipient has access to bypassed documents
+          const bypassedDocs = documents.filter(doc => !docsToDistribute.some(d => d.id === doc.id));
+          for (const bypassed of bypassedDocs) {
+            const existingAccess = await this.prisma.documentAccess.findFirst({
+              where: { documentId: bypassed.id, userId: recipient.id },
+            });
+            if (!existingAccess) {
+              await this.prisma.documentAccess.create({
+                data: { documentId: bypassed.id, userId: recipient.id, permission: 'READ' },
+              });
+            }
+          }
+
+          // Reset the route stop decision for any returned documents being resubmitted
+          const resubmittedDocs = documents.filter(
+            doc => 
+              doc.recordStatus === 'IN_TRANSIT' &&
+              doc.classification === 'FOR_APPROVAL' &&
+              (user.id === doc.uploadedById || user.id === doc.originalSenderId) &&
+              (doc.status === 'Returned for Corrections/Revision/Clarification' || doc.status === 'Disapproved')
+          );
+          
+          if (resubmittedDocs.length > 0) {
+            for (const doc of resubmittedDocs) {
+              const currentStop = await this.prisma.documentTransitRoute.findFirst({
+                where: { documentId: doc.id, status: 'CURRENT' }
+              });
+              if (currentStop && currentStop.departmentId === recipient.departmentId) {
+                await this.prisma.documentTransitRoute.update({
+                  where: { id: currentStop.id },
+                  data: { decision: null }
+                });
+              }
+            }
+          }
 
           // Use transaction for atomicity: all documents are sent or none
           const results = await this.prisma.$transaction(
@@ -1211,10 +1361,22 @@ export class DocumentsRouter {
               const isTransit =
                 doc.recordStatus === 'IN_TRANSIT' &&
                 doc.classification === 'FOR_APPROVAL';
+              const isReturningToOriginator = doc.uploadedById === recipient.id || doc.originalSenderId === recipient.id;
+              const isOriginatorResubmitting = 
+                isTransit &&
+                (user.id === doc.uploadedById || user.id === doc.originalSenderId) &&
+                (doc.status === 'Returned for Corrections/Revision/Clarification' || doc.status === 'Disapproved');
+                
               let title = 'Document Received';
               let message = `${senderName} sent you a document: "${doc.title}". Action required to receive it.`;
 
-              if (isTransit) {
+              if (isReturningToOriginator) {
+                title = 'Document Returned';
+                message = `${senderName} has returned the document "${doc.title}" to you for corrections/review.`;
+              } else if (isOriginatorResubmitting) {
+                title = 'Document Resubmitted (In Transit)';
+                message = `${senderName} has resubmitted the document "${doc.title}" to your office. Action required.`;
+              } else if (isTransit) {
                 title = 'Review Requested (In Transit)';
                 message = `${senderName} has forwarded the document "${doc.title}" to your office for review and endorsement. Action required.`;
               } else if (isReview) {
@@ -1716,6 +1878,7 @@ export class DocumentsRouter {
                   where: { id: currentRouteStop.id },
                   data: {
                     status: 'APPROVED',
+                    decision: input.status,
                     approvedById: user.id,
                     approvedAt: new Date(),
                   },
@@ -1745,14 +1908,8 @@ export class DocumentsRouter {
                   });
 
                   if (nextDeptUsers.length > 0) {
-                    // Give READ access to the next department
-                    await this.prisma.documentAccess.create({
-                      data: {
-                        documentId: document.id,
-                        departmentId: nextRouteStop.departmentId,
-                        permission: PermissionLevel.READ,
-                      },
-                    });
+                    // Do NOT auto-grant READ access to the department.
+                    // They must formally click "Receive" to get personal READ access and log the transfer.
 
                     // Create pending distributions for Level 1 users to receive
                     await this.prisma.documentDistribution.createMany({
@@ -1786,12 +1943,20 @@ export class DocumentsRouter {
                   where: { id: currentRouteStop.id },
                   data: {
                     status: 'APPROVED',
+                    decision: input.status,
                     approvedById: user.id,
                     approvedAt: new Date(),
                   },
                 });
+              } else {
+                // If Returning or Disapproved, we do not advance route status to APPROVED, but we do record the decision on the current node
+                await this.prisma.documentTransitRoute.update({
+                  where: { id: currentRouteStop.id },
+                  data: {
+                    decision: input.status,
+                  },
+                });
               }
-              // If Returning or Disapproved, we do not update transit routes (route halts)
             }
           }
 

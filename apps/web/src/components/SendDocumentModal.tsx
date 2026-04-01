@@ -96,6 +96,15 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
   const nextRouteStop = useMemo(() => {
     if (!isTransitDocument || !document?.transitRoutes) return null;
 
+    // If the document is returned/disapproved, we should not enforce the forward transit route
+    // The originator is resubmitting back to the specific reviewer.
+    if (
+      document.status === "Returned for Corrections/Revision/Clarification" ||
+      document.status === "Disapproved"
+    ) {
+      return null;
+    }
+
     // Check if the current user/department has already received this document.
     const currentUser = users?.find(
       (u: { id: string | undefined }) =>
@@ -240,7 +249,15 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
       return;
     }
 
-    if (show && !isInitializedRef.current && campuses && campuses.length > 0) {
+    // Require both campuses and users to be available before initializing
+    if (
+      show &&
+      !isInitializedRef.current &&
+      campuses &&
+      campuses.length > 0 &&
+      users &&
+      users.length > 0
+    ) {
       if (hasPrescribedRoute && targetDeptId) {
         // Pre-fill next prescribed office in transit route
         setSelectedDeptId(targetDeptId);
@@ -294,7 +311,8 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
     hasPrescribedRoute,
     targetDeptId,
     campuses,
-  ]); // We need to depend on campuses since they load asynchronously!
+    users,
+  ]); // We need to depend on campuses and users since they load asynchronously!
 
   const handleSend = async () => {
     if (!documentId || !recipientId) return;

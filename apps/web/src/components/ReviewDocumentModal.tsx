@@ -67,14 +67,24 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
   }, [isTransit, document?.transitRoutes, user]);
 
   const allowedStatuses = React.useMemo(() => {
-    const baseStatuses = [
+    let baseStatuses = [
       "Noted",
       "For Endorsement",
       "Returned for Corrections/Revision/Clarification",
       "For the review of the Executive Committee",
       "Disapproved",
     ];
-    if (!isTransit || isFinalStop) return ["Approved", ...baseStatuses];
+
+    if (isFinalStop) {
+      // If it's the final stop, they cannot Endorse it further
+      baseStatuses = baseStatuses.filter((s) => s !== "For Endorsement");
+      return ["Approved", ...baseStatuses];
+    }
+
+    if (!isTransit) {
+      return ["Approved", ...baseStatuses];
+    }
+
     return baseStatuses;
   }, [isTransit, isFinalStop]);
 

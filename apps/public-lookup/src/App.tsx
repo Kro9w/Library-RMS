@@ -119,14 +119,48 @@ function App() {
                     let stepClass = "lookup-step-pending";
                     let iconClass = "bi-circle";
 
-                    if (route.status === "APPROVED") {
-                      stepClass = "lookup-step-approved";
-                      iconClass = "bi-check-circle-fill";
+                    const decision =
+                      route.decision ||
+                      (route.status === "CURRENT" ? data.status : null);
+
+                    if (route.status === "PENDING") {
+                      stepClass = "lookup-step-pending";
+                      iconClass = "bi-circle";
                     } else if (route.status === "CURRENT") {
-                      stepClass = "lookup-step-current";
-                      iconClass = "bi-record-circle-fill";
+                      if (
+                        decision ===
+                        "Returned for Corrections/Revision/Clarification"
+                      ) {
+                        stepClass = "lookup-step-rejected text-warning";
+                        iconClass = "bi-arrow-return-left";
+                      } else if (decision === "Disapproved") {
+                        stepClass = "lookup-step-rejected text-danger";
+                        iconClass = "bi-x-circle-fill";
+                      } else if (
+                        decision === "For the review of the Executive Committee"
+                      ) {
+                        stepClass = "lookup-step-current text-secondary";
+                        iconClass = "bi-people-fill";
+                      } else {
+                        stepClass = "lookup-step-current";
+                        iconClass = "bi-record-circle-fill";
+                      }
+                    } else if (route.status === "APPROVED") {
+                      if (decision === "Noted") {
+                        stepClass = "lookup-step-approved text-info";
+                        iconClass = "bi-journal-check";
+                      } else if (decision === "For Endorsement") {
+                        stepClass = "lookup-step-approved text-primary";
+                        iconClass = "bi-forward-fill";
+                      } else if (decision === "Approved") {
+                        stepClass = "lookup-step-approved text-success";
+                        iconClass = "bi-check-circle-fill";
+                      } else {
+                        stepClass = "lookup-step-approved text-success";
+                        iconClass = "bi-check-circle-fill";
+                      }
                     } else if (route.status === "REJECTED") {
-                      stepClass = "lookup-step-rejected";
+                      stepClass = "lookup-step-rejected text-danger";
                       iconClass = "bi-x-circle-fill";
                     }
 
