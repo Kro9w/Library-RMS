@@ -30,7 +30,7 @@ export class RolesRouter {
         .input(
           z.object({
             name: z.string().min(1),
-            level: z.number().min(1).max(4).default(4),
+            level: z.number().min(1).max(4).default(4), // Prevents manually creating level 0 roles
             // Optional overrides
             canManageUsers: z.boolean().optional(),
             canManageRoles: z.boolean().optional(),
@@ -77,7 +77,7 @@ export class RolesRouter {
           z.object({
             id: z.string(),
             name: z.string().optional(),
-            level: z.number().min(1).max(4).optional(),
+            level: z.number().min(1).max(4).optional(), // Prevents updating role TO level 0
             canManageUsers: z.boolean().optional(),
             canManageRoles: z.boolean().optional(),
             canManageDocuments: z.boolean().optional(),
@@ -95,6 +95,13 @@ export class RolesRouter {
             throw new TRPCError({
               code: 'NOT_FOUND',
               message: 'Role not found.',
+            });
+          }
+
+          if (existingRole.level === 0) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Executive roles cannot be modified.',
             });
           }
 
@@ -157,6 +164,13 @@ export class RolesRouter {
             throw new TRPCError({
               code: 'NOT_FOUND',
               message: 'Role not found.',
+            });
+          }
+
+          if (role.level === 0) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Executive roles cannot be deleted.',
             });
           }
 

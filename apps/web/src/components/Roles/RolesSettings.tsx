@@ -196,6 +196,9 @@ export const RolesSettings: React.FC = () => {
                   onClick={() => handleEditRole(role)}
                 >
                   <div className="d-flex align-items-center gap-2">
+                    {role.level === 0 && (
+                      <i className="bi bi-shield-fill text-danger"></i>
+                    )}
                     {role.level === 1 && (
                       <i className="bi bi-shield-shaded text-warning"></i>
                     )}
@@ -204,16 +207,18 @@ export const RolesSettings: React.FC = () => {
                     )}
                     {role.name}
                   </div>
-                  <span
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteRole(role.id);
-                    }}
-                    className="text-danger ms-2"
-                    style={{ cursor: "pointer" }}
-                  >
-                    &times;
-                  </span>
+                  {role.level !== 0 && (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteRole(role.id);
+                      }}
+                      className="text-danger ms-2"
+                      style={{ cursor: "pointer" }}
+                    >
+                      &times;
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -233,6 +238,7 @@ export const RolesSettings: React.FC = () => {
                 value={roleName}
                 onChange={(e) => setRoleName(e.target.value)}
                 placeholder="e.g. Director, Officer, Staff"
+                disabled={selectedRole?.level === 0}
               />
             </div>
 
@@ -242,7 +248,11 @@ export const RolesSettings: React.FC = () => {
                 className="form-select"
                 value={level}
                 onChange={(e) => handleLevelChange(parseInt(e.target.value))}
+                disabled={selectedRole?.level === 0}
               >
+                {selectedRole?.level === 0 && (
+                  <option value={0}>Level 0 - (Executive)</option>
+                )}
                 <option value={1}>
                   Level 1 - (Head/Director) - Full Admin
                 </option>
@@ -271,6 +281,7 @@ export const RolesSettings: React.FC = () => {
                       canManageUsers: e.target.checked,
                     })
                   }
+                  disabled={selectedRole?.level === 0}
                 />
                 <label className="form-check-label" htmlFor="perm-users">
                   Manage Users
@@ -288,6 +299,7 @@ export const RolesSettings: React.FC = () => {
                       canManageRoles: e.target.checked,
                     })
                   }
+                  disabled={selectedRole?.level === 0}
                 />
                 <label className="form-check-label" htmlFor="perm-roles">
                   Manage Roles
@@ -305,6 +317,7 @@ export const RolesSettings: React.FC = () => {
                       canManageDocuments: e.target.checked,
                     })
                   }
+                  disabled={selectedRole?.level === 0}
                 />
                 <label className="form-check-label" htmlFor="perm-docs">
                   Manage Documents
@@ -318,7 +331,8 @@ export const RolesSettings: React.FC = () => {
               disabled={
                 !roleName ||
                 createRoleMutation.isPending ||
-                updateRoleMutation.isPending
+                updateRoleMutation.isPending ||
+                selectedRole?.level === 0
               }
             >
               {createRoleMutation.isPending || updateRoleMutation.isPending ? (
