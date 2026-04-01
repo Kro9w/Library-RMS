@@ -1,5 +1,5 @@
 import React from "react";
-import "./ConfirmModal.css"; // Make sure this import line exists
+import "./StandardModal.css";
 
 interface ConfirmModalProps {
   show: boolean; // Renamed from isOpen
@@ -23,35 +23,72 @@ export function ConfirmModal({
   }
 
   return (
-    <div className="custom-modal-backdrop">
-      <div className="custom-modal-content">
-        <h4 className="custom-modal-title">{title}</h4>
-        {/* Use children here. Changed <p> to <div> to avoid nesting errors. */}
-        <div className="custom-modal-message">{children}</div>
-        <div className="custom-modal-actions">
+    <div
+      className="standard-modal-backdrop"
+      onClick={!isConfirming ? onClose : undefined}
+    >
+      <div
+        className="standard-modal-dialog"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="standard-modal-header">
+          <div className="standard-modal-icon">
+            <i className="bi bi-exclamation-triangle"></i>
+          </div>
+          <div className="standard-modal-header-text">
+            <h5 className="standard-modal-title">{title}</h5>
+          </div>
+          {!isConfirming && (
+            <button
+              type="button"
+              className="standard-modal-close"
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <i className="bi bi-x"></i>
+            </button>
+          )}
+        </div>
+
+        <div className="standard-modal-body">
+          <div
+            className="standard-modal-notice standard-modal-notice-warning"
+            style={{
+              backgroundColor: "transparent",
+              borderColor: "transparent",
+              padding: 0,
+              gap: 0,
+              color: "var(--text-primary)",
+            }}
+          >
+            <div className="custom-modal-message">{children}</div>
+          </div>
+        </div>
+
+        <div className="standard-modal-footer">
           <button
-            className="btn btn-secondary"
-            onClick={onClose} // Use onClose
+            className="standard-modal-btn standard-modal-btn-ghost"
+            onClick={onClose}
             disabled={isConfirming}
           >
             Cancel
           </button>
           <button
-            className="btn btn-danger"
+            className="standard-modal-btn standard-modal-btn-confirm"
+            style={{
+              backgroundColor: "var(--danger)",
+              borderColor: "var(--danger)",
+            }}
             onClick={onConfirm}
             disabled={isConfirming}
           >
             {isConfirming ? (
               <>
-                <span
-                  className="spinner-border spinner-border-sm me-2"
-                  role="status"
-                  aria-hidden="true"
-                ></span>
+                <span className="standard-modal-spinner" />
                 Confirming...
               </>
             ) : (
-              "Confirm" // Changed from "Confirm Delete" to be more generic
+              <>Confirm</>
             )}
           </button>
         </div>

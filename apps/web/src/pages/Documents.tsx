@@ -34,11 +34,6 @@ const ReviewDocumentModal = React.lazy(() =>
     default: m.ReviewDocumentModal,
   })),
 );
-const TagsManagementModal = React.lazy(() =>
-  import("../components/TagsManagementModal").then((m) => ({
-    default: m.TagsManagementModal,
-  })),
-);
 const CheckOutModal = React.lazy(() =>
   import("../components/CheckOutModal").then((m) => ({
     default: m.CheckOutModal,
@@ -70,7 +65,6 @@ const Documents: React.FC = () => {
   const [showSendModal, setShowSendModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [showTagsModal, setShowTagsModal] = useState(false);
   const [showCheckOutModal, setShowCheckOutModal] = useState(false);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
 
@@ -302,12 +296,6 @@ const Documents: React.FC = () => {
             onChange={handleSearch}
             className="search-bar"
           />
-          <button
-            className="btn btn-secondary me-2"
-            onClick={() => setShowTagsModal(true)}
-          >
-            Tags
-          </button>
           <button
             className="btn btn-primary"
             onClick={() => setShowUploadModal(true)}
@@ -631,13 +619,6 @@ const Documents: React.FC = () => {
           <UploadModal
             show={showUploadModal}
             onClose={() => setShowUploadModal(false)}
-          />
-        )}
-
-        {showTagsModal && (
-          <TagsManagementModal
-            show={showTagsModal}
-            onClose={() => setShowTagsModal(false)}
           />
         )}
 

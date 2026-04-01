@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Modal } from "bootstrap";
+import React, { useState } from "react";
+import "../StandardModal.css";
 import "./RetentionHelpModal.css";
 
 interface RetentionHelpModalProps {
@@ -124,36 +124,17 @@ export const RetentionHelpModal: React.FC<RetentionHelpModalProps> = ({
   onClose,
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
-  const modalRef = useRef<HTMLDivElement>(null);
-  const modalInstanceRef = useRef<Modal | null>(null);
 
-  useEffect(() => {
-    if (modalRef.current) {
-      modalInstanceRef.current = new Modal(modalRef.current);
-      modalRef.current.addEventListener("hidden.bs.modal", () => {
-        onClose();
-        // Reset to first step after a short delay so it re-opens fresh
-        setTimeout(() => setCurrentStep(0), 300);
-      });
-    }
-    return () => {
-      modalInstanceRef.current?.dispose();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (show) {
-      modalInstanceRef.current?.show();
-    } else {
-      modalInstanceRef.current?.hide();
-    }
-  }, [show]);
+  const handleClose = () => {
+    onClose();
+    setTimeout(() => setCurrentStep(0), 300);
+  };
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      modalInstanceRef.current?.hide();
+      handleClose();
     }
   };
 
@@ -163,69 +144,91 @@ export const RetentionHelpModal: React.FC<RetentionHelpModalProps> = ({
     }
   };
 
+  if (!show) return null;
+
   return (
     <div
-      className="modal fade retention-help-modal"
-      ref={modalRef}
-      tabIndex={-1}
+      className="standard-modal-backdrop retention-help-modal"
+      onClick={handleClose}
     >
-      <div className="modal-dialog modal-dialog-centered modal-lg">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">Records Retention Guide</h5>
-            <button
-              type="button"
-              className="btn-close"
-              onClick={() => modalInstanceRef.current?.hide()}
-            ></button>
+      <div
+        className="standard-modal-dialog modal-lg"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: "800px" }}
+      >
+        <div className="standard-modal-header">
+          <div className="standard-modal-icon">
+            <i className="bi bi-book"></i>
           </div>
-          <div className="modal-body">
-            <div className="tutorial-container">
-              <div className="step-indicator">
-                {steps.map((_, index) => (
-                  <div
-                    key={index}
-                    className={`step-dot ${
-                      index === currentStep ? "active" : ""
-                    } ${index < currentStep ? "completed" : ""}`}
-                  />
-                ))}
-              </div>
+          <div className="standard-modal-header-text">
+            <h5 className="standard-modal-title">Records Retention Guide</h5>
+          </div>
+          <button
+            type="button"
+            className="standard-modal-close"
+            onClick={handleClose}
+            aria-label="Close"
+          >
+            <i className="bi bi-x"></i>
+          </button>
+        </div>
 
-              <div className="tutorial-content">
-                <div className="text-section">
-                  <h4>{steps[currentStep].title}</h4>
-                  <div className="content-body">
-                    {steps[currentStep].content}
-                  </div>
-                </div>
-                {/* Visual placeholder area - styled via CSS */}
-                <div className={`visual-section step-${currentStep}`}>
-                  <div className="visual-placeholder-icon">
-                    {currentStep === 0 && <i className="bi bi-diagram-3"></i>}
-                    {currentStep === 1 && (
-                      <i className="bi bi-calendar-check"></i>
-                    )}
-                    {currentStep === 2 && <i className="bi bi-hdd-rack"></i>}
-                    {currentStep === 3 && <i className="bi bi-shield-lock"></i>}
-                  </div>
+        <div className="standard-modal-body">
+          <div className="tutorial-container">
+            <div className="step-indicator">
+              {steps.map((_, index) => (
+                <div
+                  key={index}
+                  className={`step-dot ${
+                    index === currentStep ? "active" : ""
+                  } ${index < currentStep ? "completed" : ""}`}
+                />
+              ))}
+            </div>
+
+            <div className="tutorial-content">
+              <div className="text-section">
+                <h4
+                  style={{
+                    color: "var(--text-primary)",
+                    fontWeight: 600,
+                    fontSize: "1.25rem",
+                    margin: 0,
+                  }}
+                >
+                  {steps[currentStep].title}
+                </h4>
+                <div className="content-body">{steps[currentStep].content}</div>
+              </div>
+              <div className={`visual-section step-${currentStep}`}>
+                <div className="visual-placeholder-icon">
+                  {currentStep === 0 && <i className="bi bi-diagram-3"></i>}
+                  {currentStep === 1 && (
+                    <i className="bi bi-calendar-check"></i>
+                  )}
+                  {currentStep === 2 && <i className="bi bi-hdd-rack"></i>}
+                  {currentStep === 3 && <i className="bi bi-shield-lock"></i>}
                 </div>
               </div>
             </div>
           </div>
-          <div className="modal-footer">
-            <div className="d-flex justify-content-between w-100">
-              <button
-                className="btn btn-outline-secondary"
-                onClick={handleBack}
-                disabled={currentStep === 0}
-              >
-                Back
-              </button>
-              <button className="btn btn-primary" onClick={handleNext}>
-                {currentStep === steps.length - 1 ? "Finish" : "Next"}
-              </button>
-            </div>
+        </div>
+
+        <div className="standard-modal-footer">
+          <div className="d-flex justify-content-between w-100">
+            <button
+              className="standard-modal-btn standard-modal-btn-ghost"
+              onClick={handleBack}
+              disabled={currentStep === 0}
+            >
+              Back
+            </button>
+            <button
+              className="standard-modal-btn standard-modal-btn-confirm"
+              onClick={handleNext}
+            >
+              {currentStep === steps.length - 1 ? "Finish" : "Next"}
+            </button>
           </div>
         </div>
       </div>

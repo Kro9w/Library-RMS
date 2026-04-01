@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { trpc } from "../trpc";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
-import "../components/Roles/RolesModal.css";
+import "../components/Roles/RolesSettings.css";
 import { ConfirmModal } from "../components/ConfirmModal";
 
 import { formatUserName, formatUserNameLastFirst } from "../utils/user";
@@ -20,21 +20,11 @@ export function Users() {
     enabled: !!currentUser, // Prevent fetching until current user is loaded
   });
 
-  // Refactored to use getAll with pagination
-  const { data } = trpc.documents.getAll.useQuery({
-    filter: "mine",
-    perPage: 100, // Fetch up to 100 documents for the dropdown
-  });
-  const myDocuments = data?.documents;
-
   const removeUserFromInstitution =
     trpc.user.removeUserFromInstitution.useMutation();
-  const transferDocument = trpc.documents.sendDocument.useMutation();
   const utils = trpc.useUtils();
 
   const [userToRemove, setUserToRemove] = useState<User | null>(null);
-  const [userToSendTo, setUserToSendTo] = useState<User | null>(null);
-  const [documentToSend, setDocumentToSend] = useState<string>("");
 
   // State for collapsible departments
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>(
@@ -118,24 +108,6 @@ export function Users() {
           onSuccess: () => {
             utils.user.getUsersWithRoles.invalidate();
             setUserToRemove(null);
-          },
-        },
-      );
-    }
-  };
-
-  const handleSendDocument = () => {
-    if (userToSendTo && documentToSend) {
-      transferDocument.mutate(
-        {
-          documentId: documentToSend,
-          recipientId: userToSendTo.id,
-          tagIds: [],
-        },
-        {
-          onSuccess: () => {
-            setUserToSendTo(null);
-            setDocumentToSend("");
           },
         },
       );
@@ -282,13 +254,6 @@ export function Users() {
                                     </td>
                                     <td>
                                       <div className="d-flex gap-2">
-                                        <button
-                                          className="btn btn-sm btn-outline-primary border-0"
-                                          onClick={() => setUserToSendTo(user)}
-                                          title="Send Document"
-                                        >
-                                          <i className="bi bi-send fs-5"></i>
-                                        </button>
                                         {canManageUsers &&
                                           level > currentUserLevel && (
                                             <>
@@ -350,31 +315,6 @@ export function Users() {
             the institution?
           </>
         )}
-      </ConfirmModal>
-      <ConfirmModal
-        show={!!userToSendTo}
-        onClose={() => setUserToSendTo(null)}
-        onConfirm={handleSendDocument}
-        title="Send Document"
-        isConfirming={transferDocument.isPending}
-      >
-        <p>
-          Send a document to <strong>{formatUserName(userToSendTo)}</strong>
-        </p>
-        <select
-          className="form-select"
-          value={documentToSend}
-          onChange={(e) => setDocumentToSend(e.target.value)}
-        >
-          <option value="" disabled>
-            Select a document
-          </option>
-          {myDocuments?.map((doc: any) => (
-            <option key={doc.id} value={doc.id}>
-              {doc.title}
-            </option>
-          ))}
-        </select>
       </ConfirmModal>
     </>
   );

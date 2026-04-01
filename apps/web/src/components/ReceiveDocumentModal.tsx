@@ -3,6 +3,7 @@ import { trpc } from "../trpc";
 import { Modal } from "bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
+import "./StandardModal.css";
 
 interface ReceiveDocumentModalProps {
   show: boolean;
@@ -76,199 +77,199 @@ export const ReceiveDocumentModal: React.FC<ReceiveDocumentModalProps> = ({
     await receiveDocumentMutation.mutateAsync({ distributionId });
   };
 
-  // --- Inline Styles for Theme Compliance ---
-  const modalHeaderStyle = {
-    backgroundColor: "var(--background)",
-    borderBottom: "1px solid var(--card-border)",
-    color: "var(--brand)",
-  };
-
-  const modalBodyStyle = {
-    backgroundColor: "var(--background)",
-    color: "var(--text)",
-  };
-
-  const modalFooterStyle = {
-    backgroundColor: "var(--background)",
-    borderTop: "1px solid var(--card-border)",
-  };
+  if (!show) return null;
 
   return (
     <div
-      className="modal fade"
-      ref={modalRef}
-      id="receiveDocumentModal"
-      tabIndex={-1}
-      aria-hidden="true"
+      className="standard-modal-backdrop"
+      onClick={!receiveDocumentMutation.isPending ? onClose : undefined}
     >
-      <div className="modal-dialog modal-dialog-centered modal-lg">
-        <div
-          className="modal-content"
-          style={{
-            backgroundColor: "var(--card-background)",
-            border: "1px solid var(--card-border)",
-            boxShadow: "var(--card-shadow)",
-          }}
-        >
-          <div className="modal-header" style={modalHeaderStyle}>
-            <h5 className="modal-title">
-              <i className="bi bi-box-arrow-in-down me-2"></i>Receive Document
-            </h5>
+      <div
+        className="standard-modal-dialog modal-lg"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: "800px" }}
+      >
+        <div className="standard-modal-header">
+          <div className="standard-modal-icon">
+            <i className="bi bi-box-arrow-in-down"></i>
+          </div>
+          <div className="standard-modal-header-text">
+            <h5 className="standard-modal-title">Receive Document</h5>
+          </div>
+          {!receiveDocumentMutation.isPending && (
             <button
               type="button"
-              className="btn-close"
+              className="standard-modal-close"
               onClick={onClose}
               aria-label="Close"
-            ></button>
+            >
+              <i className="bi bi-x"></i>
+            </button>
+          )}
+        </div>
+
+        <div className="standard-modal-body">
+          {errorMsg && (
+            <div className="standard-modal-notice standard-modal-notice-error">
+              <i className="bi bi-exclamation-triangle-fill"></i>
+              <p>{errorMsg}</p>
+            </div>
+          )}
+
+          <div className="mb-4">
+            <h6
+              className="mb-2 fw-bold text-muted text-uppercase"
+              style={{ fontSize: "0.75rem", letterSpacing: "0.05em" }}
+            >
+              Option 1: Receive via Control Number
+            </h6>
+            <div className="d-flex gap-2">
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Enter Document Control Number..."
+                value={controlNumber}
+                onChange={(e) => setControlNumber(e.target.value)}
+                style={{
+                  backgroundColor: "var(--bg-surface)",
+                  borderColor: "var(--border)",
+                  color: "var(--text-primary)",
+                  fontSize: "13px",
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleReceiveViaControlNumber();
+                }}
+              />
+              <button
+                className="standard-modal-btn standard-modal-btn-confirm"
+                onClick={handleReceiveViaControlNumber}
+                disabled={
+                  !controlNumber.trim() || receiveDocumentMutation.isPending
+                }
+              >
+                {receiveDocumentMutation.isPending && !errorMsg ? (
+                  <>
+                    <span className="standard-modal-spinner" />
+                    Receiving...
+                  </>
+                ) : (
+                  "Receive"
+                )}
+              </button>
+            </div>
+            <small
+              className="text-muted mt-2 d-block"
+              style={{ fontSize: "11px" }}
+            >
+              Use this if someone handed you a physical document with a control
+              number but it hasn't been routed to you in the system yet.
+            </small>
           </div>
-          <div className="modal-body p-4" style={modalBodyStyle}>
-            {errorMsg && (
-              <div className="alert alert-danger mb-4" role="alert">
-                <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                {errorMsg}
+
+          <div>
+            <h6
+              className="mb-2 fw-bold text-muted text-uppercase"
+              style={{ fontSize: "0.75rem", letterSpacing: "0.05em" }}
+            >
+              Option 2: Pending Receipts
+            </h6>
+
+            {isLoading ? (
+              <div className="text-center py-4">
+                <span className="spinner-border spinner-border-sm text-primary"></span>
+                <span className="ms-2 text-muted" style={{ fontSize: "13px" }}>
+                  Loading pending documents...
+                </span>
+              </div>
+            ) : pendingDistributions && pendingDistributions.length > 0 ? (
+              <div
+                className="list-group"
+                style={{ borderRadius: "var(--radius-md)" }}
+              >
+                {pendingDistributions.map((dist) => (
+                  <div
+                    key={dist.id}
+                    className="list-group-item d-flex justify-content-between align-items-center p-3"
+                    style={{
+                      backgroundColor: "var(--bg-surface)",
+                      borderColor: "var(--border)",
+                    }}
+                  >
+                    <div>
+                      <h6 className="mb-1" style={{ fontSize: "14px" }}>
+                        <Link
+                          to={`/documents/${dist.document.id}`}
+                          className="text-decoration-none"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {dist.document.title}
+                        </Link>
+                        {dist.document.classification && (
+                          <span
+                            className="badge bg-secondary ms-2"
+                            style={{ fontSize: "0.65rem" }}
+                          >
+                            {dist.document.classification}
+                          </span>
+                        )}
+                      </h6>
+                      <small
+                        className="text-muted d-block"
+                        style={{ fontSize: "12px" }}
+                      >
+                        Sent by{" "}
+                        <strong>
+                          {dist.sender.firstName} {dist.sender.lastName}
+                        </strong>{" "}
+                        {dist.sender.department?.name
+                          ? `(${dist.sender.department.name})`
+                          : ""}
+                      </small>
+                      <small
+                        className="text-muted d-block mt-1"
+                        style={{ fontSize: "11px" }}
+                      >
+                        <i className="bi bi-clock me-1"></i>
+                        Sent on{" "}
+                        {format(new Date(dist.createdAt), "MMM d, yyyy h:mm a")}
+                      </small>
+                    </div>
+                    <button
+                      className="standard-modal-btn standard-modal-btn-ghost"
+                      style={{ height: "auto", padding: "6px 12px" }}
+                      onClick={() => handleReceiveFromPending(dist.id)}
+                      disabled={receiveDocumentMutation.isPending}
+                    >
+                      Receive
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div
+                className="text-center p-4 rounded"
+                style={{
+                  backgroundColor: "var(--bg-subtle)",
+                  border: "1px dashed var(--border-strong)",
+                  borderRadius: "var(--radius-lg)",
+                }}
+              >
+                <i className="bi bi-inbox fs-3 text-muted mb-2 d-block"></i>
+                <span className="text-muted" style={{ fontSize: "13px" }}>
+                  No pending documents to receive.
+                </span>
               </div>
             )}
-
-            <div className="mb-5">
-              <h6
-                className="mb-3 fw-bold text-muted text-uppercase"
-                style={{ fontSize: "0.85rem" }}
-              >
-                Option 1: Receive via Control Number
-              </h6>
-              <div className="d-flex gap-2">
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Enter Document Control Number..."
-                  value={controlNumber}
-                  onChange={(e) => setControlNumber(e.target.value)}
-                  style={{
-                    backgroundColor: "var(--input-bg)",
-                    borderColor: "var(--card-border)",
-                    color: "var(--text)",
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleReceiveViaControlNumber();
-                  }}
-                />
-                <button
-                  className="btn btn-primary px-4"
-                  onClick={handleReceiveViaControlNumber}
-                  disabled={
-                    !controlNumber.trim() || receiveDocumentMutation.isPending
-                  }
-                >
-                  {receiveDocumentMutation.isPending && !errorMsg ? (
-                    <span className="spinner-border spinner-border-sm me-2"></span>
-                  ) : null}
-                  Receive
-                </button>
-              </div>
-              <small className="text-muted mt-2 d-block">
-                Use this if someone handed you a physical document with a
-                control number but it hasn't been routed to you in the system
-                yet.
-              </small>
-            </div>
-
-            <div>
-              <h6
-                className="mb-3 fw-bold text-muted text-uppercase"
-                style={{ fontSize: "0.85rem" }}
-              >
-                Option 2: Pending Receipts
-              </h6>
-
-              {isLoading ? (
-                <div className="text-center py-4">
-                  <span className="spinner-border spinner-border-sm text-primary"></span>
-                  <span className="ms-2 text-muted">
-                    Loading pending documents...
-                  </span>
-                </div>
-              ) : pendingDistributions && pendingDistributions.length > 0 ? (
-                <div className="list-group">
-                  {pendingDistributions.map((dist) => (
-                    <div
-                      key={dist.id}
-                      className="list-group-item d-flex justify-content-between align-items-center p-3"
-                      style={{
-                        backgroundColor: "var(--card-background)",
-                        borderColor: "var(--card-border)",
-                      }}
-                    >
-                      <div>
-                        <h6 className="mb-1">
-                          <Link
-                            to={`/documents/${dist.document.id}`}
-                            className="text-decoration-none"
-                            style={{ color: "var(--text)" }}
-                          >
-                            {dist.document.title}
-                          </Link>
-                          {dist.document.classification && (
-                            <span
-                              className="badge bg-secondary ms-2"
-                              style={{ fontSize: "0.65rem" }}
-                            >
-                              {dist.document.classification}
-                            </span>
-                          )}
-                        </h6>
-                        <small className="text-muted d-block">
-                          Sent by{" "}
-                          <strong>
-                            {dist.sender.firstName} {dist.sender.lastName}
-                          </strong>{" "}
-                          {dist.sender.department?.name
-                            ? `(${dist.sender.department.name})`
-                            : ""}
-                        </small>
-                        <small className="text-muted d-block mt-1">
-                          <i className="bi bi-clock me-1"></i>
-                          Sent on{" "}
-                          {format(
-                            new Date(dist.createdAt),
-                            "MMM d, yyyy h:mm a",
-                          )}
-                        </small>
-                      </div>
-                      <button
-                        className="btn btn-sm btn-outline-primary"
-                        onClick={() => handleReceiveFromPending(dist.id)}
-                        disabled={receiveDocumentMutation.isPending}
-                      >
-                        Receive
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div
-                  className="text-center p-4 rounded"
-                  style={{
-                    backgroundColor: "var(--input-bg)",
-                    border: "1px dashed var(--card-border)",
-                  }}
-                >
-                  <i className="bi bi-inbox fs-3 text-muted mb-2 d-block"></i>
-                  <span className="text-muted">
-                    No pending documents to receive.
-                  </span>
-                </div>
-              )}
-            </div>
           </div>
-          <div className="modal-footer" style={modalFooterStyle}>
-            <button
-              type="button"
-              className="btn btn-outline-secondary px-4"
-              onClick={onClose}
-            >
-              Close
-            </button>
-          </div>
+        </div>
+
+        <div className="standard-modal-footer">
+          <button
+            className="standard-modal-btn standard-modal-btn-ghost"
+            onClick={onClose}
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>

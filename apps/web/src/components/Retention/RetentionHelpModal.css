@@ -1,14 +1,10 @@
 /* apps/web/src/components/Retention/RetentionHelpModal.css */
 
-.retention-help-modal .modal-content {
-  border-radius: 12px;
-  overflow: hidden;
-}
-
 .tutorial-container {
   display: flex;
   flex-direction: column;
   min-height: 400px;
+  padding: 8px;
 }
 
 .step-indicator {
@@ -22,7 +18,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background-color: var(--bs-gray-300);
+  background-color: var(--border-strong);
   transition: all 0.3s ease;
 }
 
@@ -42,6 +38,12 @@
   gap: 24px;
 }
 
+@media (max-width: 768px) {
+  .tutorial-content {
+    flex-direction: column;
+  }
+}
+
 .text-section {
   flex: 1;
   display: flex;
@@ -52,26 +54,24 @@
   margin-top: 16px;
   font-size: 0.95rem;
   line-height: 1.6;
-  color: var(--bs-body-color);
+  color: var(--text-secondary);
 }
 
 .visual-section {
   flex: 1;
-  background-color: var(--bs-gray-100); /* Or a subtle theme color */
-  border-radius: 8px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 250px;
 }
 
-[data-bs-theme="dark"] .visual-section {
-  background-color: var(--bs-gray-800);
-}
-
 .visual-placeholder-icon {
   font-size: 5rem;
-  color: var(--bs-gray-400);
+  color: var(--text-muted);
+  opacity: 0.5;
 }
 
 /* Specific Step Styling */
@@ -98,7 +98,7 @@
 .lifecycle-list p {
   margin: 0;
   font-size: 0.9rem;
-  color: var(--bs-secondary-color);
+  color: var(--text-secondary);
 }
 
 /* Step 1: Retention Periods */
@@ -123,31 +123,33 @@
 
 /* Step 2: Disposition Actions */
 .action-card {
-  border: 1px solid var(--bs-border-color);
-  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-surface);
   padding: 16px;
   margin-bottom: 12px;
 }
 
 .action-card.archive {
-  border-left: 4px solid var(--bs-info);
+  border-left: 4px solid var(--info);
 }
 
 .action-card.destroy {
-  border-left: 4px solid var(--bs-danger);
+  border-left: 4px solid var(--danger);
 }
 
 .action-card h6 {
   display: flex;
   align-items: center;
   font-weight: 600;
+  margin-bottom: 6px;
 }
 
 .action-card.archive h6 {
-  color: var(--bs-info);
+  color: var(--info);
 }
 .action-card.destroy h6 {
-  color: var(--bs-danger);
+  color: var(--danger);
 }
 
 .action-card p {

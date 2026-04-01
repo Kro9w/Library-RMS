@@ -5,7 +5,8 @@ import { useUser } from "../contexts/SessionContext.tsx";
 import { trpc } from "../trpc";
 import { v4 as uuidv4 } from "uuid";
 import mammoth from "mammoth";
-import "./UploadModal.css";
+import "./StandardModal.css";
+import "./UploadModal.css"; // Keep specific upload overrides
 
 interface UploadModalProps {
   show: boolean;
@@ -173,25 +174,39 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
   if (!show) return null;
 
   return (
-    <div className="upload-backdrop" onClick={!uploading ? onClose : undefined}>
-      <div className="upload-dialog" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="standard-modal-backdrop"
+      onClick={!uploading ? onClose : undefined}
+    >
+      <div
+        className="standard-modal-dialog"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="upload-dialog-header">
-          <div>
-            <div className="upload-dialog-title">Upload document</div>
-            <div className="upload-dialog-subtitle">
+        <div className="standard-modal-header">
+          <div className="standard-modal-icon">
+            <i className="bi bi-upload"></i>
+          </div>
+          <div className="standard-modal-header-text">
+            <h5 className="standard-modal-title">Upload document</h5>
+            <p className="standard-modal-subtitle">
               PDF, DOCX, or image formats supported
-            </div>
+            </p>
           </div>
           {!uploading && (
-            <button className="upload-close-btn" onClick={onClose}>
-              <i className="bi bi-x" />
+            <button
+              type="button"
+              className="standard-modal-close"
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <i className="bi bi-x"></i>
             </button>
           )}
         </div>
 
         {/* Body */}
-        <div className="upload-dialog-body">
+        <div className="standard-modal-body upload-dialog-body">
           {/* Dropzone */}
           <div
             {...getRootProps()}
@@ -405,26 +420,22 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
         </div>
 
         {/* Footer */}
-        <div className="upload-dialog-footer">
+        <div className="standard-modal-footer">
           <button
-            className="btn btn-secondary"
+            className="standard-modal-btn standard-modal-btn-ghost"
             onClick={onClose}
             disabled={uploading}
           >
             Cancel
           </button>
           <button
-            className="btn btn-primary"
+            className="standard-modal-btn standard-modal-btn-confirm"
             onClick={handleUpload}
             disabled={!file || uploading || !bucketName}
           >
             {uploading ? (
               <>
-                <span
-                  className="spinner-border spinner-border-sm"
-                  role="status"
-                  aria-hidden="true"
-                />
+                <span className="standard-modal-spinner" />
                 Uploading…
               </>
             ) : (

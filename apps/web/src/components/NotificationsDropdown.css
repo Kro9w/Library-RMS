@@ -107,7 +107,7 @@
 /* Notification item */
 .notif-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   width: 100%;
   height: auto;
@@ -118,6 +118,7 @@
   text-align: left;
   cursor: pointer;
   border-bottom: 1px solid var(--border-muted);
+  border-radius: 0px;
   transition: background-color 100ms ease;
   position: relative;
 }
@@ -202,6 +203,7 @@ body[data-bs-theme="dark"] .notif-item.unread:hover {
   line-height: 1.4;
   overflow: hidden;
   display: -webkit-box;
+  line-clamp: 3;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }

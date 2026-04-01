@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { trpc } from "../trpc";
 import { SendDocumentModal } from "./SendDocumentModal";
 import { Modal } from "bootstrap";
-import "./ReviewDocumentModal.css";
+import "./StandardModal.css";
 
 interface ReviewDocumentModalProps {
   show: boolean;
@@ -260,120 +260,138 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
     );
   };
 
+  if (!show) return null;
+  const isPending =
+    reviewDocumentMutation.isPending || sendDocumentMutation.isPending;
+
   return (
     <>
       <div
-        className="modal fade"
-        ref={modalRef}
-        tabIndex={-1}
-        aria-hidden="true"
+        className="standard-modal-backdrop"
+        onClick={!isPending ? onClose : undefined}
       >
-        <div className="modal-dialog modal-dialog-centered modal-lg">
-          <div className="modal-content review-modal-content">
-            {/* Header */}
-            <div className="review-modal-header">
-              <div className="review-modal-header-left">
-                <div className="review-modal-icon-wrap">
-                  <i className="bi bi-clipboard-check"></i>
-                </div>
-                <div>
-                  <h5 className="review-modal-title">Review Document</h5>
-                  {document?.title && (
-                    <p className="review-modal-subtitle">{document.title}</p>
-                  )}
-                </div>
-              </div>
+        <div
+          className="standard-modal-dialog modal-lg"
+          onClick={(e) => e.stopPropagation()}
+          style={{ maxWidth: "800px" }}
+        >
+          {/* Header */}
+          <div
+            className="standard-modal-header"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(155, 35, 53, 0.03) 0%, transparent 60%)",
+            }}
+          >
+            <div className="standard-modal-icon">
+              <i className="bi bi-clipboard-check"></i>
+            </div>
+            <div className="standard-modal-header-text">
+              <h5 className="standard-modal-title">Review Document</h5>
+              {document?.title && (
+                <p className="standard-modal-subtitle">{document.title}</p>
+              )}
+            </div>
+            {!isPending && (
               <button
                 type="button"
-                className="btn-close"
+                className="standard-modal-close"
                 onClick={onClose}
                 aria-label="Close"
+              >
+                <i className="bi bi-x"></i>
+              </button>
+            )}
+          </div>
+
+          {/* Body */}
+          <div className="standard-modal-body" style={{ gap: "24px" }}>
+            {/* Routing progress */}
+            {renderRoutingProgress()}
+
+            {/* Status selector */}
+            <div className="review-modal-field">
+              <label className="review-modal-label">Decision</label>
+              <div className="review-status-selector">
+                {allowedStatuses.map((s) => {
+                  const m = STATUS_META[s];
+                  const isSelected = status === s;
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      className={`review-status-option ${isSelected ? "review-status-option-active" : ""}`}
+                      onClick={() => setStatus(s as ReviewStatus)}
+                      disabled={isPending}
+                    >
+                      <i
+                        className={`bi ${m.icon} ${isSelected ? m.colorClass : "text-muted"}`}
+                      ></i>
+                      <span>{s}</span>
+                    </button>
+                  );
+                })}
+                ;
+              </div>
+            </div>
+
+            {/* Remarks */}
+            <div className="review-modal-field">
+              <label className="review-modal-label">
+                Remarks
+                <span className="review-modal-label-optional">optional</span>
+              </label>
+              <textarea
+                className="review-modal-textarea"
+                rows={4}
+                placeholder="Enter any feedback, notes, or instructions for the sender…"
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                disabled={isPending}
               />
             </div>
+          </div>
 
-            {/* Body */}
-            <div className="review-modal-body">
-              {/* Routing progress */}
-              {renderRoutingProgress()}
-
-              {/* Status selector */}
-              <div className="review-modal-field">
-                <label className="review-modal-label">Decision</label>
-                <div className="review-status-selector">
-                  {allowedStatuses.map((s) => {
-                    const m = STATUS_META[s];
-                    const isSelected = status === s;
-                    return (
-                      <button
-                        key={s}
-                        type="button"
-                        className={`review-status-option ${isSelected ? "review-status-option-active" : ""}`}
-                        onClick={() => setStatus(s as ReviewStatus)}
-                      >
-                        <i
-                          className={`bi ${m.icon} ${isSelected ? m.colorClass : "text-muted"}`}
-                        ></i>
-                        <span>{s}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Remarks */}
-              <div className="review-modal-field">
-                <label className="review-modal-label">
-                  Remarks
-                  <span className="review-modal-label-optional">optional</span>
-                </label>
-                <textarea
-                  className="review-modal-textarea"
-                  rows={4}
-                  placeholder="Enter any feedback, notes, or instructions for the sender…"
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="review-modal-footer">
-              <button
-                type="button"
-                className="btn btn-secondary px-4"
-                onClick={onClose}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={`btn btn-primary px-4 ${
-                  status === "Disapproved" ||
-                  status === "Returned for Corrections/Revision/Clarification"
-                    ? "btn-danger"
-                    : "btn-primary"
-                }`}
-                onClick={handleSubmit}
-                disabled={
-                  reviewDocumentMutation.isPending ||
-                  sendDocumentMutation.isPending ||
-                  !status
-                }
-              >
-                {reviewDocumentMutation.isPending ||
-                sendDocumentMutation.isPending ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-2" />
-                    Submitting…
-                  </>
-                ) : (
-                  <>
-                    {meta && <i className={`bi ${meta.icon} me-2`}></i>}
-                    {meta?.btnLabel || "Submit Review"}
-                  </>
-                )}
-              </button>
-            </div>
+          {/* Footer */}
+          <div className="standard-modal-footer">
+            <button
+              className="standard-modal-btn standard-modal-btn-ghost"
+              onClick={onClose}
+              disabled={isPending}
+            >
+              Cancel
+            </button>
+            <button
+              className="standard-modal-btn standard-modal-btn-confirm"
+              style={
+                status === "Disapproved" ||
+                status === "Returned for Corrections/Revision/Clarification"
+                  ? {
+                      backgroundColor: "var(--danger)",
+                      borderColor: "var(--danger)",
+                    }
+                  : {}
+              }
+              onClick={handleSubmit}
+              disabled={isPending || !status}
+            >
+              {isPending ? (
+                <>
+                  <span className="standard-modal-spinner" />
+                  Submitting…
+                </>
+              ) : (
+                <>
+                  {meta && (
+                    <i
+                      className={`bi ${meta.icon}`}
+                      style={{ fontSize: "13px" }}
+                    ></i>
+                  )}
+                  {meta?.btnLabel || "Submit Review"}
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>

@@ -22,11 +22,6 @@ import type { SidebarMode } from "../App";
 const UploadModal = React.lazy(() =>
   import("./UploadModal").then((m) => ({ default: m.UploadModal })),
 );
-const SelectDocumentModal = React.lazy(() =>
-  import("./SelectDocumentModal").then((m) => ({
-    default: m.SelectDocumentModal,
-  })),
-);
 const SendDocumentModal = React.lazy(() =>
   import("./SendDocumentModal").then((m) => ({ default: m.SendDocumentModal })),
 );
@@ -94,9 +89,8 @@ export function Navbar({ sidebarMode, setSidebarMode }: NavbarProps) {
   });
 
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [showSelectDocumentModal, setShowSelectDocumentModal] = useState(false);
   const [showSendDocumentModal, setShowSendDocumentModal] = useState(false);
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [selectedDocId, _setSelectedDocId] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -423,17 +417,6 @@ export function Navbar({ sidebarMode, setSidebarMode }: NavbarProps) {
           <UploadModal
             show={showUploadModal}
             onClose={() => setShowUploadModal(false)}
-          />
-        )}
-        {showSelectDocumentModal && (
-          <SelectDocumentModal
-            show={showSelectDocumentModal}
-            onClose={() => setShowSelectDocumentModal(false)}
-            onSelect={(docId) => {
-              setSelectedDocId(docId);
-              setShowSelectDocumentModal(false);
-              setShowSendDocumentModal(true);
-            }}
           />
         )}
         {selectedDocId && showSendDocumentModal && (

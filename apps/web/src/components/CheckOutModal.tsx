@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { trpc } from "../trpc";
-import "./CheckModal.css";
+import "./StandardModal.css";
 
 interface CheckOutModalProps {
   show: boolean;
@@ -35,25 +35,28 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = ({
 
   return (
     <div
-      className="check-modal-backdrop"
+      className="standard-modal-backdrop"
       onClick={!checkOutMutation.isPending ? onClose : undefined}
     >
-      <div className="check-modal-dialog" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="standard-modal-dialog"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="check-modal-header">
-          <div className="check-modal-icon check-modal-icon-checkout">
+        <div className="standard-modal-header">
+          <div className="standard-modal-icon">
             <i className="bi bi-cloud-arrow-down"></i>
           </div>
-          <div className="check-modal-header-text">
-            <h5 className="check-modal-title">Check Out Document</h5>
-            <p className="check-modal-subtitle">
+          <div className="standard-modal-header-text">
+            <h5 className="standard-modal-title">Check Out Document</h5>
+            <p className="standard-modal-subtitle">
               Lock the document for editing
             </p>
           </div>
           {!checkOutMutation.isPending && (
             <button
               type="button"
-              className="check-modal-close"
+              className="standard-modal-close"
               onClick={onClose}
               aria-label="Close"
             >
@@ -63,8 +66,8 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="check-modal-body">
-          <div className="check-modal-notice check-modal-notice-warning">
+        <div className="standard-modal-body">
+          <div className="standard-modal-notice standard-modal-notice-warning">
             <i className="bi bi-lock"></i>
             <p>
               Checking out this document will lock it so no one else can upload
@@ -73,7 +76,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = ({
           </div>
 
           {error && (
-            <div className="check-modal-notice check-modal-notice-error">
+            <div className="standard-modal-notice standard-modal-notice-error">
               <i className="bi bi-exclamation-circle"></i>
               <p>{error}</p>
             </div>
@@ -81,22 +84,22 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="check-modal-footer">
+        <div className="standard-modal-footer">
           <button
-            className="check-modal-btn check-modal-btn-ghost"
+            className="standard-modal-btn standard-modal-btn-ghost"
             onClick={onClose}
             disabled={checkOutMutation.isPending}
           >
             Cancel
           </button>
           <button
-            className="check-modal-btn check-modal-btn-confirm"
+            className="standard-modal-btn standard-modal-btn-confirm"
             onClick={handleCheckOut}
             disabled={checkOutMutation.isPending}
           >
             {checkOutMutation.isPending ? (
               <>
-                <span className="check-modal-spinner" />
+                <span className="standard-modal-spinner" />
                 Checking out…
               </>
             ) : (

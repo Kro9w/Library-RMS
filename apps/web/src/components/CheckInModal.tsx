@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { trpc } from "../trpc";
 import { supabase } from "../supabase";
-import "./CheckModal.css";
+import "./StandardModal.css";
 
 interface CheckInModalProps {
   show: boolean;
@@ -102,25 +102,28 @@ export const CheckInModal: React.FC<CheckInModalProps> = ({
 
   return (
     <div
-      className="check-modal-backdrop"
+      className="standard-modal-backdrop"
       onClick={!isProcessing ? onClose : undefined}
     >
-      <div className="check-modal-dialog" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="standard-modal-dialog"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="check-modal-header">
-          <div className="check-modal-icon check-modal-icon-checkin">
+        <div className="standard-modal-header">
+          <div className="standard-modal-icon">
             <i className="bi bi-cloud-arrow-up"></i>
           </div>
-          <div className="check-modal-header-text">
-            <h5 className="check-modal-title">Check In Document</h5>
-            <p className="check-modal-subtitle">
+          <div className="standard-modal-header-text">
+            <h5 className="standard-modal-title">Check In Document</h5>
+            <p className="standard-modal-subtitle">
               Upload a revised version and release the lock
             </p>
           </div>
           {!isProcessing && (
             <button
               type="button"
-              className="check-modal-close"
+              className="standard-modal-close"
               onClick={onClose}
               aria-label="Close"
             >
@@ -130,9 +133,9 @@ export const CheckInModal: React.FC<CheckInModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="check-modal-body">
+        <div className="standard-modal-body">
           {/* Info notice */}
-          <div className="check-modal-notice check-modal-notice-info">
+          <div className="standard-modal-notice standard-modal-notice-info">
             <i className="bi bi-info-circle"></i>
             <p>
               Uploading a PDF or image will finalize this document and lock it
@@ -142,7 +145,7 @@ export const CheckInModal: React.FC<CheckInModalProps> = ({
 
           {/* Error */}
           {error && (
-            <div className="check-modal-notice check-modal-notice-error">
+            <div className="standard-modal-notice standard-modal-notice-error">
               <i className="bi bi-exclamation-circle"></i>
               <p>{error}</p>
             </div>
@@ -151,40 +154,40 @@ export const CheckInModal: React.FC<CheckInModalProps> = ({
           {/* Drop zone / file selector */}
           {!file ? (
             <label
-              className="check-modal-dropzone"
+              className="standard-modal-dropzone"
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
             >
               <input
                 type="file"
-                className="check-modal-file-input"
+                className="standard-modal-file-input"
                 onChange={handleFileChange}
                 disabled={isProcessing}
               />
-              <div className="check-modal-dropzone-content">
-                <i className="bi bi-cloud-arrow-up check-modal-dropzone-icon"></i>
-                <span className="check-modal-dropzone-label">
+              <div className="standard-modal-dropzone-content">
+                <i className="bi bi-cloud-arrow-up standard-modal-dropzone-icon"></i>
+                <span className="standard-modal-dropzone-label">
                   Click to select or drag &amp; drop
                 </span>
-                <span className="check-modal-dropzone-hint">
+                <span className="standard-modal-dropzone-hint">
                   PDF, DOCX, PNG, JPG, TIFF
                 </span>
               </div>
             </label>
           ) : (
-            <div className="check-modal-file-selected">
+            <div className="standard-modal-file-selected">
               <i
-                className={`bi ${getFileIcon(file.type)} check-modal-file-icon`}
+                className={`bi ${getFileIcon(file.type)} standard-modal-file-icon`}
               ></i>
-              <div className="check-modal-file-meta">
-                <span className="check-modal-file-name">{file.name}</span>
-                <span className="check-modal-file-size">
+              <div className="standard-modal-file-meta">
+                <span className="standard-modal-file-name">{file.name}</span>
+                <span className="standard-modal-file-size">
                   {formatBytes(file.size)}
                 </span>
               </div>
               {!isProcessing && (
                 <button
-                  className="check-modal-file-remove"
+                  className="standard-modal-file-remove"
                   onClick={() => setFile(null)}
                   aria-label="Remove file"
                 >
@@ -196,30 +199,30 @@ export const CheckInModal: React.FC<CheckInModalProps> = ({
 
           {/* Upload progress */}
           {isProcessing && (
-            <div className="check-modal-uploading">
-              <span className="check-modal-spinner" />
+            <div className="standard-modal-uploading">
+              <span className="standard-modal-spinner" />
               <span>Uploading new version…</span>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="check-modal-footer">
+        <div className="standard-modal-footer">
           <button
-            className="check-modal-btn check-modal-btn-ghost"
+            className="standard-modal-btn standard-modal-btn-ghost"
             onClick={onClose}
             disabled={isProcessing}
           >
             Cancel
           </button>
           <button
-            className="check-modal-btn check-modal-btn-confirm"
+            className="standard-modal-btn standard-modal-btn-confirm"
             onClick={handleUpload}
             disabled={!file || isProcessing}
           >
             {isProcessing ? (
               <>
-                <span className="check-modal-spinner" />
+                <span className="standard-modal-spinner" />
                 Uploading…
               </>
             ) : (

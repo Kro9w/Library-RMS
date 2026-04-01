@@ -3,7 +3,7 @@ import { trpc } from "../trpc";
 import { Modal } from "bootstrap";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 import { formatUserName } from "../utils/user";
-import "./SendDocumentModal.css";
+import "./StandardModal.css";
 
 type User = AppRouterOutputs["documents"]["getAppUsers"][0];
 type Tag = AppRouterOutputs["documents"]["getTags"][0];
@@ -338,23 +338,6 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
     });
   };
 
-  // --- Inline Styles for Theme Compliance ---
-  const modalHeaderStyle = {
-    backgroundColor: "var(--background)",
-    borderBottom: "1px solid var(--card-border)",
-    color: "var(--brand)",
-  };
-
-  const modalBodyStyle = {
-    backgroundColor: "var(--background)",
-    color: "var(--text)",
-  };
-
-  const modalFooterStyle = {
-    backgroundColor: "var(--background)",
-    borderTop: "1px solid var(--card-border)",
-  };
-
   const labelStyle = {
     color: "var(--text-muted)",
     fontSize: "0.8rem",
@@ -365,252 +348,262 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
 
   const inputGroupTextStyle = {
     backgroundColor: "var(--input-bg)",
-    borderColor: "var(--card-border)",
+    borderColor: "var(--border)",
     color: "var(--text-muted)",
   };
 
+  if (!show) return null;
+
   return (
     <div
-      className="modal fade"
-      ref={modalRef}
-      id="sendDocumentModal"
-      tabIndex={-1}
-      aria-hidden="true"
+      className="standard-modal-backdrop"
+      onClick={!sendDocumentMutation.isPending ? onClose : undefined}
     >
-      <div className="modal-dialog modal-dialog-centered">
-        <div
-          className="modal-content"
-          style={{
-            backgroundColor: "var(--card-background)",
-            border: "1px solid var(--card-border)",
-            boxShadow: "var(--card-shadow)",
-          }}
-        >
-          <div className="modal-header" style={modalHeaderStyle}>
-            <h5 className="modal-title">
-              <i className="bi bi-send me-2"></i>Send Document
-            </h5>
+      <div
+        className="standard-modal-dialog"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="standard-modal-header">
+          <div className="standard-modal-icon">
+            <i className="bi bi-send"></i>
+          </div>
+          <div className="standard-modal-header-text">
+            <h5 className="standard-modal-title">Send Document</h5>
+          </div>
+          {!sendDocumentMutation.isPending && (
             <button
               type="button"
-              className="btn-close"
+              className="standard-modal-close"
               onClick={onClose}
               aria-label="Close"
-            ></button>
-          </div>
-          <div className="modal-body p-4" style={modalBodyStyle}>
-            <div className="row g-3">
-              {/* Campus Selection */}
-              <div className="col-12">
-                <label htmlFor="campus" style={labelStyle}>
-                  Campus
-                </label>
-                <div className="input-group">
-                  <span
-                    className="input-group-text border-end-0"
-                    style={inputGroupTextStyle}
-                  >
-                    <i className="bi bi-bank"></i>
-                  </span>
-                  <select
-                    id="campus"
-                    className="form-select border-start-0 ps-0"
-                    value={selectedCampusId}
-                    onChange={(e) => {
-                      setSelectedCampusId(e.target.value);
-                      setSelectedDeptId("");
-                      setRecipientId("");
-                    }}
-                    disabled={forceRecipientLock || hasPrescribedRoute}
-                    title={
-                      hasPrescribedRoute
-                        ? "This route is prescribed for approval"
-                        : undefined
-                    }
-                  >
-                    <option value="">Select Campus...</option>
-                    {campuses.map((campus: Campus) => (
-                      <option key={campus.id} value={campus.id}>
-                        {campus.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Department Selection */}
-              <div className="col-12">
-                <label htmlFor="department" style={labelStyle}>
-                  Department / Office
-                </label>
-                <div className="input-group">
-                  <span
-                    className="input-group-text border-end-0"
-                    style={inputGroupTextStyle}
-                  >
-                    <i className="bi bi-building"></i>
-                  </span>
-                  <select
-                    id="department"
-                    className="form-select border-start-0 ps-0"
-                    value={selectedDeptId}
-                    onChange={(e) => {
-                      setSelectedDeptId(e.target.value);
-                      setRecipientId("");
-                    }}
-                    disabled={
-                      !selectedCampusId ||
-                      forceRecipientLock ||
-                      hasPrescribedRoute
-                    }
-                    title={
-                      hasPrescribedRoute
-                        ? "This route is prescribed for approval"
-                        : undefined
-                    }
-                  >
-                    <option value="">Select Department...</option>
-                    {departments.map((dept: Department) => (
-                      <option key={dept.id} value={dept.id}>
-                        {dept.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Recipient Selection */}
-              <div className="col-12">
-                <label htmlFor="recipient" style={labelStyle}>
-                  Recipient
-                </label>
-                <div className="input-group">
-                  <span
-                    className="input-group-text border-end-0"
-                    style={inputGroupTextStyle}
-                  >
-                    <i className="bi bi-person"></i>
-                  </span>
-                  <select
-                    id="recipient"
-                    className="form-select border-start-0 ps-0"
-                    value={recipientId}
-                    onChange={(e) => setRecipientId(e.target.value)}
-                    disabled={!selectedDeptId || forceRecipientLock}
-                  >
-                    <option value="">Select Recipient...</option>
-                    {filteredUsers?.map((user: User) => (
-                      <option key={user.id} value={user.id}>
-                        {formatUserName(user)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <hr
-              className="my-4"
-              style={{ borderColor: "var(--card-border)" }}
-            />
-
-            <div className="mb-4">
-              <label style={labelStyle}>Standard Tags</label>
-              <div className="d-flex flex-wrap gap-2">
-                {tags?.length ? (
-                  tags.map((tag: Tag) => (
-                    <div key={tag.id} className="form-check-inline m-0">
-                      <input
-                        type="checkbox"
-                        className="btn-check"
-                        id={`tag-${tag.id}`}
-                        autoComplete="off"
-                        checked={selectedTags.has(tag.id)}
-                        onChange={() => handleTagChange(tag.id)}
-                      />
-                      <label
-                        className={`btn btn-sm rounded-pill px-3 ${
-                          selectedTags.has(tag.id)
-                            ? "btn-primary"
-                            : "btn-outline-secondary"
-                        }`}
-                        htmlFor={`tag-${tag.id}`}
-                      >
-                        {tag.name}
-                      </label>
-                    </div>
-                  ))
-                ) : (
-                  <span className="text-muted small fst-italic">
-                    No tags available
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="mb-2">
-              <label style={labelStyle}>Action Tags</label>
-              <div className="d-flex flex-wrap gap-2">
-                {filteredGlobalTags?.length ? (
-                  filteredGlobalTags.map((tag: Tag) => (
-                    <div key={tag.id} className="form-check-inline m-0">
-                      <input
-                        type="checkbox"
-                        className="btn-check"
-                        id={`global-tag-${tag.id}`}
-                        autoComplete="off"
-                        checked={selectedTags.has(tag.id)}
-                        onChange={() => handleTagChange(tag.id)}
-                      />
-                      <label
-                        className={`btn btn-sm rounded-pill px-3 ${
-                          selectedTags.has(tag.id)
-                            ? "btn-secondary"
-                            : "btn-outline-secondary"
-                        }`}
-                        htmlFor={`global-tag-${tag.id}`}
-                      >
-                        {tag.name}
-                      </label>
-                    </div>
-                  ))
-                ) : (
-                  <span className="text-muted small fst-italic">
-                    No action tags available for this user
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="modal-footer" style={modalFooterStyle}>
-            <button
-              type="button"
-              className="btn btn-outline-secondary px-4"
-              onClick={onClose}
             >
-              Cancel
+              <i className="bi bi-x"></i>
             </button>
-            <button
-              type="button"
-              className="btn btn-primary px-4"
-              onClick={handleSend}
-              disabled={!recipientId || sendDocumentMutation.isPending}
-            >
-              {sendDocumentMutation.isPending ? (
-                <>
-                  <span
-                    className="spinner-border spinner-border-sm me-2"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
-                  Sending...
-                </>
+          )}
+        </div>
+
+        <div className="standard-modal-body">
+          <div className="row g-3">
+            {/* Campus Selection */}
+            <div className="col-12">
+              <label htmlFor="campus" style={labelStyle}>
+                Campus
+              </label>
+              <div className="input-group">
+                <span
+                  className="input-group-text border-end-0"
+                  style={inputGroupTextStyle}
+                >
+                  <i className="bi bi-bank"></i>
+                </span>
+                <select
+                  id="campus"
+                  className="form-select border-start-0 ps-0"
+                  value={selectedCampusId}
+                  onChange={(e) => {
+                    setSelectedCampusId(e.target.value);
+                    setSelectedDeptId("");
+                    setRecipientId("");
+                  }}
+                  disabled={
+                    forceRecipientLock ||
+                    hasPrescribedRoute ||
+                    sendDocumentMutation.isPending
+                  }
+                  title={
+                    hasPrescribedRoute
+                      ? "This route is prescribed for approval"
+                      : undefined
+                  }
+                >
+                  <option value="">Select Campus...</option>
+                  {campuses.map((campus: Campus) => (
+                    <option key={campus.id} value={campus.id}>
+                      {campus.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Department Selection */}
+            <div className="col-12">
+              <label htmlFor="department" style={labelStyle}>
+                Department / Office
+              </label>
+              <div className="input-group">
+                <span
+                  className="input-group-text border-end-0"
+                  style={inputGroupTextStyle}
+                >
+                  <i className="bi bi-building"></i>
+                </span>
+                <select
+                  id="department"
+                  className="form-select border-start-0 ps-0"
+                  value={selectedDeptId}
+                  onChange={(e) => {
+                    setSelectedDeptId(e.target.value);
+                    setRecipientId("");
+                  }}
+                  disabled={
+                    !selectedCampusId ||
+                    forceRecipientLock ||
+                    hasPrescribedRoute ||
+                    sendDocumentMutation.isPending
+                  }
+                  title={
+                    hasPrescribedRoute
+                      ? "This route is prescribed for approval"
+                      : undefined
+                  }
+                >
+                  <option value="">Select Department...</option>
+                  {departments.map((dept: Department) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Recipient Selection */}
+            <div className="col-12">
+              <label htmlFor="recipient" style={labelStyle}>
+                Recipient
+              </label>
+              <div className="input-group">
+                <span
+                  className="input-group-text border-end-0"
+                  style={inputGroupTextStyle}
+                >
+                  <i className="bi bi-person"></i>
+                </span>
+                <select
+                  id="recipient"
+                  className="form-select border-start-0 ps-0"
+                  value={recipientId}
+                  onChange={(e) => setRecipientId(e.target.value)}
+                  disabled={
+                    !selectedDeptId ||
+                    forceRecipientLock ||
+                    sendDocumentMutation.isPending
+                  }
+                >
+                  <option value="">Select Recipient...</option>
+                  {filteredUsers?.map((user: User) => (
+                    <option key={user.id} value={user.id}>
+                      {formatUserName(user)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <hr
+            className="my-3 w-100 mx-0"
+            style={{ borderColor: "var(--border)", margin: 0 }}
+          />
+
+          <div className="mb-2">
+            <label style={labelStyle}>Standard Tags</label>
+            <div className="d-flex flex-wrap gap-2">
+              {tags?.length ? (
+                tags.map((tag: Tag) => (
+                  <div key={tag.id} className="form-check-inline m-0">
+                    <input
+                      type="checkbox"
+                      className="btn-check"
+                      id={`tag-${tag.id}`}
+                      autoComplete="off"
+                      checked={selectedTags.has(tag.id)}
+                      onChange={() => handleTagChange(tag.id)}
+                      disabled={sendDocumentMutation.isPending}
+                    />
+                    <label
+                      className={`btn btn-sm rounded-pill px-3 ${
+                        selectedTags.has(tag.id)
+                          ? "btn-primary"
+                          : "btn-outline-secondary"
+                      }`}
+                      htmlFor={`tag-${tag.id}`}
+                      style={{ fontSize: "12px", padding: "4px 10px" }}
+                    >
+                      {tag.name}
+                    </label>
+                  </div>
+                ))
               ) : (
-                <>
-                  <i className="bi bi-send-fill me-2"></i>Send Document
-                </>
+                <span className="text-muted small fst-italic">
+                  No tags available
+                </span>
               )}
-            </button>
+            </div>
           </div>
+
+          <div>
+            <label style={labelStyle}>Action Tags</label>
+            <div className="d-flex flex-wrap gap-2">
+              {filteredGlobalTags?.length ? (
+                filteredGlobalTags.map((tag: Tag) => (
+                  <div key={tag.id} className="form-check-inline m-0">
+                    <input
+                      type="checkbox"
+                      className="btn-check"
+                      id={`global-tag-${tag.id}`}
+                      autoComplete="off"
+                      checked={selectedTags.has(tag.id)}
+                      onChange={() => handleTagChange(tag.id)}
+                      disabled={sendDocumentMutation.isPending}
+                    />
+                    <label
+                      className={`btn btn-sm rounded-pill px-3 ${
+                        selectedTags.has(tag.id)
+                          ? "btn-secondary"
+                          : "btn-outline-secondary"
+                      }`}
+                      htmlFor={`global-tag-${tag.id}`}
+                      style={{ fontSize: "12px", padding: "4px 10px" }}
+                    >
+                      {tag.name}
+                    </label>
+                  </div>
+                ))
+              ) : (
+                <span className="text-muted small fst-italic">
+                  No action tags available for this user
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="standard-modal-footer">
+          <button
+            className="standard-modal-btn standard-modal-btn-ghost"
+            onClick={onClose}
+            disabled={sendDocumentMutation.isPending}
+          >
+            Cancel
+          </button>
+          <button
+            className="standard-modal-btn standard-modal-btn-confirm"
+            onClick={handleSend}
+            disabled={!recipientId || sendDocumentMutation.isPending}
+          >
+            {sendDocumentMutation.isPending ? (
+              <>
+                <span className="standard-modal-spinner" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <i className="bi bi-send-fill" /> Send Document
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>

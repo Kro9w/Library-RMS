@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { trpc } from "../../trpc";
 import type { AppRouterOutputs } from "../../../../api/src/trpc/trpc.router";
 import { ConfirmModal } from "../ConfirmModal";
-import "./RolesModal.css";
+import "./RolesSettings.css";
 import { formatUserName } from "../../utils/user";
 import { getErrorMessage } from "../../utils/error";
 
