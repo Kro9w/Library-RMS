@@ -12,7 +12,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useForm } from "react-hook-form";
 
 import { UploadModal } from "../components/UploadModal";
-import { SendDocumentModal } from "../components/SendDocumentModal";
+import { ForwardDocumentModal } from "../components/ForwardDocumentModal";
 import { ReceiveDocumentModal } from "../components/ReceiveDocumentModal";
 
 // --- 1. IMPORT TRPC OUTPUT TYPE (Fixes 'any' errors) ---
@@ -340,7 +340,7 @@ export function Dashboard() {
       </div>
 
       {selectedDocId && (
-        <SendDocumentModal
+        <ForwardDocumentModal
           show={showSendModal}
           onClose={() => setShowSendModal(false)}
           documentId={selectedDocId}

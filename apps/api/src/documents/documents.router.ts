@@ -140,6 +140,197 @@ export class DocumentsRouter {
         }),
 
       /**
+       * Broadcast/Send a document based on its internal classification rules, granting direct READ access.
+       */
+      broadcastDocument: protectedProcedure
+        .input(
+          z.object({
+            documentId: z.string(),
+            institutionIds: z.array(z.string()),
+            campusIds: z.array(z.string()),
+            departmentIds: z.array(z.string()),
+            userIds: z.array(z.string()),
+          }),
+        )
+        .mutation(async ({ ctx, input }) => {
+          const { user, dbUser } = ctx;
+
+          if (!dbUser.institutionId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to an institution.',
+            });
+          }
+
+          const highestRoleLevel =
+            dbUser.roles.length > 0
+              ? dbUser.roles.reduce(
+                  (min, role) => Math.min(min, role.level),
+                  Infinity,
+                )
+              : 4; // Default to lowest privilege if no roles are assigned
+
+          const canManageDocs = checkPermission(dbUser, 'canManageDocuments');
+          const isOriginator = async (docId: string) => {
+            const d = await this.prisma.document.findUnique({
+              where: { id: docId }
+            });
+            return d?.uploadedById === user.id || d?.originalSenderId === user.id;
+          };
+
+          // Basic ownership check
+          const hasAccess = await isOriginator(input.documentId) || canManageDocs;
+
+          if (!hasAccess) {
+             throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'You do not have permission to send this document.',
+            });
+          }
+
+          const document = await this.prisma.document.findUnique({
+            where: { id: input.documentId, institutionId: dbUser.institutionId },
+          });
+
+          if (!document) {
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Document not found.',
+            });
+          }
+
+          if (document.classification === 'FOR_APPROVAL' || document.recordStatus === 'IN_TRANSIT') {
+             throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Documents FOR_APPROVAL cannot be sent directly; use the Forward routing system instead.',
+            });
+          }
+
+          // Authority Check matching initial upload rules
+          if (document.classification === 'INSTITUTIONAL' || document.classification === 'INTERNAL') {
+             if (highestRoleLevel > 1 && !canManageDocs) {
+              throw new TRPCError({
+                code: 'FORBIDDEN',
+                message: 'Only Executives, Level 1 users, or Admins can broadcast Institutional or Internal documents.',
+              });
+            }
+          }
+
+          if (document.classification === 'DEPARTMENTAL') {
+             if (highestRoleLevel > 2 && !canManageDocs) {
+              throw new TRPCError({
+                code: 'FORBIDDEN',
+                message: 'Only Level 1 and 2 users or Admins can broadcast Departmental documents.',
+              });
+            }
+          }
+
+          const accessesToCreate: any[] = [];
+          
+          if (document.classification === 'INSTITUTIONAL') {
+             for (const id of input.institutionIds) accessesToCreate.push({ documentId: document.id, institutionId: id, permission: 'READ' });
+          }
+          if (document.classification === 'INSTITUTIONAL' || document.classification === 'INTERNAL') {
+             for (const id of input.campusIds) accessesToCreate.push({ documentId: document.id, campusId: id, permission: 'READ' });
+          }
+          if (document.classification === 'INSTITUTIONAL' || document.classification === 'INTERNAL' || document.classification === 'DEPARTMENTAL') {
+             for (const id of input.departmentIds) accessesToCreate.push({ documentId: document.id, departmentId: id, permission: 'READ' });
+          }
+          for (const id of input.userIds) accessesToCreate.push({ documentId: document.id, userId: id, permission: 'READ' });
+
+          if (accessesToCreate.length === 0) {
+             throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'No valid targets were selected.',
+            });
+          }
+
+          // In PostgreSQL/Prisma, createMany will fail if duplicate unique constraints are hit. To avoid failing on re-sends, 
+          // we should first fetch existing accesses and filter out duplicates.
+          const existingAccesses = await this.prisma.documentAccess.findMany({
+             where: { documentId: document.id }
+          });
+
+          const isDuplicate = (req: any) => existingAccesses.some(ex => 
+             ex.institutionId === req.institutionId &&
+             ex.campusId === req.campusId &&
+             ex.departmentId === req.departmentId &&
+             ex.userId === req.userId
+          );
+
+          const finalAccesses = accessesToCreate.filter(a => !isDuplicate(a));
+
+          if (finalAccesses.length > 0) {
+            await this.prisma.documentAccess.createMany({
+              data: finalAccesses,
+            });
+          }
+
+          // Build generic log
+          let broadTargetName = "";
+          if (input.institutionIds.length > 0) broadTargetName = "Institution(s)";
+          else if (input.campusIds.length > 0) broadTargetName = "Campus(es)";
+          else if (input.departmentIds.length > 0) broadTargetName = "Department(s)";
+          else if (input.userIds.length > 0) broadTargetName = "Specific User(s)";
+
+          await this.logService.logAction(
+            user.id,
+            dbUser.institutionId,
+            `Broadcasted Document to ${broadTargetName}`,
+            dbUser.roles.map((r) => r.name),
+            document.title,
+            dbUser.campusId || undefined,
+            dbUser.departmentId || undefined,
+          );
+
+          // Build notifications specifically for Level 1/2 targets within broad scopes to reduce spam
+          // or directly for users.
+          const senderName = `${dbUser.firstName} ${dbUser.lastName}`.trim();
+          
+          let targetsForNotification = new Set<string>();
+
+          for (const uid of input.userIds) targetsForNotification.add(uid);
+
+          const broadScopesWhere: any[] = [];
+          if (input.institutionIds.length > 0) broadScopesWhere.push({ institutionId: { in: input.institutionIds } });
+          if (input.campusIds.length > 0) broadScopesWhere.push({ campusId: { in: input.campusIds } });
+          if (input.departmentIds.length > 0) broadScopesWhere.push({ departmentId: { in: input.departmentIds } });
+
+          if (broadScopesWhere.length > 0) {
+             const keyUsers = await this.prisma.user.findMany({
+                where: {
+                   OR: broadScopesWhere,
+                   roles: {
+                      some: {
+                         OR: [{ level: 1 }, { level: 2 }, { canManageDocuments: true }]
+                      }
+                   }
+                },
+                select: { id: true }
+             });
+             keyUsers.forEach(u => targetsForNotification.add(u.id));
+          }
+          
+          // Filter out sender
+          targetsForNotification.delete(user.id);
+
+          const notifData = Array.from(targetsForNotification).map(uid => ({
+            userId: uid,
+            title: 'Document Broadcasted',
+            message: `${senderName} broadcasted the document "${document.title}" to your scope.`,
+            documentId: document.id,
+          }));
+
+          if (notifData.length > 0) {
+            await this.prisma.notification.createMany({
+               data: notifData
+            });
+          }
+
+          return { success: true, count: finalAccesses.length };
+        }),
+
+      /**
        * Get storage configuration (bucket name)
        */
       getStorageConfig: protectedProcedure
@@ -321,8 +512,8 @@ export class DocumentsRouter {
             classification: z
               .enum([
                 'INSTITUTIONAL',
-                'CAMPUS',
                 'INTERNAL',
+                'DEPARTMENTAL',
                 'CONFIDENTIAL',
                 'FOR_APPROVAL',
               ])
@@ -365,23 +556,23 @@ export class DocumentsRouter {
           // Allow Level 1 users OR Admin equivalents (canManageDocuments) to broadcast wide
           if (
             input.classification === 'INSTITUTIONAL' ||
-            input.classification === 'CAMPUS'
+            input.classification === 'INTERNAL'
           ) {
             if (highestRoleLevel > 1 && !canManageDocs) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
                 message:
-                  'Only Executives, Level 1 users, or Admins can broadcast Institutional or Campus documents.',
+                  'Only Executives, Level 1 users, or Admins can broadcast Institutional or Internal documents.',
               });
             }
           }
           // Allow Level 1 & 2 users OR Admin equivalents to broadcast internally
-          if (input.classification === 'INTERNAL') {
+          if (input.classification === 'DEPARTMENTAL') {
             if (highestRoleLevel > 2 && !canManageDocs) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
                 message:
-                  'Only Level 1 and 2 users or Admins can broadcast Internal department documents.',
+                  'Only Level 1 and 2 users or Admins can broadcast Departmental documents.',
               });
             }
           }
@@ -400,10 +591,10 @@ export class DocumentsRouter {
             });
           }
 
-          // Format Immutability: Institutional & Campus broadcasts must be non-editable formats
+          // Format Immutability: Institutional & Internal broadcasts must be non-editable formats
           if (
             input.classification === 'INSTITUTIONAL' ||
-            input.classification === 'CAMPUS'
+            input.classification === 'INTERNAL'
           ) {
             const allowedFormats = [
               'application/pdf',
@@ -415,7 +606,7 @@ export class DocumentsRouter {
             if (!input.fileType || !allowedFormats.includes(input.fileType)) {
               throw new TRPCError({
                 code: 'BAD_REQUEST',
-                message: `Published Institutional or Campus documents must be finalized formats (PDF or images). Received: ${input.fileType || 'Unknown'}`,
+                message: `Published Institutional or Internal documents must be finalized formats (PDF or images). Received: ${input.fileType || 'Unknown'}`,
               });
             }
           }
@@ -501,31 +692,8 @@ export class DocumentsRouter {
             permission: PermissionLevel.WRITE,
           });
 
-          if (
-            input.classification === 'INSTITUTIONAL' &&
-            dbUser.institutionId
-          ) {
-            accessesToCreate.push({
-              documentId: (document as any).id,
-              institutionId: dbUser.institutionId,
-              permission: PermissionLevel.READ,
-            });
-          } else if (input.classification === 'CAMPUS' && dbUser.campusId) {
-            accessesToCreate.push({
-              documentId: (document as any).id,
-              campusId: dbUser.campusId,
-              permission: PermissionLevel.READ,
-            });
-          } else if (
-            input.classification === 'INTERNAL' &&
-            dbUser.departmentId
-          ) {
-            accessesToCreate.push({
-              documentId: (document as any).id,
-              departmentId: dbUser.departmentId,
-              permission: PermissionLevel.READ,
-            });
-          }
+          // Uploading a document now only grants access to the uploader. 
+          // Broadcasting (via the Send feature) will explicitly grant wide access later.
 
           await this.prisma.documentAccess.createMany({
             data: accessesToCreate,
@@ -921,7 +1089,7 @@ export class DocumentsRouter {
           });
         }),
 
-      sendDocument: protectedProcedure
+      forwardDocument: protectedProcedure
         .input(
           z.object({
             documentId: z.string(),
@@ -1163,237 +1331,6 @@ export class DocumentsRouter {
           }
 
           return updatedDocument;
-        }),
-
-      sendMultipleDocuments: protectedProcedure
-        .input(
-          z.object({
-            documentIds: z.array(z.string()),
-            recipientId: z.string(),
-            tagIds: z.array(z.string()),
-          }),
-        )
-        .mutation(async ({ ctx, input }) => {
-          const { user, dbUser } = ctx;
-
-          if (!dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
-
-          const recipient = await this.prisma.user.findUnique({
-            where: { id: input.recipientId },
-          });
-
-          if (!recipient) {
-            throw new TRPCError({
-              code: 'NOT_FOUND',
-              message: 'Recipient not found.',
-            });
-          }
-
-          // Verify ownership of all documents to prevent unauthorized access
-          const whereClause: any = {
-            id: { in: input.documentIds },
-            institutionId: dbUser.institutionId,
-          };
-
-          if (!checkPermission(dbUser, 'canManageDocuments')) {
-            whereClause.uploadedById = user.id;
-          }
-
-          const documents = await this.prisma.document.findMany({
-            where: whereClause,
-          });
-
-          if (documents.length !== input.documentIds.length) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'One or more documents not found or access denied.',
-            });
-          }
-
-          const tags = await this.prisma.tag.findMany({
-            where: {
-              id: {
-                in: input.tagIds,
-              },
-            },
-          });
-
-          let isReview = tags.some((tag) => tag.name === 'for review');
-
-          // If sending back to originator, they are fixing it, not reviewing it
-          if (
-            documents.some(doc => doc.uploadedById === recipient.id || doc.originalSenderId === recipient.id)
-          ) {
-            isReview = false;
-            // Filter out 'for review' tag if it was inadvertently passed
-            const forReviewTag = await this.prisma.tag.findUnique({ where: { name: 'for review' } });
-            if (forReviewTag && input.tagIds) {
-              input.tagIds = input.tagIds.filter(id => id !== forReviewTag.id);
-            }
-          }
-
-          // If the document is IN_TRANSIT and FOR_APPROVAL, automatically enforce the "for review" tag
-          const hasTransitDocs = documents.some(
-            (doc) =>
-              doc.recordStatus === 'IN_TRANSIT' &&
-              doc.classification === 'FOR_APPROVAL' &&
-              doc.uploadedById !== recipient.id &&
-              doc.originalSenderId !== recipient.id,
-          );
-
-          if (hasTransitDocs) {
-            isReview = true;
-            const forReviewTag = await this.prisma.tag.findUnique({
-              where: { name: 'for review' },
-            });
-            if (forReviewTag && !input.tagIds.includes(forReviewTag.id)) {
-              input.tagIds.push(forReviewTag.id);
-            }
-          } else if (isReview) {
-            const hasNonConfidential = documents.some(
-              (doc) => doc.classification !== 'CONFIDENTIAL',
-            );
-            if (hasNonConfidential) {
-              throw new TRPCError({
-                code: 'BAD_REQUEST',
-                message: 'Only confidential documents can be sent for review.',
-              });
-            }
-          }
-
-          // Only create DocumentDistributions for documents that are NOT being returned or resubmitted (bypassed)
-          const docsToDistribute = documents.filter(doc => {
-            const isReturning = doc.uploadedById === recipient.id || doc.originalSenderId === recipient.id;
-            const isResubmitting = doc.recordStatus === 'IN_TRANSIT' &&
-              doc.classification === 'FOR_APPROVAL' &&
-              (user.id === doc.uploadedById || user.id === doc.originalSenderId) &&
-              (doc.status === 'Returned for Corrections/Revision/Clarification' || doc.status === 'Disapproved');
-            return !isReturning && !isResubmitting;
-          });
-
-          if (docsToDistribute.length > 0) {
-            await this.prisma.documentDistribution.createMany({
-              data: docsToDistribute.map((doc) => ({
-                documentId: doc.id,
-                senderId: user.id,
-                recipientId: recipient.id,
-                status: 'PENDING',
-              })),
-            });
-          }
-
-          // Ensure recipient has access to bypassed documents
-          const bypassedDocs = documents.filter(doc => !docsToDistribute.some(d => d.id === doc.id));
-          for (const bypassed of bypassedDocs) {
-            const existingAccess = await this.prisma.documentAccess.findFirst({
-              where: { documentId: bypassed.id, userId: recipient.id },
-            });
-            if (!existingAccess) {
-              await this.prisma.documentAccess.create({
-                data: { documentId: bypassed.id, userId: recipient.id, permission: 'READ' },
-              });
-            }
-          }
-
-          // Reset the route stop decision for any returned documents being resubmitted
-          const resubmittedDocs = documents.filter(
-            doc => 
-              doc.recordStatus === 'IN_TRANSIT' &&
-              doc.classification === 'FOR_APPROVAL' &&
-              (user.id === doc.uploadedById || user.id === doc.originalSenderId) &&
-              (doc.status === 'Returned for Corrections/Revision/Clarification' || doc.status === 'Disapproved')
-          );
-          
-          if (resubmittedDocs.length > 0) {
-            for (const doc of resubmittedDocs) {
-              const currentStop = await this.prisma.documentTransitRoute.findFirst({
-                where: { documentId: doc.id, status: 'CURRENT' }
-              });
-              if (currentStop && currentStop.departmentId === recipient.departmentId) {
-                await this.prisma.documentTransitRoute.update({
-                  where: { id: currentStop.id },
-                  data: { decision: null }
-                });
-              }
-            }
-          }
-
-          // Use transaction for atomicity: all documents are sent or none
-          const results = await this.prisma.$transaction(
-            input.documentIds.map((documentId) =>
-              this.prisma.document.update({
-                where: { id: documentId },
-                data: {
-                  reviewRequesterId: isReview ? user.id : null,
-                  status: isReview ? null : undefined, // Clear status if re-submitting for review
-                  tags: {
-                    set: input.tagIds.map((id) => ({ id })),
-                  },
-                },
-              }),
-            ),
-          );
-
-          // Log actions after successful transaction using batch logging
-          const userRoles = dbUser.roles.map((r) => r.name);
-          await this.logService.logActions(
-            results.map((doc) => ({
-              userId: user.id,
-              institutionId: dbUser.institutionId!,
-              action: `Sent Document to ${recipient.firstName} ${recipient.lastName} (Pending Receipt)`,
-              roles: userRoles,
-              targetName: doc.title,
-              campusId: dbUser.campusId || undefined,
-              departmentId: dbUser.departmentId || undefined,
-            })),
-          );
-
-          // Notifications
-          const senderName = `${dbUser.firstName} ${dbUser.lastName}`.trim();
-
-          await this.prisma.notification.createMany({
-            data: results.map((doc) => {
-              const isTransit =
-                doc.recordStatus === 'IN_TRANSIT' &&
-                doc.classification === 'FOR_APPROVAL';
-              const isReturningToOriginator = doc.uploadedById === recipient.id || doc.originalSenderId === recipient.id;
-              const isOriginatorResubmitting = 
-                isTransit &&
-                (user.id === doc.uploadedById || user.id === doc.originalSenderId) &&
-                (doc.status === 'Returned for Corrections/Revision/Clarification' || doc.status === 'Disapproved');
-                
-              let title = 'Document Received';
-              let message = `${senderName} sent you a document: "${doc.title}". Action required to receive it.`;
-
-              if (isReturningToOriginator) {
-                title = 'Document Returned';
-                message = `${senderName} has returned the document "${doc.title}" to you for corrections/review.`;
-              } else if (isOriginatorResubmitting) {
-                title = 'Document Resubmitted (In Transit)';
-                message = `${senderName} has resubmitted the document "${doc.title}" to your office. Action required.`;
-              } else if (isTransit) {
-                title = 'Review Requested (In Transit)';
-                message = `${senderName} has forwarded the document "${doc.title}" to your office for review and endorsement. Action required.`;
-              } else if (isReview) {
-                title = 'Review Requested';
-                message = `${senderName} has sent you a confidential document for review: "${doc.title}". Action required.`;
-              }
-
-              return {
-                userId: recipient.id,
-                title,
-                message,
-                documentId: doc.id,
-              };
-            }),
-          });
-
-          return results;
         }),
 
       /**

@@ -11,7 +11,8 @@ interface DocumentActionsMenuProps {
   doc: Document;
   isUploader: (id: string) => boolean;
   canManageDocuments: boolean;
-  onSendClick: (doc: Document) => void;
+  onForwardClick: (doc: Document) => void;
+  onSendClick?: (doc: Document) => void;
   onReviewClick: (doc: Document) => void;
   onDeleteClick: (doc: Document) => void;
   onCheckOutClick?: (doc: Document) => void;
@@ -24,6 +25,7 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
   doc,
   isUploader,
   canManageDocuments,
+  onForwardClick,
   onSendClick,
   onReviewClick,
   onDeleteClick,
@@ -100,7 +102,7 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
   const isOriginator =
     currentUser?.id === doc.uploadedById ||
     currentUser?.id === doc.originalSenderId;
-  const isOriginatorSendingInTransit =
+  const isOriginatorForwardingInTransit =
     isTransit &&
     doc.uploadedById === currentUser?.id &&
     (!doc.status ||
@@ -140,8 +142,10 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
               zIndex: 1050, // Higher than most modals/tables
             }}
           >
-            {(!isTransit || isOriginatorSendingInTransit) &&
-              !doc.isCheckedOut && (
+            {doc.classification !== "FOR_APPROVAL" &&
+              doc.recordStatus !== "IN_TRANSIT" &&
+              !doc.isCheckedOut &&
+              onSendClick && (
                 <button
                   className="dropdown-item"
                   onClick={(e) => {
@@ -150,7 +154,23 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
                     onSendClick(doc);
                   }}
                 >
-                  <i className="bi bi-send text-primary"></i> Send
+                  <i className="bi bi-send-fill text-primary"></i> Send Document
+                </button>
+              )}
+
+            {doc.classification === "FOR_APPROVAL" &&
+              (!isTransit || isOriginatorForwardingInTransit) &&
+              !doc.isCheckedOut && (
+                <button
+                  className="dropdown-item"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsOpen(false);
+                    onForwardClick(doc);
+                  }}
+                >
+                  <i className="bi bi-forward-fill text-primary"></i> Forward
+                  Document
                 </button>
               )}
             {((canManageDocuments && hasReviewTag) || hasTransitReviewAccess) &&

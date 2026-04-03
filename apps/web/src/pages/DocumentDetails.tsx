@@ -70,7 +70,7 @@ const formatFileTypeDisplay = (
   return extension ? extension.toUpperCase() : "N/A";
 };
 
-import { SendDocumentModal } from "../components/SendDocumentModal";
+import { ForwardDocumentModal } from "../components/ForwardDocumentModal";
 import { ReviewDocumentModal } from "../components/ReviewDocumentModal";
 import { CheckOutModal } from "../components/CheckOutModal";
 import { CheckInModal } from "../components/CheckInModal";
@@ -425,27 +425,43 @@ export const DocumentDetails: React.FC = () => {
 
               {/* Action buttons */}
               <div className="doc-actions-stack mt-3">
-                {canSendOrResubmit && (
-                  <button
-                    className={`doc-action-btn ${!isSendDisabled ? "doc-action-btn-primary" : ""}`}
-                    onClick={() => setShowResubmitModal(true)}
-                    disabled={isSendDisabled}
-                    title={
-                      document.isCheckedOut
-                        ? "Check in the document first before sending."
-                        : isSendDisabled
-                          ? "Document is currently in transit."
-                          : ""
-                    }
-                  >
-                    <i
-                      className={`bi ${isReturnedOrDisapproved ? "bi-arrow-repeat" : "bi-send"}`}
-                    ></i>
-                    {isReturnedOrDisapproved
-                      ? "Resubmit for Review"
-                      : "Send Document"}
-                  </button>
-                )}
+                {document.classification !== "FOR_APPROVAL" &&
+                  document.recordStatus !== "IN_TRANSIT" &&
+                  !document.isCheckedOut &&
+                  (canManageDocuments || isOriginator) && (
+                    <button
+                      className="doc-action-btn doc-action-btn-primary"
+                      onClick={() =>
+                        (window.location.href = `/documents/${document.id}/send`)
+                      }
+                    >
+                      <i className="bi bi-send-fill"></i>
+                      Send Document
+                    </button>
+                  )}
+
+                {canSendOrResubmit &&
+                  document.classification === "FOR_APPROVAL" && (
+                    <button
+                      className={`doc-action-btn ${!isSendDisabled ? "doc-action-btn-primary" : ""}`}
+                      onClick={() => setShowResubmitModal(true)}
+                      disabled={isSendDisabled}
+                      title={
+                        document.isCheckedOut
+                          ? "Check in the document first before forwarding."
+                          : isSendDisabled
+                            ? "Document is currently in transit."
+                            : ""
+                      }
+                    >
+                      <i
+                        className={`bi ${isReturnedOrDisapproved ? "bi-arrow-repeat" : "bi-forward-fill"}`}
+                      ></i>
+                      {isReturnedOrDisapproved
+                        ? "Resubmit for Review"
+                        : "Forward Document"}
+                    </button>
+                  )}
 
                 <a
                   href={urlData.signedUrl}
@@ -1006,7 +1022,7 @@ export const DocumentDetails: React.FC = () => {
 
       {/* Modals */}
       {showResubmitModal && (
-        <SendDocumentModal
+        <ForwardDocumentModal
           show={showResubmitModal}
           onClose={() => setShowResubmitModal(false)}
           documentId={document.id}

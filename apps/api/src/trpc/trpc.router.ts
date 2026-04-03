@@ -52,8 +52,9 @@ export class TrpcRouter {
         const documentWhere = {
           OR: [
             { departmentId },
-            { classification: 'INSTITUTIONAL' as const, institutionId },
-            { classification: 'CAMPUS' as const, campusId },
+            { classification: 'INSTITUTIONAL' as any, institutionId },
+            { classification: 'INTERNAL' as any, campusId },
+            { classification: 'DEPARTMENTAL' as any, departmentId },
           ],
         };
 
@@ -134,7 +135,7 @@ export class TrpcRouter {
 
         const docsByStatus = docsByStatusRaw.map((group) => ({
           name: group.status || 'Uncategorized',
-          value: group._count.status,
+          value: (group._count as any).status,
         }));
 
         return {
@@ -142,7 +143,7 @@ export class TrpcRouter {
           recentUploadsCount,
           recentFiles: recentFiles.map((f) => {
             // Format name here: First Middle Last
-            const u = f.uploadedBy;
+            const u = (f as any).uploadedBy;
             const nameParts = [u.firstName, u.middleName, u.lastName].filter(
               Boolean,
             );

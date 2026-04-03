@@ -45,13 +45,13 @@ async function main() {
         institutionId: doc.institutionId,
         permission: PermissionLevel.READ,
       });
-    } else if (doc.classification === 'CAMPUS' && doc.campusId) {
+    } else if (doc.classification === 'INTERNAL' as any && doc.campusId) {
       accessesToCreate.push({
         documentId: doc.id,
         campusId: doc.campusId,
         permission: PermissionLevel.READ,
       });
-    } else if (doc.classification === 'INTERNAL' && doc.departmentId) {
+    } else if (doc.classification === 'DEPARTMENTAL' as any && doc.departmentId) {
       accessesToCreate.push({
         documentId: doc.id,
         departmentId: doc.departmentId,

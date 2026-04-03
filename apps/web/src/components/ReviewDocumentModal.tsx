@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { trpc } from "../trpc";
-import { SendDocumentModal } from "./SendDocumentModal";
+import { ForwardDocumentModal } from "./ForwardDocumentModal";
 import { Modal } from "bootstrap";
 import "./StandardModal.css";
 
@@ -30,10 +30,8 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
   const { data: document } = trpc.documents.getById.useQuery({
     id: documentId,
   });
-  const { data: globalTags } = trpc.documents.getGlobalTags.useQuery();
+  const { data: _globalTags } = trpc.documents.getGlobalTags.useQuery();
   const { data: user } = trpc.user.getMe.useQuery();
-
-  const sendDocumentMutation = trpc.documents.sendDocument.useMutation();
 
   const modalRef = useRef<HTMLDivElement>(null);
   const modalInstanceRef = useRef<Modal | null>(null);
@@ -114,17 +112,10 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
         document?.uploadedById;
 
       if (targetRecipientId) {
-        const statusTag = globalTags?.find(
-          (tag: { name: string }) => tag.name === status,
-        );
-        await sendDocumentMutation.mutateAsync({
-          documentId,
-          recipientId: targetRecipientId,
-          tagIds: [],
-          tagsToKeep: statusTag ? [statusTag.id] : [],
-        });
+        setShowSendModal(true);
       }
     }
+
     onClose();
   };
 
@@ -261,8 +252,7 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
   };
 
   if (!show) return null;
-  const isPending =
-    reviewDocumentMutation.isPending || sendDocumentMutation.isPending;
+  const isPending = reviewDocumentMutation.isPending;
 
   return (
     <>
@@ -397,7 +387,7 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
       </div>
 
       {showSendModal && (
-        <SendDocumentModal
+        <ForwardDocumentModal
           show={showSendModal}
           onClose={() => setShowSendModal(false)}
           documentId={documentId}

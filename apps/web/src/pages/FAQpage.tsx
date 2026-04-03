@@ -176,7 +176,7 @@ const FAQ_CATEGORIES: FAQCategory[] = [
               </div>
               <div className="faq-class-item">
                 <span className="faq-class-badge faq-class-campus">
-                  <i className="bi bi-building" /> Campus
+                  <i className="bi bi-building" /> Internal
                 </span>
                 <span>
                   Visible to all users within the same campus. Requires Level 1
@@ -185,7 +185,7 @@ const FAQ_CATEGORIES: FAQCategory[] = [
               </div>
               <div className="faq-class-item">
                 <span className="faq-class-badge faq-class-internal">
-                  <i className="bi bi-people-fill" /> Internal
+                  <i className="bi bi-people-fill" /> Departmental
                 </span>
                 <span>
                   Visible to members of the same department. Requires Level 2 or

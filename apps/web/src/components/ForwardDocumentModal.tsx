@@ -21,7 +21,7 @@ interface Department {
   users: any[];
 }
 
-interface SendDocumentModalProps {
+interface ForwardDocumentModalProps {
   show: boolean;
   onClose: () => void;
   documentId: string;
@@ -34,7 +34,7 @@ interface SendDocumentModalProps {
   recipient?: User | null; // The full user object if known
 }
 
-export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
+export const ForwardDocumentModal: React.FC<ForwardDocumentModalProps> = ({
   show,
   onClose,
   documentId,
@@ -202,7 +202,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
     });
   }, [globalTags, recipientRoles, document]);
 
-  const sendDocumentMutation = trpc.documents.sendDocument.useMutation();
+  const forwardDocumentMutation = trpc.documents.forwardDocument.useMutation();
 
   const modalRef = useRef<HTMLDivElement>(null);
   const modalInstanceRef = useRef<Modal | null>(null);
@@ -317,7 +317,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
   const handleSend = async () => {
     if (!documentId || !recipientId) return;
 
-    await sendDocumentMutation.mutateAsync({
+    await forwardDocumentMutation.mutateAsync({
       documentId,
       recipientId,
       tagIds: Array.from(selectedTags),
@@ -357,7 +357,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
   return (
     <div
       className="standard-modal-backdrop"
-      onClick={!sendDocumentMutation.isPending ? onClose : undefined}
+      onClick={!forwardDocumentMutation.isPending ? onClose : undefined}
     >
       <div
         className="standard-modal-dialog"
@@ -365,12 +365,12 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
       >
         <div className="standard-modal-header">
           <div className="standard-modal-icon">
-            <i className="bi bi-send"></i>
+            <i className="bi bi-forward-fill"></i>
           </div>
           <div className="standard-modal-header-text">
-            <h5 className="standard-modal-title">Send Document</h5>
+            <h5 className="standard-modal-title">Forward Document</h5>
           </div>
-          {!sendDocumentMutation.isPending && (
+          {!forwardDocumentMutation.isPending && (
             <button
               type="button"
               className="standard-modal-close"
@@ -408,7 +408,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
                   disabled={
                     forceRecipientLock ||
                     hasPrescribedRoute ||
-                    sendDocumentMutation.isPending
+                    forwardDocumentMutation.isPending
                   }
                   title={
                     hasPrescribedRoute
@@ -450,7 +450,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
                     !selectedCampusId ||
                     forceRecipientLock ||
                     hasPrescribedRoute ||
-                    sendDocumentMutation.isPending
+                    forwardDocumentMutation.isPending
                   }
                   title={
                     hasPrescribedRoute
@@ -488,7 +488,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
                   disabled={
                     !selectedDeptId ||
                     forceRecipientLock ||
-                    sendDocumentMutation.isPending
+                    forwardDocumentMutation.isPending
                   }
                 >
                   <option value="">Select Recipient...</option>
@@ -520,7 +520,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
                       autoComplete="off"
                       checked={selectedTags.has(tag.id)}
                       onChange={() => handleTagChange(tag.id)}
-                      disabled={sendDocumentMutation.isPending}
+                      disabled={forwardDocumentMutation.isPending}
                     />
                     <label
                       className={`btn btn-sm rounded-pill px-3 ${
@@ -556,7 +556,7 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
                       autoComplete="off"
                       checked={selectedTags.has(tag.id)}
                       onChange={() => handleTagChange(tag.id)}
-                      disabled={sendDocumentMutation.isPending}
+                      disabled={forwardDocumentMutation.isPending}
                     />
                     <label
                       className={`btn btn-sm rounded-pill px-3 ${
@@ -584,23 +584,23 @@ export const SendDocumentModal: React.FC<SendDocumentModalProps> = ({
           <button
             className="standard-modal-btn standard-modal-btn-ghost"
             onClick={onClose}
-            disabled={sendDocumentMutation.isPending}
+            disabled={forwardDocumentMutation.isPending}
           >
             Cancel
           </button>
           <button
             className="standard-modal-btn standard-modal-btn-confirm"
             onClick={handleSend}
-            disabled={!recipientId || sendDocumentMutation.isPending}
+            disabled={!recipientId || forwardDocumentMutation.isPending}
           >
-            {sendDocumentMutation.isPending ? (
+            {forwardDocumentMutation.isPending ? (
               <>
                 <span className="standard-modal-spinner" />
-                Sending...
+                Forwarding...
               </>
             ) : (
               <>
-                <i className="bi bi-send-fill" /> Send Document
+                <i className="bi bi-forward-fill" /> Forward Document
               </>
             )}
           </button>

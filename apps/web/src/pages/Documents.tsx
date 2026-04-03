@@ -24,9 +24,9 @@ import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 const UploadModal = React.lazy(() =>
   import("../components/UploadModal").then((m) => ({ default: m.UploadModal })),
 );
-const SendDocumentModal = React.lazy(() =>
-  import("../components/SendDocumentModal").then((m) => ({
-    default: m.SendDocumentModal,
+const ForwardDocumentModal = React.lazy(() =>
+  import("../components/ForwardDocumentModal").then((m) => ({
+    default: m.ForwardDocumentModal,
   })),
 );
 const ReviewDocumentModal = React.lazy(() =>
@@ -379,7 +379,10 @@ const Documents: React.FC = () => {
                               doc={doc}
                               isUploader={isUploader}
                               canManageDocuments={canManageDocuments}
-                              onSendClick={handleSendClick}
+                              onForwardClick={handleSendClick}
+                              onSendClick={(doc) => {
+                                window.location.href = `/documents/${doc.id}/send`;
+                              }}
                               onReviewClick={handleReviewClick}
                               onDeleteClick={handleDeleteClick}
                               onCheckOutClick={handleCheckOutClick}
@@ -509,7 +512,10 @@ const Documents: React.FC = () => {
                                       doc={doc}
                                       isUploader={isUploader}
                                       canManageDocuments={canManageDocuments}
-                                      onSendClick={handleSendClick}
+                                      onForwardClick={handleSendClick}
+                                      onSendClick={(doc) => {
+                                        window.location.href = `/documents/${doc.id}/send`;
+                                      }}
                                       onReviewClick={handleReviewClick}
                                       onDeleteClick={handleDeleteClick}
                                       onCheckOutClick={handleCheckOutClick}
@@ -600,7 +606,7 @@ const Documents: React.FC = () => {
 
       <Suspense fallback={null}>
         {selectedDoc && showSendModal && (
-          <SendDocumentModal
+          <ForwardDocumentModal
             show={showSendModal}
             onClose={() => setShowSendModal(false)}
             documentId={selectedDoc.id}

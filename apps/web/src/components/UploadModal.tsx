@@ -22,7 +22,11 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
   >();
   const [controlNumber, setControlNumber] = useState<string | null>(null);
   const [classification, setClassification] = useState<
-    "INSTITUTIONAL" | "CAMPUS" | "INTERNAL" | "CONFIDENTIAL" | "FOR_APPROVAL"
+    | "INSTITUTIONAL"
+    | "INTERNAL"
+    | "DEPARTMENTAL"
+    | "CONFIDENTIAL"
+    | "FOR_APPROVAL"
   >("CONFIDENTIAL");
   const [transitRoute, setTransitRoute] = useState<string[]>([]);
 
@@ -298,11 +302,13 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
                     <option value="INSTITUTIONAL">
                       Institutional — institution-wide
                     </option>
-                    <option value="CAMPUS">Campus — campus-wide</option>
+                    <option value="INTERNAL">Internal — campus-wide</option>
                   </>
                 )}
                 {(highestRoleLevel <= 2 || canManageDocs) && (
-                  <option value="INTERNAL">Internal — department only</option>
+                  <option value="DEPARTMENTAL">
+                    Departmental — department only
+                  </option>
                 )}
                 <option value="CONFIDENTIAL">
                   Confidential — sender & recipient only
