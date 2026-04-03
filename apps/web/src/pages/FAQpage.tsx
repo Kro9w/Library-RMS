@@ -499,6 +499,55 @@ const FAQ_CATEGORIES: FAQCategory[] = [
     ],
   },
   {
+    id: "document-sending",
+    label: "Sending & Scoping",
+    icon: "bi-send",
+    items: [
+      {
+        id: "snd-1",
+        question: "How does document classification affect the Send wizard?",
+        answer: (
+          <>
+            <p>
+              When sending a document, the wizard intelligently adjusts its
+              steps and limits the available recipients based on the document's
+              classification:
+            </p>
+            <ul>
+              <li>
+                <strong>INSTITUTIONAL:</strong> Gives you access to all steps.
+                You can send to the entire institution, select specific
+                campuses, departments, or individual users across any campus.
+              </li>
+              <li>
+                <strong>INTERNAL:</strong> Automatically scopes the recipients
+                to your <em>own</em> campus. You will skip the Campus selection
+                step entirely and only be able to pick departments or users from
+                your campus.
+              </li>
+              <li>
+                <strong>DEPARTMENTAL:</strong> Automatically scopes the
+                recipients to your <em>own</em> department. You will skip both
+                the Campus and Department selection steps, and only be able to
+                select specific users within your department.
+              </li>
+              <li>
+                <strong>CONFIDENTIAL:</strong> Used strictly for user-to-user
+                dissemination. You will skip all scope/campus/department steps
+                and directly select the target users from a list.
+              </li>
+            </ul>
+            <p>
+              When you use the Send wizard, departments will be neatly grouped
+              by their Campus, and users will be grouped by their Campus and
+              Department to make bulk selections easier.
+            </p>
+          </>
+        ),
+      },
+    ],
+  },
+  {
     id: "records-retention",
     label: "Records Retention",
     icon: "bi-clock-history",

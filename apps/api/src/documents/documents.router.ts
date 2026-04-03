@@ -142,7 +142,7 @@ export class DocumentsRouter {
       /**
        * Broadcast/Send a document based on its internal classification rules, granting direct READ access.
        */
-      broadcastDocument: protectedProcedure
+      sendDocument: protectedProcedure
         .input(
           z.object({
             documentId: z.string(),
@@ -211,7 +211,7 @@ export class DocumentsRouter {
              if (highestRoleLevel > 1 && !canManageDocs) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
-                message: 'Only Executives, Level 1 users, or Admins can broadcast Institutional or Internal documents.',
+                message: 'Only Executives, Level 1 users, or Admins can send Institutional or Internal documents.',
               });
             }
           }
@@ -220,7 +220,7 @@ export class DocumentsRouter {
              if (highestRoleLevel > 2 && !canManageDocs) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
-                message: 'Only Level 1 and 2 users or Admins can broadcast Departmental documents.',
+                message: 'Only Level 1 and 2 users or Admins can send Departmental documents.',
               });
             }
           }
@@ -276,7 +276,7 @@ export class DocumentsRouter {
           await this.logService.logAction(
             user.id,
             dbUser.institutionId,
-            `Broadcasted Document to ${broadTargetName}`,
+            `Sent Document to ${broadTargetName}`,
             dbUser.roles.map((r) => r.name),
             document.title,
             dbUser.campusId || undefined,
@@ -316,8 +316,8 @@ export class DocumentsRouter {
 
           const notifData = Array.from(targetsForNotification).map(uid => ({
             userId: uid,
-            title: 'Document Broadcasted',
-            message: `${senderName} broadcasted the document "${document.title}" to your scope.`,
+            title: 'Document Sent',
+            message: `${senderName} sent the document "${document.title}" to your scope.`,
             documentId: document.id,
           }));
 
@@ -562,7 +562,7 @@ export class DocumentsRouter {
               throw new TRPCError({
                 code: 'FORBIDDEN',
                 message:
-                  'Only Executives, Level 1 users, or Admins can broadcast Institutional or Internal documents.',
+                  'Only Executives, Level 1 users, or Admins can send Institutional or Internal documents.',
               });
             }
           }
@@ -572,7 +572,7 @@ export class DocumentsRouter {
               throw new TRPCError({
                 code: 'FORBIDDEN',
                 message:
-                  'Only Level 1 and 2 users or Admins can broadcast Departmental documents.',
+                  'Only Level 1 and 2 users or Admins can send Departmental documents.',
               });
             }
           }
