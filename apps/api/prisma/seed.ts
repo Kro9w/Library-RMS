@@ -153,27 +153,6 @@ const CAMPUS_DATA = [
 async function main() {
   console.log('Start seeding ...');
 
-  // Seed Global Tags
-  const globalTags = [
-    { name: 'for review', isGlobal: true, isLocked: true },
-    { name: 'communication', isGlobal: true, isLocked: false },
-    { name: 'Approved', isGlobal: true, isLocked: true },
-    { name: 'Noted', isGlobal: true, isLocked: true },
-    { name: 'For Endorsement', isGlobal: true, isLocked: true },
-    { name: 'Returned for Corrections/Revision/Clarification', isGlobal: true, isLocked: true },
-    { name: 'For the review of the Executive Committee', isGlobal: true, isLocked: true },
-    { name: 'Disapproved', isGlobal: true, isLocked: true },
-  ];
-
-  for (const tag of globalTags) {
-    await prisma.tag.upsert({
-      where: { name: tag.name },
-      update: {},
-      create: tag,
-    });
-  }
-  console.log('Seeded global tags.');
-
   // Seed Institution: CSU
   let institution = await prisma.institution.findFirst({
     where: { name: 'Cagayan State University' },

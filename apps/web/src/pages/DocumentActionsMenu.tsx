@@ -68,10 +68,6 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
     };
   }, [isOpen]);
 
-  const hasReviewTag = doc.tags.some(
-    (tag: { tag: { name: string } }) => tag.tag.name === "for review",
-  );
-
   const isTransit =
     doc.classification === "FOR_APPROVAL" && doc.recordStatus === "IN_TRANSIT";
 
@@ -173,7 +169,7 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
                   Document
                 </button>
               )}
-            {((canManageDocuments && hasReviewTag) || hasTransitReviewAccess) &&
+            {((canManageDocuments && isTransit) || hasTransitReviewAccess) &&
               !isReturnedOrDisapproved &&
               !isOriginator && (
                 <button

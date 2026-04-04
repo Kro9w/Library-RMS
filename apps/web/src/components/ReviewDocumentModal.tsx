@@ -30,7 +30,6 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
   const { data: document } = trpc.documents.getById.useQuery({
     id: documentId,
   });
-  const { data: _globalTags } = trpc.documents.getGlobalTags.useQuery();
   const { data: user } = trpc.user.getMe.useQuery();
 
   const modalRef = useRef<HTMLDivElement>(null);

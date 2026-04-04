@@ -12,7 +12,6 @@ export default function TitleUpdater() {
       "/dashboard": "Dashboard",
       "/documents": "Documents",
       "/upload": "Upload Document",
-      "/tags": "Tags",
       "/users": "Users",
       "/settings": "Settings",
       "/account": "My Account",

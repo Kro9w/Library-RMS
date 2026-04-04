@@ -442,7 +442,6 @@ export class DocumentsRouter {
                   lastName: true,
                 },
               },
-              tags: true,
               status: true,
               remarks: {
                 include: {
@@ -885,7 +884,6 @@ export class DocumentsRouter {
               ...doc,
               fileType: doc.versions?.[0]?.fileType,
               fileSize: doc.versions?.[0]?.fileSize,
-              tags: doc.tags.map((t: any) => ({ tag: t })),
               lifecycleStatus: computeLifecycleStatus(doc),
             }));
           };
@@ -911,12 +909,6 @@ export class DocumentsRouter {
             versions: {
               orderBy: { versionNumber: 'desc' as const },
               take: 1,
-            },
-            tags: {
-              select: {
-                id: true,
-                name: true,
-              },
             },
             activeRetentionSnapshot: true,
             activeRetentionMonthsSnapshot: true,
@@ -1133,8 +1125,6 @@ export class DocumentsRouter {
           z.object({
             documentId: z.string(),
             recipientId: z.string(),
-            tagIds: z.array(z.string()),
-            tagsToKeep: z.array(z.string()).optional(),
           }),
         )
         .mutation(async ({ ctx, input }) => {
@@ -1179,30 +1169,9 @@ export class DocumentsRouter {
             });
           }
 
-          let tags = await this.prisma.tag.findMany({
-            where: {
-              id: {
-                in: input.tagIds,
-              },
-            },
-          });
+          let isReview = false;
 
-          let isReview = tags.some((tag) => tag.name === 'for review');
-
-          // If sending back to originator, they are fixing it, not reviewing it
-          if (
-            documents[0].uploadedById === recipient.id ||
-            documents[0].originalSenderId === recipient.id
-          ) {
-            isReview = false;
-            // Filter out 'for review' tag if it was inadvertently passed
-            const forReviewTag = await this.prisma.tag.findUnique({ where: { name: 'for review' } });
-            if (forReviewTag && input.tagIds) {
-              input.tagIds = input.tagIds.filter(id => id !== forReviewTag.id);
-            }
-          }
-
-          // If the document is IN_TRANSIT and FOR_APPROVAL, automatically enforce the "for review" tag
+          // If the document is IN_TRANSIT and FOR_APPROVAL, automatically enforce the "for review"
           if (
             documents[0].recordStatus === 'IN_TRANSIT' &&
             documents[0].classification === 'FOR_APPROVAL' &&
@@ -1210,20 +1179,6 @@ export class DocumentsRouter {
             documents[0].originalSenderId !== recipient.id
           ) {
             isReview = true;
-            const forReviewTag = await this.prisma.tag.findUnique({
-              where: { name: 'for review' },
-            });
-            if (forReviewTag && !input.tagIds.includes(forReviewTag.id)) {
-              input.tagIds.push(forReviewTag.id);
-            }
-          } else if (
-            isReview &&
-            documents[0].classification !== 'CONFIDENTIAL'
-          ) {
-            throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: 'Only confidential documents can be sent for review.',
-            });
           }
 
           const isReturningToOriginator = documents[0].uploadedById === recipient.id || documents[0].originalSenderId === recipient.id;
@@ -1291,18 +1246,12 @@ export class DocumentsRouter {
             }
           }
 
-          // Update status and tags
+          // Update status
           const updatedDocument = await this.prisma.document.update({
             where: { id: input.documentId },
             data: {
               reviewRequesterId: isReview ? user.id : null,
               status: isReview ? null : undefined, // Clear status if re-submitting for review
-              tags: {
-                set: [
-                  ...input.tagIds.map((id) => ({ id })),
-                  ...(input.tagsToKeep || []).map((id) => ({ id })),
-                ],
-              },
             },
           });
 
@@ -1798,14 +1747,6 @@ export class DocumentsRouter {
             });
           }
 
-          const forReviewTag = await this.prisma.tag.findUnique({
-            where: { name: 'for review' },
-          });
-
-          const statusTag = await this.prisma.tag.findUnique({
-            where: { name: input.status },
-          });
-
           const maxVersion = await this.prisma.documentVersion.aggregate({
             where: { documentId: input.documentId },
             _max: { versionNumber: true },
@@ -1814,10 +1755,6 @@ export class DocumentsRouter {
 
           const updateData: Prisma.DocumentUpdateInput = {
             status: input.status,
-            tags: {
-              disconnect: forReviewTag ? [{ id: forReviewTag.id }] : [],
-              connect: statusTag ? [{ id: statusTag.id }] : [],
-            },
           };
 
           if (input.status === 'Approved') {
@@ -1966,152 +1903,6 @@ export class DocumentsRouter {
           }
 
           return updatedDocument;
-        }),
-
-      getTags: protectedProcedure
-        .meta({
-          openapi: {
-            method: 'GET',
-            path: '/documents.getTags',
-            tags: ['tags'],
-            summary: 'Get all tags with document count',
-          },
-        })
-        .input(z.void())
-        .output(z.any())
-        .query(async () => {
-          return this.prisma.tag.findMany({
-            where: {
-              isGlobal: false,
-            },
-            include: {
-              _count: {
-                select: { documents: true },
-              },
-            },
-          });
-        }),
-
-      getGlobalTags: protectedProcedure
-        .meta({
-          openapi: {
-            method: 'GET',
-            path: '/documents.getGlobalTags',
-            tags: ['tags'],
-            summary: 'Get all global tags with document count',
-          },
-        })
-        .input(z.void())
-        .output(z.any())
-        .query(async () => {
-          return this.prisma.tag.findMany({
-            where: {
-              isGlobal: true,
-            },
-            include: {
-              _count: {
-                select: { documents: true },
-              },
-            },
-          });
-        }),
-
-      createTag: protectedProcedure
-        .meta({
-          openapi: {
-            method: 'POST',
-            path: '/documents.createTag',
-            tags: ['tags'],
-            summary: 'Create a new tag',
-          },
-        })
-        .input(z.object({ name: z.string().min(1) }))
-        .output(z.any())
-        .mutation(async ({ input }) => {
-          return this.prisma.tag.create({
-            data: {
-              name: input.name,
-            },
-          });
-        }),
-
-      updateTag: protectedProcedure
-        .meta({
-          openapi: {
-            method: 'POST',
-            path: '/documents.updateTag',
-            tags: ['tags'],
-            summary: 'Update a tag',
-          },
-        })
-        .input(z.object({ id: z.string(), name: z.string().min(1) }))
-        .output(z.any())
-        .mutation(async ({ input }) => {
-          return this.prisma.tag.update({
-            where: { id: input.id },
-            data: { name: input.name },
-          });
-        }),
-
-      deleteTag: protectedProcedure
-        .meta({
-          openapi: {
-            method: 'DELETE',
-            path: '/documents.deleteTag',
-            tags: ['tags'],
-            summary: 'Delete a tag',
-          },
-        })
-        .input(z.string())
-        .output(z.any())
-        .mutation(async ({ ctx, input: tagId }) => {
-          const { dbUser } = ctx;
-
-          if (!dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
-
-          requirePermission(dbUser, 'canManageDocuments');
-
-          const tag = await this.prisma.tag.findUnique({
-            where: { id: tagId },
-          });
-
-          if (!tag) {
-            throw new TRPCError({
-              code: 'NOT_FOUND',
-              message: 'Tag not found.',
-            });
-          }
-
-          if (tag.isGlobal || tag.isLocked) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'Cannot delete global or locked tags.',
-            });
-          }
-
-          // Check if tag is used by other institutions
-          const isUsedByOthers = await this.prisma.document.findFirst({
-            where: {
-              tags: { some: { id: tagId } },
-              institutionId: { not: dbUser.institutionId },
-            },
-          });
-
-          if (isUsedByOthers) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'Tag is in use by other institutions.',
-            });
-          }
-
-          return this.prisma.tag.delete({
-            where: { id: tagId },
-          });
         }),
 
       getRemarks: protectedProcedure

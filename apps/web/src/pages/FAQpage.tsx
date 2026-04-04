@@ -218,10 +218,6 @@ const FAQ_CATEGORIES: FAQCategory[] = [
             <ol>
               <li>Select the recipient's campus and department.</li>
               <li>Choose the recipient from the list.</li>
-              <li>
-                Optionally apply <strong>Action Tags</strong> such as{" "}
-                <em>For Review</em> or <em>Communication</em>.
-              </li>
             </ol>
             <p>
               The recipient will receive a notification and must actively{" "}
@@ -258,13 +254,14 @@ const FAQ_CATEGORIES: FAQCategory[] = [
         answer: (
           <>
             <p>
-              Confidential documents can be routed for formal review using the{" "}
-              <em>For Review</em> action tag when sending:
+              Confidential documents can be routed for formal review by setting
+              the classification to <em>For Approval</em> when sending:
             </p>
             <ol>
               <li>
-                The <strong>sender</strong> sends a confidential document with
-                the <em>For Review</em> tag applied.
+                The <strong>sender</strong> uploads a document with the
+                classification <em>For Approval</em> and sends it to the
+                reviewing office.
               </li>
               <li>
                 The <strong>recipient</strong> (must have document management

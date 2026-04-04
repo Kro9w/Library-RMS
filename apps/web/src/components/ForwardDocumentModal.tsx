@@ -6,7 +6,6 @@ import { formatUserName } from "../utils/user";
 import "./StandardModal.css";
 
 type User = AppRouterOutputs["documents"]["getAppUsers"][0];
-type Tag = AppRouterOutputs["documents"]["getTags"][0];
 
 // Define hierarchy types
 interface Campus {
@@ -29,8 +28,6 @@ interface ForwardDocumentModalProps {
   forceRecipientLock?: boolean; // If true, disable the dropdowns
   users?: User[]; // Optional: if provided, we skip fetch
   campuses?: Campus[]; // Replacing flat institutions with hierarchical campuses
-  tags?: Tag[];
-  globalTags?: Tag[];
   recipient?: User | null; // The full user object if known
 }
 
@@ -42,14 +39,10 @@ export const ForwardDocumentModal: React.FC<ForwardDocumentModalProps> = ({
   forceRecipientLock = false,
   users: propUsers,
   campuses: propCampuses,
-  tags: propTags,
-  globalTags: propGlobalTags,
-  recipient: propRecipient,
 }) => {
   const [selectedCampusId, setSelectedCampusId] = useState<string>("");
   const [selectedDeptId, setSelectedDeptId] = useState<string>("");
   const [recipientId, setRecipientId] = useState(initialRecipientId || "");
-  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
 
   // --- Data Fetching (Fallback) ---
   const { data: fetchedUsers } = trpc.documents.getAppUsers.useQuery(
@@ -60,9 +53,6 @@ export const ForwardDocumentModal: React.FC<ForwardDocumentModalProps> = ({
     trpc.user.getInstitutionHierarchy.useQuery(undefined, {
       enabled: !propCampuses && show,
     });
-  const { data: fetchedTags } = trpc.documents.getTags.useQuery(undefined, {
-    enabled: !propTags && show,
-  });
 
   const { data: document } = trpc.documents.getById.useQuery(
     { id: documentId },
@@ -74,22 +64,8 @@ export const ForwardDocumentModal: React.FC<ForwardDocumentModalProps> = ({
     document?.recordStatus === "IN_TRANSIT" &&
     document?.classification === "FOR_APPROVAL";
 
-  const { data: fetchedGlobalTags } = trpc.documents.getGlobalTags.useQuery(
-    undefined,
-    { enabled: !propGlobalTags && show },
-  );
-  // Only fetch roles if we don't have the user object with roles already
-  const { data: usersWithRoles } = trpc.user.getUsersWithRoles.useQuery(
-    undefined,
-    {
-      enabled: !propRecipient && !!recipientId && show,
-    },
-  );
-
   const users = propUsers || fetchedUsers;
   const campuses = propCampuses || fetchedOrgHierarchy?.campuses || [];
-  const tags = propTags || fetchedTags;
-  const globalTags = propGlobalTags || fetchedGlobalTags;
 
   const trpcCtx = trpc.useContext();
 
@@ -163,44 +139,6 @@ export const ForwardDocumentModal: React.FC<ForwardDocumentModalProps> = ({
     }
     return [];
   }, [selectedDeptId, departments, users]);
-
-  // Resolve Recipient & Roles
-  const currentRecipient = useMemo(() => {
-    if (propRecipient && propRecipient.id === recipientId) return propRecipient;
-    if (users) return users.find((u: any) => u.id === recipientId);
-    return null;
-  }, [recipientId, propRecipient, users]);
-
-  const recipientRoles = useMemo(() => {
-    if (currentRecipient && (currentRecipient as any).roles) {
-      return (currentRecipient as any).roles;
-    }
-    return usersWithRoles?.find((u) => u.id === recipientId)?.roles;
-  }, [currentRecipient, usersWithRoles, recipientId]);
-
-  const filteredGlobalTags = useMemo(() => {
-    // If no recipient is selected, we still want to show the tag if it's valid for the document,
-    // or we might decide to hide it. Let's show it by default if the document is confidential,
-    // but the actual backend will throw if they try to send to an invalid recipient anyway.
-    // Actually, to make it not disappear when switching recipients, let's relax the client-side
-    // canManageDocuments check slightly, or ensure we default to true if roles aren't loaded yet.
-    const hasManagePerms = recipientRoles
-      ? recipientRoles.some((role: any) => role.canManageDocuments)
-      : true; // Default to true so it doesn't flicker/vanish before recipient is picked.
-
-    const isConfidential =
-      (document as any)?.classification === "CONFIDENTIAL" ||
-      (document as any)?.classification?.toUpperCase() === "CONFIDENTIAL";
-
-    return globalTags?.filter((tag: Tag) => {
-      // In some environments, the tags might be capitalized or differently named
-      const tagName = tag.name.toLowerCase();
-      if (tagName === "for review") {
-        return hasManagePerms && isConfidential;
-      }
-      return tagName === "communication";
-    });
-  }, [globalTags, recipientRoles, document]);
 
   const forwardDocumentMutation = trpc.documents.forwardDocument.useMutation();
 
@@ -301,7 +239,6 @@ export const ForwardDocumentModal: React.FC<ForwardDocumentModalProps> = ({
         setSelectedCampusId("");
         setSelectedDeptId("");
       }
-      setSelectedTags(new Set());
       isInitializedRef.current = true;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -320,22 +257,9 @@ export const ForwardDocumentModal: React.FC<ForwardDocumentModalProps> = ({
     await forwardDocumentMutation.mutateAsync({
       documentId,
       recipientId,
-      tagIds: Array.from(selectedTags),
     });
 
     onClose();
-  };
-
-  const handleTagChange = (tagId: string) => {
-    setSelectedTags((prev) => {
-      const next = new Set(prev);
-      if (next.has(tagId)) {
-        next.delete(tagId);
-      } else {
-        next.add(tagId);
-      }
-      return next;
-    });
   };
 
   const labelStyle = {
@@ -499,83 +423,6 @@ export const ForwardDocumentModal: React.FC<ForwardDocumentModalProps> = ({
                   ))}
                 </select>
               </div>
-            </div>
-          </div>
-
-          <hr
-            className="my-3 w-100 mx-0"
-            style={{ borderColor: "var(--border)", margin: 0 }}
-          />
-
-          <div className="mb-2">
-            <label style={labelStyle}>Standard Tags</label>
-            <div className="d-flex flex-wrap gap-2">
-              {tags?.length ? (
-                tags.map((tag: Tag) => (
-                  <div key={tag.id} className="form-check-inline m-0">
-                    <input
-                      type="checkbox"
-                      className="btn-check"
-                      id={`tag-${tag.id}`}
-                      autoComplete="off"
-                      checked={selectedTags.has(tag.id)}
-                      onChange={() => handleTagChange(tag.id)}
-                      disabled={forwardDocumentMutation.isPending}
-                    />
-                    <label
-                      className={`btn btn-sm rounded-pill px-3 ${
-                        selectedTags.has(tag.id)
-                          ? "btn-primary"
-                          : "btn-outline-secondary"
-                      }`}
-                      htmlFor={`tag-${tag.id}`}
-                      style={{ fontSize: "12px", padding: "4px 10px" }}
-                    >
-                      {tag.name}
-                    </label>
-                  </div>
-                ))
-              ) : (
-                <span className="text-muted small fst-italic">
-                  No tags available
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Action Tags</label>
-            <div className="d-flex flex-wrap gap-2">
-              {filteredGlobalTags?.length ? (
-                filteredGlobalTags.map((tag: Tag) => (
-                  <div key={tag.id} className="form-check-inline m-0">
-                    <input
-                      type="checkbox"
-                      className="btn-check"
-                      id={`global-tag-${tag.id}`}
-                      autoComplete="off"
-                      checked={selectedTags.has(tag.id)}
-                      onChange={() => handleTagChange(tag.id)}
-                      disabled={forwardDocumentMutation.isPending}
-                    />
-                    <label
-                      className={`btn btn-sm rounded-pill px-3 ${
-                        selectedTags.has(tag.id)
-                          ? "btn-secondary"
-                          : "btn-outline-secondary"
-                      }`}
-                      htmlFor={`global-tag-${tag.id}`}
-                      style={{ fontSize: "12px", padding: "4px 10px" }}
-                    >
-                      {tag.name}
-                    </label>
-                  </div>
-                ))
-              ) : (
-                <span className="text-muted small fst-italic">
-                  No action tags available for this user
-                </span>
-              )}
             </div>
           </div>
         </div>

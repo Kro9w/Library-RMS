@@ -171,10 +171,6 @@ export const DocumentDetails: React.FC = () => {
   const hasTransitReviewAccess =
     isCurrentTransitOffice && user?.roles?.some((r: any) => r.level === 1);
 
-  const hasReviewTag = document.tags?.some(
-    (t: any) => (t.tag?.name || t.name) === "for review",
-  );
-
   const isReturnedOrDisapproved =
     document.status === "Returned for Corrections/Revision/Clarification" ||
     document.status === "Disapproved";
@@ -188,8 +184,12 @@ export const DocumentDetails: React.FC = () => {
   const isSendDisabled =
     document.isCheckedOut || (hasBeenSent && !isReturnedOrDisapproved);
 
+  const isReviewDocument =
+    document.recordStatus === "IN_TRANSIT" &&
+    document.classification === "FOR_APPROVAL";
+
   const canReview =
-    ((canManageDocuments && hasReviewTag) || hasTransitReviewAccess) &&
+    ((canManageDocuments && isReviewDocument) || hasTransitReviewAccess) &&
     !isReturnedOrDisapproved &&
     !isOriginator;
 

@@ -180,7 +180,6 @@ model Document {
   checkedOutBy   User?        @relation("CheckedOutDocs", fields: [checkedOutById], references: [id])
   checkedOutById String?
   versions DocumentVersion[]
-  tags Tag[] // Implicit M:N
   reviewRequester   User?   @relation("DocumentReviewRequester", fields: [reviewRequesterId], references: [id])
   reviewRequesterId String?
   status  String? // eg. approved, returned, disapproved
@@ -225,13 +224,6 @@ model DocumentVersion {
   createdAt DateTime @default(now())
   @@index([documentId])
   @@index([uploadedById])
-}
-model Tag {
-  id        String     @id @default(cuid())
-  name      String     @unique
-  documents Document[] // Implicit M:N
-  isGlobal  Boolean    @default(false)
-  isLocked  Boolean    @default(false)
 }
 model Remark {
   id         String   @id @default(cuid())
