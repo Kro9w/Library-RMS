@@ -586,13 +586,12 @@ export const SendDocumentPage: React.FC = () => {
       if (dbUser?.departmentId) {
         users = users.filter((u: any) => u.deptId === dbUser.departmentId);
       }
-    } else if (
-      classification === "INTERNAL" ||
-      classification === "CONFIDENTIAL"
-    ) {
+    } else if (classification === "INTERNAL") {
       if (dbUser?.campusId) {
         users = users.filter((u: any) => u.campusId === dbUser.campusId);
       }
+    } else if (classification === "CONFIDENTIAL") {
+      // Show all users for CONFIDENTIAL
     } else if (classification === "INSTITUTIONAL") {
       // For INSTITUTIONAL: if departments are selected, narrow users to those departments.
       // Otherwise if campuses are selected, narrow to those campuses.

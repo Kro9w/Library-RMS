@@ -54,6 +54,10 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     me?.roles?.some((r: any) => r.canManageDocuments) ?? false;
 
+  const canManageInstitution =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    me?.roles?.some((r: any) => r.canManageInstitution) ?? false;
+
   const [isScanning, setIsScanning] = useState(false);
 
   const scanForControlNumber = async (f: File) => {
@@ -297,15 +301,15 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
                   }
                 }}
               >
-                {(highestRoleLevel <= 1 || canManageDocs) && (
-                  <>
-                    <option value="INSTITUTIONAL">
-                      Institutional — institution-wide
-                    </option>
-                    <option value="INTERNAL">Internal — campus-wide</option>
-                  </>
+                {canManageInstitution && (
+                  <option value="INSTITUTIONAL">
+                    Institutional — institution-wide
+                  </option>
                 )}
-                {(highestRoleLevel <= 2 || canManageDocs) && (
+                {(highestRoleLevel <= 0 || canManageInstitution) && (
+                  <option value="INTERNAL">Internal — campus-wide</option>
+                )}
+                {(highestRoleLevel <= 1 || canManageDocs) && (
                   <option value="DEPARTMENTAL">
                     Departmental — department only
                   </option>

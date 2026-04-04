@@ -9,6 +9,7 @@ import { RolesModule } from '../roles/roles.module';
 import { DocumentTypesModule } from '../document-types/document-types.module';
 import { LogModule } from '../log/log.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AccessControlService } from '../documents/access-control.service';
 
 @Module({
   // 3. Add PrismaModule and SupabaseModule here
@@ -22,7 +23,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     LogModule,
     NotificationsModule,
   ],
-  providers: [TrpcRouter, TrpcContextFactory],
+  providers: [TrpcRouter, TrpcContextFactory, AccessControlService],
   exports: [TrpcRouter, TrpcContextFactory],
 })
 export class TrpcModule {}

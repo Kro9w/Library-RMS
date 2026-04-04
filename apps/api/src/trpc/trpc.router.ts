@@ -10,6 +10,7 @@ import type { inferRouterOutputs, inferRouterInputs } from '@trpc/server';
 import { DocumentTypesRouter } from '../document-types/document-types.router';
 import { LogRouter } from '../log/log.router';
 import { NotificationsRouter } from '../notifications/notifications.router';
+import { AccessControlService } from '../documents/access-control.service';
 
 @Injectable()
 export class TrpcRouter {
@@ -20,6 +21,7 @@ export class TrpcRouter {
     private readonly logRouter: LogRouter,
     private readonly rolesRouter: RolesRouter,
     private readonly notificationsRouter: NotificationsRouter,
+    private readonly accessControlService: AccessControlService,
   ) {}
 
   get appRouter() {
@@ -49,13 +51,13 @@ export class TrpcRouter {
           };
         }
 
+        const aclWhere = this.accessControlService.generateAclWhereClause(
+          ctx.dbUser,
+        );
+
         const documentWhere = {
-          OR: [
-            { departmentId },
-            { classification: 'INSTITUTIONAL' as any, institutionId },
-            { classification: 'INTERNAL' as any, campusId },
-            { classification: 'DEPARTMENTAL' as any, departmentId },
-          ],
+          institutionId,
+          AND: [aclWhere],
         };
 
         const docsByTypeQuery = ctx.prisma.document.groupBy({

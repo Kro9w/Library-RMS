@@ -20,7 +20,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "migrate:dev": "dotenv -e ../../.env -- prisma migrate dev",
-    "prisma:studio": "dotenv -e ../../.env -- prisma studio"
+    "prisma:studio": "dotenv -e ../../.env -- prisma studio",
+    "seed:acl": "dotenv -e ../../.env -- ts-node prisma/seed-acl.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.20",
