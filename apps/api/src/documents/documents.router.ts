@@ -89,6 +89,27 @@ export class DocumentsRouter {
     private readonly accessControlService: AccessControlService,
   ) {}
 
+  private async createNotification(
+    userIds: string | string[],
+    title: string,
+    message: string,
+    documentId: string,
+  ) {
+    const ids = Array.isArray(userIds) ? userIds : [userIds];
+    if (ids.length === 0) return;
+
+    const notifData = ids.map((userId) => ({
+      userId,
+      title,
+      message,
+      documentId,
+    }));
+
+    await this.prisma.notification.createMany({
+      data: notifData,
+    });
+  }
+
   createRouter() {
     return router({
       /**
@@ -330,18 +351,12 @@ export class DocumentsRouter {
           // Filter out sender
           targetsForNotification.delete(user.id);
 
-          const notifData = Array.from(targetsForNotification).map(uid => ({
-            userId: uid,
-            title: 'Document Sent',
-            message: `${senderName} sent the document "${document.title}" to your scope.`,
-            documentId: document.id,
-          }));
-
-          if (notifData.length > 0) {
-            await this.prisma.notification.createMany({
-               data: notifData
-            });
-          }
+          await this.createNotification(
+            Array.from(targetsForNotification),
+            'Document Sent',
+            `${senderName} sent the document "${document.title}" to your scope.`,
+            document.id,
+          );
 
           return { success: true, count: finalAccesses.length };
         }),
@@ -1272,50 +1287,40 @@ export class DocumentsRouter {
             updatedDocument.classification === 'FOR_APPROVAL';
 
           if (isReturningToOriginator) {
-            await this.prisma.notification.create({
-              data: {
-                userId: recipient.id,
-                title: 'Document Returned',
-                message: `${senderName} has returned the document "${updatedDocument.title}" to you for corrections/review.`,
-                documentId: updatedDocument.id,
-              },
-            });
+            await this.createNotification(
+              recipient.id,
+              'Document Returned',
+              `${senderName} has returned the document "${updatedDocument.title}" to you for corrections/review.`,
+              updatedDocument.id,
+            );
           } else if (isOriginatorResubmitting) {
-            await this.prisma.notification.create({
-              data: {
-                userId: recipient.id,
-                title: 'Document Resubmitted (In Transit)',
-                message: `${senderName} has resubmitted the document "${updatedDocument.title}" to your office. Action required.`,
-                documentId: updatedDocument.id,
-              },
-            });
+            await this.createNotification(
+              recipient.id,
+              'Document Resubmitted (In Transit)',
+              `${senderName} has resubmitted the document "${updatedDocument.title}" to your office. Action required.`,
+              updatedDocument.id,
+            );
           } else if (isTransit) {
-            await this.prisma.notification.create({
-              data: {
-                userId: recipient.id,
-                title: 'Review Requested (In Transit)',
-                message: `${senderName} has forwarded the document "${updatedDocument.title}" to your office for review and endorsement. Action required.`,
-                documentId: updatedDocument.id,
-              },
-            });
+            await this.createNotification(
+              recipient.id,
+              'Review Requested (In Transit)',
+              `${senderName} has forwarded the document "${updatedDocument.title}" to your office for review and endorsement. Action required.`,
+              updatedDocument.id,
+            );
           } else if (isReview) {
-            await this.prisma.notification.create({
-              data: {
-                userId: recipient.id,
-                title: 'Review Requested',
-                message: `${senderName} has sent you a confidential document for review: "${updatedDocument.title}". Action required.`,
-                documentId: updatedDocument.id,
-              },
-            });
+            await this.createNotification(
+              recipient.id,
+              'Review Requested',
+              `${senderName} has sent you a confidential document for review: "${updatedDocument.title}". Action required.`,
+              updatedDocument.id,
+            );
           } else {
-            await this.prisma.notification.create({
-              data: {
-                userId: recipient.id,
-                title: 'Document Received',
-                message: `${senderName} sent you a document: "${updatedDocument.title}". Action required to receive it.`,
-                documentId: updatedDocument.id,
-              },
-            });
+            await this.createNotification(
+              recipient.id,
+              'Document Received',
+              `${senderName} sent you a document: "${updatedDocument.title}". Action required to receive it.`,
+              updatedDocument.id,
+            );
           }
 
           return updatedDocument;
@@ -1488,14 +1493,12 @@ export class DocumentsRouter {
           );
 
           // Notify sender
-          await this.prisma.notification.create({
-            data: {
-              userId: senderId,
-              title: 'Document Received',
-              message: `${dbUser.firstName} ${dbUser.lastName} has successfully received "${(document as any).title}".`,
-              documentId: (document as any).id,
-            },
-          });
+          await this.createNotification(
+            senderId,
+            'Document Received',
+            `${dbUser.firstName} ${dbUser.lastName} has successfully received "${(document as any).title}".`,
+            (document as any).id,
+          );
 
           return document as any;
         }),
@@ -1835,14 +1838,12 @@ export class DocumentsRouter {
                     });
 
                     // Send notifications explicitly
-                    await this.prisma.notification.createMany({
-                      data: nextDeptUsers.map((targetUser) => ({
-                        userId: targetUser.id,
-                        title: 'Review Requested (In Transit)',
-                        message: `${dbUser.firstName} ${dbUser.lastName} has forwarded the document "${document.title}" to your office for review and endorsement. Action required.`,
-                        documentId: document.id,
-                      })),
-                    });
+                    await this.createNotification(
+                      nextDeptUsers.map((targetUser) => targetUser.id),
+                      'Review Requested (In Transit)',
+                      `${dbUser.firstName} ${dbUser.lastName} has forwarded the document "${document.title}" to your office for review and endorsement. Action required.`,
+                      document.id,
+                    );
                   }
 
                   // Update log action string for advancing
@@ -1892,14 +1893,12 @@ export class DocumentsRouter {
           if (document.reviewRequesterId) {
             const reviewerName =
               `${dbUser.firstName} ${dbUser.lastName}`.trim();
-            await this.prisma.notification.create({
-              data: {
-                userId: document.reviewRequesterId,
-                title: 'Review Completed',
-                message: `${reviewerName} has marked your document "${updatedDocument.title}" as ${input.status}.`,
-                documentId: updatedDocument.id,
-              },
-            });
+            await this.createNotification(
+              document.reviewRequesterId,
+              'Review Completed',
+              `${reviewerName} has marked your document "${updatedDocument.title}" as ${input.status}.`,
+              updatedDocument.id,
+            );
           }
 
           return updatedDocument;

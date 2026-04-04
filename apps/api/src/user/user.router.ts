@@ -20,6 +20,73 @@ export class UserRouter {
     private readonly logService: LogService,
   ) {}
 
+  public async determineInitialRole(
+    userEmail: string,
+    departmentName: string,
+    departmentId: string,
+  ) {
+    let targetRoleRecord: { id: string; name: string } | null = null;
+
+    // 1. Check for specific email to get University President role
+    if (
+      userEmail === 'jakecalantas.blis@gmail.com' &&
+      departmentName === 'Office of the University President'
+    ) {
+      const presidentRole = await this.prisma.role.findFirst({
+        where: {
+          departmentId,
+          name: 'University President',
+        },
+      });
+      if (presidentRole) {
+        targetRoleRecord = presidentRole;
+      }
+    }
+
+    // 2. If not president, check if this department has a level 1 role and if it's currently vacant.
+    if (!targetRoleRecord && departmentName !== 'Office of the University President') {
+      const apexRole = await this.prisma.role.findFirst({
+        where: {
+          departmentId,
+          level: { lte: 1 },
+        },
+        include: {
+          users: true,
+        },
+      });
+
+      if (apexRole && apexRole.users.length === 0) {
+        targetRoleRecord = apexRole;
+      }
+    }
+
+    // 3. Fallback to default 'User' role
+    if (!targetRoleRecord) {
+      const roleName = 'User';
+      let userRole = await this.prisma.role.findFirst({
+        where: {
+          departmentId,
+          name: roleName,
+        },
+      });
+
+      if (!userRole) {
+        userRole = await this.prisma.role.create({
+          data: {
+            name: roleName,
+            canManageUsers: false,
+            canManageRoles: false,
+            canManageDocuments: false,
+            departmentId,
+          },
+        });
+      }
+      targetRoleRecord = userRole;
+    }
+
+    return targetRoleRecord;
+  }
+
   createRouter() {
     return router({
       /**
@@ -147,69 +214,11 @@ export class UserRouter {
             });
           }
 
-          let targetRoleRecord: { id: string; name: string } | null = null;
-
-          // 1. Check for specific email to get University President role
-          if (
-            ctx.dbUser.email === 'jakecalantas.blis@gmail.com' &&
-            dept.name === 'Office of the University President'
-          ) {
-            const presidentRole = await this.prisma.role.findFirst({
-              where: {
-                departmentId: input.departmentId,
-                name: 'University President',
-              },
-            });
-            if (presidentRole) {
-              targetRoleRecord = presidentRole;
-            }
-          }
-
-          // 2. If not president, check if this department has a level 1 role and if it's currently vacant.
-          // IMPORTANT: Do NOT auto-assign the University President role to a random first user.
-          if (
-            !targetRoleRecord &&
-            dept.name !== 'Office of the University President'
-          ) {
-            const apexRole = await this.prisma.role.findFirst({
-              where: {
-                departmentId: input.departmentId,
-                level: { lte: 1 },
-              },
-              include: {
-                users: true,
-              },
-            });
-
-            // If there's an apex role (Level 0 or 1), and it has NO users assigned yet, assign it to this first user
-            if (apexRole && apexRole.users.length === 0) {
-              targetRoleRecord = apexRole;
-            }
-          }
-
-          // 3. Fallback to default 'User' role
-          if (!targetRoleRecord) {
-            const roleName = 'User';
-            let userRole = await this.prisma.role.findFirst({
-              where: {
-                departmentId: input.departmentId,
-                name: roleName,
-              },
-            });
-
-            if (!userRole) {
-              userRole = await this.prisma.role.create({
-                data: {
-                  name: roleName,
-                  canManageUsers: false,
-                  canManageRoles: false,
-                  canManageDocuments: false,
-                  departmentId: input.departmentId,
-                },
-              });
-            }
-            targetRoleRecord = userRole;
-          }
+          const targetRoleRecord = await this.determineInitialRole(
+            ctx.dbUser.email,
+            dept.name,
+            input.departmentId,
+          );
 
           await this.prisma.user.update({
             where: { id: ctx.dbUser.id },
@@ -283,44 +292,11 @@ export class UserRouter {
             });
           }
 
-          let targetRoleRecord: { id: string; name: string } | null = null;
-
-          // For dynamically created departments, it's very likely they don't have a level 0 or 1 role seeded,
-          // but we still apply the same logic for consistency, or just fallback to 'User'.
-          // IMPORTANT: Do NOT auto-assign the University President role to a random first user.
-          if (dept.name !== 'Office of the University President') {
-            const apexRole = await ctx.prisma.role.findFirst({
-              where: {
-                departmentId: dept.id,
-                level: { lte: 1 },
-              },
-              include: { users: true },
-            });
-
-            if (apexRole && apexRole.users.length === 0) {
-              targetRoleRecord = apexRole;
-            }
-          }
-
-          if (!targetRoleRecord) {
-            const roleName = 'User';
-            let userRole = await ctx.prisma.role.findFirst({
-              where: { departmentId: dept.id, name: roleName },
-            });
-
-            if (!userRole) {
-              userRole = await ctx.prisma.role.create({
-                data: {
-                  name: roleName,
-                  canManageUsers: false,
-                  canManageRoles: false,
-                  canManageDocuments: false,
-                  departmentId: dept.id,
-                },
-              });
-            }
-            targetRoleRecord = userRole;
-          }
+          const targetRoleRecord = await this.determineInitialRole(
+            ctx.dbUser.email,
+            dept.name,
+            dept.id,
+          );
 
           await ctx.prisma.user.update({
             where: { id: ctx.dbUser.id },
