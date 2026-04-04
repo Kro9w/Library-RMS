@@ -20,7 +20,11 @@ import { env } from '../env';
 function computeLifecycleStatus(doc: {
   createdAt: Date;
   activeRetentionSnapshot: number | null;
+  activeRetentionMonthsSnapshot?: number | null;
+  activeRetentionDaysSnapshot?: number | null;
   inactiveRetentionSnapshot: number | null;
+  inactiveRetentionMonthsSnapshot?: number | null;
+  inactiveRetentionDaysSnapshot?: number | null;
   dispositionStatus: string | null;
   isUnderLegalHold: boolean;
 }):
@@ -51,12 +55,24 @@ function computeLifecycleStatus(doc: {
   activeUntil.setFullYear(
     activeUntil.getFullYear() + doc.activeRetentionSnapshot,
   );
+  activeUntil.setMonth(
+    activeUntil.getMonth() + (doc.activeRetentionMonthsSnapshot || 0),
+  );
+  activeUntil.setDate(
+    activeUntil.getDate() + (doc.activeRetentionDaysSnapshot || 0),
+  );
 
   if (now < activeUntil) return 'Active';
 
   const inactiveUntil = new Date(activeUntil);
   inactiveUntil.setFullYear(
     inactiveUntil.getFullYear() + (doc.inactiveRetentionSnapshot || 0),
+  );
+  inactiveUntil.setMonth(
+    inactiveUntil.getMonth() + (doc.inactiveRetentionMonthsSnapshot || 0),
+  );
+  inactiveUntil.setDate(
+    inactiveUntil.getDate() + (doc.inactiveRetentionDaysSnapshot || 0),
   );
 
   if (now < inactiveUntil) return 'Inactive';
@@ -448,9 +464,14 @@ export class DocumentsRouter {
                 },
               },
               activeRetentionSnapshot: true,
+              activeRetentionMonthsSnapshot: true,
+              activeRetentionDaysSnapshot: true,
               inactiveRetentionSnapshot: true,
+              inactiveRetentionMonthsSnapshot: true,
+              inactiveRetentionDaysSnapshot: true,
               dispositionActionSnapshot: true,
               dispositionStatus: true,
+              dispositionDate: true,
               classification: true,
               originalSenderId: true,
               uploadedById: true,
@@ -630,7 +651,11 @@ export class DocumentsRouter {
             if (docType) {
               retentionSnapshot = {
                 activeRetentionSnapshot: docType.activeRetentionDuration,
+                activeRetentionMonthsSnapshot: docType.activeRetentionMonths,
+                activeRetentionDaysSnapshot: docType.activeRetentionDays,
                 inactiveRetentionSnapshot: docType.inactiveRetentionDuration,
+                inactiveRetentionMonthsSnapshot: docType.inactiveRetentionMonths,
+                inactiveRetentionDaysSnapshot: docType.inactiveRetentionDays,
                 dispositionActionSnapshot: docType.dispositionAction,
               };
             }
@@ -894,9 +919,14 @@ export class DocumentsRouter {
               },
             },
             activeRetentionSnapshot: true,
+            activeRetentionMonthsSnapshot: true,
+            activeRetentionDaysSnapshot: true,
             inactiveRetentionSnapshot: true,
+            inactiveRetentionMonthsSnapshot: true,
+            inactiveRetentionDaysSnapshot: true,
             dispositionActionSnapshot: true,
             dispositionStatus: true,
+            dispositionDate: true,
             classification: true,
             originalSenderId: true,
             isUnderLegalHold: true,
@@ -937,8 +967,17 @@ export class DocumentsRouter {
                 AND d."dispositionStatus" NOT IN ('DESTROYED', 'ARCHIVED')
                 AND d."activeRetentionSnapshot" IS NOT NULL
                 AND d."isUnderLegalHold" = false
-                AND (d."createdAt" + make_interval(years => d."activeRetentionSnapshot")) <= NOW()
-                AND (d."createdAt" + make_interval(years => d."activeRetentionSnapshot") + make_interval(years => COALESCE(d."inactiveRetentionSnapshot", 0))) <= NOW()
+                AND (d."createdAt" + 
+                     make_interval(years => d."activeRetentionSnapshot") + 
+                     make_interval(months => COALESCE(d."activeRetentionMonthsSnapshot", 0)) + 
+                     make_interval(days => COALESCE(d."activeRetentionDaysSnapshot", 0))) <= NOW()
+                AND (d."createdAt" + 
+                     make_interval(years => d."activeRetentionSnapshot") + 
+                     make_interval(months => COALESCE(d."activeRetentionMonthsSnapshot", 0)) + 
+                     make_interval(days => COALESCE(d."activeRetentionDaysSnapshot", 0)) + 
+                     make_interval(years => COALESCE(d."inactiveRetentionSnapshot", 0)) +
+                     make_interval(months => COALESCE(d."inactiveRetentionMonthsSnapshot", 0)) +
+                     make_interval(days => COALESCE(d."inactiveRetentionDaysSnapshot", 0))) <= NOW()
             `;
 
             const rawResults =
@@ -2355,7 +2394,10 @@ export class DocumentsRouter {
 
             const updatedDoc = await this.prisma.document.update({
               where: { id: doc.id },
-              data: { dispositionStatus: 'DESTROYED' },
+              data: { 
+                dispositionStatus: 'DESTROYED',
+                dispositionDate: new Date(),
+              },
             });
 
             await this.logService.logAction(
@@ -2371,7 +2413,10 @@ export class DocumentsRouter {
           } else if (action === 'ARCHIVE') {
             const updatedDoc = await this.prisma.document.update({
               where: { id: doc.id },
-              data: { dispositionStatus: 'ARCHIVED' },
+              data: { 
+                dispositionStatus: 'ARCHIVED',
+                dispositionDate: new Date(),
+              },
             });
 
             await this.logService.logAction(

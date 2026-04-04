@@ -716,6 +716,45 @@ export const DocumentDetails: React.FC = () => {
                   )}
                 </>
               )}
+
+              {/* Disposition Certificate */}
+              {(document.dispositionStatus === "DESTROYED" ||
+                document.dispositionStatus === "ARCHIVED") && (
+                <div className="disposition-block disposition-executed mt-3 border border-success bg-success-subtle rounded p-3">
+                  <div className="disposition-header d-flex align-items-center mb-2 text-success">
+                    <i className="bi bi-shield-check disposition-icon me-2 fs-5"></i>
+                    <h6 className="disposition-title mb-0 fw-bold">
+                      Certificate of Disposition
+                    </h6>
+                  </div>
+                  <p className="disposition-text mb-1 small">
+                    This document was officially{" "}
+                    <strong>
+                      {document.dispositionStatus === "DESTROYED"
+                        ? "Destroyed"
+                        : "Archived"}
+                    </strong>{" "}
+                    on{" "}
+                    <strong>
+                      {document.dispositionDate
+                        ? new Date(document.dispositionDate).toLocaleDateString(
+                            undefined,
+                            {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            },
+                          )
+                        : "Unknown Date"}
+                    </strong>
+                    .
+                  </p>
+                  <p className="disposition-text mb-0 small text-muted">
+                    This record serves as proof of compliance with the defined
+                    records retention schedule.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

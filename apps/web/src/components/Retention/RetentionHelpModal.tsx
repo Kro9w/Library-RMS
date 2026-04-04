@@ -44,8 +44,9 @@ const steps = [
     content: (
       <>
         <p>
-          Retention periods are defined in <strong>Years</strong> and are
-          configured per Document Type.
+          Retention periods can be precisely defined in{" "}
+          <strong>Years, Months, and Days</strong> and are configured per
+          Document Type.
         </p>
         <div className="info-block">
           <h6>Active Duration</h6>
@@ -60,7 +61,8 @@ const steps = [
         </div>
         <p className="text-muted mt-3">
           <em>Example:</em> A contract might be Active for 3 years, then
-          Inactive for 7 years, for a total retention of 10 years.
+          Inactive for 7 years and 6 months, for a total retention of 10 years
+          and 6 months.
         </p>
       </>
     ),

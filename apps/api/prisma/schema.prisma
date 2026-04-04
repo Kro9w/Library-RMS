@@ -145,7 +145,13 @@ model DocumentType {
   institutionId             String
   documents                 Document[]
   activeRetentionDuration   Int               @default(0) // In Years
+  activeRetentionMonths     Int               @default(0) // In Months
+  activeRetentionDays       Int               @default(0) // In Days
+  
   inactiveRetentionDuration Int               @default(0) // In Years
+  inactiveRetentionMonths   Int               @default(0) // In Months
+  inactiveRetentionDays     Int               @default(0) // In Days
+  
   dispositionAction         DispositionAction @default(ARCHIVE)
 }
 model Document {
@@ -179,10 +185,17 @@ model Document {
   reviewRequesterId String?
   status  String? // eg. approved, returned, disapproved
   remarks Remark[]
-  activeRetentionSnapshot   Int?
-  inactiveRetentionSnapshot Int?
+  activeRetentionSnapshot         Int?
+  activeRetentionMonthsSnapshot   Int?
+  activeRetentionDaysSnapshot     Int?
+
+  inactiveRetentionSnapshot       Int?
+  inactiveRetentionMonthsSnapshot Int?
+  inactiveRetentionDaysSnapshot   Int?
+
   dispositionActionSnapshot DispositionAction?
   dispositionStatus         String? // 'ARCHIVED', 'DESTROYED', 'PENDING_DISPOSITION'
+  dispositionDate           DateTime? // The exact date the disposition was executed
   isUnderLegalHold Boolean @default(false)
   legalHoldReason  String?
   dispositionRequesterId String?

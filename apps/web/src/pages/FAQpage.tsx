@@ -1,6 +1,6 @@
 // apps/web/src/pages/FAQPage.tsx
 import React, { useState, useMemo } from "react";
-import "./FAQPage.css";
+import "./FAQpage.css";
 
 interface FAQItem {
   id: string;

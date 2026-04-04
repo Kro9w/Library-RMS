@@ -8,7 +8,13 @@ export function RetentionPolicyPanel() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [activeRetention, setActiveRetention] = useState(0);
+  const [activeRetentionMonths, setActiveRetentionMonths] = useState(0);
+  const [activeRetentionDays, setActiveRetentionDays] = useState(0);
+
   const [inactiveRetention, setInactiveRetention] = useState(0);
+  const [inactiveRetentionMonths, setInactiveRetentionMonths] = useState(0);
+  const [inactiveRetentionDays, setInactiveRetentionDays] = useState(0);
+
   const [dispositionAction, setDispositionAction] = useState<
     "ARCHIVE" | "DESTROY"
   >("ARCHIVE");
@@ -17,14 +23,26 @@ export function RetentionPolicyPanel() {
   const handleEdit = (type: any) => {
     setEditingId(type.id);
     setActiveRetention(type.activeRetentionDuration || 0);
+    setActiveRetentionMonths(type.activeRetentionMonths || 0);
+    setActiveRetentionDays(type.activeRetentionDays || 0);
+
     setInactiveRetention(type.inactiveRetentionDuration || 0);
+    setInactiveRetentionMonths(type.inactiveRetentionMonths || 0);
+    setInactiveRetentionDays(type.inactiveRetentionDays || 0);
+
     setDispositionAction(type.dispositionAction || "ARCHIVE");
   };
 
   const handleCancel = () => {
     setEditingId(null);
     setActiveRetention(0);
+    setActiveRetentionMonths(0);
+    setActiveRetentionDays(0);
+
     setInactiveRetention(0);
+    setInactiveRetentionMonths(0);
+    setInactiveRetentionDays(0);
+
     setDispositionAction("ARCHIVE");
   };
 
@@ -35,7 +53,11 @@ export function RetentionPolicyPanel() {
         name: type.name, // Required by schema, though strictly we aren't changing it
         color: type.color, // Required by schema
         activeRetentionDuration: activeRetention,
+        activeRetentionMonths: activeRetentionMonths,
+        activeRetentionDays: activeRetentionDays,
         inactiveRetentionDuration: inactiveRetention,
+        inactiveRetentionMonths: inactiveRetentionMonths,
+        inactiveRetentionDays: inactiveRetentionDays,
         dispositionAction: dispositionAction,
       },
       {
@@ -76,9 +98,9 @@ export function RetentionPolicyPanel() {
             <thead>
               <tr>
                 <th>Document Type</th>
-                <th style={{ width: "15%" }}>Active (Years)</th>
-                <th style={{ width: "15%" }}>Inactive (Years)</th>
-                <th style={{ width: "20%" }}>Disposition</th>
+                <th style={{ width: "30%" }}>Active (Y/M/D)</th>
+                <th style={{ width: "30%" }}>Inactive (Y/M/D)</th>
+                <th style={{ width: "15%" }}>Disposition</th>
                 <th style={{ width: "10%" }}>Actions</th>
               </tr>
             </thead>
@@ -107,26 +129,84 @@ export function RetentionPolicyPanel() {
                     {isEditing ? (
                       <>
                         <td>
-                          <input
-                            type="number"
-                            min="0"
-                            className="form-control form-control-sm"
-                            value={activeRetention}
-                            onChange={(e) =>
-                              setActiveRetention(Number(e.target.value))
-                            }
-                          />
+                          <div className="d-flex gap-1">
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="Y"
+                              title="Years"
+                              className="form-control form-control-sm"
+                              value={activeRetention}
+                              onChange={(e) =>
+                                setActiveRetention(Number(e.target.value))
+                              }
+                            />
+                            <input
+                              type="number"
+                              min="0"
+                              max="11"
+                              placeholder="M"
+                              title="Months"
+                              className="form-control form-control-sm"
+                              value={activeRetentionMonths}
+                              onChange={(e) =>
+                                setActiveRetentionMonths(Number(e.target.value))
+                              }
+                            />
+                            <input
+                              type="number"
+                              min="0"
+                              max="30"
+                              placeholder="D"
+                              title="Days"
+                              className="form-control form-control-sm"
+                              value={activeRetentionDays}
+                              onChange={(e) =>
+                                setActiveRetentionDays(Number(e.target.value))
+                              }
+                            />
+                          </div>
                         </td>
                         <td>
-                          <input
-                            type="number"
-                            min="0"
-                            className="form-control form-control-sm"
-                            value={inactiveRetention}
-                            onChange={(e) =>
-                              setInactiveRetention(Number(e.target.value))
-                            }
-                          />
+                          <div className="d-flex gap-1">
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="Y"
+                              title="Years"
+                              className="form-control form-control-sm"
+                              value={inactiveRetention}
+                              onChange={(e) =>
+                                setInactiveRetention(Number(e.target.value))
+                              }
+                            />
+                            <input
+                              type="number"
+                              min="0"
+                              max="11"
+                              placeholder="M"
+                              title="Months"
+                              className="form-control form-control-sm"
+                              value={inactiveRetentionMonths}
+                              onChange={(e) =>
+                                setInactiveRetentionMonths(
+                                  Number(e.target.value),
+                                )
+                              }
+                            />
+                            <input
+                              type="number"
+                              min="0"
+                              max="30"
+                              placeholder="D"
+                              title="Days"
+                              className="form-control form-control-sm"
+                              value={inactiveRetentionDays}
+                              onChange={(e) =>
+                                setInactiveRetentionDays(Number(e.target.value))
+                              }
+                            />
+                          </div>
                         </td>
                         <td>
                           <select
@@ -164,8 +244,16 @@ export function RetentionPolicyPanel() {
                       </>
                     ) : (
                       <>
-                        <td>{type.activeRetentionDuration}</td>
-                        <td>{type.inactiveRetentionDuration}</td>
+                        <td>
+                          {type.activeRetentionDuration}y{" "}
+                          {type.activeRetentionMonths || 0}m{" "}
+                          {type.activeRetentionDays || 0}d
+                        </td>
+                        <td>
+                          {type.inactiveRetentionDuration}y{" "}
+                          {type.inactiveRetentionMonths || 0}m{" "}
+                          {type.inactiveRetentionDays || 0}d
+                        </td>
                         <td>
                           <span
                             className={`badge ${

@@ -30,7 +30,11 @@ export class DocumentTypesRouter {
             name: z.string().min(1),
             color: z.string().min(1),
             activeRetentionDuration: z.number().min(0).default(0),
+            activeRetentionMonths: z.number().min(0).default(0),
+            activeRetentionDays: z.number().min(0).default(0),
             inactiveRetentionDuration: z.number().min(0).default(0),
+            inactiveRetentionMonths: z.number().min(0).default(0),
+            inactiveRetentionDays: z.number().min(0).default(0),
             dispositionAction: z
               .nativeEnum(DispositionAction)
               .default(DispositionAction.ARCHIVE),
@@ -51,7 +55,11 @@ export class DocumentTypesRouter {
               color: input.color,
               institutionId: institutionId,
               activeRetentionDuration: input.activeRetentionDuration,
+              activeRetentionMonths: input.activeRetentionMonths,
+              activeRetentionDays: input.activeRetentionDays,
               inactiveRetentionDuration: input.inactiveRetentionDuration,
+              inactiveRetentionMonths: input.inactiveRetentionMonths,
+              inactiveRetentionDays: input.inactiveRetentionDays,
               dispositionAction: input.dispositionAction,
             },
           });
@@ -77,7 +85,11 @@ export class DocumentTypesRouter {
             name: z.string().min(1),
             color: z.string().min(1),
             activeRetentionDuration: z.number().min(0).optional(),
+            activeRetentionMonths: z.number().min(0).optional(),
+            activeRetentionDays: z.number().min(0).optional(),
             inactiveRetentionDuration: z.number().min(0).optional(),
+            inactiveRetentionMonths: z.number().min(0).optional(),
+            inactiveRetentionDays: z.number().min(0).optional(),
             dispositionAction: z.nativeEnum(DispositionAction).optional(),
           }),
         )
@@ -95,7 +107,11 @@ export class DocumentTypesRouter {
               name: input.name,
               color: input.color,
               activeRetentionDuration: input.activeRetentionDuration,
+              activeRetentionMonths: input.activeRetentionMonths,
+              activeRetentionDays: input.activeRetentionDays,
               inactiveRetentionDuration: input.inactiveRetentionDuration,
+              inactiveRetentionMonths: input.inactiveRetentionMonths,
+              inactiveRetentionDays: input.inactiveRetentionDays,
               dispositionAction: input.dispositionAction,
             },
           });
