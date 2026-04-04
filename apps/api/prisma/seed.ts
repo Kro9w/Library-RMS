@@ -191,103 +191,119 @@ async function main() {
     console.log(`Using existing Institution: ${institution.name}`);
   }
 
-  // Seed Campuses and Departments
+  // 1. Batch Seed Campuses
+  const existingCampuses = await prisma.campus.findMany({
+    where: { institutionId: institution.id }
+  });
+  
+  const existingCampusNames = new Set(existingCampuses.map(c => c.name));
+  const campusesToCreate = CAMPUS_DATA
+    .filter(c => !existingCampusNames.has(c.name))
+    .map(c => ({
+      name: c.name,
+      institutionId: institution.id,
+    }));
+
+  if (campusesToCreate.length > 0) {
+    await prisma.campus.createMany({ data: campusesToCreate });
+    console.log(`Created ${campusesToCreate.length} new campuses.`);
+  }
+
+  // Refetch all campuses to get their generated IDs
+  const allCampuses = await prisma.campus.findMany({
+    where: { institutionId: institution.id }
+  });
+  const campusMap = new Map(allCampuses.map(c => [c.name, c.id]));
+
+  // 2. Batch Seed Departments
+  const departmentsData: { name: string; campusId: string }[] = [];
   for (const campusData of CAMPUS_DATA) {
-    // Check if campus exists
-    let campus = await prisma.campus.findFirst({
-        where: {
-            name: campusData.name,
-            institutionId: institution.id
-        }
-    });
-
-    if (!campus) {
-        campus = await prisma.campus.create({
-            data: {
-                name: campusData.name,
-                institutionId: institution.id
-            }
-        });
-        console.log(`Created Campus: ${campus.name}`);
-    } else {
-        console.log(`Using existing Campus: ${campus.name}`);
-    }
-
-    // Seed Departments for this Campus
+    const campusId = campusMap.get(campusData.name);
+    if (!campusId) continue; // Should not happen, just for safety
     for (const deptName of campusData.departments) {
-        let dept = await prisma.department.findFirst({
-            where: {
-                name: deptName,
-                campusId: campus.id
-            }
-        });
-
-        if (!dept) {
-            dept = await prisma.department.create({
-                data: {
-                    name: deptName,
-                    campusId: campus.id
-                }
-            });
-            console.log(`  Created Department: ${dept.name}`);
-        }
-
-        // Seed Roles for this Department
-        const rolesToSeed: { name: string; level: number; canManageUsers: boolean; canManageRoles: boolean; canManageDocuments: boolean; canManageInstitution?: boolean; }[] = [];
-
-        // Rules based on user requirements:
-        if (deptName === 'Office of the University President') {
-            rolesToSeed.push({ name: 'University President', level: 0, canManageUsers: true, canManageRoles: true, canManageDocuments: true, canManageInstitution: true });
-        } else if (deptName === 'Office of the Vice President for Academic Affairs') {
-            rolesToSeed.push({ name: 'VPAA', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
-        } else if (deptName === 'Office of the Vice President for Research, Development, and Extension') {
-            rolesToSeed.push({ name: 'VPRDE', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
-        } else if (deptName === 'Office of the Vice President for Administration and Finance') {
-            rolesToSeed.push({ name: 'VPAF', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
-        } else if (deptName === 'Office of the Vice President for Internationalization, Partnership, and Resource Mobilization') {
-            rolesToSeed.push({ name: 'VPIPRM', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
-        } else if (deptName === 'Office of the Campus Executive Officer') {
-            rolesToSeed.push({ name: 'CEO', level: 0, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
-        } else if (deptName === 'Office of the Campus Director for Academic Affairs') {
-            rolesToSeed.push({ name: 'CDAA', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
-        } else if (deptName === 'Office of Student Development and Welfare') {
-            rolesToSeed.push({ name: 'OSDW Coordinator', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
-        } else if (deptName === 'Office of the Campus Director for Administration and Finance') {
-            rolesToSeed.push({ name: 'CDAF', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
-        } else if (deptName.startsWith('College of') || deptName === 'Graduate School') {
-            rolesToSeed.push(
-                { name: 'Dean', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true },
-                { name: 'Program Coordinator', level: 3, canManageUsers: false, canManageRoles: false, canManageDocuments: false },
-                { name: 'College Secretary', level: 3, canManageUsers: false, canManageRoles: false, canManageDocuments: false },
-                { name: 'Faculty', level: 4, canManageUsers: false, canManageRoles: false, canManageDocuments: false }
-            );
-        }
-
-        for (const roleData of rolesToSeed) {
-            let role = await prisma.role.findFirst({
-                where: {
-                    name: roleData.name,
-                    departmentId: dept.id
-                }
-            });
-
-            if (!role) {
-                await prisma.role.create({
-                    data: {
-                        name: roleData.name,
-                        level: roleData.level,
-                        canManageUsers: roleData.canManageUsers,
-                        canManageRoles: roleData.canManageRoles,
-                        canManageDocuments: roleData.canManageDocuments,
-                        canManageInstitution: roleData.canManageInstitution ?? false,
-                        departmentId: dept.id
-                    }
-                });
-                console.log(`    Created Role: ${roleData.name}`);
-            }
-        }
+      departmentsData.push({ name: deptName, campusId });
     }
+  }
 
+  const existingDepartments = await prisma.department.findMany({
+    where: { campusId: { in: Array.from(campusMap.values()) } }
+  });
+  const existingDeptKeys = new Set(existingDepartments.map(d => `${d.campusId}-${d.name}`));
+
+  const departmentsToCreate = departmentsData.filter(d => !existingDeptKeys.has(`${d.campusId}-${d.name}`));
+
+  if (departmentsToCreate.length > 0) {
+    await prisma.department.createMany({ data: departmentsToCreate });
+    console.log(`Created ${departmentsToCreate.length} new departments.`);
+  }
+
+  // Refetch departments to get their generated IDs for Roles
+  const allDepartments = await prisma.department.findMany({
+    where: { campusId: { in: Array.from(campusMap.values()) } }
+  });
+  const deptMap = new Map(allDepartments.map(d => [`${d.campusId}-${d.name}`, d.id]));
+
+  // 3. Batch Seed Roles
+  const rolesData: { name: string; level: number; canManageUsers: boolean; canManageRoles: boolean; canManageDocuments: boolean; canManageInstitution: boolean; departmentId: string; }[] = [];
+
+  for (const campusData of CAMPUS_DATA) {
+    const campusId = campusMap.get(campusData.name);
+    if (!campusId) continue;
+
+    for (const deptName of campusData.departments) {
+      const deptId = deptMap.get(`${campusId}-${deptName}`);
+      if (!deptId) continue;
+
+      const rolesToSeed: { name: string; level: number; canManageUsers: boolean; canManageRoles: boolean; canManageDocuments: boolean; canManageInstitution?: boolean; }[] = [];
+
+      // Rules based on user requirements:
+      if (deptName === 'Office of the University President') {
+          rolesToSeed.push({ name: 'University President', level: 0, canManageUsers: true, canManageRoles: true, canManageDocuments: true, canManageInstitution: true });
+      } else if (deptName === 'Office of the Vice President for Academic Affairs') {
+          rolesToSeed.push({ name: 'VPAA', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
+      } else if (deptName === 'Office of the Vice President for Research, Development, and Extension') {
+          rolesToSeed.push({ name: 'VPRDE', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
+      } else if (deptName === 'Office of the Vice President for Administration and Finance') {
+          rolesToSeed.push({ name: 'VPAF', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
+      } else if (deptName === 'Office of the Vice President for Internationalization, Partnership, and Resource Mobilization') {
+          rolesToSeed.push({ name: 'VPIPRM', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
+      } else if (deptName === 'Office of the Campus Executive Officer') {
+          rolesToSeed.push({ name: 'CEO', level: 0, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
+      } else if (deptName === 'Office of the Campus Director for Academic Affairs') {
+          rolesToSeed.push({ name: 'CDAA', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
+      } else if (deptName === 'Office of Student Development and Welfare') {
+          rolesToSeed.push({ name: 'OSDW Coordinator', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
+      } else if (deptName === 'Office of the Campus Director for Administration and Finance') {
+          rolesToSeed.push({ name: 'CDAF', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true });
+      } else if (deptName.startsWith('College of') || deptName === 'Graduate School') {
+          rolesToSeed.push(
+              { name: 'Dean', level: 1, canManageUsers: true, canManageRoles: true, canManageDocuments: true },
+              { name: 'Program Coordinator', level: 2, canManageUsers: false, canManageRoles: false, canManageDocuments: true },
+              { name: 'College Secretary', level: 3, canManageUsers: false, canManageRoles: false, canManageDocuments: true },
+              { name: 'Faculty', level: 4, canManageUsers: false, canManageRoles: false, canManageDocuments: false }
+          );
+      }
+
+      for (const role of rolesToSeed) {
+        rolesData.push({
+          ...role,
+          canManageInstitution: role.canManageInstitution ?? false,
+          departmentId: deptId
+        });
+      }
+    }
+  }
+
+  const existingRoles = await prisma.role.findMany({
+    where: { departmentId: { in: Array.from(deptMap.values()) } }
+  });
+  const existingRoleKeys = new Set(existingRoles.map(r => `${r.departmentId}-${r.name}`));
+
+  const rolesToCreate = rolesData.filter(r => !existingRoleKeys.has(`${r.departmentId}-${r.name}`));
+
+  if (rolesToCreate.length > 0) {
+    await prisma.role.createMany({ data: rolesToCreate });
+    console.log(`Created ${rolesToCreate.length} new roles.`);
   }
 
   console.log('Seeding finished.');
