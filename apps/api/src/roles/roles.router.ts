@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
-import { protectedProcedure, requirePermission, router } from '../trpc/trpc';
+import { protectedProcedure, router } from '../trpc/trpc';
 import { TRPCError } from '@trpc/server';
+import { AccessControlService } from '../documents/access-control.service';
 
 @Injectable()
 export class RolesRouter {
-  constructor() {}
+  constructor(private readonly accessControlService: AccessControlService) {}
 
   createRouter() {
     return router({
@@ -39,7 +40,7 @@ export class RolesRouter {
           }),
         )
         .mutation(async ({ ctx, input }) => {
-          requirePermission(ctx.dbUser, 'canManageRoles');
+          this.accessControlService.requirePermission(ctx.dbUser, 'canManageRoles');
 
           let targetDeptId = ctx.dbUser.departmentId;
 
@@ -84,7 +85,7 @@ export class RolesRouter {
           }),
         )
         .mutation(async ({ ctx, input }) => {
-          requirePermission(ctx.dbUser, 'canManageRoles');
+          this.accessControlService.requirePermission(ctx.dbUser, 'canManageRoles');
 
           // Fetch existing role to check ownership
           const existingRole = await ctx.prisma.role.findUnique({
@@ -155,7 +156,7 @@ export class RolesRouter {
       deleteRole: protectedProcedure
         .input(z.string())
         .mutation(async ({ ctx, input }) => {
-          requirePermission(ctx.dbUser, 'canManageRoles');
+          this.accessControlService.requirePermission(ctx.dbUser, 'canManageRoles');
           const role = await ctx.prisma.role.findUnique({
             where: { id: input },
           });
@@ -191,7 +192,7 @@ export class RolesRouter {
       assignRoleToUser: protectedProcedure
         .input(z.object({ userId: z.string(), roleId: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          requirePermission(ctx.dbUser, 'canManageRoles');
+          this.accessControlService.requirePermission(ctx.dbUser, 'canManageRoles');
 
           const role = await ctx.prisma.role.findUnique({
             where: { id: input.roleId },
@@ -278,7 +279,7 @@ export class RolesRouter {
       unassignRoleFromUser: protectedProcedure
         .input(z.object({ userId: z.string(), roleId: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          requirePermission(ctx.dbUser, 'canManageRoles');
+          this.accessControlService.requirePermission(ctx.dbUser, 'canManageRoles');
 
           const targetUser = await ctx.prisma.user.findUnique({
             where: { id: input.userId },

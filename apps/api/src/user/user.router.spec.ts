@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UserRouter } from './user.router';
 import { PrismaService } from '../prisma/prisma.service';
 import { LogService } from '../log/log.service';
+import { AccessControlService } from '../documents/access-control.service';
 
 describe('UserRouter - determineInitialRole', () => {
   let router: UserRouter;
@@ -25,6 +26,7 @@ describe('UserRouter - determineInitialRole', () => {
         UserRouter,
         { provide: PrismaService, useValue: prismaMock },
         { provide: LogService, useValue: logMock },
+        { provide: AccessControlService, useValue: {} },
       ],
     }).compile();
 

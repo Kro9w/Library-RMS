@@ -5,19 +5,20 @@ import {
   protectedProcedure,
   router,
   supabaseAuthedProcedure,
-  requirePermission,
-  checkPermission,
 } from '../trpc/trpc';
 import { PrismaService } from '../prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { TRPCError } from '@trpc/server';
 import { LogService } from '../log/log.service';
 
+import { AccessControlService } from '../documents/access-control.service';
+
 @Injectable()
 export class UserRouter {
   constructor(
     private readonly prisma: PrismaService,
     private readonly logService: LogService,
+    private readonly accessControlService: AccessControlService,
   ) {}
 
   public async determineInitialRole(
@@ -346,7 +347,7 @@ export class UserRouter {
       deleteUser: protectedProcedure
         .input(z.object({ userId: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          requirePermission(ctx.dbUser, 'canManageUsers');
+          this.accessControlService.requirePermission(ctx.dbUser, 'canManageUsers');
 
           const deletedUser = await ctx.prisma.user.delete({
             where: { id: input.userId },
@@ -414,7 +415,7 @@ export class UserRouter {
       removeUserFromInstitution: protectedProcedure
         .input(z.object({ userId: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          requirePermission(ctx.dbUser, 'canManageUsers');
+          this.accessControlService.requirePermission(ctx.dbUser, 'canManageUsers');
 
           const updatedUser = await ctx.prisma.user.update({
             where: { id: input.userId },
@@ -462,7 +463,7 @@ export class UserRouter {
       createCampus: protectedProcedure
         .input(z.object({ name: z.string().min(1) }))
         .mutation(async ({ ctx, input }) => {
-          requirePermission(ctx.dbUser, 'canManageUsers');
+          this.accessControlService.requirePermission(ctx.dbUser, 'canManageUsers');
 
           if (!ctx.dbUser.institutionId) {
             throw new TRPCError({
@@ -545,7 +546,7 @@ export class UserRouter {
           }),
         )
         .mutation(async ({ ctx, input }) => {
-          requirePermission(ctx.dbUser, 'canManageUsers');
+          this.accessControlService.requirePermission(ctx.dbUser, 'canManageUsers');
 
           // Verify campus belongs to same institution
           const campus = await ctx.prisma.campus.findUnique({
@@ -577,7 +578,7 @@ export class UserRouter {
           }),
         )
         .mutation(async ({ ctx, input }) => {
-          requirePermission(ctx.dbUser, 'canManageUsers');
+          this.accessControlService.requirePermission(ctx.dbUser, 'canManageUsers');
 
           // Verify ownership
           const dept = await ctx.prisma.department.findUnique({
@@ -710,7 +711,7 @@ export class UserRouter {
           });
         }
 
-        const canSeeAllDocs = checkPermission(ctx.dbUser, 'canManageDocuments');
+        const canSeeAllDocs = this.accessControlService.checkPermission(ctx.dbUser, 'canManageDocuments');
 
         const org = await ctx.prisma.institution.findUnique({
           where: { id: ctx.dbUser.institutionId },

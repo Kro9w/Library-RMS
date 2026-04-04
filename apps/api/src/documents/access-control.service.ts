@@ -1,8 +1,42 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
+import { TRPCError } from '@trpc/server';
 
 @Injectable()
 export class AccessControlService {
+  /**
+   * Helper function to check if a user has a specific permission.
+   * Super Admins inherently have all permissions via canManageInstitution.
+   */
+  public checkPermission(
+    user: { roles?: Role[] } | undefined,
+    permission: keyof Role,
+  ): boolean {
+    if (!user) return false;
+    if (!user.roles) return false;
+    
+    // Super Admins inherently have all permissions via canManageInstitution
+    if (user.roles.some((role: Role) => role.canManageInstitution)) return true;
+    
+    // We only care if *any* role has the permission
+    return user.roles.some((role: Role) => role[permission] === true);
+  }
+
+  /**
+   * Helper function to enforce permissions. Throws TRPCError if denied.
+   */
+  public requirePermission(
+    user: { roles?: Role[] } | undefined,
+    permission: keyof Role,
+  ): void {
+    if (!this.checkPermission(user, permission)) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: `You do not have permission to ${String(permission)}.`,
+      });
+    }
+  }
+
   /**
    * Generates a Prisma WHERE clause snippet to filter documents
    * based on the user's ACL (DocumentAccess records).

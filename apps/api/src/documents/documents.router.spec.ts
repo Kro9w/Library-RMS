@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LogService } from '../log/log.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { AccessControlService } from './access-control.service';
+import { DocumentLifecycleService } from './document-lifecycle.service';
 
 describe('DocumentsRouter - createNotification', () => {
   let router: DocumentsRouter;
@@ -23,6 +24,7 @@ describe('DocumentsRouter - createNotification', () => {
         { provide: LogService, useValue: {} },
         { provide: SupabaseService, useValue: {} },
         { provide: AccessControlService, useValue: {} },
+        { provide: DocumentLifecycleService, useValue: {} },
       ],
     }).compile();
 

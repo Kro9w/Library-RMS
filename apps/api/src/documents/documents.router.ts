@@ -6,8 +6,6 @@ import {
   protectedProcedure,
   publicProcedure,
   router,
-  requirePermission,
-  checkPermission,
 } from '../trpc/trpc';
 import { PrismaService } from '../prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
@@ -15,70 +13,8 @@ import { TRPCError } from '@trpc/server';
 import { SupabaseService } from '../supabase/supabase.service';
 import { LogService } from '../log/log.service';
 import { AccessControlService } from './access-control.service';
+import { DocumentLifecycleService } from './document-lifecycle.service';
 import { env } from '../env';
-
-function computeLifecycleStatus(doc: {
-  createdAt: Date;
-  activeRetentionSnapshot: number | null;
-  activeRetentionMonthsSnapshot?: number | null;
-  activeRetentionDaysSnapshot?: number | null;
-  inactiveRetentionSnapshot: number | null;
-  inactiveRetentionMonthsSnapshot?: number | null;
-  inactiveRetentionDaysSnapshot?: number | null;
-  dispositionStatus: string | null;
-  isUnderLegalHold: boolean;
-}):
-  | 'Active'
-  | 'Inactive'
-  | 'Ready'
-  | 'Archived'
-  | 'Destroyed'
-  | 'Legal Hold'
-  | null {
-  if (doc.isUnderLegalHold) return 'Legal Hold';
-
-  if (doc.dispositionStatus === 'DESTROYED') return 'Destroyed';
-  if (doc.dispositionStatus === 'ARCHIVED') return 'Archived';
-
-  // If no retention schedule, treat as Active
-  if (
-    doc.activeRetentionSnapshot === null ||
-    doc.activeRetentionSnapshot === undefined
-  ) {
-    return 'Active';
-  }
-
-  const now = new Date();
-  const created = new Date(doc.createdAt);
-
-  const activeUntil = new Date(created);
-  activeUntil.setFullYear(
-    activeUntil.getFullYear() + doc.activeRetentionSnapshot,
-  );
-  activeUntil.setMonth(
-    activeUntil.getMonth() + (doc.activeRetentionMonthsSnapshot || 0),
-  );
-  activeUntil.setDate(
-    activeUntil.getDate() + (doc.activeRetentionDaysSnapshot || 0),
-  );
-
-  if (now < activeUntil) return 'Active';
-
-  const inactiveUntil = new Date(activeUntil);
-  inactiveUntil.setFullYear(
-    inactiveUntil.getFullYear() + (doc.inactiveRetentionSnapshot || 0),
-  );
-  inactiveUntil.setMonth(
-    inactiveUntil.getMonth() + (doc.inactiveRetentionMonthsSnapshot || 0),
-  );
-  inactiveUntil.setDate(
-    inactiveUntil.getDate() + (doc.inactiveRetentionDaysSnapshot || 0),
-  );
-
-  if (now < inactiveUntil) return 'Inactive';
-
-  return 'Ready';
-}
 
 @Injectable()
 export class DocumentsRouter {
@@ -87,6 +23,7 @@ export class DocumentsRouter {
     private readonly supabase: SupabaseService,
     private readonly logService: LogService,
     private readonly accessControlService: AccessControlService,
+    private readonly documentLifecycleService: DocumentLifecycleService,
   ) {}
 
   private async createNotification(
@@ -207,7 +144,7 @@ export class DocumentsRouter {
                 )
               : 4; // Default to lowest privilege if no roles are assigned
 
-          const canManageDocs = checkPermission(dbUser, 'canManageDocuments');
+          const canManageDocs = this.accessControlService.checkPermission(dbUser, 'canManageDocuments');
           const isOriginator = async (docId: string) => {
             const d = await this.prisma.document.findUnique({
               where: { id: docId }
@@ -519,7 +456,7 @@ export class DocumentsRouter {
             fileType: latestVersion?.fileType,
             s3Key: latestVersion?.s3Key,
             s3Bucket: latestVersion?.s3Bucket,
-            lifecycleStatus: computeLifecycleStatus(doc),
+            lifecycleStatus: this.documentLifecycleService.computeLifecycleStatus(doc as any),
           };
         }),
 
@@ -575,7 +512,7 @@ export class DocumentsRouter {
                 )
               : 4; // Default to lowest privilege if no roles are assigned
 
-          const canManageDocs = checkPermission(dbUser, 'canManageDocuments');
+          const canManageDocs = this.accessControlService.checkPermission(dbUser, 'canManageDocuments');
 
           if (
             input.classification === 'FOR_APPROVAL' &&
@@ -899,7 +836,7 @@ export class DocumentsRouter {
               ...doc,
               fileType: doc.versions?.[0]?.fileType,
               fileSize: doc.versions?.[0]?.fileSize,
-              lifecycleStatus: computeLifecycleStatus(doc),
+              lifecycleStatus: this.documentLifecycleService.computeLifecycleStatus(doc),
             }));
           };
 
@@ -943,70 +880,22 @@ export class DocumentsRouter {
 
           // Optimized path for "Ready for Disposition"
           if (lifecycleFilter === 'ready') {
-            const institutionId = ctx.dbUser.institutionId;
-
             const aclWhere = this.accessControlService.generateAclWhereClause(
               ctx.dbUser,
             );
 
-            const lifecycleWhereClause: Prisma.DocumentWhereInput = {
-              institutionId: ctx.dbUser.institutionId,
-              dispositionStatus: { notIn: ['DESTROYED', 'ARCHIVED'] },
-              activeRetentionSnapshot: { not: null },
-              AND: [aclWhere],
-            };
-
-            if (filter === 'mine') {
-              lifecycleWhereClause.uploadedById = ctx.user.id;
-            }
-
-            if (search) {
-              lifecycleWhereClause.title = {
-                contains: search,
-                mode: 'insensitive',
-              };
-            }
-
-            const rawQuery = Prisma.sql`
-              SELECT d.id
-              FROM "Document" d
-              WHERE d."institutionId" = ${institutionId}
-                AND d."dispositionStatus" NOT IN ('DESTROYED', 'ARCHIVED')
-                AND d."activeRetentionSnapshot" IS NOT NULL
-                AND d."isUnderLegalHold" = false
-                AND (d."createdAt" + 
-                     make_interval(years => d."activeRetentionSnapshot") + 
-                     make_interval(months => COALESCE(d."activeRetentionMonthsSnapshot", 0)) + 
-                     make_interval(days => COALESCE(d."activeRetentionDaysSnapshot", 0))) <= NOW()
-                AND (d."createdAt" + 
-                     make_interval(years => d."activeRetentionSnapshot") + 
-                     make_interval(months => COALESCE(d."activeRetentionMonthsSnapshot", 0)) + 
-                     make_interval(days => COALESCE(d."activeRetentionDaysSnapshot", 0)) + 
-                     make_interval(years => COALESCE(d."inactiveRetentionSnapshot", 0)) +
-                     make_interval(months => COALESCE(d."inactiveRetentionMonthsSnapshot", 0)) +
-                     make_interval(days => COALESCE(d."inactiveRetentionDaysSnapshot", 0))) <= NOW()
-            `;
-
-            const rawResults =
-              await this.prisma.$queryRaw<{ id: string }[]>(rawQuery);
-            const matchingLifecycleIds = rawResults.map((r) => r.id);
-
-            if (matchingLifecycleIds.length === 0) {
-              return { documents: [], totalCount: 0 };
-            }
-
-            lifecycleWhereClause.id = { in: matchingLifecycleIds };
-
-            const [totalCount, documents] = await this.prisma.$transaction([
-              this.prisma.document.count({ where: lifecycleWhereClause }),
-              this.prisma.document.findMany({
-                where: lifecycleWhereClause,
-                select: selectFields,
-                orderBy: { createdAt: 'desc' },
+            const { totalCount, documents } = await this.documentLifecycleService.getReadyForDispositionDocuments(
+              ctx.dbUser.institutionId,
+              ctx.user.id,
+              aclWhere,
+              {
+                filter,
+                search,
                 skip,
                 take: perPage,
-              }),
-            ]);
+                selectFields,
+              }
+            );
 
             return {
               documents: mapDocuments(documents),
@@ -1074,7 +963,7 @@ export class DocumentsRouter {
             });
           }
 
-          requirePermission(ctx.dbUser, 'canManageDocuments');
+          this.accessControlService.requirePermission(ctx.dbUser, 'canManageDocuments');
 
           const aclWhere = this.accessControlService.generateAclWhereClause(
             ctx.dbUser,
@@ -1169,7 +1058,7 @@ export class DocumentsRouter {
             institutionId: dbUser.institutionId,
           };
 
-          if (!checkPermission(dbUser, 'canManageDocuments')) {
+          if (!this.accessControlService.checkPermission(dbUser, 'canManageDocuments')) {
             whereClause.uploadedById = user.id;
           }
 
@@ -1584,7 +1473,7 @@ export class DocumentsRouter {
           const isOwner =
             doc.uploadedById === ctx.user.id ||
             doc.originalSenderId === ctx.user.id;
-          const isAdmin = checkPermission(ctx.dbUser, 'canManageDocuments');
+          const isAdmin = this.accessControlService.checkPermission(ctx.dbUser, 'canManageDocuments');
 
           let distributionWhere: any = {
             documentId: input.documentId,
@@ -1699,7 +1588,7 @@ export class DocumentsRouter {
             // Allow fallback to global admins
             if (
               !hasTransitAccess &&
-              !checkPermission(dbUser, 'canManageDocuments')
+              !this.accessControlService.checkPermission(dbUser, 'canManageDocuments')
             ) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
@@ -1708,7 +1597,7 @@ export class DocumentsRouter {
               });
             }
           } else {
-            requirePermission(dbUser, 'canManageDocuments');
+            this.accessControlService.requirePermission(dbUser, 'canManageDocuments');
           }
 
           // Format Immutability: You cannot approve a draft (editable format)
@@ -1945,7 +1834,7 @@ export class DocumentsRouter {
         .input(z.void())
         .output(z.any())
         .query(async ({ ctx }) => {
-          requirePermission(ctx.dbUser, 'canManageDocuments');
+          this.accessControlService.requirePermission(ctx.dbUser, 'canManageDocuments');
 
           if (!ctx.dbUser.institutionId) {
             return [];
@@ -1970,7 +1859,7 @@ export class DocumentsRouter {
         .input(z.void())
         .output(z.any())
         .query(async ({ ctx }) => {
-          requirePermission(ctx.dbUser, 'canManageUsers');
+          this.accessControlService.requirePermission(ctx.dbUser, 'canManageUsers');
 
           if (!ctx.dbUser.institutionId) {
             return [];
@@ -1994,7 +1883,7 @@ export class DocumentsRouter {
             });
           }
 
-          requirePermission(dbUser, 'canManageDocuments');
+          this.accessControlService.requirePermission(dbUser, 'canManageDocuments');
 
           const doc = await ctx.prisma.document.update({
             where: {
@@ -2031,7 +1920,7 @@ export class DocumentsRouter {
             });
           }
 
-          requirePermission(dbUser, 'canManageDocuments');
+          this.accessControlService.requirePermission(dbUser, 'canManageDocuments');
 
           const doc = await ctx.prisma.document.update({
             where: {
@@ -2068,7 +1957,7 @@ export class DocumentsRouter {
             });
           }
 
-          requirePermission(dbUser, 'canManageDocuments');
+          this.accessControlService.requirePermission(dbUser, 'canManageDocuments');
 
           const doc = await ctx.prisma.document.findUnique({
             where: { id: input.documentId },
@@ -2088,7 +1977,7 @@ export class DocumentsRouter {
             });
           }
 
-          const status = computeLifecycleStatus(doc);
+          const status = this.documentLifecycleService.computeLifecycleStatus(doc);
           if (status !== 'Ready') {
             throw new TRPCError({
               code: 'BAD_REQUEST',
@@ -2128,7 +2017,7 @@ export class DocumentsRouter {
             });
           }
 
-          requirePermission(dbUser, 'canManageDocuments');
+          this.accessControlService.requirePermission(dbUser, 'canManageDocuments');
 
           const doc = await ctx.prisma.document.findUnique({
             where: { id: input.documentId },
@@ -2235,7 +2124,7 @@ export class DocumentsRouter {
             });
           }
 
-          requirePermission(dbUser, 'canManageDocuments');
+          this.accessControlService.requirePermission(dbUser, 'canManageDocuments');
 
           const doc = await ctx.prisma.document.findUnique({
             where: { id: input.documentId },
@@ -2366,7 +2255,7 @@ export class DocumentsRouter {
 
             if (
               !hasWriteAccess &&
-              !checkPermission(dbUser, 'canManageDocuments')
+              !this.accessControlService.checkPermission(dbUser, 'canManageDocuments')
             ) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
@@ -2377,7 +2266,7 @@ export class DocumentsRouter {
           } else {
             // Standard Verify write access
             if (
-              checkPermission(dbUser, 'canManageDocuments') ||
+              this.accessControlService.checkPermission(dbUser, 'canManageDocuments') ||
               doc.uploadedById === user.id
             ) {
               hasWriteAccess = true;
@@ -2578,7 +2467,7 @@ export class DocumentsRouter {
             });
           }
 
-          const canManageDocuments = checkPermission(
+          const canManageDocuments = this.accessControlService.checkPermission(
             dbUser,
             'canManageDocuments',
           );
