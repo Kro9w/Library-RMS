@@ -78,7 +78,11 @@ describe('UserRouter - determineInitialRole', () => {
   });
 
   it('should fallback to creating User role if apex role is taken', async () => {
-    const mockApexRoleTaken = { id: 'role-2', name: 'Director', users: [{ id: 'user-1' }] };
+    const mockApexRoleTaken = {
+      id: 'role-2',
+      name: 'Director',
+      users: [{ id: 'user-1' }],
+    };
     const mockNewUserRole = { id: 'role-3', name: 'User' };
 
     prismaMock.role.findFirst

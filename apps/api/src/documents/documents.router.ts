@@ -2,11 +2,7 @@
 
 import { z } from 'zod';
 import { Prisma, PermissionLevel } from '@prisma/client';
-import {
-  protectedProcedure,
-  publicProcedure,
-  router,
-} from '../trpc/trpc';
+import { protectedProcedure, publicProcedure, router } from '../trpc/trpc';
 import { PrismaService } from '../prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { TRPCError } from '@trpc/server';
@@ -105,7 +101,8 @@ export class DocumentsRouter {
           if (!doc) {
             throw new TRPCError({
               code: 'NOT_FOUND',
-              message: 'No active document or routing progress found for this Control Number.',
+              message:
+                'No active document or routing progress found for this Control Number.',
             });
           }
 
@@ -144,26 +141,35 @@ export class DocumentsRouter {
                 )
               : 4; // Default to lowest privilege if no roles are assigned
 
-          const canManageDocs = this.accessControlService.checkPermission(dbUser, 'canManageDocuments');
+          const canManageDocs = this.accessControlService.checkPermission(
+            dbUser,
+            'canManageDocuments',
+          );
           const isOriginator = async (docId: string) => {
             const d = await this.prisma.document.findUnique({
-              where: { id: docId }
+              where: { id: docId },
             });
-            return d?.uploadedById === user.id || d?.originalSenderId === user.id;
+            return (
+              d?.uploadedById === user.id || d?.originalSenderId === user.id
+            );
           };
 
           // Basic ownership check
-          const hasAccess = await isOriginator(input.documentId) || canManageDocs;
+          const hasAccess =
+            (await isOriginator(input.documentId)) || canManageDocs;
 
           if (!hasAccess) {
-             throw new TRPCError({
+            throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'You do not have permission to send this document.',
             });
           }
 
           const document = await this.prisma.document.findUnique({
-            where: { id: input.documentId, institutionId: dbUser.institutionId },
+            where: {
+              id: input.documentId,
+              institutionId: dbUser.institutionId,
+            },
           });
 
           if (!document) {
@@ -173,66 +179,104 @@ export class DocumentsRouter {
             });
           }
 
-          if (document.classification === 'FOR_APPROVAL' || document.recordStatus === 'IN_TRANSIT') {
-             throw new TRPCError({
+          if (
+            document.classification === 'FOR_APPROVAL' ||
+            document.recordStatus === 'IN_TRANSIT'
+          ) {
+            throw new TRPCError({
               code: 'BAD_REQUEST',
-              message: 'Documents FOR_APPROVAL cannot be sent directly; use the Forward routing system instead.',
+              message:
+                'Documents FOR_APPROVAL cannot be sent directly; use the Forward routing system instead.',
             });
           }
 
           // Authority Check matching initial upload rules
-          if (document.classification === 'INSTITUTIONAL' || document.classification === 'INTERNAL') {
-             if (highestRoleLevel > 1 && !canManageDocs) {
+          if (
+            document.classification === 'INSTITUTIONAL' ||
+            document.classification === 'INTERNAL'
+          ) {
+            if (highestRoleLevel > 1 && !canManageDocs) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
-                message: 'Only Executives, Level 1 users, or Admins can send Institutional or Internal documents.',
+                message:
+                  'Only Executives, Level 1 users, or Admins can send Institutional or Internal documents.',
               });
             }
           }
 
           if (document.classification === 'DEPARTMENTAL') {
-             if (highestRoleLevel > 2 && !canManageDocs) {
+            if (highestRoleLevel > 2 && !canManageDocs) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
-                message: 'Only Level 1 and 2 users or Admins can send Departmental documents.',
+                message:
+                  'Only Level 1 and 2 users or Admins can send Departmental documents.',
               });
             }
           }
 
           const accessesToCreate: any[] = [];
-          
+
           if (document.classification === 'INSTITUTIONAL') {
-             for (const id of input.institutionIds) accessesToCreate.push({ documentId: document.id, institutionId: id, permission: 'READ' });
+            for (const id of input.institutionIds)
+              accessesToCreate.push({
+                documentId: document.id,
+                institutionId: id,
+                permission: 'READ',
+              });
           }
-          if (document.classification === 'INSTITUTIONAL' || document.classification === 'INTERNAL') {
-             for (const id of input.campusIds) accessesToCreate.push({ documentId: document.id, campusId: id, permission: 'READ' });
+          if (
+            document.classification === 'INSTITUTIONAL' ||
+            document.classification === 'INTERNAL'
+          ) {
+            for (const id of input.campusIds)
+              accessesToCreate.push({
+                documentId: document.id,
+                campusId: id,
+                permission: 'READ',
+              });
           }
-          if (document.classification === 'INSTITUTIONAL' || document.classification === 'INTERNAL' || document.classification === 'DEPARTMENTAL') {
-             for (const id of input.departmentIds) accessesToCreate.push({ documentId: document.id, departmentId: id, permission: 'READ' });
+          if (
+            document.classification === 'INSTITUTIONAL' ||
+            document.classification === 'INTERNAL' ||
+            document.classification === 'DEPARTMENTAL'
+          ) {
+            for (const id of input.departmentIds)
+              accessesToCreate.push({
+                documentId: document.id,
+                departmentId: id,
+                permission: 'READ',
+              });
           }
-          for (const id of input.userIds) accessesToCreate.push({ documentId: document.id, userId: id, permission: 'READ' });
+          for (const id of input.userIds)
+            accessesToCreate.push({
+              documentId: document.id,
+              userId: id,
+              permission: 'READ',
+            });
 
           if (accessesToCreate.length === 0) {
-             throw new TRPCError({
+            throw new TRPCError({
               code: 'BAD_REQUEST',
               message: 'No valid targets were selected.',
             });
           }
 
-          // In PostgreSQL/Prisma, createMany will fail if duplicate unique constraints are hit. To avoid failing on re-sends, 
+          // In PostgreSQL/Prisma, createMany will fail if duplicate unique constraints are hit. To avoid failing on re-sends,
           // we should first fetch existing accesses and filter out duplicates.
           const existingAccesses = await this.prisma.documentAccess.findMany({
-             where: { documentId: document.id }
+            where: { documentId: document.id },
           });
 
-          const isDuplicate = (req: any) => existingAccesses.some(ex => 
-             ex.institutionId === req.institutionId &&
-             ex.campusId === req.campusId &&
-             ex.departmentId === req.departmentId &&
-             ex.userId === req.userId
-          );
+          const isDuplicate = (req: any) =>
+            existingAccesses.some(
+              (ex) =>
+                ex.institutionId === req.institutionId &&
+                ex.campusId === req.campusId &&
+                ex.departmentId === req.departmentId &&
+                ex.userId === req.userId,
+            );
 
-          const finalAccesses = accessesToCreate.filter(a => !isDuplicate(a));
+          const finalAccesses = accessesToCreate.filter((a) => !isDuplicate(a));
 
           if (finalAccesses.length > 0) {
             await this.prisma.documentAccess.createMany({
@@ -241,11 +285,14 @@ export class DocumentsRouter {
           }
 
           // Build generic log
-          let broadTargetName = "";
-          if (input.institutionIds.length > 0) broadTargetName = "Institution(s)";
-          else if (input.campusIds.length > 0) broadTargetName = "Campus(es)";
-          else if (input.departmentIds.length > 0) broadTargetName = "Department(s)";
-          else if (input.userIds.length > 0) broadTargetName = "Specific User(s)";
+          let broadTargetName = '';
+          if (input.institutionIds.length > 0)
+            broadTargetName = 'Institution(s)';
+          else if (input.campusIds.length > 0) broadTargetName = 'Campus(es)';
+          else if (input.departmentIds.length > 0)
+            broadTargetName = 'Department(s)';
+          else if (input.userIds.length > 0)
+            broadTargetName = 'Specific User(s)';
 
           await this.logService.logAction(
             user.id,
@@ -260,31 +307,42 @@ export class DocumentsRouter {
           // Build notifications specifically for Level 1/2 targets within broad scopes to reduce spam
           // or directly for users.
           const senderName = `${dbUser.firstName} ${dbUser.lastName}`.trim();
-          
-          let targetsForNotification = new Set<string>();
+
+          const targetsForNotification = new Set<string>();
 
           for (const uid of input.userIds) targetsForNotification.add(uid);
 
           const broadScopesWhere: any[] = [];
-          if (input.institutionIds.length > 0) broadScopesWhere.push({ institutionId: { in: input.institutionIds } });
-          if (input.campusIds.length > 0) broadScopesWhere.push({ campusId: { in: input.campusIds } });
-          if (input.departmentIds.length > 0) broadScopesWhere.push({ departmentId: { in: input.departmentIds } });
+          if (input.institutionIds.length > 0)
+            broadScopesWhere.push({
+              institutionId: { in: input.institutionIds },
+            });
+          if (input.campusIds.length > 0)
+            broadScopesWhere.push({ campusId: { in: input.campusIds } });
+          if (input.departmentIds.length > 0)
+            broadScopesWhere.push({
+              departmentId: { in: input.departmentIds },
+            });
 
           if (broadScopesWhere.length > 0) {
-             const keyUsers = await this.prisma.user.findMany({
-                where: {
-                   OR: broadScopesWhere,
-                   roles: {
-                      some: {
-                         OR: [{ level: 1 }, { level: 2 }, { canManageDocuments: true }]
-                      }
-                   }
+            const keyUsers = await this.prisma.user.findMany({
+              where: {
+                OR: broadScopesWhere,
+                roles: {
+                  some: {
+                    OR: [
+                      { level: 1 },
+                      { level: 2 },
+                      { canManageDocuments: true },
+                    ],
+                  },
                 },
-                select: { id: true }
-             });
-             keyUsers.forEach(u => targetsForNotification.add(u.id));
+              },
+              select: { id: true },
+            });
+            keyUsers.forEach((u) => targetsForNotification.add(u.id));
           }
-          
+
           // Filter out sender
           targetsForNotification.delete(user.id);
 
@@ -456,7 +514,8 @@ export class DocumentsRouter {
             fileType: latestVersion?.fileType,
             s3Key: latestVersion?.s3Key,
             s3Bucket: latestVersion?.s3Bucket,
-            lifecycleStatus: this.documentLifecycleService.computeLifecycleStatus(doc as any),
+            lifecycleStatus:
+              this.documentLifecycleService.computeLifecycleStatus(doc as any),
           };
         }),
 
@@ -512,7 +571,10 @@ export class DocumentsRouter {
                 )
               : 4; // Default to lowest privilege if no roles are assigned
 
-          const canManageDocs = this.accessControlService.checkPermission(dbUser, 'canManageDocuments');
+          const canManageDocs = this.accessControlService.checkPermission(
+            dbUser,
+            'canManageDocuments',
+          );
 
           if (
             input.classification === 'FOR_APPROVAL' &&
@@ -605,7 +667,8 @@ export class DocumentsRouter {
                 activeRetentionMonthsSnapshot: docType.activeRetentionMonths,
                 activeRetentionDaysSnapshot: docType.activeRetentionDays,
                 inactiveRetentionSnapshot: docType.inactiveRetentionDuration,
-                inactiveRetentionMonthsSnapshot: docType.inactiveRetentionMonths,
+                inactiveRetentionMonthsSnapshot:
+                  docType.inactiveRetentionMonths,
                 inactiveRetentionDaysSnapshot: docType.inactiveRetentionDays,
                 dispositionActionSnapshot: docType.dispositionAction,
               };
@@ -668,7 +731,7 @@ export class DocumentsRouter {
             permission: PermissionLevel.WRITE,
           });
 
-          // Uploading a document now only grants access to the uploader. 
+          // Uploading a document now only grants access to the uploader.
           // Broadcasting (via the Send feature) will explicitly grant wide access later.
 
           await this.prisma.documentAccess.createMany({
@@ -706,7 +769,7 @@ export class DocumentsRouter {
             versionId: z.string().optional(),
           }),
         )
-        .output(z.object({ signedUrl: z.string() }))
+        .output(z.object({ signedUrl: z.string().nullable() }))
         .query(async ({ ctx, input }) => {
           if (!ctx.dbUser.institutionId) {
             throw new TRPCError({
@@ -729,6 +792,7 @@ export class DocumentsRouter {
               classification: true,
               uploadedById: true,
               originalSenderId: true,
+              dispositionStatus: true,
               versions: {
                 where: input.versionId ? { id: input.versionId } : undefined,
                 orderBy: { versionNumber: 'desc' as const },
@@ -742,6 +806,10 @@ export class DocumentsRouter {
               code: 'NOT_FOUND',
               message: 'Document not found in getSignedDocumentUrl',
             });
+          }
+
+          if (doc.dispositionStatus === 'DESTROYED') {
+            return { signedUrl: null };
           }
 
           const targetVersion = doc.versions[0];
@@ -836,7 +904,8 @@ export class DocumentsRouter {
               ...doc,
               fileType: doc.versions?.[0]?.fileType,
               fileSize: doc.versions?.[0]?.fileSize,
-              lifecycleStatus: this.documentLifecycleService.computeLifecycleStatus(doc),
+              lifecycleStatus:
+                this.documentLifecycleService.computeLifecycleStatus(doc),
             }));
           };
 
@@ -884,18 +953,19 @@ export class DocumentsRouter {
               ctx.dbUser,
             );
 
-            const { totalCount, documents } = await this.documentLifecycleService.getReadyForDispositionDocuments(
-              ctx.dbUser.institutionId,
-              ctx.user.id,
-              aclWhere,
-              {
-                filter,
-                search,
-                skip,
-                take: perPage,
-                selectFields,
-              }
-            );
+            const { totalCount, documents } =
+              await this.documentLifecycleService.getReadyForDispositionDocuments(
+                ctx.dbUser.institutionId,
+                ctx.user.id,
+                aclWhere,
+                {
+                  filter,
+                  search,
+                  skip,
+                  take: perPage,
+                  selectFields,
+                },
+              );
 
             return {
               documents: mapDocuments(documents),
@@ -906,6 +976,10 @@ export class DocumentsRouter {
           // Standard path (No lifecycle filter or 'all')
           const whereClause: Prisma.DocumentWhereInput = {
             institutionId: ctx.dbUser.institutionId,
+            OR: [
+              { dispositionStatus: null },
+              { dispositionStatus: { notIn: ['ARCHIVED', 'DESTROYED'] } },
+            ],
           };
 
           if (filter === 'mine') {
@@ -923,7 +997,18 @@ export class DocumentsRouter {
             ctx.dbUser,
           );
 
-          whereClause.AND = [aclWhere];
+          // We use AND here. Since we already have an OR for dispositionStatus above,
+          // we need to combine them carefully so the OR is preserved alongside aclWhere.
+          whereClause.AND = [
+            aclWhere,
+            {
+              OR: [
+                { dispositionStatus: null },
+                { dispositionStatus: { notIn: ['ARCHIVED', 'DESTROYED'] } },
+              ],
+            },
+          ];
+          delete whereClause.OR;
 
           const [totalCount, documents] = await this.prisma.$transaction([
             this.prisma.document.count({ where: whereClause }),
@@ -963,7 +1048,10 @@ export class DocumentsRouter {
             });
           }
 
-          this.accessControlService.requirePermission(ctx.dbUser, 'canManageDocuments');
+          this.accessControlService.requirePermission(
+            ctx.dbUser,
+            'canManageDocuments',
+          );
 
           const aclWhere = this.accessControlService.generateAclWhereClause(
             ctx.dbUser,
@@ -1058,7 +1146,12 @@ export class DocumentsRouter {
             institutionId: dbUser.institutionId,
           };
 
-          if (!this.accessControlService.checkPermission(dbUser, 'canManageDocuments')) {
+          if (
+            !this.accessControlService.checkPermission(
+              dbUser,
+              'canManageDocuments',
+            )
+          ) {
             whereClause.uploadedById = user.id;
           }
 
@@ -1085,14 +1178,20 @@ export class DocumentsRouter {
             isReview = true;
           }
 
-          const isReturningToOriginator = documents[0].uploadedById === recipient.id || documents[0].originalSenderId === recipient.id;
-          const isOriginatorResubmitting = 
+          const isReturningToOriginator =
+            documents[0].uploadedById === recipient.id ||
+            documents[0].originalSenderId === recipient.id;
+          const isOriginatorResubmitting =
             documents[0].recordStatus === 'IN_TRANSIT' &&
             documents[0].classification === 'FOR_APPROVAL' &&
-            (user.id === documents[0].uploadedById || user.id === documents[0].originalSenderId) &&
-            (documents[0].status === 'Returned for Corrections/Revision/Clarification' || documents[0].status === 'Disapproved');
-            
-          const isAutoReceive = isReturningToOriginator || isOriginatorResubmitting;
+            (user.id === documents[0].uploadedById ||
+              user.id === documents[0].originalSenderId) &&
+            (documents[0].status ===
+              'Returned for Corrections/Revision/Clarification' ||
+              documents[0].status === 'Disapproved');
+
+          const isAutoReceive =
+            isReturningToOriginator || isOriginatorResubmitting;
 
           // ONLY create a DocumentDistribution if it is a formal, first-time transfer.
           // If the document is being sent back and forth between the originator and reviewer, bypass the distribution table to reduce redundancy.
@@ -1125,27 +1224,34 @@ export class DocumentsRouter {
             }
           }
 
-          // When an originator resubmits a returned/disapproved IN_TRANSIT document, 
-          // we must clear the historical "decision" logged on the CURRENT transit route stop 
+          // When an originator resubmits a returned/disapproved IN_TRANSIT document,
+          // we must clear the historical "decision" logged on the CURRENT transit route stop
           // so the UI correctly reverts to a generic pending "Current" state icon instead of sticking to the "Returned" icon.
           if (
             documents[0].recordStatus === 'IN_TRANSIT' &&
             documents[0].classification === 'FOR_APPROVAL' &&
-            (user.id === documents[0].uploadedById || user.id === documents[0].originalSenderId) &&
-            (documents[0].status === 'Returned for Corrections/Revision/Clarification' || documents[0].status === 'Disapproved')
+            (user.id === documents[0].uploadedById ||
+              user.id === documents[0].originalSenderId) &&
+            (documents[0].status ===
+              'Returned for Corrections/Revision/Clarification' ||
+              documents[0].status === 'Disapproved')
           ) {
             // Find the CURRENT route stop for this document
-            const currentStop = await this.prisma.documentTransitRoute.findFirst({
-              where: {
-                documentId: documents[0].id,
-                status: 'CURRENT'
-              }
-            });
+            const currentStop =
+              await this.prisma.documentTransitRoute.findFirst({
+                where: {
+                  documentId: documents[0].id,
+                  status: 'CURRENT',
+                },
+              });
 
-            if (currentStop && currentStop.departmentId === recipient.departmentId) {
+            if (
+              currentStop &&
+              currentStop.departmentId === recipient.departmentId
+            ) {
               await this.prisma.documentTransitRoute.update({
                 where: { id: currentStop.id },
-                data: { decision: null }
+                data: { decision: null },
               });
             }
           }
@@ -1305,7 +1411,7 @@ export class DocumentsRouter {
             }
 
             // Assume the owner/uploader is the sender in a physical exchange
-            senderId = (document as any).uploadedById;
+            senderId = document.uploadedById;
 
             // Prevent receiving a document you uploaded
             if (senderId === user.id) {
@@ -1318,7 +1424,7 @@ export class DocumentsRouter {
             // Check if they already received it
             const existingAccess = await this.prisma.documentAccess.findFirst({
               where: {
-                documentId: (document as any).id,
+                documentId: document.id,
                 userId: user.id,
               },
             });
@@ -1334,7 +1440,7 @@ export class DocumentsRouter {
             const pendingDistribution =
               await this.prisma.documentDistribution.findFirst({
                 where: {
-                  documentId: (document as any).id,
+                  documentId: document.id,
                   recipientId: user.id,
                   status: 'PENDING',
                 },
@@ -1352,7 +1458,7 @@ export class DocumentsRouter {
               // Create a new received distribution record
               await this.prisma.documentDistribution.create({
                 data: {
-                  documentId: (document as any).id,
+                  documentId: document.id,
                   senderId,
                   recipientId: user.id,
                   status: 'RECEIVED',
@@ -1365,7 +1471,7 @@ export class DocumentsRouter {
           // Grant READ access
           await this.prisma.documentAccess.create({
             data: {
-              documentId: (document as any).id,
+              documentId: document.id,
               userId: user.id,
               permission: PermissionLevel.READ,
             },
@@ -1376,7 +1482,7 @@ export class DocumentsRouter {
             dbUser.institutionId,
             `Received Document via Control Number/Distribution`,
             dbUser.roles.map((r) => r.name),
-            (document as any).title,
+            document.title,
             dbUser.campusId || undefined,
             dbUser.departmentId || undefined,
           );
@@ -1385,11 +1491,11 @@ export class DocumentsRouter {
           await this.createNotification(
             senderId,
             'Document Received',
-            `${dbUser.firstName} ${dbUser.lastName} has successfully received "${(document as any).title}".`,
-            (document as any).id,
+            `${dbUser.firstName} ${dbUser.lastName} has successfully received "${document.title}".`,
+            document.id,
           );
 
-          return document as any;
+          return document;
         }),
 
       /**
@@ -1473,9 +1579,12 @@ export class DocumentsRouter {
           const isOwner =
             doc.uploadedById === ctx.user.id ||
             doc.originalSenderId === ctx.user.id;
-          const isAdmin = this.accessControlService.checkPermission(ctx.dbUser, 'canManageDocuments');
+          const isAdmin = this.accessControlService.checkPermission(
+            ctx.dbUser,
+            'canManageDocuments',
+          );
 
-          let distributionWhere: any = {
+          const distributionWhere: any = {
             documentId: input.documentId,
           };
 
@@ -1588,7 +1697,10 @@ export class DocumentsRouter {
             // Allow fallback to global admins
             if (
               !hasTransitAccess &&
-              !this.accessControlService.checkPermission(dbUser, 'canManageDocuments')
+              !this.accessControlService.checkPermission(
+                dbUser,
+                'canManageDocuments',
+              )
             ) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
@@ -1597,7 +1709,10 @@ export class DocumentsRouter {
               });
             }
           } else {
-            this.accessControlService.requirePermission(dbUser, 'canManageDocuments');
+            this.accessControlService.requirePermission(
+              dbUser,
+              'canManageDocuments',
+            );
           }
 
           // Format Immutability: You cannot approve a draft (editable format)
@@ -1834,7 +1949,10 @@ export class DocumentsRouter {
         .input(z.void())
         .output(z.any())
         .query(async ({ ctx }) => {
-          this.accessControlService.requirePermission(ctx.dbUser, 'canManageDocuments');
+          this.accessControlService.requirePermission(
+            ctx.dbUser,
+            'canManageDocuments',
+          );
 
           if (!ctx.dbUser.institutionId) {
             return [];
@@ -1859,7 +1977,10 @@ export class DocumentsRouter {
         .input(z.void())
         .output(z.any())
         .query(async ({ ctx }) => {
-          this.accessControlService.requirePermission(ctx.dbUser, 'canManageUsers');
+          this.accessControlService.requirePermission(
+            ctx.dbUser,
+            'canManageUsers',
+          );
 
           if (!ctx.dbUser.institutionId) {
             return [];
@@ -1883,7 +2004,10 @@ export class DocumentsRouter {
             });
           }
 
-          this.accessControlService.requirePermission(dbUser, 'canManageDocuments');
+          this.accessControlService.requirePermission(
+            dbUser,
+            'canManageDocuments',
+          );
 
           const doc = await ctx.prisma.document.update({
             where: {
@@ -1920,7 +2044,10 @@ export class DocumentsRouter {
             });
           }
 
-          this.accessControlService.requirePermission(dbUser, 'canManageDocuments');
+          this.accessControlService.requirePermission(
+            dbUser,
+            'canManageDocuments',
+          );
 
           const doc = await ctx.prisma.document.update({
             where: {
@@ -1957,7 +2084,24 @@ export class DocumentsRouter {
             });
           }
 
-          this.accessControlService.requirePermission(dbUser, 'canManageDocuments');
+          this.accessControlService.requirePermission(
+            dbUser,
+            'canManageDocuments',
+          );
+
+          // Only Level 1/0 or System Admins can approve or directly execute dispositions. Level 2 can only request.
+          const isHighLevelAdmin = dbUser.roles.some(
+            (r) =>
+              r.canManageInstitution || (r.canManageDocuments && r.level <= 1),
+          );
+
+          if (!isHighLevelAdmin) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message:
+                'You must be at least a Level 1 Administrator to execute or approve dispositions.',
+            });
+          }
 
           const doc = await ctx.prisma.document.findUnique({
             where: { id: input.documentId },
@@ -1977,7 +2121,8 @@ export class DocumentsRouter {
             });
           }
 
-          const status = this.documentLifecycleService.computeLifecycleStatus(doc);
+          const status =
+            this.documentLifecycleService.computeLifecycleStatus(doc);
           if (status !== 'Ready') {
             throw new TRPCError({
               code: 'BAD_REQUEST',
@@ -2017,7 +2162,10 @@ export class DocumentsRouter {
             });
           }
 
-          this.accessControlService.requirePermission(dbUser, 'canManageDocuments');
+          this.accessControlService.requirePermission(
+            dbUser,
+            'canManageDocuments',
+          );
 
           const doc = await ctx.prisma.document.findUnique({
             where: { id: input.documentId },
@@ -2032,14 +2180,24 @@ export class DocumentsRouter {
             });
           }
 
-          if (doc.dispositionStatus !== 'PENDING_DISPOSITION') {
+          // We allow executing if it's PENDING_DISPOSITION, or if it hasn't been requested yet (direct execution).
+          // However, we shouldn't execute it twice.
+          if (
+            doc.dispositionStatus === 'ARCHIVED' ||
+            doc.dispositionStatus === 'DESTROYED'
+          ) {
             throw new TRPCError({
               code: 'BAD_REQUEST',
-              message: 'Document is not pending disposition',
+              message: 'Document has already been disposed.',
             });
           }
 
-          if (user.id === doc.dispositionRequesterId) {
+          // If there IS a requester, and it's the current user, enforce separation of duties.
+          // If there is NO requester (direct execution by an admin), this check is bypassed.
+          if (
+            doc.dispositionRequesterId &&
+            user.id === doc.dispositionRequesterId
+          ) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message:
@@ -2056,7 +2214,7 @@ export class DocumentsRouter {
             });
 
             for (const version of versions) {
-              if (version.s3Key && version.s3Bucket) {
+              if (version.s3Key && version.s3Bucket && version.s3Key !== 'DESTROYED') {
                 const { error: storageError } = await this.supabase
                   .getAdminClient()
                   .storage.from(version.s3Bucket)
@@ -2067,13 +2225,28 @@ export class DocumentsRouter {
                     'Failed to delete file from storage during disposition:',
                     storageError,
                   );
+                  throw new TRPCError({
+                    code: 'INTERNAL_SERVER_ERROR',
+                    message: 'Failed to delete physical file from storage.',
+                  });
                 }
+
+                // Update the database record to permanently overwrite the s3Key pointer.
+                // We use 'DESTROYED' as a tombstone string since the schema requires a unique String.
+                // Using a unique CUID tombstone ensures it satisfies the `@unique` constraint safely.
+                await this.prisma.documentVersion.update({
+                  where: { id: version.id },
+                  data: {
+                    s3Key: `DESTROYED-${version.id}`,
+                    fileSize: 0,
+                  },
+                });
               }
             }
 
             const updatedDoc = await this.prisma.document.update({
               where: { id: doc.id },
-              data: { 
+              data: {
                 dispositionStatus: 'DESTROYED',
                 dispositionDate: new Date(),
               },
@@ -2090,11 +2263,141 @@ export class DocumentsRouter {
             );
             return updatedDoc;
           } else if (action === 'ARCHIVE') {
+            const versions = await this.prisma.documentVersion.findMany({
+              where: { documentId: doc.id },
+            });
+
+            let latestHash: string | null = null;
+
+            for (const version of versions) {
+              if (version.s3Key && version.s3Bucket) {
+                const adminClient = this.supabase.getAdminClient();
+                // Download file from active bucket
+                const { data: fileData, error: downloadError } =
+                  await adminClient.storage
+                    .from(version.s3Bucket)
+                    .download(version.s3Key);
+
+                if (downloadError || !fileData) {
+                  console.error(
+                    'Failed to download from active bucket:',
+                    downloadError,
+                  );
+                  throw new TRPCError({
+                    code: 'INTERNAL_SERVER_ERROR',
+                    message: 'Failed to download document for archival.',
+                  });
+                }
+
+                // We skip manually calculating the SHA256 hash here to avoid loading the entire
+                // potentially large file into a Node.js memory buffer, preventing OOM crashes.
+                // We upload the Blob directly.
+                latestHash = 'omitted-for-memory-safety';
+
+                // Upload to archive bucket
+                const { error: uploadError } = await adminClient.storage
+                  .from(env.SUPABASE_ARCHIVE_BUCKET_NAME)
+                  .upload(version.s3Key, fileData, {
+                    contentType: fileData.type,
+                  });
+
+                if (uploadError) {
+                  console.error(
+                    'Failed to upload to archive bucket:',
+                    uploadError,
+                  );
+                  throw new TRPCError({
+                    code: 'INTERNAL_SERVER_ERROR',
+                    message: 'Failed to upload document to archive bucket.',
+                  });
+                }
+
+                // Update version s3 bucket
+                await this.prisma.documentVersion.update({
+                  where: { id: version.id },
+                  data: { s3Bucket: env.SUPABASE_ARCHIVE_BUCKET_NAME },
+                });
+
+                // Remove from active bucket
+                await adminClient.storage
+                  .from(version.s3Bucket)
+                  .remove([version.s3Key]);
+              }
+            }
+
+            // Create Archival Manifest
+            const fullDoc = await this.prisma.document.findUnique({
+              where: { id: doc.id },
+              include: {
+                uploadedBy: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                  },
+                },
+                versions: true,
+                documentType: true,
+                institution: true,
+                campus: true,
+                department: true,
+              },
+            });
+
+            const manifest = {
+              documentId: fullDoc?.id,
+              title: fullDoc?.title,
+              controlNumber: fullDoc?.controlNumber,
+              classification: fullDoc?.classification,
+              createdAt: fullDoc?.createdAt,
+              archivedAt: new Date(),
+              fileHash: latestHash,
+              creator: fullDoc?.uploadedBy
+                ? `${fullDoc.uploadedBy.firstName} ${fullDoc.uploadedBy.lastName}`
+                : null,
+              institution: fullDoc?.institution?.name,
+              campus: fullDoc?.campus?.name,
+              department: fullDoc?.department?.name,
+              documentType: fullDoc?.documentType?.name,
+              versions: fullDoc?.versions?.map((v) => ({
+                version: v.versionNumber,
+                fileType: v.fileType,
+                fileSize: v.fileSize,
+              })),
+            };
+
+            const manifestBuffer = Buffer.from(
+              JSON.stringify(manifest, null, 2),
+              'utf-8',
+            );
+            const manifestKey = `manifests/${doc.id}-manifest.json`;
+
+            const { error: manifestUploadError } = await this.supabase
+              .getAdminClient()
+              .storage.from(env.SUPABASE_ARCHIVE_BUCKET_NAME)
+              .upload(manifestKey, manifestBuffer, {
+                contentType: 'application/json',
+              });
+
+            if (manifestUploadError) {
+              console.error(
+                'Failed to upload archive manifest:',
+                manifestUploadError,
+              );
+              throw new TRPCError({
+                code: 'INTERNAL_SERVER_ERROR',
+                message: 'Failed to upload archival manifest.',
+              });
+            }
+
             const updatedDoc = await this.prisma.document.update({
               where: { id: doc.id },
-              data: { 
+              data: {
                 dispositionStatus: 'ARCHIVED',
                 dispositionDate: new Date(),
+                archiveManifestUrl: manifestKey,
+                archiveHash: latestHash,
               },
             });
 
@@ -2124,7 +2427,10 @@ export class DocumentsRouter {
             });
           }
 
-          this.accessControlService.requirePermission(dbUser, 'canManageDocuments');
+          this.accessControlService.requirePermission(
+            dbUser,
+            'canManageDocuments',
+          );
 
           const doc = await ctx.prisma.document.findUnique({
             where: { id: input.documentId },
@@ -2255,7 +2561,10 @@ export class DocumentsRouter {
 
             if (
               !hasWriteAccess &&
-              !this.accessControlService.checkPermission(dbUser, 'canManageDocuments')
+              !this.accessControlService.checkPermission(
+                dbUser,
+                'canManageDocuments',
+              )
             ) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
@@ -2266,7 +2575,10 @@ export class DocumentsRouter {
           } else {
             // Standard Verify write access
             if (
-              this.accessControlService.checkPermission(dbUser, 'canManageDocuments') ||
+              this.accessControlService.checkPermission(
+                dbUser,
+                'canManageDocuments',
+              ) ||
               doc.uploadedById === user.id
             ) {
               hasWriteAccess = true;

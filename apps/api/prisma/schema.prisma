@@ -195,6 +195,8 @@ model Document {
   dispositionActionSnapshot DispositionAction?
   dispositionStatus         String? // 'ARCHIVED', 'DESTROYED', 'PENDING_DISPOSITION'
   dispositionDate           DateTime? // The exact date the disposition was executed
+  archiveManifestUrl        String?
+  archiveHash               String?
   isUnderLegalHold Boolean @default(false)
   legalHoldReason  String?
   dispositionRequesterId String?

@@ -45,7 +45,8 @@ export const DocumentDetails: React.FC = () => {
   const [showCheckInModal, setShowCheckInModal] = React.useState(false);
 
   const { data: user } = trpc.user.getMe.useQuery();
-  const { canManageDocuments } = usePermissions();
+  const { canManageDocuments, canManageInstitution, highestRoleLevel } =
+    usePermissions();
   const utils = trpc.useUtils();
 
   const { data: document, isLoading: isLoadingDoc } =
@@ -153,6 +154,8 @@ export const DocumentDetails: React.FC = () => {
     !isOriginator;
 
   const getPreviewDetails = (doc: Document) => {
+    if (!urlData?.signedUrl) return null;
+
     let previewType: string | null = null;
     if (doc.fileType) {
       previewType =
@@ -243,7 +246,21 @@ export const DocumentDetails: React.FC = () => {
       <div className="document-details-container">
         {/* Left: document viewer */}
         <div className="document-viewer">
-          {previewUrl ? (
+          {document.dispositionStatus === "DESTROYED" ? (
+            <div className="preview-fallback text-danger bg-danger-subtle border border-danger rounded">
+              <i
+                className="bi bi-trash3-fill mb-3"
+                style={{ fontSize: "48px" }}
+              ></i>
+              <h4 className="fw-bold">Document Destroyed</h4>
+              <p className="text-dark w-75 mt-2" style={{ fontSize: "14px" }}>
+                The physical contents of this document have been permanently
+                destroyed from storage in accordance with its retention schedule
+                and disposition policy. Only this metadata tombstone remains for
+                auditing compliance.
+              </p>
+            </div>
+          ) : previewUrl ? (
             <iframe
               src={previewUrl}
               className="pdf-preview-iframe"
@@ -315,62 +332,68 @@ export const DocumentDetails: React.FC = () => {
 
               {/* Action buttons */}
               <div className="doc-actions-stack mt-3">
-                {document.classification !== "FOR_APPROVAL" &&
-                  document.recordStatus !== "IN_TRANSIT" &&
-                  !document.isCheckedOut &&
-                  (canManageDocuments || isOriginator) && (
-                    <button
-                      className="doc-action-btn doc-action-btn-primary"
-                      onClick={() =>
-                        (window.location.href = `/documents/${document.id}/send`)
-                      }
-                    >
-                      <i className="bi bi-send-fill"></i>
-                      Send Document
-                    </button>
-                  )}
+                {document.dispositionStatus !== "DESTROYED" && (
+                  <>
+                    {document.classification !== "FOR_APPROVAL" &&
+                      document.recordStatus !== "IN_TRANSIT" &&
+                      !document.isCheckedOut &&
+                      (canManageDocuments || isOriginator) && (
+                        <button
+                          className="doc-action-btn doc-action-btn-primary"
+                          onClick={() =>
+                            (window.location.href = `/documents/${document.id}/send`)
+                          }
+                        >
+                          <i className="bi bi-send-fill"></i>
+                          Send Document
+                        </button>
+                      )}
 
-                {canSendOrResubmit &&
-                  document.classification === "FOR_APPROVAL" && (
-                    <button
-                      className={`doc-action-btn ${!isSendDisabled ? "doc-action-btn-primary" : ""}`}
-                      onClick={() => setShowResubmitModal(true)}
-                      disabled={isSendDisabled}
-                      title={
-                        document.isCheckedOut
-                          ? "Check in the document first before forwarding."
-                          : isSendDisabled
-                            ? "Document is currently in transit."
-                            : ""
-                      }
-                    >
-                      <i
-                        className={`bi ${isReturnedOrDisapproved ? "bi-arrow-repeat" : "bi-forward-fill"}`}
-                      ></i>
-                      {isReturnedOrDisapproved
-                        ? "Resubmit for Review"
-                        : "Forward Document"}
-                    </button>
-                  )}
+                    {canSendOrResubmit &&
+                      document.classification === "FOR_APPROVAL" && (
+                        <button
+                          className={`doc-action-btn ${!isSendDisabled ? "doc-action-btn-primary" : ""}`}
+                          onClick={() => setShowResubmitModal(true)}
+                          disabled={isSendDisabled}
+                          title={
+                            document.isCheckedOut
+                              ? "Check in the document first before forwarding."
+                              : isSendDisabled
+                                ? "Document is currently in transit."
+                                : ""
+                          }
+                        >
+                          <i
+                            className={`bi ${isReturnedOrDisapproved ? "bi-arrow-repeat" : "bi-forward-fill"}`}
+                          ></i>
+                          {isReturnedOrDisapproved
+                            ? "Resubmit for Review"
+                            : "Forward Document"}
+                        </button>
+                      )}
 
-                <a
-                  href={urlData.signedUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="doc-action-btn doc-action-btn-download"
-                >
-                  <i className="bi bi-download"></i>
-                  Download
-                </a>
+                    {urlData?.signedUrl && (
+                      <a
+                        href={urlData.signedUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="doc-action-btn doc-action-btn-download"
+                      >
+                        <i className="bi bi-download"></i>
+                        Download
+                      </a>
+                    )}
 
-                {canReview && (
-                  <button
-                    className="doc-action-btn"
-                    onClick={() => setShowReviewModal(true)}
-                  >
-                    <i className="bi bi-eye"></i>
-                    Review Document
-                  </button>
+                    {canReview && (
+                      <button
+                        className="doc-action-btn"
+                        onClick={() => setShowReviewModal(true)}
+                      >
+                        <i className="bi bi-eye"></i>
+                        Review Document
+                      </button>
+                    )}
+                  </>
                 )}
 
                 {document.recordStatus !== "FINAL" &&
@@ -473,44 +496,81 @@ export const DocumentDetails: React.FC = () => {
               {/* Disposition blocks */}
               {canManageDocuments && !document.isUnderLegalHold && (
                 <>
-                  {document.lifecycleStatus === "Ready" && (
-                    <div className="disposition-block disposition-ready mt-3">
-                      <div className="disposition-header">
-                        <i className="bi bi-clock-history disposition-icon"></i>
-                        <h6 className="disposition-title">Disposition Ready</h6>
-                      </div>
-                      <p className="disposition-text">
-                        Retention period elapsed. Action:{" "}
-                        <strong>{document.dispositionActionSnapshot}</strong>
-                      </p>
-                      <button
-                        className="btn btn-outline-secondary w-100 disposition-btn"
-                        onClick={() => {
-                          setConfirmConfig({
-                            show: true,
-                            title: "Request Disposition",
-                            message: "Request approval to execute disposition?",
-                            onConfirm: () => {
-                              requestDispositionMutation.mutate({
-                                documentId: document.id,
+                  {document.lifecycleStatus === "Ready" &&
+                    document.dispositionStatus !== "PENDING_DISPOSITION" && (
+                      <div className="disposition-block disposition-ready mt-3">
+                        <div className="disposition-header">
+                          <i className="bi bi-clock-history disposition-icon"></i>
+                          <h6 className="disposition-title">
+                            Disposition Ready
+                          </h6>
+                        </div>
+                        <p className="disposition-text">
+                          Retention period elapsed. Action:{" "}
+                          <strong>{document.dispositionActionSnapshot}</strong>
+                        </p>
+                        <div className="d-flex flex-column gap-2">
+                          <button
+                            className="btn btn-outline-secondary w-100 disposition-btn"
+                            onClick={() => {
+                              setConfirmConfig({
+                                show: true,
+                                title: "Request Disposition",
+                                message:
+                                  "Request approval to execute disposition?",
+                                onConfirm: () => {
+                                  requestDispositionMutation.mutate({
+                                    documentId: document.id,
+                                  });
+                                  setConfirmConfig(
+                                    (prev: typeof confirmConfig) => ({
+                                      ...prev,
+                                      show: false,
+                                    }),
+                                  );
+                                },
                               });
-                              setConfirmConfig(
-                                (prev: typeof confirmConfig) => ({
-                                  ...prev,
-                                  show: false,
-                                }),
-                              );
-                            },
-                          });
-                        }}
-                        disabled={requestDispositionMutation.isPending}
-                      >
-                        {requestDispositionMutation.isPending
-                          ? "Requesting…"
-                          : "Request Disposition Approval"}
-                      </button>
-                    </div>
-                  )}
+                            }}
+                            disabled={requestDispositionMutation.isPending}
+                          >
+                            {requestDispositionMutation.isPending
+                              ? "Requesting…"
+                              : "Request Disposition Approval"}
+                          </button>
+
+                          {(canManageInstitution ||
+                            (canManageDocuments && highestRoleLevel <= 1)) && (
+                            <button
+                              className="btn btn-outline-primary w-100 disposition-btn"
+                              onClick={() => {
+                                setConfirmConfig({
+                                  show: true,
+                                  title: "Execute Disposition Directly",
+                                  message:
+                                    "Execute disposition? This is irreversible.",
+                                  onConfirm: () => {
+                                    approveDispositionMutation.mutate({
+                                      documentId: document.id,
+                                    });
+                                    setConfirmConfig(
+                                      (prev: typeof confirmConfig) => ({
+                                        ...prev,
+                                        show: false,
+                                      }),
+                                    );
+                                  },
+                                });
+                              }}
+                              disabled={approveDispositionMutation.isPending}
+                            >
+                              {approveDispositionMutation.isPending
+                                ? "Executing…"
+                                : "Execute Disposition Directly"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                   {document.dispositionStatus === "PENDING_DISPOSITION" && (
                     <div className="disposition-block disposition-pending mt-3">
@@ -614,7 +674,9 @@ export const DocumentDetails: React.FC = () => {
                   <div className="disposition-header d-flex align-items-center mb-2 text-success">
                     <i className="bi bi-shield-check disposition-icon me-2 fs-5"></i>
                     <h6 className="disposition-title mb-0 fw-bold">
-                      Certificate of Disposition
+                      {document.dispositionStatus === "DESTROYED"
+                        ? "Certificate of Destruction"
+                        : "Archival Record"}
                     </h6>
                   </div>
                   <p className="disposition-text mb-1 small">
@@ -661,24 +723,30 @@ export const DocumentDetails: React.FC = () => {
       )}
 
       {/* ── Version History ── */}
-      <VersionHistoryTable
-        versions={document.versions || []}
-        onDownload={async (versionId) => {
-          try {
-            const result = await utils.documents.getSignedDocumentUrl.fetch({
-              documentId: document.id,
-              versionId: versionId,
-            });
-            window.open(result.signedUrl, "_blank", "noopener,noreferrer");
-          } catch {
-            setAlertConfig({
-              show: true,
-              title: "Error",
-              message: "Could not retrieve document version URL.",
-            });
-          }
-        }}
-      />
+      {document.dispositionStatus !== "DESTROYED" && (
+        <VersionHistoryTable
+          versions={document.versions || []}
+          onDownload={async (versionId) => {
+            try {
+              const result = await utils.documents.getSignedDocumentUrl.fetch({
+                documentId: document.id,
+                versionId: versionId,
+              });
+              if (result.signedUrl) {
+                window.open(result.signedUrl, "_blank", "noopener,noreferrer");
+              } else {
+                throw new Error("No URL returned");
+              }
+            } catch {
+              setAlertConfig({
+                show: true,
+                title: "Error",
+                message: "Could not retrieve document version URL.",
+              });
+            }
+          }}
+        />
+      )}
 
       {/* Modals */}
       {showResubmitModal && (

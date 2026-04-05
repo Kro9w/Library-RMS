@@ -22,21 +22,23 @@ export class LogRouter {
           }),
         )
         .query(async ({ ctx, input }) => {
-          const { 
-            page, 
-            limit, 
+          const {
+            page,
+            limit,
             campusId,
             departmentId,
-            userId, 
-            actionQuery, 
-            startDate, 
+            userId,
+            actionQuery,
+            startDate,
             endDate,
-            scope
+            scope,
           } = input;
-          
+
           const institutionId = ctx.dbUser.institutionId as string;
-          
-          const hasMasterAccess = ctx.dbUser.roles.some((r) => r.canManageInstitution);
+
+          const hasMasterAccess = ctx.dbUser.roles.some(
+            (r) => r.canManageInstitution,
+          );
           const isCampusExecutive = ctx.dbUser.roles.some((r) => r.level === 0);
 
           const whereClause: any = {
@@ -46,37 +48,37 @@ export class LogRouter {
           // Handle explicitly provided filters
           if (campusId) whereClause.campusId = campusId;
           if (departmentId) whereClause.departmentId = departmentId;
-          
+
           // Determine base scoping boundaries if specific filters aren't provided
           // or if user wants to view a specific scope they have access to
           if (scope === 'DEPARTMENT') {
-             // For department scope, always restrict to their own department
-             whereClause.departmentId = ctx.dbUser.departmentId;
+            // For department scope, always restrict to their own department
+            whereClause.departmentId = ctx.dbUser.departmentId;
           } else if (scope === 'CAMPUS') {
-             if (hasMasterAccess) {
-                // Master can see any campus, just use campusId filter if provided
-             } else if (isCampusExecutive) {
-                // Executive is restricted to their own campus
-                whereClause.campusId = ctx.dbUser.campusId;
-             } else {
-                throw new Error('Unauthorized for CAMPUS scope');
-             }
+            if (hasMasterAccess) {
+              // Master can see any campus, just use campusId filter if provided
+            } else if (isCampusExecutive) {
+              // Executive is restricted to their own campus
+              whereClause.campusId = ctx.dbUser.campusId;
+            } else {
+              throw new Error('Unauthorized for CAMPUS scope');
+            }
           } else if (scope === 'INSTITUTION') {
-             if (!hasMasterAccess) {
-                throw new Error('Unauthorized for INSTITUTION scope');
-             }
-             // Master can see the whole institution
+            if (!hasMasterAccess) {
+              throw new Error('Unauthorized for INSTITUTION scope');
+            }
+            // Master can see the whole institution
           } else {
-             // Default behavior if scope is not explicitly provided
-             if (hasMasterAccess) {
-               // Master sees all
-             } else if (isCampusExecutive) {
-               // Exec defaults to their campus
-               whereClause.campusId = ctx.dbUser.campusId;
-             } else {
-               // Regular user defaults to their department
-               whereClause.departmentId = ctx.dbUser.departmentId;
-             }
+            // Default behavior if scope is not explicitly provided
+            if (hasMasterAccess) {
+              // Master sees all
+            } else if (isCampusExecutive) {
+              // Exec defaults to their campus
+              whereClause.campusId = ctx.dbUser.campusId;
+            } else {
+              // Regular user defaults to their department
+              whereClause.departmentId = ctx.dbUser.departmentId;
+            }
           }
 
           if (userId) whereClause.userId = userId;

@@ -22,7 +22,9 @@ describe('AccessControlService', () => {
     it('should return false if user or roles are missing', () => {
       expect(service.checkPermission(undefined, 'canManageUsers')).toBe(false);
       expect(service.checkPermission({} as any, 'canManageUsers')).toBe(false);
-      expect(service.checkPermission({ roles: [] }, 'canManageUsers')).toBe(false);
+      expect(service.checkPermission({ roles: [] }, 'canManageUsers')).toBe(
+        false,
+      );
     });
 
     it('should return true if any role has the requested permission', () => {
@@ -61,7 +63,9 @@ describe('AccessControlService', () => {
       const user = {
         roles: [{ canManageUsers: true } as Role],
       };
-      expect(() => service.requirePermission(user, 'canManageUsers')).not.toThrow();
+      expect(() =>
+        service.requirePermission(user, 'canManageUsers'),
+      ).not.toThrow();
     });
 
     it('should throw TRPCError if checkPermission returns false', () => {
@@ -74,7 +78,9 @@ describe('AccessControlService', () => {
       } catch (err: any) {
         expect(err).toBeInstanceOf(TRPCError);
         expect(err.code).toBe('FORBIDDEN');
-        expect(err.message).toBe('You do not have permission to canManageUsers.');
+        expect(err.message).toBe(
+          'You do not have permission to canManageUsers.',
+        );
       }
     });
   });
@@ -96,7 +102,7 @@ describe('AccessControlService', () => {
     it('should add READ permission by default or WRITE if specified', () => {
       const resultWrite = service.generateAclWhereClause(
         { id: 'user-1' },
-        'WRITE'
+        'WRITE',
       );
       expect(resultWrite).toEqual({
         documentAccesses: {

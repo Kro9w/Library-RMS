@@ -65,11 +65,11 @@ describe('DocumentLifecycleService', () => {
       });
       expect(result).toBe('Active');
     });
-    
+
     it('should return Ready if current date is past active and inactive retention periods', () => {
       const pastDate = new Date();
       pastDate.setFullYear(pastDate.getFullYear() - 5);
-      
+
       const result = service.computeLifecycleStatus({
         createdAt: pastDate,
         activeRetentionSnapshot: 1, // 1 year active
@@ -79,11 +79,11 @@ describe('DocumentLifecycleService', () => {
       });
       expect(result).toBe('Ready');
     });
-    
+
     it('should return Inactive if current date is past active but before inactive retention period', () => {
       const pastDate = new Date();
       pastDate.setFullYear(pastDate.getFullYear() - 2);
-      
+
       const result = service.computeLifecycleStatus({
         createdAt: pastDate,
         activeRetentionSnapshot: 1, // 1 year active
@@ -94,11 +94,11 @@ describe('DocumentLifecycleService', () => {
       expect(result).toBe('Inactive');
     });
   });
-  
+
   describe('getReadyForDispositionDocuments', () => {
     it('should return early if no documents match the raw query', async () => {
       (prisma.$queryRaw as jest.Mock).mockResolvedValue([]);
-      
+
       const result = await service.getReadyForDispositionDocuments(
         'inst-id',
         'user-id',
@@ -107,9 +107,9 @@ describe('DocumentLifecycleService', () => {
           skip: 0,
           take: 10,
           selectFields: { id: true },
-        }
+        },
       );
-      
+
       expect(result).toEqual({ totalCount: 0, documents: [] });
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
@@ -118,9 +118,9 @@ describe('DocumentLifecycleService', () => {
       (prisma.$queryRaw as jest.Mock).mockResolvedValue([{ id: 'doc-1' }]);
       (prisma.$transaction as jest.Mock).mockResolvedValue([
         1,
-        [{ id: 'doc-1', title: 'Test Doc' }]
+        [{ id: 'doc-1', title: 'Test Doc' }],
       ]);
-      
+
       const result = await service.getReadyForDispositionDocuments(
         'inst-id',
         'user-id',
@@ -129,12 +129,12 @@ describe('DocumentLifecycleService', () => {
           skip: 0,
           take: 10,
           selectFields: { id: true, title: true },
-        }
+        },
       );
-      
-      expect(result).toEqual({ 
-        totalCount: 1, 
-        documents: [{ id: 'doc-1', title: 'Test Doc' }] 
+
+      expect(result).toEqual({
+        totalCount: 1,
+        documents: [{ id: 'doc-1', title: 'Test Doc' }],
       });
       expect(prisma.$transaction).toHaveBeenCalled();
     });

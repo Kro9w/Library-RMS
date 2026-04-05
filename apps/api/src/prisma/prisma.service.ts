@@ -7,7 +7,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
     try {
       await this.$connect();
     } catch (e: any) {
-      console.warn("Prisma connection failed on ModuleInit, possibly expected in testing:", e.message);
+      console.warn(
+        'Prisma connection failed on ModuleInit, possibly expected in testing:',
+        e.message,
+      );
     }
   }
 }

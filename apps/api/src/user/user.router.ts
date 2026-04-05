@@ -45,7 +45,10 @@ export class UserRouter {
     }
 
     // 2. If not president, check if this department has a level 1 role and if it's currently vacant.
-    if (!targetRoleRecord && departmentName !== 'Office of the University President') {
+    if (
+      !targetRoleRecord &&
+      departmentName !== 'Office of the University President'
+    ) {
       const apexRole = await this.prisma.role.findFirst({
         where: {
           departmentId,
@@ -347,7 +350,10 @@ export class UserRouter {
       deleteUser: protectedProcedure
         .input(z.object({ userId: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          this.accessControlService.requirePermission(ctx.dbUser, 'canManageUsers');
+          this.accessControlService.requirePermission(
+            ctx.dbUser,
+            'canManageUsers',
+          );
 
           const deletedUser = await ctx.prisma.user.delete({
             where: { id: input.userId },
@@ -415,7 +421,10 @@ export class UserRouter {
       removeUserFromInstitution: protectedProcedure
         .input(z.object({ userId: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          this.accessControlService.requirePermission(ctx.dbUser, 'canManageUsers');
+          this.accessControlService.requirePermission(
+            ctx.dbUser,
+            'canManageUsers',
+          );
 
           const updatedUser = await ctx.prisma.user.update({
             where: { id: input.userId },
@@ -463,7 +472,10 @@ export class UserRouter {
       createCampus: protectedProcedure
         .input(z.object({ name: z.string().min(1) }))
         .mutation(async ({ ctx, input }) => {
-          this.accessControlService.requirePermission(ctx.dbUser, 'canManageUsers');
+          this.accessControlService.requirePermission(
+            ctx.dbUser,
+            'canManageUsers',
+          );
 
           if (!ctx.dbUser.institutionId) {
             throw new TRPCError({
@@ -546,7 +558,10 @@ export class UserRouter {
           }),
         )
         .mutation(async ({ ctx, input }) => {
-          this.accessControlService.requirePermission(ctx.dbUser, 'canManageUsers');
+          this.accessControlService.requirePermission(
+            ctx.dbUser,
+            'canManageUsers',
+          );
 
           // Verify campus belongs to same institution
           const campus = await ctx.prisma.campus.findUnique({
@@ -578,7 +593,10 @@ export class UserRouter {
           }),
         )
         .mutation(async ({ ctx, input }) => {
-          this.accessControlService.requirePermission(ctx.dbUser, 'canManageUsers');
+          this.accessControlService.requirePermission(
+            ctx.dbUser,
+            'canManageUsers',
+          );
 
           // Verify ownership
           const dept = await ctx.prisma.department.findUnique({
@@ -711,7 +729,10 @@ export class UserRouter {
           });
         }
 
-        const canSeeAllDocs = this.accessControlService.checkPermission(ctx.dbUser, 'canManageDocuments');
+        const canSeeAllDocs = this.accessControlService.checkPermission(
+          ctx.dbUser,
+          'canManageDocuments',
+        );
 
         const org = await ctx.prisma.institution.findUnique({
           where: { id: ctx.dbUser.institutionId },

@@ -79,7 +79,7 @@ export class DocumentLifecycleService {
       skip: number;
       take: number;
       selectFields: any;
-    }
+    },
   ) {
     const lifecycleWhereClause: Prisma.DocumentWhereInput = {
       institutionId: institutionId,

@@ -11,6 +11,7 @@ import { DocumentTypesRouter } from '../document-types/document-types.router';
 import { LogRouter } from '../log/log.router';
 import { NotificationsRouter } from '../notifications/notifications.router';
 import { AccessControlService } from '../documents/access-control.service';
+import { ArchivesRouter } from '../archives/archives.router';
 
 @Injectable()
 export class TrpcRouter {
@@ -22,6 +23,7 @@ export class TrpcRouter {
     private readonly rolesRouter: RolesRouter,
     private readonly notificationsRouter: NotificationsRouter,
     private readonly accessControlService: AccessControlService,
+    private readonly archivesRouter: ArchivesRouter,
   ) {}
 
   get appRouter() {
@@ -168,6 +170,7 @@ export class TrpcRouter {
       documentTypes: this.documentTypesRouter.createRouter(),
       logs: this.logRouter.createRouter(),
       notifications: this.notificationsRouter.createRouter(),
+      archives: this.archivesRouter.createRouter(),
     });
   }
 }

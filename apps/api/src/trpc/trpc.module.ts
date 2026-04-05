@@ -10,6 +10,7 @@ import { DocumentTypesModule } from '../document-types/document-types.module';
 import { LogModule } from '../log/log.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AccessControlService } from '../documents/access-control.service';
+import { ArchivesModule } from '../archives/archives.module';
 
 @Module({
   // 3. Add PrismaModule and SupabaseModule here
@@ -22,6 +23,7 @@ import { AccessControlService } from '../documents/access-control.service';
     DocumentTypesModule,
     LogModule,
     NotificationsModule,
+    ArchivesModule,
   ],
   providers: [TrpcRouter, TrpcContextFactory, AccessControlService],
   exports: [TrpcRouter, TrpcContextFactory],

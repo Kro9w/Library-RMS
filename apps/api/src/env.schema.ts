@@ -7,6 +7,7 @@ export const envSchema = z
     SUPABASE_URL: z.string().url(),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
     SUPABASE_BUCKET_NAME: z.string().min(1).default('FolioDocs'),
+    SUPABASE_ARCHIVE_BUCKET_NAME: z.string().min(1).default('FolioDocsArchive'),
     NODE_ENV: z
       .enum(['development', 'production', 'test'])
       .default('development'),

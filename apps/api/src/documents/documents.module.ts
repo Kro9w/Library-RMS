@@ -9,7 +9,13 @@ import { DocumentLifecycleService } from './document-lifecycle.service';
 import { DocumentsController } from './documents.controller';
 
 @Module({
-  imports: [PrismaModule, SupabaseModule, UserModule, LogModule, AccessControlModule],
+  imports: [
+    PrismaModule,
+    SupabaseModule,
+    UserModule,
+    LogModule,
+    AccessControlModule,
+  ],
   controllers: [DocumentsController],
   providers: [DocumentsRouter, DocumentLifecycleService],
   exports: [DocumentsRouter, DocumentLifecycleService],

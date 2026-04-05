@@ -5,11 +5,16 @@ export const usePermissions = () => {
 
   // Defines a minimal role type to avoid using explicit 'any'
   type BaseRole = {
+    level: number;
     canManageInstitution: boolean;
     canManageDocuments: boolean;
     canManageUsers: boolean;
     canManageRoles: boolean;
   };
+
+  const highestRoleLevel = user?.roles?.length 
+    ? Math.min(...user.roles.map((r: BaseRole) => r.level))
+    : 4;
 
   const canManageInstitution = user?.roles.some((r: BaseRole) => r.canManageInstitution) ?? false;
   const canManageDocuments = canManageInstitution || (user?.roles.some((r: BaseRole) => r.canManageDocuments) ?? false);
@@ -22,6 +27,7 @@ export const usePermissions = () => {
   };
 
   return {
+    highestRoleLevel,
     canManageInstitution,
     canManageDocuments,
     canManageUsers,

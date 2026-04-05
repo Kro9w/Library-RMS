@@ -8,6 +8,7 @@ import { DocumentsModule } from './documents/documents.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RolesModule } from './roles/roles.module';
 import { SupabaseModule } from './supabase/supabase.module';
+import { ArchivesModule } from './archives/archives.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { SupabaseModule } from './supabase/supabase.module';
     SupabaseModule,
     RolesModule,
     NotificationsModule,
+    ArchivesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

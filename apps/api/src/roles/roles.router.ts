@@ -40,7 +40,10 @@ export class RolesRouter {
           }),
         )
         .mutation(async ({ ctx, input }) => {
-          this.accessControlService.requirePermission(ctx.dbUser, 'canManageRoles');
+          this.accessControlService.requirePermission(
+            ctx.dbUser,
+            'canManageRoles',
+          );
 
           let targetDeptId = ctx.dbUser.departmentId;
 
@@ -85,7 +88,10 @@ export class RolesRouter {
           }),
         )
         .mutation(async ({ ctx, input }) => {
-          this.accessControlService.requirePermission(ctx.dbUser, 'canManageRoles');
+          this.accessControlService.requirePermission(
+            ctx.dbUser,
+            'canManageRoles',
+          );
 
           // Fetch existing role to check ownership
           const existingRole = await ctx.prisma.role.findUnique({
@@ -118,11 +124,6 @@ export class RolesRouter {
             });
           }
 
-          // If level changes, update permissions if they are not explicitly set?
-          // Logic: "Base Authority Level" sets defaults. If user changes level, we might want to update permissions too.
-          // BUT the prompt says "level dictates default permissions".
-          // Let's adopt a safe approach: If level changes, only update defaults if permissions are NOT provided in input.
-
           let permissionsUpdate: any = {};
           if (input.level) {
             const defaults = this.getPermissionsForLevel(input.level);
@@ -133,7 +134,6 @@ export class RolesRouter {
                 input.canManageDocuments ?? defaults.canManageDocuments,
             };
           } else {
-            // Level not changing, just update explicit permissions if present
             if (input.canManageUsers !== undefined)
               permissionsUpdate['canManageUsers'] = input.canManageUsers;
             if (input.canManageRoles !== undefined)
@@ -156,7 +156,10 @@ export class RolesRouter {
       deleteRole: protectedProcedure
         .input(z.string())
         .mutation(async ({ ctx, input }) => {
-          this.accessControlService.requirePermission(ctx.dbUser, 'canManageRoles');
+          this.accessControlService.requirePermission(
+            ctx.dbUser,
+            'canManageRoles',
+          );
           const role = await ctx.prisma.role.findUnique({
             where: { id: input },
           });
@@ -192,7 +195,10 @@ export class RolesRouter {
       assignRoleToUser: protectedProcedure
         .input(z.object({ userId: z.string(), roleId: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          this.accessControlService.requirePermission(ctx.dbUser, 'canManageRoles');
+          this.accessControlService.requirePermission(
+            ctx.dbUser,
+            'canManageRoles',
+          );
 
           const role = await ctx.prisma.role.findUnique({
             where: { id: input.roleId },
@@ -279,7 +285,10 @@ export class RolesRouter {
       unassignRoleFromUser: protectedProcedure
         .input(z.object({ userId: z.string(), roleId: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          this.accessControlService.requirePermission(ctx.dbUser, 'canManageRoles');
+          this.accessControlService.requirePermission(
+            ctx.dbUser,
+            'canManageRoles',
+          );
 
           const targetUser = await ctx.prisma.user.findUnique({
             where: { id: input.userId },
@@ -338,25 +347,25 @@ export class RolesRouter {
   private getPermissionsForLevel(level: number) {
     switch (level) {
       case 0: // Executive
-      case 1: // Leader
+      case 1:
         return {
           canManageUsers: true,
           canManageRoles: true,
           canManageDocuments: true,
         };
-      case 2: // Co-Leader
+      case 2:
+        return {
+          canManageUsers: true,
+          canManageRoles: false,
+          canManageDocuments: true,
+        };
+      case 3:
         return {
           canManageUsers: false,
           canManageRoles: false,
           canManageDocuments: true,
         };
-      case 3: // Elder
-        return {
-          canManageUsers: false,
-          canManageRoles: false,
-          canManageDocuments: false,
-        };
-      case 4: // Member
+      case 4:
       default:
         return {
           canManageUsers: false,

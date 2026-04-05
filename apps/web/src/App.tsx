@@ -51,6 +51,11 @@ const Users = React.lazy(() =>
 const LogsPage = React.lazy(() => import("./pages/LogsPage"));
 const WordAuth = React.lazy(() => import("./pages/WordAuth"));
 const FAQpage = React.lazy(() => import("./pages/FAQpage"));
+const ArchivesPage = React.lazy(() =>
+  import("./pages/ArchivesPage").then((module) => ({
+    default: module.ArchivesPage,
+  })),
+);
 
 // Admin Pages
 const AdminLayout = React.lazy(() => import("./pages/admin/AdminLayout"));
@@ -197,6 +202,12 @@ const AppContent: React.FC = () => {
                 ) : (
                   <Navigate to="/login" replace />
                 )
+              }
+            />
+            <Route
+              path="/archives"
+              element={
+                session ? <ArchivesPage /> : <Navigate to="/login" replace />
               }
             />
             <Route path="/graph" element={<GraphView />} />

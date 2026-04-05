@@ -38,7 +38,8 @@ export function Navbar({ sidebarMode, setSidebarMode }: NavbarProps) {
   const { data: dbUser } = trpc.user.getMe.useQuery(undefined, {
     enabled: !!user,
   });
-  const { canManageInstitution } = usePermissions();
+  const { canManageInstitution, canManageDocuments, highestRoleLevel } =
+    usePermissions();
 
   const navigate = useNavigate();
   const [isAccountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -254,6 +255,19 @@ export function Navbar({ sidebarMode, setSidebarMode }: NavbarProps) {
             <i className="bi bi-file-earmark-text" />
             <span>Documents</span>
           </NavLink>
+          {(canManageInstitution ||
+            (canManageDocuments && highestRoleLevel <= 2)) && (
+            <NavLink
+              to="/archives"
+              className={({ isActive }) =>
+                `sidebar-nav-link${isActive ? " active" : ""}`
+              }
+              title="Archives"
+            >
+              <i className="bi bi-archive" />
+              <span>Archives</span>
+            </NavLink>
+          )}
           <NavLink
             to="/graph"
             className={({ isActive }) =>
