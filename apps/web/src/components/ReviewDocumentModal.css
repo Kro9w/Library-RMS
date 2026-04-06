@@ -1,0 +1,344 @@
+/* ── Review Document Modal ── */
+.review-modal-content {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-xl) !important;
+  box-shadow: var(--shadow-xl) !important;
+  overflow: hidden;
+  background-color: var(--bg-overlay) !important;
+}
+
+/* Header */
+.review-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(
+    135deg,
+    rgba(155, 35, 53, 0.03) 0%,
+    transparent 60%
+  );
+}
+
+.review-modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.review-modal-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background-color: var(--brand-subtle);
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  border: 1px solid var(--brand-muted);
+  flex-shrink: 0;
+}
+
+.review-modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 2px;
+  letter-spacing: -0.2px;
+}
+
+.review-modal-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Body */
+.review-modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background-color: var(--bg-overlay);
+}
+
+/* ── Routing progress (inside modal) ── */
+.review-modal-route-wrap {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+
+.review-modal-route-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 16px;
+}
+
+.review-modal-route-label i {
+  font-size: 12px;
+  color: var(--brand);
+  opacity: 0.7;
+}
+
+.review-modal-route-steps {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  row-gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+/* Individual step */
+.review-route-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 70px;
+  max-width: 120px;
+  text-align: center;
+  position: relative;
+}
+
+.review-route-next-badge {
+  position: absolute;
+  top: -18px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background-color: var(--brand);
+  color: #fff;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+}
+
+.review-route-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.review-route-name {
+  font-size: 10px;
+  line-height: 1.3;
+  color: var(--text-secondary);
+}
+
+/* Step states (reuse same tokens as routing-step) */
+.routing-step-pending .review-route-icon {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.routing-step-approved .review-route-icon {
+  background-color: var(--success-subtle);
+  color: var(--success);
+  border: 1px solid #86efac;
+}
+
+.routing-step-current .review-route-icon {
+  background-color: var(--brand-subtle);
+  color: var(--brand);
+  border: 1.5px solid var(--brand-muted);
+}
+.routing-step-current .review-route-name {
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.routing-step-rejected .review-route-icon {
+  background-color: var(--danger-subtle);
+  color: var(--danger);
+  border: 1px solid #fca5a5;
+}
+
+.review-route-step-next .review-route-icon {
+  background-color: var(--info-subtle);
+  color: var(--info);
+  border: 1px solid #93c5fd;
+}
+.review-route-step-next .review-route-name {
+  color: var(--info);
+  font-weight: 600;
+}
+
+/* Connector */
+.review-route-connector {
+  flex: 1;
+  height: 2px;
+  background-color: var(--border);
+  align-self: center;
+  margin-top: -20px;
+  min-width: 10px;
+}
+
+.review-route-connector-done {
+  background-color: var(--success);
+  opacity: 0.4;
+}
+
+/* ── Field wrapper ── */
+.review-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.review-modal-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-modal-label-optional {
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.review-modal-label-required {
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--danger);
+  opacity: 0.8;
+}
+
+.review-selected-decision {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.review-selected-decision i {
+  font-size: 15px;
+}
+
+/* ── Status selector — pill buttons ── */
+.review-status-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-status-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.review-status-option:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.review-status-option i {
+  font-size: 15px;
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+}
+
+.review-status-option-active {
+  background-color: var(--brand-subtle);
+  border-color: var(--brand-muted);
+  color: var(--brand);
+}
+
+.review-status-option-active:hover {
+  background-color: var(--brand-subtle);
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+/* ── Textarea ── */
+.review-modal-textarea {
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  resize: vertical;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+  line-height: 1.6;
+}
+
+.review-modal-textarea:focus {
+  outline: none;
+  border-color: var(--brand-muted);
+  box-shadow: var(--ring);
+}
+
+.review-modal-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* ── Footer ── */
+.review-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  background-color: var(--bg-subtle);
+}

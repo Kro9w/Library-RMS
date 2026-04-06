@@ -16,7 +16,7 @@ export function useForwardDocument({
   const { data: fetchedOrgHierarchy } = trpc.user.getInstitutionHierarchy.useQuery(undefined, { enabled: !propCampuses && show });
   const { data: document } = trpc.documents.getById.useQuery({ id: documentId }, { enabled: !!documentId && show });
 
-  const isTransitDocument = document?.recordStatus === "IN_TRANSIT" && document?.classification === "FOR_APPROVAL";
+  const isTransitDocument = document?.workflow?.recordStatus === "IN_TRANSIT" && document?.classification === "FOR_APPROVAL";
 
   const users = propUsers || fetchedUsers;
   const campuses = propCampuses || fetchedOrgHierarchy?.campuses || [];
@@ -27,8 +27,8 @@ export function useForwardDocument({
     if (!isTransitDocument || !document?.transitRoutes) return null;
 
     if (
-      document.status === "Returned for Corrections/Revision/Clarification" ||
-      document.status === "Disapproved"
+      document.workflow?.status === "Returned for Corrections/Revision/Clarification" ||
+      document.workflow?.status === "Disapproved"
     ) {
       return null;
     }

@@ -69,7 +69,8 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
   }, [isOpen]);
 
   const isTransit =
-    doc.classification === "FOR_APPROVAL" && doc.recordStatus === "IN_TRANSIT";
+    doc.classification === "FOR_APPROVAL" &&
+    doc.workflow?.recordStatus === "IN_TRANSIT";
 
   // Determine if the current user belongs to the currently active office in the transit route
   const currentTransitStop = isTransit
@@ -93,17 +94,19 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
 
   // Allow originators to send it to the first office
   const isReturnedOrDisapproved =
-    doc.status === "Returned for Corrections/Revision/Clarification" ||
-    doc.status === "Disapproved";
+    doc.workflow?.status ===
+      "Returned for Corrections/Revision/Clarification" ||
+    doc.workflow?.status === "Disapproved";
   const isOriginator =
     currentUser?.id === doc.uploadedById ||
     currentUser?.id === doc.originalSenderId;
   const isOriginatorForwardingInTransit =
     isTransit &&
     doc.uploadedById === currentUser?.id &&
-    (!doc.status ||
-      doc.status === "Returned for Corrections/Revision/Clarification" ||
-      doc.status === "Disapproved");
+    (!doc.workflow?.status ||
+      doc.workflow?.status ===
+        "Returned for Corrections/Revision/Clarification" ||
+      doc.workflow?.status === "Disapproved");
 
   const hasAccess = isUploader(doc.uploadedById);
 
@@ -139,8 +142,8 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
             }}
           >
             {doc.classification !== "FOR_APPROVAL" &&
-              doc.recordStatus !== "IN_TRANSIT" &&
-              !doc.isCheckedOut &&
+              doc.workflow?.recordStatus !== "IN_TRANSIT" &&
+              !doc.workflow?.isCheckedOut &&
               onSendClick && (
                 <button
                   className="dropdown-item"
@@ -156,7 +159,7 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
 
             {doc.classification === "FOR_APPROVAL" &&
               (!isTransit || isOriginatorForwardingInTransit) &&
-              !doc.isCheckedOut && (
+              !doc.workflow?.isCheckedOut && (
                 <button
                   className="dropdown-item"
                   onClick={(e) => {
@@ -185,8 +188,8 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
               )}
 
             {/* Version Control Actions */}
-            {doc.recordStatus !== "FINAL" &&
-              !doc.isCheckedOut &&
+            {doc.workflow?.recordStatus !== "FINAL" &&
+              !doc.workflow?.isCheckedOut &&
               onCheckOutClick && (
                 <button
                   className="dropdown-item"
@@ -200,9 +203,9 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
                   Out
                 </button>
               )}
-            {doc.isCheckedOut &&
-              (doc.checkedOutById === currentUserId ||
-                doc.checkedOutBy?.id === currentUserId) &&
+            {doc.workflow?.isCheckedOut &&
+              (doc.workflow?.checkedOutById === currentUserId ||
+                doc.workflow?.checkedOutBy?.id === currentUserId) &&
               onCheckInClick && (
                 <button
                   className="dropdown-item"
@@ -215,9 +218,9 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
                   <i className="bi bi-cloud-arrow-up text-primary"></i> Check In
                 </button>
               )}
-            {doc.isCheckedOut &&
-              (doc.checkedOutById === currentUserId ||
-                doc.checkedOutBy?.id === currentUserId ||
+            {doc.workflow?.isCheckedOut &&
+              (doc.workflow?.checkedOutById === currentUserId ||
+                doc.workflow?.checkedOutBy?.id === currentUserId ||
                 doc.uploadedById === currentUserId ||
                 canManageDocuments) &&
               onDiscardCheckOutClick && (

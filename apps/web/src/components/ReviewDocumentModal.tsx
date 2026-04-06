@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { trpc } from "../trpc";
 import { ForwardDocumentModal } from "./ForwardDocumentModal";
-import { Modal } from "bootstrap";
 import "./StandardModal.css";
+import "./ReviewDocumentModal.css";
 
 interface ReviewDocumentModalProps {
   show: boolean;
@@ -23,6 +23,7 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
   onClose,
   documentId,
 }) => {
+  const [step, setStep] = useState<1 | 2>(1);
   const [status, setStatus] = useState<ReviewStatus | "">("");
   const [remarks, setRemarks] = useState("");
   const [showSendModal, setShowSendModal] = useState(false);
@@ -32,24 +33,9 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
   });
   const { data: user } = trpc.user.getMe.useQuery();
 
-  const modalRef = useRef<HTMLDivElement>(null);
-  const modalInstanceRef = useRef<Modal | null>(null);
-
-  useEffect(() => {
-    if (modalRef.current) {
-      modalInstanceRef.current = new Modal(modalRef.current);
-      modalRef.current.addEventListener("hidden.bs.modal", () => {
-        onClose();
-      });
-    }
-    return () => {
-      modalInstanceRef.current?.dispose();
-    };
-  }, []);
-
   const isTransit =
     document?.classification === "FOR_APPROVAL" &&
-    document?.recordStatus === "IN_TRANSIT";
+    document?.workflow?.recordStatus === "IN_TRANSIT";
 
   const isFinalStop = React.useMemo(() => {
     if (!isTransit || !document?.transitRoutes || !user) return false;
@@ -87,14 +73,18 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
 
   useEffect(() => {
     if (show) {
+      setStep(1);
+      setRemarks("");
       if (!status || !allowedStatuses.includes(status)) {
         setStatus(allowedStatuses[0] as ReviewStatus);
       }
-      modalInstanceRef.current?.show();
-    } else {
-      modalInstanceRef.current?.hide();
     }
-  }, [show, allowedStatuses, status]);
+  }, [show, allowedStatuses]);
+
+  const handleStatusSelect = (s: ReviewStatus) => {
+    setStatus(s);
+    setStep(2);
+  };
 
   const handleSubmit = async () => {
     if (!documentId) return;
@@ -260,7 +250,7 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
         onClick={!isPending ? onClose : undefined}
       >
         <div
-          className="standard-modal-dialog modal-lg"
+          className="standard-modal-dialog"
           onClick={(e) => e.stopPropagation()}
           style={{ maxWidth: "800px" }}
         >
@@ -298,89 +288,118 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
             {/* Routing progress */}
             {renderRoutingProgress()}
 
-            {/* Status selector */}
-            <div className="review-modal-field">
-              <label className="review-modal-label">Decision</label>
-              <div className="review-status-selector">
-                {allowedStatuses.map((s) => {
-                  const m = STATUS_META[s];
-                  const isSelected = status === s;
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      className={`review-status-option ${isSelected ? "review-status-option-active" : ""}`}
-                      onClick={() => setStatus(s as ReviewStatus)}
-                      disabled={isPending}
-                    >
-                      <i
-                        className={`bi ${m.icon} ${isSelected ? m.colorClass : "text-muted"}`}
-                      ></i>
-                      <span>{s}</span>
-                    </button>
-                  );
-                })}
-                ;
+            {step === 1 ? (
+              /* Step 1: Status selector */
+              <div className="review-modal-field">
+                <label className="review-modal-label">Decision</label>
+                <div className="review-status-selector">
+                  {allowedStatuses.map((s) => {
+                    const m = STATUS_META[s];
+                    const isSelected = status === s;
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        className={`review-status-option ${isSelected ? "review-status-option-active" : ""}`}
+                        onClick={() => handleStatusSelect(s as ReviewStatus)}
+                        disabled={isPending}
+                      >
+                        <i
+                          className={`bi ${m.icon} ${isSelected ? m.colorClass : "text-muted"}`}
+                        ></i>
+                        <span>{s}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Step 2: Remarks */
+              <>
+                <div className="review-modal-field">
+                  <label className="review-modal-label">
+                    Selected Decision
+                  </label>
+                  <div className="review-selected-decision">
+                    <i className={`bi ${meta?.icon} ${meta?.colorClass}`}></i>
+                    <span>{status}</span>
+                  </div>
+                </div>
 
-            {/* Remarks */}
-            <div className="review-modal-field">
-              <label className="review-modal-label">
-                Remarks
-                <span className="review-modal-label-optional">optional</span>
-              </label>
-              <textarea
-                className="review-modal-textarea"
-                rows={4}
-                placeholder="Enter any feedback, notes, or instructions for the sender…"
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-                disabled={isPending}
-              />
-            </div>
+                <div className="review-modal-field">
+                  <label className="review-modal-label">
+                    Remarks
+                    <span className="review-modal-label-required">
+                      *required
+                    </span>
+                  </label>
+                  <textarea
+                    className="review-modal-textarea"
+                    rows={4}
+                    placeholder="Enter mandatory feedback, notes, or instructions…"
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    disabled={isPending}
+                    autoFocus
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {/* Footer */}
           <div className="standard-modal-footer">
-            <button
-              className="standard-modal-btn standard-modal-btn-ghost"
-              onClick={onClose}
-              disabled={isPending}
-            >
-              Cancel
-            </button>
-            <button
-              className="standard-modal-btn standard-modal-btn-confirm"
-              style={
-                status === "Disapproved" ||
-                status === "Returned for Corrections/Revision/Clarification"
-                  ? {
-                      backgroundColor: "var(--danger)",
-                      borderColor: "var(--danger)",
-                    }
-                  : {}
-              }
-              onClick={handleSubmit}
-              disabled={isPending || !status}
-            >
-              {isPending ? (
-                <>
-                  <span className="standard-modal-spinner" />
-                  Submitting…
-                </>
-              ) : (
-                <>
-                  {meta && (
-                    <i
-                      className={`bi ${meta.icon}`}
-                      style={{ fontSize: "13px" }}
-                    ></i>
+            {step === 1 ? (
+              <button
+                className="standard-modal-btn standard-modal-btn-ghost"
+                onClick={onClose}
+                disabled={isPending}
+              >
+                Cancel
+              </button>
+            ) : (
+              <>
+                <button
+                  className="standard-modal-btn standard-modal-btn-ghost"
+                  onClick={() => setStep(1)}
+                  disabled={isPending}
+                >
+                  <i className="bi bi-arrow-left"></i>
+                  Back
+                </button>
+                <button
+                  className="standard-modal-btn standard-modal-btn-confirm"
+                  style={
+                    status === "Disapproved" ||
+                    status === "Returned for Corrections/Revision/Clarification"
+                      ? {
+                          backgroundColor: "var(--danger)",
+                          borderColor: "var(--danger)",
+                        }
+                      : {}
+                  }
+                  onClick={handleSubmit}
+                  disabled={isPending || !status || remarks.trim().length === 0}
+                >
+                  {isPending ? (
+                    <>
+                      <span className="standard-modal-spinner" />
+                      Submitting…
+                    </>
+                  ) : (
+                    <>
+                      {meta && (
+                        <i
+                          className={`bi ${meta.icon}`}
+                          style={{ fontSize: "13px" }}
+                        ></i>
+                      )}
+                      {meta?.btnLabel || "Submit Review"}
+                    </>
                   )}
-                  {meta?.btnLabel || "Submit Review"}
-                </>
-              )}
-            </button>
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

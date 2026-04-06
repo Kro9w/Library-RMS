@@ -118,7 +118,7 @@ export const DocumentDetails: React.FC = () => {
 
   const isTransit =
     document.classification === "FOR_APPROVAL" &&
-    document.recordStatus === "IN_TRANSIT";
+    document.workflow?.recordStatus === "IN_TRANSIT";
 
   const currentTransitStop = isTransit
     ? document.transitRoutes?.find((r: any) => r.status === "CURRENT")
@@ -132,26 +132,31 @@ export const DocumentDetails: React.FC = () => {
     isCurrentTransitOffice && user?.roles?.some((r: any) => r.level === 1);
 
   const isReturnedOrDisapproved =
-    document.status === "Returned for Corrections/Revision/Clarification" ||
-    document.status === "Disapproved";
+    document.workflow?.status ===
+      "Returned for Corrections/Revision/Clarification" ||
+    document.workflow?.status === "Disapproved";
   const isOriginator =
     user?.id === document.uploadedById ||
     user?.id === document.originalSenderId;
 
   const hasBeenSent = distributions && distributions.length > 0;
 
-  const canSendOrResubmit = isOriginator || canManageDocuments;
-  const isSendDisabled =
-    document.isCheckedOut || (hasBeenSent && !isReturnedOrDisapproved);
-
   const isReviewDocument =
-    document.recordStatus === "IN_TRANSIT" &&
+    document.workflow?.recordStatus === "IN_TRANSIT" &&
     document.classification === "FOR_APPROVAL";
 
   const canReview =
     ((canManageDocuments && isReviewDocument) || hasTransitReviewAccess) &&
     !isReturnedOrDisapproved &&
     !isOriginator;
+
+  // Originators or Global Admins can forward/resubmit.
+  // Reviewers (who only have `canReview` because of transit routing) do not see the forward button
+  // because their explicit action is to use the Review Document modal to Endorse/Return the document.
+  const canSendOrResubmit = (isOriginator || canManageDocuments) && !canReview;
+  const isSendDisabled =
+    document.workflow?.isCheckedOut ||
+    (hasBeenSent && !isReturnedOrDisapproved);
 
   const getPreviewDetails = (doc: Document) => {
     if (!urlData?.signedUrl) return null;
@@ -305,24 +310,24 @@ export const DocumentDetails: React.FC = () => {
                 <strong>Status</strong>
                 <span
                   className={`badge ${
-                    document.recordStatus === "FINAL"
+                    document.workflow?.recordStatus === "FINAL"
                       ? "bg-success"
                       : "bg-warning text-dark"
                   }`}
                 >
-                  {document.recordStatus}
+                  {document.workflow?.recordStatus}
                 </span>
               </div>
 
               {/* Checked-out indicator */}
-              {document.isCheckedOut && (
+              {document.workflow?.isCheckedOut && (
                 <div className="checked-out-indicator">
                   <i className="bi bi-lock-fill"></i>
                   <span>
                     Checked out by{" "}
                     <strong>
-                      {document.checkedOutBy
-                        ? formatUserName(document.checkedOutBy)
+                      {document.workflow?.checkedOutBy
+                        ? formatUserName(document.workflow?.checkedOutBy)
                         : "Unknown User"}
                     </strong>
                   </span>
@@ -334,9 +339,19 @@ export const DocumentDetails: React.FC = () => {
                 {document.lifecycle?.dispositionStatus !== "DESTROYED" &&
                   document.lifecycle?.dispositionStatus !== "ARCHIVED" && (
                     <>
+                      {canReview && (
+                        <button
+                          className="doc-action-btn doc-action-btn-primary"
+                          onClick={() => setShowReviewModal(true)}
+                        >
+                          <i className="bi bi-eye"></i>
+                          Review Document
+                        </button>
+                      )}
+
                       {document.classification !== "FOR_APPROVAL" &&
-                        document.recordStatus !== "IN_TRANSIT" &&
-                        !document.isCheckedOut &&
+                        document.workflow?.recordStatus !== "IN_TRANSIT" &&
+                        !document.workflow?.isCheckedOut &&
                         (canManageDocuments || isOriginator) && (
                           <button
                             className="doc-action-btn doc-action-btn-primary"
@@ -356,7 +371,7 @@ export const DocumentDetails: React.FC = () => {
                             onClick={() => setShowResubmitModal(true)}
                             disabled={isSendDisabled}
                             title={
-                              document.isCheckedOut
+                              document.workflow?.isCheckedOut
                                 ? "Check in the document first before forwarding."
                                 : isSendDisabled
                                   ? "Document is currently in transit."
@@ -383,23 +398,13 @@ export const DocumentDetails: React.FC = () => {
                           Download
                         </a>
                       )}
-
-                      {canReview && (
-                        <button
-                          className="doc-action-btn"
-                          onClick={() => setShowReviewModal(true)}
-                        >
-                          <i className="bi bi-eye"></i>
-                          Review Document
-                        </button>
-                      )}
                     </>
                   )}
 
                 {document.lifecycle?.dispositionStatus !== "DESTROYED" &&
                   document.lifecycle?.dispositionStatus !== "ARCHIVED" &&
-                  document.recordStatus !== "FINAL" &&
-                  !document.isCheckedOut &&
+                  document.workflow?.recordStatus !== "FINAL" &&
+                  !document.workflow?.isCheckedOut &&
                   (document.uploadedById === user?.id ||
                     document.originalSenderId === user?.id ||
                     canManageDocuments) && (
@@ -414,9 +419,9 @@ export const DocumentDetails: React.FC = () => {
 
                 {document.lifecycle?.dispositionStatus !== "DESTROYED" &&
                   document.lifecycle?.dispositionStatus !== "ARCHIVED" &&
-                  document.isCheckedOut &&
-                  (document.checkedOutById === user?.id ||
-                    document.checkedOutBy?.id === user?.id) && (
+                  document.workflow?.isCheckedOut &&
+                  (document.workflow?.checkedOutById === user?.id ||
+                    document.workflow?.checkedOutBy?.id === user?.id) && (
                     <button
                       className="doc-action-btn"
                       onClick={() => setShowCheckInModal(true)}
