@@ -16,6 +16,7 @@ export const CheckOutModal: React.FC<CheckOutModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const utils = trpc.useUtils();
 
+  // @ts-ignore
   const checkOutMutation = trpc.documents.checkOutDocument.useMutation({
     onSuccess: () => {
       utils.documents.getAll.invalidate();

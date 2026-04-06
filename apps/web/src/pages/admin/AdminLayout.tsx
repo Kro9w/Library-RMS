@@ -104,6 +104,28 @@ const links = [
     ),
   },
   {
+    label: "Master Archives",
+    path: "/admin/archives",
+    icon: (
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect x="2" y="4" width="20" height="16" rx="2" />
+        <path d="M10 4v4" />
+        <path d="M14 4v4" />
+        <path d="M6 4v4" />
+        <path d="M18 4v4" />
+      </svg>
+    ),
+  },
+  {
     label: "Master Audit Logs",
     path: "/admin/logs",
     icon: (

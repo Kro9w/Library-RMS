@@ -27,10 +27,10 @@ export class ArchivesRouter {
         .query(async ({ ctx, input }) => {
           const { dbUser } = ctx;
 
-          if (!dbUser.institutionId) {
+          if (!dbUser.institutionId || !dbUser.departmentId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
+              message: 'User does not belong to an office/department.',
             });
           }
 
@@ -51,6 +51,7 @@ export class ArchivesRouter {
 
           const whereClause: Prisma.DocumentWhereInput = {
             institutionId: dbUser.institutionId,
+            departmentId: dbUser.departmentId,
             lifecycle: {
               dispositionStatus: 'ARCHIVED',
             },
@@ -88,10 +89,10 @@ export class ArchivesRouter {
         .query(async ({ ctx, input }) => {
           const { dbUser } = ctx;
 
-          if (!dbUser.institutionId) {
+          if (!dbUser.institutionId || !dbUser.departmentId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
+              message: 'User does not belong to an office/department.',
             });
           }
 
@@ -112,6 +113,7 @@ export class ArchivesRouter {
 
           const whereClause: Prisma.DocumentWhereInput = {
             institutionId: dbUser.institutionId,
+            departmentId: dbUser.departmentId,
             lifecycle: {
               dispositionStatus: 'DESTROYED',
             },
@@ -136,6 +138,145 @@ export class ArchivesRouter {
           ]);
 
           return { documents, totalCount };
+        }),
+
+      
+      getAllArchivedDocuments: protectedProcedure
+        .input(
+          z.object({
+            page: z.number().min(1).default(1),
+            pageSize: z.number().min(1).max(1000).default(50),
+            search: z.string().optional(),
+          }),
+        )
+        .query(async ({ ctx, input }) => {
+          const { dbUser } = ctx;
+
+          if (!dbUser.institutionId || !dbUser.departmentId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to an office/department.',
+            });
+          }
+
+          const hasAccess = dbUser.roles.some((r) => r.canManageInstitution);
+
+          if (!hasAccess) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Insufficient permissions. Master Archives requires System Admin access.',
+            });
+          }
+
+          const skip = (input.page - 1) * input.pageSize;
+          const take = input.pageSize;
+
+          const whereClause: Prisma.DocumentWhereInput = {
+            institutionId: dbUser.institutionId,
+            departmentId: dbUser.departmentId,
+            lifecycle: {
+              dispositionStatus: 'ARCHIVED',
+            },
+            title: input.search
+              ? { contains: input.search, mode: 'insensitive' }
+              : undefined,
+          };
+
+          const [totalCount, docs] = await this.prisma.$transaction([
+            this.prisma.document.count({ where: whereClause }),
+            this.prisma.document.findMany({
+              where: whereClause,
+              skip,
+              take,
+              orderBy: { lifecycle: { dispositionDate: 'desc' } },
+              select: {
+                id: true,
+                title: true,
+                controlNumber: true,
+                campus: { select: { id: true, name: true } },
+                department: { select: { id: true, name: true } },
+                documentType: { select: { name: true, color: true } },
+                uploadedBy: { select: { firstName: true, lastName: true } },
+                lifecycle: {
+                  select: {
+                    dispositionDate: true,
+                    archiveManifestUrl: true,
+                  },
+                },
+              },
+            }),
+          ]);
+
+          return { documents: docs, totalCount };
+        }),
+
+      getAllDestroyedDocuments: protectedProcedure
+        .input(
+          z.object({
+            page: z.number().min(1).default(1),
+            pageSize: z.number().min(1).max(1000).default(50),
+            search: z.string().optional(),
+          }),
+        )
+        .query(async ({ ctx, input }) => {
+          const { dbUser } = ctx;
+
+          if (!dbUser.institutionId || !dbUser.departmentId) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'User does not belong to an office/department.',
+            });
+          }
+
+          const hasAccess = dbUser.roles.some((r) => r.canManageInstitution);
+
+          if (!hasAccess) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Insufficient permissions. Master Destruction Register requires System Admin access.',
+            });
+          }
+
+          const skip = (input.page - 1) * input.pageSize;
+          const take = input.pageSize;
+
+          const whereClause: Prisma.DocumentWhereInput = {
+            institutionId: dbUser.institutionId,
+            departmentId: dbUser.departmentId,
+            lifecycle: {
+              dispositionStatus: 'DESTROYED',
+            },
+            title: input.search
+              ? { contains: input.search, mode: 'insensitive' }
+              : undefined,
+          };
+
+          const [totalCount, docs] = await this.prisma.$transaction([
+            this.prisma.document.count({ where: whereClause }),
+            this.prisma.document.findMany({
+              where: whereClause,
+              skip,
+              take,
+              orderBy: { lifecycle: { dispositionDate: 'desc' } },
+              select: {
+                id: true,
+                title: true,
+                controlNumber: true,
+                campus: { select: { id: true, name: true } },
+                department: { select: { id: true, name: true } },
+                documentType: { select: { name: true, color: true } },
+                uploadedBy: { select: { firstName: true, lastName: true } },
+                lifecycle: {
+                  select: {
+                    dispositionDate: true,
+                    archiveManifestUrl: true,
+                  },
+                },
+              },
+            }),
+          ]);
+
+          return { documents: docs, totalCount };
         }),
 
       getArchiveManifestUrl: protectedProcedure
