@@ -1,11 +1,6 @@
-/* ============================================================
-   Navbar — Supabase-inspired layout
-   Left sidebar (logo/breadcrumb/nav) + top bar (actions/avatar)
-   ============================================================ */
-
 :root {
   --sidebar-w-expanded: 220px;
-  --sidebar-w-collapsed: 56px;
+  --sidebar-w-collapsed: 53px;
   --topbar-h: 52px;
 }
 
@@ -54,7 +49,7 @@
   align-items: center;
   gap: 9px;
   height: 34px;
-  padding: 0 10px;
+  padding: 0 12px;
   border-radius: var(--radius-md);
   font-size: 13px;
   font-weight: 500;
@@ -109,7 +104,7 @@ body[data-bs-theme="dark"] .sidebar-nav-link.active {
 
 .sidebar.collapsed .sidebar-nav-link {
   justify-content: flex-start;
-  padding: 0 10px;
+  padding: 0 12px;
 }
 
 .sidebar.collapsed .sidebar-nav-link span {

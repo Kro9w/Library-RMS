@@ -6,6 +6,7 @@ import { UserModule } from '../user/user.module';
 import { LogModule } from '../log/log.module';
 import { AccessControlModule } from './access-control.module';
 import { DocumentLifecycleService } from './document-lifecycle.service';
+import { DocumentWorkflowService } from './document-workflow.service';
 import { DocumentsController } from './documents.controller';
 
 @Module({
@@ -17,7 +18,7 @@ import { DocumentsController } from './documents.controller';
     AccessControlModule,
   ],
   controllers: [DocumentsController],
-  providers: [DocumentsRouter, DocumentLifecycleService],
-  exports: [DocumentsRouter, DocumentLifecycleService],
+  providers: [DocumentsRouter, DocumentLifecycleService, DocumentWorkflowService],
+  exports: [DocumentsRouter, DocumentLifecycleService, DocumentWorkflowService],
 })
 export class DocumentsModule {}
