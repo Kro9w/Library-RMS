@@ -729,11 +729,6 @@ export class UserRouter {
           });
         }
 
-        const canSeeAllDocs = this.accessControlService.checkPermission(
-          ctx.dbUser,
-          'canManageDocuments',
-        );
-
         const org = await ctx.prisma.institution.findUnique({
           where: { id: ctx.dbUser.institutionId },
           include: {
@@ -744,18 +739,6 @@ export class UserRouter {
                     users: {
                       include: {
                         roles: true,
-                        documents: {
-                          // If user cannot manage documents, they can only see their own
-                          where: canSeeAllDocs
-                            ? undefined
-                            : { uploadedById: ctx.dbUser.id },
-                          select: {
-                            id: true,
-                            title: true,
-                            documentType: { select: { color: true } },
-                            uploadedById: true,
-                          },
-                        },
                       },
                     },
                   },

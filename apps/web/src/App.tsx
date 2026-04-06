@@ -41,9 +41,6 @@ const SendDocumentPage = React.lazy(() =>
     default: module.SendDocumentPage,
   })),
 );
-const GraphView = React.lazy(() =>
-  import("./pages/GraphView").then((module) => ({ default: module.GraphView })),
-);
 const JoinInstitution = React.lazy(() => import("./pages/JoinInstitution"));
 const Users = React.lazy(() =>
   import("./pages/Users").then((module) => ({ default: module.Users })),
@@ -213,7 +210,6 @@ const AppContent: React.FC = () => {
                 session ? <ArchivesPage /> : <Navigate to="/login" replace />
               }
             />
-            <Route path="/graph" element={<GraphView />} />
             <Route
               path="/faq"
               element={session ? <FAQpage /> : <Navigate to="/login" replace />}

@@ -739,6 +739,103 @@ const FAQ_CATEGORIES: FAQCategory[] = [
     ],
   },
   {
+    id: "archives",
+    label: "Archives & Destruction",
+    icon: "bi-archive",
+    items: [
+      {
+        id: "arch-1",
+        question: "Where can I view archived or destroyed records?",
+        answer: (
+          <p>
+            You can view disposed records by navigating to the{" "}
+            <strong>Disposition Register</strong> via the <em>Archives</em> link
+            in the sidebar. This page is divided into two tabs:{" "}
+            <strong>Archives</strong> (records kept for long-term historical or
+            legal reference) and <strong>Destruction Register</strong> (records
+            permanently purged). Standard users will only see records that
+            belong to their current department.
+          </p>
+        ),
+      },
+      {
+        id: "arch-2",
+        question: "Who has access to the Archives?",
+        answer: (
+          <p>
+            Standard archive views are restricted to the user's current
+            department. Users lose access to their previous department's
+            archives if they transfer to a new department. However,
+            institution-level administrators (Super Admins) have access to a
+            centralized <strong>Master Archives</strong> repository in the Admin
+            panel, allowing them to view all institution-wide archived and
+            destroyed documents organized by Campus, Department, and Document
+            Type.
+          </p>
+        ),
+      },
+      {
+        id: "arch-3",
+        question:
+          "What is the difference between Archiving and Destroying a document?",
+        answer: (
+          <>
+            <p>
+              The disposition action depends on the retention schedule
+              configured for the document type:
+            </p>
+            <ul>
+              <li>
+                <strong>Archive:</strong> The document reaches the end of its
+                inactive retention period but retains historical or legal value.
+                The physical/digital file is kept securely in the system, and
+                its metadata is preserved. Users can still download the archived
+                file and view its archival manifest.
+              </li>
+              <li>
+                <strong>Destroy:</strong> The document has no further value and
+                is permanently deleted from storage.{" "}
+                <em>Only metadata tombstones remain</em> for audit compliance.
+                The system automatically generates a{" "}
+                <strong>Certificate of Disposition</strong> which replaces the
+                actual file.
+              </li>
+            </ul>
+          </>
+        ),
+      },
+      {
+        id: "arch-4",
+        question:
+          "Can I edit, send, or checkout a document that has been archived or destroyed?",
+        answer: (
+          <p>
+            No. Once a document's lifecycle status reaches{" "}
+            <strong>ARCHIVED</strong> or <strong>DESTROYED</strong>, it is
+            permanently locked. State-altering actions such as "Send Document",
+            "Check Out", "Check In", or "Apply Legal Hold" are disabled in the
+            UI to prevent illegal modifications and ensure compliance with
+            records management policies.
+          </p>
+        ),
+      },
+      {
+        id: "arch-5",
+        question: "How is an archived or destroyed record audited?",
+        answer: (
+          <p>
+            For archived records, an immutable archival manifest (JSON format)
+            is generated and stored securely in the system; it can be downloaded
+            directly from the Disposition Register. For destroyed records, the
+            system renders a <strong>Certificate of Disposition</strong> on the
+            Document Details page displaying the exact destruction date,
+            ensuring full audit traceability.
+          </p>
+        ),
+      },
+    ],
+  },
+  {
     id: "admin",
     label: "Administration",
     icon: "bi-gear",
@@ -918,7 +1015,7 @@ const FAQPage: React.FC = () => {
       <div className="faq-page">
         {/* Page header */}
         <div className="faq-page-header">
-          <h2>Help &amp; FAQ</h2>
+          <h2>Frequently Asked Questions</h2>
           <p className="text-muted">
             Find answers to common questions about Plume RMS.
           </p>

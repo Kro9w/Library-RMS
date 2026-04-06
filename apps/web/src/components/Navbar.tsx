@@ -268,16 +268,6 @@ export function Navbar({ sidebarMode, setSidebarMode }: NavbarProps) {
               <span>Archives</span>
             </NavLink>
           )}
-          <NavLink
-            to="/graph"
-            className={({ isActive }) =>
-              `sidebar-nav-link${isActive ? " active" : ""}`
-            }
-            title="Graph"
-          >
-            <i className="bi bi-diagram-3" />
-            <span>Graph</span>
-          </NavLink>
           {canManageUsers && (
             <>
               <NavLink
