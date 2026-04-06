@@ -183,12 +183,14 @@ export const DocumentDetails: React.FC = () => {
   return (
     <div className="container mt-4">
       {/* Legal hold banner */}
-      {document.isUnderLegalHold && (
+      {document.lifecycle?.isUnderLegalHold && (
         <div className="legal-hold-banner" role="alert">
           <i className="bi bi-shield-lock-fill"></i>
           <div>
             <h5>Document is under Legal Hold</h5>
-            <p>{document.legalHoldReason || "No reason provided."}</p>
+            <p>
+              {document.lifecycle?.legalHoldReason || "No reason provided."}
+            </p>
           </div>
         </div>
       )}
@@ -246,7 +248,7 @@ export const DocumentDetails: React.FC = () => {
       <div className="document-details-container">
         {/* Left: document viewer */}
         <div className="document-viewer">
-          {document.dispositionStatus === "DESTROYED" ? (
+          {document.lifecycle?.dispositionStatus === "DESTROYED" ? (
             <div className="preview-fallback text-danger bg-danger-subtle border border-danger rounded">
               <i
                 className="bi bi-trash3-fill mb-3"
@@ -332,71 +334,74 @@ export const DocumentDetails: React.FC = () => {
 
               {/* Action buttons */}
               <div className="doc-actions-stack mt-3">
-                {document.dispositionStatus !== "DESTROYED" && (
-                  <>
-                    {document.classification !== "FOR_APPROVAL" &&
-                      document.recordStatus !== "IN_TRANSIT" &&
-                      !document.isCheckedOut &&
-                      (canManageDocuments || isOriginator) && (
-                        <button
-                          className="doc-action-btn doc-action-btn-primary"
-                          onClick={() =>
-                            (window.location.href = `/documents/${document.id}/send`)
-                          }
+                {document.lifecycle?.dispositionStatus !== "DESTROYED" &&
+                  document.lifecycle?.dispositionStatus !== "ARCHIVED" && (
+                    <>
+                      {document.classification !== "FOR_APPROVAL" &&
+                        document.recordStatus !== "IN_TRANSIT" &&
+                        !document.isCheckedOut &&
+                        (canManageDocuments || isOriginator) && (
+                          <button
+                            className="doc-action-btn doc-action-btn-primary"
+                            onClick={() =>
+                              (window.location.href = `/documents/${document.id}/send`)
+                            }
+                          >
+                            <i className="bi bi-send-fill"></i>
+                            Send Document
+                          </button>
+                        )}
+
+                      {canSendOrResubmit &&
+                        document.classification === "FOR_APPROVAL" && (
+                          <button
+                            className={`doc-action-btn ${!isSendDisabled ? "doc-action-btn-primary" : ""}`}
+                            onClick={() => setShowResubmitModal(true)}
+                            disabled={isSendDisabled}
+                            title={
+                              document.isCheckedOut
+                                ? "Check in the document first before forwarding."
+                                : isSendDisabled
+                                  ? "Document is currently in transit."
+                                  : ""
+                            }
+                          >
+                            <i
+                              className={`bi ${isReturnedOrDisapproved ? "bi-arrow-repeat" : "bi-forward-fill"}`}
+                            ></i>
+                            {isReturnedOrDisapproved
+                              ? "Resubmit for Review"
+                              : "Forward Document"}
+                          </button>
+                        )}
+
+                      {urlData?.signedUrl && (
+                        <a
+                          href={urlData.signedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="doc-action-btn doc-action-btn-download"
                         >
-                          <i className="bi bi-send-fill"></i>
-                          Send Document
-                        </button>
+                          <i className="bi bi-download"></i>
+                          Download
+                        </a>
                       )}
 
-                    {canSendOrResubmit &&
-                      document.classification === "FOR_APPROVAL" && (
+                      {canReview && (
                         <button
-                          className={`doc-action-btn ${!isSendDisabled ? "doc-action-btn-primary" : ""}`}
-                          onClick={() => setShowResubmitModal(true)}
-                          disabled={isSendDisabled}
-                          title={
-                            document.isCheckedOut
-                              ? "Check in the document first before forwarding."
-                              : isSendDisabled
-                                ? "Document is currently in transit."
-                                : ""
-                          }
+                          className="doc-action-btn"
+                          onClick={() => setShowReviewModal(true)}
                         >
-                          <i
-                            className={`bi ${isReturnedOrDisapproved ? "bi-arrow-repeat" : "bi-forward-fill"}`}
-                          ></i>
-                          {isReturnedOrDisapproved
-                            ? "Resubmit for Review"
-                            : "Forward Document"}
+                          <i className="bi bi-eye"></i>
+                          Review Document
                         </button>
                       )}
+                    </>
+                  )}
 
-                    {urlData?.signedUrl && (
-                      <a
-                        href={urlData.signedUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="doc-action-btn doc-action-btn-download"
-                      >
-                        <i className="bi bi-download"></i>
-                        Download
-                      </a>
-                    )}
-
-                    {canReview && (
-                      <button
-                        className="doc-action-btn"
-                        onClick={() => setShowReviewModal(true)}
-                      >
-                        <i className="bi bi-eye"></i>
-                        Review Document
-                      </button>
-                    )}
-                  </>
-                )}
-
-                {document.recordStatus !== "FINAL" &&
+                {document.lifecycle?.dispositionStatus !== "DESTROYED" &&
+                  document.lifecycle?.dispositionStatus !== "ARCHIVED" &&
+                  document.recordStatus !== "FINAL" &&
                   !document.isCheckedOut &&
                   (document.uploadedById === user?.id ||
                     document.originalSenderId === user?.id ||
@@ -410,7 +415,9 @@ export const DocumentDetails: React.FC = () => {
                     </button>
                   )}
 
-                {document.isCheckedOut &&
+                {document.lifecycle?.dispositionStatus !== "DESTROYED" &&
+                  document.lifecycle?.dispositionStatus !== "ARCHIVED" &&
+                  document.isCheckedOut &&
                   (document.checkedOutById === user?.id ||
                     document.checkedOutBy?.id === user?.id) && (
                     <button
@@ -422,49 +429,53 @@ export const DocumentDetails: React.FC = () => {
                     </button>
                   )}
 
-                {canManageDocuments && (
-                  <button
-                    className={`doc-action-btn ${document.isUnderLegalHold ? "doc-action-btn-danger" : ""}`}
-                    onClick={() => {
-                      if (document.isUnderLegalHold) {
-                        setConfirmConfig({
-                          show: true,
-                          title: "Remove Legal Hold",
-                          message:
-                            "Are you sure you want to remove the legal hold?",
-                          onConfirm: () => {
-                            removeLegalHoldMutation.mutate({
-                              documentId: document.id,
-                            });
-                            setConfirmConfig((prev: typeof confirmConfig) => ({
-                              ...prev,
-                              show: false,
-                            }));
-                          },
-                        });
-                      } else {
-                        const reason = window.prompt(
-                          "Enter reason for Legal Hold:",
-                        );
-                        if (reason) {
-                          applyLegalHoldMutation.mutate({
-                            documentId: document.id,
-                            reason,
+                {document.lifecycle?.dispositionStatus !== "DESTROYED" &&
+                  document.lifecycle?.dispositionStatus !== "ARCHIVED" &&
+                  canManageDocuments && (
+                    <button
+                      className={`doc-action-btn ${document.lifecycle?.isUnderLegalHold ? "doc-action-btn-danger" : ""}`}
+                      onClick={() => {
+                        if (document.lifecycle?.isUnderLegalHold) {
+                          setConfirmConfig({
+                            show: true,
+                            title: "Remove Legal Hold",
+                            message:
+                              "Are you sure you want to remove the legal hold?",
+                            onConfirm: () => {
+                              removeLegalHoldMutation.mutate({
+                                documentId: document.id,
+                              });
+                              setConfirmConfig(
+                                (prev: typeof confirmConfig) => ({
+                                  ...prev,
+                                  show: false,
+                                }),
+                              );
+                            },
                           });
+                        } else {
+                          const reason = window.prompt(
+                            "Enter reason for Legal Hold:",
+                          );
+                          if (reason) {
+                            applyLegalHoldMutation.mutate({
+                              documentId: document.id,
+                              reason,
+                            });
+                          }
                         }
+                      }}
+                      disabled={
+                        applyLegalHoldMutation.isPending ||
+                        removeLegalHoldMutation.isPending
                       }
-                    }}
-                    disabled={
-                      applyLegalHoldMutation.isPending ||
-                      removeLegalHoldMutation.isPending
-                    }
-                  >
-                    <i className="bi bi-shield-lock"></i>
-                    {document.isUnderLegalHold
-                      ? "Remove Legal Hold"
-                      : "Apply Legal Hold"}
-                  </button>
-                )}
+                    >
+                      <i className="bi bi-shield-lock"></i>
+                      {document.lifecycle?.isUnderLegalHold
+                        ? "Remove Legal Hold"
+                        : "Apply Legal Hold"}
+                    </button>
+                  )}
               </div>
 
               {/* Lifecycle */}
@@ -494,10 +505,11 @@ export const DocumentDetails: React.FC = () => {
               </div>
 
               {/* Disposition blocks */}
-              {canManageDocuments && !document.isUnderLegalHold && (
+              {canManageDocuments && !document.lifecycle?.isUnderLegalHold && (
                 <>
                   {document.lifecycleStatus === "Ready" &&
-                    document.dispositionStatus !== "PENDING_DISPOSITION" && (
+                    document.lifecycle?.dispositionStatus !==
+                      "PENDING_DISPOSITION" && (
                       <div className="disposition-block disposition-ready mt-3">
                         <div className="disposition-header">
                           <i className="bi bi-clock-history disposition-icon"></i>
@@ -507,7 +519,9 @@ export const DocumentDetails: React.FC = () => {
                         </div>
                         <p className="disposition-text">
                           Retention period elapsed. Action:{" "}
-                          <strong>{document.dispositionActionSnapshot}</strong>
+                          <strong>
+                            {document.lifecycle?.dispositionActionSnapshot}
+                          </strong>
                         </p>
                         <div className="d-flex flex-column gap-2">
                           <button
@@ -572,17 +586,21 @@ export const DocumentDetails: React.FC = () => {
                       </div>
                     )}
 
-                  {document.dispositionStatus === "PENDING_DISPOSITION" && (
+                  {document.lifecycle?.dispositionStatus ===
+                    "PENDING_DISPOSITION" && (
                     <div className="disposition-block disposition-pending mt-3">
                       <div className="disposition-header">
                         <i className="bi bi-hourglass-split disposition-icon"></i>
                         <h6 className="disposition-title">Pending Approval</h6>
                       </div>
                       <p className="disposition-text">
-                        <strong>{document.dispositionActionSnapshot}</strong>{" "}
+                        <strong>
+                          {document.lifecycle?.dispositionActionSnapshot}
+                        </strong>{" "}
                         disposition request is awaiting approval.
                       </p>
-                      {user?.id === document.dispositionRequesterId ? (
+                      {user?.id ===
+                      document.lifecycle?.dispositionRequesterId ? (
                         <button
                           className="btn btn-outline-secondary w-100 disposition-btn"
                           onClick={() => {
@@ -668,10 +686,11 @@ export const DocumentDetails: React.FC = () => {
               )}
 
               {/* Disposition Certificate */}
-              {(document.dispositionStatus === "DESTROYED" ||
-                document.dispositionStatus === "ARCHIVED") &&
+              {(document.lifecycle?.dispositionStatus === "DESTROYED" ||
+                document.lifecycle?.dispositionStatus === "ARCHIVED") &&
                 (() => {
-                  const isArchived = document.dispositionStatus === "ARCHIVED";
+                  const isArchived =
+                    document.lifecycle?.dispositionStatus === "ARCHIVED";
                   const certClass = isArchived
                     ? "cert-archive"
                     : "cert-destroy";
@@ -705,12 +724,12 @@ export const DocumentDetails: React.FC = () => {
                           </span>
                         </div>
 
-                        {document.dispositionDate && (
+                        {document.lifecycle?.dispositionDate && (
                           <div className="disposition-cert-row">
                             <strong>Date</strong>
                             <span>
                               {new Date(
-                                document.dispositionDate,
+                                document.lifecycle?.dispositionDate,
                               ).toLocaleDateString(undefined, {
                                 year: "numeric",
                                 month: "long",
@@ -720,10 +739,12 @@ export const DocumentDetails: React.FC = () => {
                           </div>
                         )}
 
-                        {document.dispositionActionSnapshot && (
+                        {document.lifecycle?.dispositionActionSnapshot && (
                           <div className="disposition-cert-row">
                             <strong>Action</strong>
-                            <span>{document.dispositionActionSnapshot}</span>
+                            <span>
+                              {document.lifecycle?.dispositionActionSnapshot}
+                            </span>
                           </div>
                         )}
 
@@ -754,7 +775,7 @@ export const DocumentDetails: React.FC = () => {
       )}
 
       {/* ── Version History ── */}
-      {document.dispositionStatus !== "DESTROYED" && (
+      {document.lifecycle?.dispositionStatus !== "DESTROYED" && (
         <VersionHistoryTable
           versions={document.versions || []}
           onDownload={async (versionId) => {

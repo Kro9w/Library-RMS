@@ -19,13 +19,13 @@ export const ArchivesPage: React.FC = () => {
   const [search, setSearch] = useState("");
   const pageSize = 10;
 
-  const { data: archivedData, isLoading: isLoadingArchived } =
+  const { data: _archivedData, isLoading: isLoadingArchived } =
     trpc.archives.getArchivedDocuments.useQuery(
       { page, pageSize, search },
       { enabled: activeTab === "archives" },
     );
 
-  const { data: destroyedData, isLoading: isLoadingDestroyed } =
+  const { data: _destroyedData, isLoading: isLoadingDestroyed } =
     trpc.archives.getDestroyedDocuments.useQuery(
       { page, pageSize, search },
       { enabled: activeTab === "destruction" },
@@ -77,7 +77,9 @@ export const ArchivesPage: React.FC = () => {
 
   const isLoading =
     activeTab === "archives" ? isLoadingArchived : isLoadingDestroyed;
-  const data = activeTab === "archives" ? archivedData : destroyedData;
+  const archivedData: any = _archivedData;
+  const destroyedData: any = _destroyedData;
+  const data: any = activeTab === "archives" ? archivedData : destroyedData;
   const documents = data?.documents || [];
   const totalCount = data?.totalCount || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
@@ -290,17 +292,21 @@ export const ArchivesPage: React.FC = () => {
                                   )}
                                 </td>
                                 <td>
-                                  {doc.dispositionDate ? (
+                                  {doc.lifecycle?.dispositionDate ? (
                                     <div className="archives-date">
                                       <div className="archives-date-primary">
                                         {format(
-                                          new Date(doc.dispositionDate),
+                                          new Date(
+                                            doc.lifecycle?.dispositionDate,
+                                          ),
                                           "MMM d, yyyy",
                                         )}
                                       </div>
                                       <div className="archives-date-secondary">
                                         {format(
-                                          new Date(doc.dispositionDate),
+                                          new Date(
+                                            doc.lifecycle?.dispositionDate,
+                                          ),
                                           "h:mm a",
                                         )}
                                       </div>
