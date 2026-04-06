@@ -511,59 +511,32 @@ export const DocumentDetails: React.FC = () => {
                     document.lifecycle?.dispositionStatus !==
                       "PENDING_DISPOSITION" && (
                       <div className="disposition-block disposition-ready mt-3">
-                        <div className="disposition-header">
-                          <i className="bi bi-clock-history disposition-icon"></i>
-                          <h6 className="disposition-title">
-                            Disposition Ready
+                        <div className="disposition-block-header">
+                          <div className="disposition-block-icon">
+                            <i className="bi bi-clock-history" />
+                          </div>
+                          <h6 className="disposition-block-title">
+                            Ready for Disposition
                           </h6>
                         </div>
-                        <p className="disposition-text">
-                          Retention period elapsed. Action:{" "}
-                          <strong>
-                            {document.lifecycle?.dispositionActionSnapshot}
-                          </strong>
-                        </p>
-                        <div className="d-flex flex-column gap-2">
-                          <button
-                            className="btn btn-outline-secondary w-100 disposition-btn"
-                            onClick={() => {
-                              setConfirmConfig({
-                                show: true,
-                                title: "Request Disposition",
-                                message:
-                                  "Request approval to execute disposition?",
-                                onConfirm: () => {
-                                  requestDispositionMutation.mutate({
-                                    documentId: document.id,
-                                  });
-                                  setConfirmConfig(
-                                    (prev: typeof confirmConfig) => ({
-                                      ...prev,
-                                      show: false,
-                                    }),
-                                  );
-                                },
-                              });
-                            }}
-                            disabled={requestDispositionMutation.isPending}
-                          >
-                            {requestDispositionMutation.isPending
-                              ? "Requesting…"
-                              : "Request Disposition Approval"}
-                          </button>
-
-                          {(canManageInstitution ||
-                            (canManageDocuments && highestRoleLevel <= 1)) && (
+                        <div className="disposition-block-body">
+                          <p className="disposition-block-desc">
+                            Retention period elapsed. Scheduled action:{" "}
+                            <strong>
+                              {document.lifecycle?.dispositionActionSnapshot}
+                            </strong>
+                          </p>
+                          <div className="disposition-block-actions">
                             <button
-                              className="btn btn-outline-primary w-100 disposition-btn"
+                              className="disposition-action-btn"
                               onClick={() => {
                                 setConfirmConfig({
                                   show: true,
-                                  title: "Execute Disposition Directly",
+                                  title: "Request Disposition",
                                   message:
-                                    "Execute disposition? This is irreversible.",
+                                    "Request approval to execute disposition?",
                                   onConfirm: () => {
-                                    approveDispositionMutation.mutate({
+                                    requestDispositionMutation.mutate({
                                       documentId: document.id,
                                     });
                                     setConfirmConfig(
@@ -575,13 +548,46 @@ export const DocumentDetails: React.FC = () => {
                                   },
                                 });
                               }}
-                              disabled={approveDispositionMutation.isPending}
+                              disabled={requestDispositionMutation.isPending}
                             >
-                              {approveDispositionMutation.isPending
-                                ? "Executing…"
-                                : "Execute Disposition Directly"}
+                              <i className="bi bi-send" />
+                              {requestDispositionMutation.isPending
+                                ? "Requesting…"
+                                : "Request Disposition Approval"}
                             </button>
-                          )}
+                            {(canManageInstitution ||
+                              (canManageDocuments &&
+                                highestRoleLevel <= 1)) && (
+                              <button
+                                className="disposition-action-btn btn-approve"
+                                onClick={() => {
+                                  setConfirmConfig({
+                                    show: true,
+                                    title: "Execute Disposition Directly",
+                                    message:
+                                      "Execute disposition? This is irreversible.",
+                                    onConfirm: () => {
+                                      approveDispositionMutation.mutate({
+                                        documentId: document.id,
+                                      });
+                                      setConfirmConfig(
+                                        (prev: typeof confirmConfig) => ({
+                                          ...prev,
+                                          show: false,
+                                        }),
+                                      );
+                                    },
+                                  });
+                                }}
+                                disabled={approveDispositionMutation.isPending}
+                              >
+                                <i className="bi bi-lightning-charge" />
+                                {approveDispositionMutation.isPending
+                                  ? "Executing…"
+                                  : "Execute Directly"}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}
@@ -589,97 +595,108 @@ export const DocumentDetails: React.FC = () => {
                   {document.lifecycle?.dispositionStatus ===
                     "PENDING_DISPOSITION" && (
                     <div className="disposition-block disposition-pending mt-3">
-                      <div className="disposition-header">
-                        <i className="bi bi-hourglass-split disposition-icon"></i>
-                        <h6 className="disposition-title">Pending Approval</h6>
-                      </div>
-                      <p className="disposition-text">
-                        <strong>
-                          {document.lifecycle?.dispositionActionSnapshot}
-                        </strong>{" "}
-                        disposition request is awaiting approval.
-                      </p>
-                      {user?.id ===
-                      document.lifecycle?.dispositionRequesterId ? (
-                        <button
-                          className="btn btn-outline-secondary w-100 disposition-btn"
-                          onClick={() => {
-                            setConfirmConfig({
-                              show: true,
-                              title: "Cancel Disposition Request",
-                              message: "Cancel disposition request?",
-                              onConfirm: () => {
-                                rejectDispositionMutation.mutate({
-                                  documentId: document.id,
-                                });
-                                setConfirmConfig(
-                                  (prev: typeof confirmConfig) => ({
-                                    ...prev,
-                                    show: false,
-                                  }),
-                                );
-                              },
-                            });
-                          }}
-                          disabled={rejectDispositionMutation.isPending}
-                        >
-                          Cancel Request
-                        </button>
-                      ) : (
-                        <div className="d-flex gap-2">
-                          <button
-                            className="btn btn-outline-primary flex-grow-1 disposition-btn"
-                            onClick={() => {
-                              setConfirmConfig({
-                                show: true,
-                                title: "Execute Disposition",
-                                message:
-                                  "Approve and execute? This is irreversible.",
-                                onConfirm: () => {
-                                  approveDispositionMutation.mutate({
-                                    documentId: document.id,
-                                  });
-                                  setConfirmConfig(
-                                    (prev: typeof confirmConfig) => ({
-                                      ...prev,
-                                      show: false,
-                                    }),
-                                  );
-                                },
-                              });
-                            }}
-                            disabled={approveDispositionMutation.isPending}
-                          >
-                            {approveDispositionMutation.isPending
-                              ? "Executing…"
-                              : "Approve & Execute"}
-                          </button>
-                          <button
-                            className="btn btn-outline-danger flex-grow-1 disposition-btn"
-                            onClick={() => {
-                              setConfirmConfig({
-                                show: true,
-                                title: "Reject Disposition",
-                                message: "Reject disposition request?",
-                                onConfirm: () => {
-                                  rejectDispositionMutation.mutate({
-                                    documentId: document.id,
-                                  });
-                                  setConfirmConfig(
-                                    (prev: typeof confirmConfig) => ({
-                                      ...prev,
-                                      show: false,
-                                    }),
-                                  );
-                                },
-                              });
-                            }}
-                            disabled={rejectDispositionMutation.isPending}
-                          >
-                            Reject
-                          </button>
+                      <div className="disposition-block-header">
+                        <div className="disposition-block-icon">
+                          <i className="bi bi-hourglass-split" />
                         </div>
-                      )}
+                        <h6 className="disposition-block-title">
+                          Pending Approval
+                        </h6>
+                      </div>
+                      <div className="disposition-block-body">
+                        <p className="disposition-block-desc">
+                          <strong>
+                            {document.lifecycle?.dispositionActionSnapshot}
+                          </strong>{" "}
+                          disposition request is awaiting a second approver.
+                        </p>
+                        <div className="disposition-block-actions">
+                          {user?.id ===
+                          document.lifecycle?.dispositionRequesterId ? (
+                            <button
+                              className="disposition-action-btn"
+                              onClick={() => {
+                                setConfirmConfig({
+                                  show: true,
+                                  title: "Cancel Disposition Request",
+                                  message: "Cancel disposition request?",
+                                  onConfirm: () => {
+                                    rejectDispositionMutation.mutate({
+                                      documentId: document.id,
+                                    });
+                                    setConfirmConfig(
+                                      (prev: typeof confirmConfig) => ({
+                                        ...prev,
+                                        show: false,
+                                      }),
+                                    );
+                                  },
+                                });
+                              }}
+                              disabled={rejectDispositionMutation.isPending}
+                            >
+                              <i className="bi bi-x-circle" />
+                              Cancel Request
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                className="disposition-action-btn btn-approve"
+                                onClick={() => {
+                                  setConfirmConfig({
+                                    show: true,
+                                    title: "Execute Disposition",
+                                    message:
+                                      "Approve and execute? This is irreversible.",
+                                    onConfirm: () => {
+                                      approveDispositionMutation.mutate({
+                                        documentId: document.id,
+                                      });
+                                      setConfirmConfig(
+                                        (prev: typeof confirmConfig) => ({
+                                          ...prev,
+                                          show: false,
+                                        }),
+                                      );
+                                    },
+                                  });
+                                }}
+                                disabled={approveDispositionMutation.isPending}
+                              >
+                                <i className="bi bi-check-circle" />
+                                {approveDispositionMutation.isPending
+                                  ? "Executing…"
+                                  : "Approve & Execute"}
+                              </button>
+                              <button
+                                className="disposition-action-btn btn-reject"
+                                onClick={() => {
+                                  setConfirmConfig({
+                                    show: true,
+                                    title: "Reject Disposition",
+                                    message: "Reject disposition request?",
+                                    onConfirm: () => {
+                                      rejectDispositionMutation.mutate({
+                                        documentId: document.id,
+                                      });
+                                      setConfirmConfig(
+                                        (prev: typeof confirmConfig) => ({
+                                          ...prev,
+                                          show: false,
+                                        }),
+                                      );
+                                    },
+                                  });
+                                }}
+                                disabled={rejectDispositionMutation.isPending}
+                              >
+                                <i className="bi bi-x-circle" />
+                                Reject
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </>

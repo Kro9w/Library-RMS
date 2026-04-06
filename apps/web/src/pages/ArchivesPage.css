@@ -16,7 +16,7 @@
   letter-spacing: -0.3px;
 }
 
-/* ── Tab strip ── */
+/* ── Tab strip — now top-right ── */
 .archives-tab-strip {
   display: flex;
   align-items: center;
@@ -25,8 +25,8 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 3px;
-  margin-bottom: 20px;
   width: fit-content;
+  flex-shrink: 0;
 }
 
 .archives-tab {
@@ -63,6 +63,146 @@
 
 .archives-tab.active.tab-destruction {
   color: var(--danger);
+}
+
+/* ── Stats + Chart row ── */
+.archives-overview-row {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+/* ── Stats chips ── */
+.archives-stat-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.archives-stat-chip-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.archives-stat-chip-icon.icon-archive {
+  background-color: var(--info-subtle);
+  color: var(--info);
+}
+
+.archives-stat-chip-icon.icon-destroy {
+  background-color: var(--danger-subtle);
+  color: var(--danger);
+}
+
+.archives-stat-chip-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.archives-stat-chip-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+/* ── Document type stacked bar chart ── */
+.archives-type-chart-card {
+  flex: 1;
+  min-width: 200px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.archives-type-chart-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.archives-stacked-bar {
+  height: 10px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  display: flex;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-muted);
+}
+
+.archives-stacked-segment {
+  height: 100%;
+  transition: width 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.archives-stacked-segment:first-child {
+  border-radius: var(--radius-full) 0 0 var(--radius-full);
+}
+
+.archives-stacked-segment:last-child {
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+}
+
+.archives-stacked-segment:only-child {
+  border-radius: var(--radius-full);
+}
+
+.archives-type-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.archives-type-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.archives-type-legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.archives-type-legend-name {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.archives-type-legend-count {
+  color: var(--text-muted);
+  font-size: 10px;
 }
 
 /* ── Filters bar ── */
@@ -115,62 +255,6 @@
   outline: none;
   border-color: var(--brand-muted);
   box-shadow: var(--ring);
-}
-
-/* ── Stats strip ── */
-.archives-stats-strip {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-
-.archives-stat-chip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-xs);
-  font-size: 13px;
-}
-
-.archives-stat-chip-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  flex-shrink: 0;
-}
-
-.archives-stat-chip-icon.icon-archive {
-  background-color: var(--info-subtle);
-  color: var(--info);
-}
-
-.archives-stat-chip-icon.icon-destroy {
-  background-color: var(--danger-subtle);
-  color: var(--danger);
-}
-
-.archives-stat-chip-label {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.archives-stat-chip-value {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-primary);
-  letter-spacing: -0.3px;
 }
 
 /* ── Document group accordion ── */

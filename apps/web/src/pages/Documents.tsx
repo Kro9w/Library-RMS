@@ -3,7 +3,6 @@ import { trpc } from "../trpc";
 import { keepPreviousData } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { ConfirmModal } from "../components/ConfirmModal";
-// Lazy loaded modals
 
 import "./Documents.css";
 import { formatUserName } from "../utils/user";
@@ -20,7 +19,6 @@ import {
 
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
-// Lazy imports for heavy modals
 const UploadModal = React.lazy(() =>
   import("../components/UploadModal").then((m) => ({ default: m.UploadModal })),
 );
@@ -45,16 +43,170 @@ const CheckInModal = React.lazy(() =>
   })),
 );
 
-// This type now correctly includes fileType and fileSize
 type Document = AppRouterOutputs["documents"]["getAll"]["documents"][0];
 
-// ------------------------------
+// Shared table row component for both recent and grouped views
+interface DocRowProps {
+  doc: Document;
+  showTypePill?: boolean; // true = recent view, false = grouped view
+  isUploader: (id: string) => boolean;
+  canManageDocuments: boolean;
+  currentUserId?: string;
+  onForwardClick: (doc: Document) => void;
+  onReviewClick: (doc: Document) => void;
+  onDeleteClick: (doc: Document) => void;
+  onCheckOutClick: (doc: Document) => void;
+  onCheckInClick: (doc: Document) => void;
+  onDiscardCheckOutClick: (doc: Document) => void;
+}
+
+const DocRow: React.FC<DocRowProps> = ({
+  doc,
+  showTypePill = false,
+  isUploader,
+  canManageDocuments,
+  currentUserId,
+  onForwardClick,
+  onReviewClick,
+  onDeleteClick,
+  onCheckOutClick,
+  onCheckInClick,
+  onDiscardCheckOutClick,
+}) => {
+  return (
+    <tr>
+      <td style={{ width: showTypePill ? "auto" : "36%" }}>
+        {showTypePill ? (
+          /* Recent docs: original layout with file icon + type pill + classification */
+          <div className="d-flex align-items-center gap-2">
+            <FileIcon fileType={doc.fileType} fileName={doc.title} />
+            <div className="d-flex flex-column gap-1 align-items-start">
+              <DocumentTypePill documentType={doc.documentType} />
+              <ClassificationBadge
+                classification={doc.classification as ClassificationType}
+              />
+            </div>
+          </div>
+        ) : (
+          /* Grouped docs: type dot + title stacked with classification below */
+          <div
+            className="d-flex align-items-center gap-2"
+            style={{ minWidth: 0 }}
+          >
+            <FileIcon fileType={doc.fileType} fileName={doc.title} />
+            <div style={{ minWidth: 0 }}>
+              <Link to={`/documents/${doc.id}`} className="doc-title-main">
+                {doc.title}
+              </Link>
+              <div className="doc-title-sub">
+                <ClassificationBadge
+                  classification={doc.classification as ClassificationType}
+                />
+                {doc.isCheckedOut && (
+                  <i
+                    className="bi bi-lock-fill text-danger"
+                    style={{ fontSize: "10px" }}
+                    title="Checked Out"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </td>
+
+      {showTypePill && (
+        <td>
+          <Link
+            to={`/documents/${doc.id}`}
+            className="fw-bold text-decoration-none"
+            style={{ fontSize: "13px", color: "var(--text-primary)" }}
+          >
+            {doc.title}
+          </Link>
+        </td>
+      )}
+
+      <td style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
+        {formatUserName(doc.uploadedBy)}
+      </td>
+      <td>
+        <StatusBadge status={doc.lifecycleStatus} />
+      </td>
+      <td
+        style={{
+          fontSize: "12px",
+          color: "var(--text-muted)",
+          fontFamily: "var(--font-mono)",
+        }}
+      >
+        {doc.controlNumber || "—"}
+      </td>
+      <td
+        style={{
+          fontSize: "12px",
+          color: "var(--text-muted)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {new Date(doc.createdAt).toLocaleDateString()}
+      </td>
+      <td>
+        <div className="d-flex align-items-center justify-content-end gap-2">
+          {showTypePill && doc.isCheckedOut && (
+            <i
+              className="bi bi-lock-fill text-danger me-1"
+              title="Checked Out"
+            />
+          )}
+          <DocumentActionsMenu
+            doc={doc}
+            isUploader={isUploader}
+            canManageDocuments={canManageDocuments}
+            onForwardClick={onForwardClick}
+            onSendClick={(doc) => {
+              window.location.href = `/documents/${doc.id}/send`;
+            }}
+            onReviewClick={onReviewClick}
+            onDeleteClick={onDeleteClick}
+            onCheckOutClick={onCheckOutClick}
+            onCheckInClick={onCheckInClick}
+            onDiscardCheckOutClick={onDiscardCheckOutClick}
+            currentUserId={currentUserId}
+          />
+        </div>
+      </td>
+    </tr>
+  );
+};
+
+const TABLE_HEADERS = (
+  <tr>
+    <th>Document</th>
+    <th>Owner</th>
+    <th>Lifecycle</th>
+    <th>Control No.</th>
+    <th>Date</th>
+    <th style={{ textAlign: "right" }}>Actions</th>
+  </tr>
+);
+
+const RECENT_TABLE_HEADERS = (
+  <tr>
+    <th>Type</th>
+    <th>Title</th>
+    <th>Owner</th>
+    <th>Lifecycle</th>
+    <th>Control No.</th>
+    <th>Date</th>
+    <th style={{ textAlign: "right" }}>Actions</th>
+  </tr>
+);
 
 const Documents: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  // Type filter correctly for the TRPC input
   const [filter, setFilter] = useState<"all" | "mine">("all");
   const [lifecycleFilter, setLifecycleFilter] = useState<"all" | "ready">(
     "all",
@@ -68,13 +220,10 @@ const Documents: React.FC = () => {
   const [showCheckOutModal, setShowCheckOutModal] = useState(false);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
 
-  // Pagination State - Re-enable proper pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20; // Revert from 1000 to a reasonable number
+  const itemsPerPage = 20;
 
   const utils = trpc.useUtils();
-
-  // Use the new custom hook
   const { data: userData } = trpc.user.getMe.useQuery();
   const { canManageDocuments, isUploader } = usePermissions();
 
@@ -91,12 +240,11 @@ const Documents: React.FC = () => {
     placeholderData: keepPreviousData,
   });
 
-  // Recent documents query
   const recentQueryInput = {
     filter,
     page: 1,
     perPage: 5,
-    search: undefined, // Always show top 5 regardless of search terms
+    search: undefined,
     lifecycleFilter: lifecycleFilter === "all" ? undefined : lifecycleFilter,
   };
 
@@ -116,44 +264,34 @@ const Documents: React.FC = () => {
   const documents = useMemo(() => data?.documents || [], [data?.documents]);
 
   const groupedDocuments = useMemo(() => {
-    const groups: Record<string, Document[]> = {};
-
+    const groups: Record<string, { docs: Document[]; color?: string }> = {};
     documents.forEach((doc: Document) => {
       const typeName = doc.documentType?.name || "Uncategorized";
       if (!groups[typeName]) {
-        groups[typeName] = [];
+        groups[typeName] = { docs: [], color: doc.documentType?.color };
       }
-      groups[typeName].push(doc);
+      groups[typeName].docs.push(doc);
     });
-
     return groups;
   }, [documents]);
 
   const [openAccordions, setOpenAccordions] = useState<Record<string, boolean>>(
     {},
   );
-
   const [documentToDiscard, setDocumentToDiscard] = useState<Document | null>(
     null,
   );
 
   const toggleAccordion = (groupName: string) => {
-    setOpenAccordions((prev) => ({
-      ...prev,
-      [groupName]: !prev[groupName],
-    }));
+    setOpenAccordions((prev) => ({ ...prev, [groupName]: !prev[groupName] }));
   };
+
   const recentDocuments = recentData?.documents || [];
 
   const deleteMutation = trpc.documents.deleteDocument.useMutation({
     onMutate: async ({ id }) => {
-      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
       await utils.documents.getAll.cancel(queryInput);
-
-      // Snapshot the previous value
       const previousData = utils.documents.getAll.getData(queryInput);
-
-      // Optimistically update to the new value
       if (previousData) {
         utils.documents.getAll.setData(queryInput, (old) => {
           if (!old) return old;
@@ -164,18 +302,14 @@ const Documents: React.FC = () => {
           };
         });
       }
-
-      // Return a context object with the snapshotted value
       return { previousData };
     },
     onError: (_err, _newTodo, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
       if (context?.previousData) {
         utils.documents.getAll.setData(queryInput, context.previousData);
       }
     },
     onSettled: () => {
-      // Always refetch after error or success:
       utils.documents.getAll.invalidate();
     },
   });
@@ -227,24 +361,30 @@ const Documents: React.FC = () => {
     setDocumentToDiscard(doc);
   };
 
-  // @ts-ignore
   const confirmDiscardCheckOut = () => {
     if (documentToDiscard) {
       discardCheckOutMutation.mutate(
         { documentId: documentToDiscard.id },
-        {
-          onSettled: () => setDocumentToDiscard(null),
-        },
+        { onSettled: () => setDocumentToDiscard(null) },
       );
     }
   };
-  // ----------------------------------------------------
-
-  // Pagination Logic removed since we show everything in the accordion
 
   const totalPages = data?.totalCount
     ? Math.ceil(data.totalCount / itemsPerPage)
     : 1;
+
+  const sharedRowProps = {
+    isUploader,
+    canManageDocuments,
+    currentUserId: userData?.id,
+    onForwardClick: handleSendClick,
+    onReviewClick: handleReviewClick,
+    onDeleteClick: handleDeleteClick,
+    onCheckOutClick: handleCheckOutClick,
+    onCheckInClick: handleCheckInClick,
+    onDiscardCheckOutClick: handleDiscardCheckOutClick,
+  };
 
   if (
     (isLoading && !data) ||
@@ -294,113 +434,44 @@ const Documents: React.FC = () => {
         </div>
       </div>
 
-      {/* Recent Documents Section */}
+      {/* ── Recent Documents ── */}
       <div className="mb-4">
         <div className="accordion-item mb-3">
           <div className="accordion-header w-100 text-start d-flex justify-content-between align-items-center non-clickable">
             <span>Recent Documents</span>
+            <span className="doc-count">{recentDocuments.length}</span>
           </div>
           <div className="accordion-content">
-            <div className="card document-table-card mt-0 border-top-0 rounded-top-0">
-              <div className="card-body p-0">
-                <table className="table mb-0">
-                  <thead>
+            <div
+              className="document-table-card"
+              style={{ border: "none", borderRadius: 0, boxShadow: "none" }}
+            >
+              <table className="table mb-0">
+                <thead>{RECENT_TABLE_HEADERS}</thead>
+                <tbody>
+                  {recentDocuments.map((doc: Document) => (
+                    <DocRow
+                      key={doc.id}
+                      doc={doc}
+                      showTypePill
+                      {...sharedRowProps}
+                    />
+                  ))}
+                  {recentDocuments.length === 0 && (
                     <tr>
-                      <th>Type</th>
-                      <th>Title</th>
-                      <th>Owner</th>
-                      <th>Lifecycle</th>
-                      <th>Control Number</th>
-                      <th>Date</th>
-                      <th>Actions</th>
+                      <td colSpan={7} className="text-center text-muted py-4">
+                        No recent documents found.
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {recentDocuments.map((doc: Document) => (
-                      <tr key={doc.id}>
-                        <td>
-                          <div className="d-flex align-items-center gap-2">
-                            <FileIcon
-                              fileType={doc.fileType}
-                              fileName={doc.title}
-                            />
-                            <div className="d-flex flex-column gap-1 align-items-start">
-                              <DocumentTypePill
-                                documentType={doc.documentType}
-                              />
-                              <ClassificationBadge
-                                classification={
-                                  doc.classification as ClassificationType
-                                }
-                              />
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <Link
-                            to={`/documents/${doc.id}`}
-                            className="fw-bold text-decoration-none"
-                          >
-                            {doc.title}
-                          </Link>
-                        </td>
-                        <td className="text-muted">
-                          {formatUserName(doc.uploadedBy)}
-                        </td>
-                        <td>
-                          <StatusBadge status={doc.lifecycleStatus} />
-                        </td>
-                        <td className="text-muted">
-                          {doc.controlNumber || "—"}
-                        </td>
-                        <td className="text-muted">
-                          {new Date(doc.createdAt).toLocaleDateString()}
-                        </td>
-                        <td>
-                          <div className="d-flex align-items-center justify-content-end gap-2">
-                            {doc.isCheckedOut && (
-                              <i
-                                className="bi bi-lock-fill text-danger me-1"
-                                title="Checked Out"
-                              ></i>
-                            )}
-                            <DocumentActionsMenu
-                              doc={doc}
-                              isUploader={isUploader}
-                              canManageDocuments={canManageDocuments}
-                              onForwardClick={handleSendClick}
-                              onSendClick={(doc) => {
-                                window.location.href = `/documents/${doc.id}/send`;
-                              }}
-                              onReviewClick={handleReviewClick}
-                              onDeleteClick={handleDeleteClick}
-                              onCheckOutClick={handleCheckOutClick}
-                              onCheckInClick={handleCheckInClick}
-                              onDiscardCheckOutClick={
-                                handleDiscardCheckOutClick
-                              }
-                              currentUserId={userData?.id}
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {recentDocuments.length === 0 && (
-                      <tr>
-                        <td colSpan={7} className="text-center text-muted py-4">
-                          No recent documents found.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Grouped Documents by Type Accordions */}
+      {/* ── Grouped by Document Type ── */}
       <div className="mb-4">
         {Object.entries(groupedDocuments)
           .sort(([a], [b]) => {
@@ -408,141 +479,74 @@ const Documents: React.FC = () => {
             if (b === "Uncategorized") return -1;
             return a.localeCompare(b);
           })
-          .map(([groupName, groupDocs]) => {
+          .map(([groupName, { docs: groupDocs, color }]) => {
             const isOpen = openAccordions[groupName];
+            const dotColor = color ? `#${color}` : "var(--text-muted)";
+
             return (
               <div className="accordion-item mb-3" key={groupName}>
                 <button
                   className={`accordion-header w-100 text-start d-flex justify-content-between align-items-center ${!isOpen ? "collapsed" : ""}`}
                   onClick={() => toggleAccordion(groupName)}
                 >
-                  <span>{groupName}</span>
-                  <div className="d-flex align-items-center gap-3">
+                  <span className="d-flex align-items-center gap-2">
                     <span
-                      className="text-muted"
-                      style={{ fontSize: "0.9rem", fontWeight: "normal" }}
-                    >
-                      Count: {groupDocs.length}
-                    </span>
+                      className="doc-group-type-dot"
+                      style={{ backgroundColor: dotColor }}
+                    />
+                    {groupName}
+                  </span>
+                  <div className="d-flex align-items-center gap-3">
+                    <span className="doc-count">{groupDocs.length}</span>
                     <i
                       className={`bi bi-chevron-${isOpen ? "up" : "down"}`}
-                    ></i>
+                      style={{ color: "var(--text-muted)", fontSize: "12px" }}
+                    />
                   </div>
                 </button>
 
                 {isOpen && (
                   <div className="accordion-content">
-                    <div className="card document-table-card mt-0 border-top-0 rounded-top-0">
-                      <div className="card-body p-0">
-                        <table className="table mb-0">
-                          <thead>
+                    <div
+                      className="document-table-card"
+                      style={{
+                        border: "none",
+                        borderRadius: 0,
+                        boxShadow: "none",
+                      }}
+                    >
+                      <table className="table mb-0">
+                        <thead>{TABLE_HEADERS}</thead>
+                        <tbody>
+                          {groupDocs.length === 0 ? (
                             <tr>
-                              <th>Type</th>
-                              <th>Title</th>
-                              <th>Owner</th>
-                              <th>Lifecycle</th>
-                              <th>Control Number</th>
-                              <th>Date</th>
-                              <th>Actions</th>
+                              <td
+                                colSpan={6}
+                                className="text-center text-muted py-4"
+                              >
+                                No documents found in this category.
+                              </td>
                             </tr>
-                          </thead>
-                          <tbody>
-                            {groupDocs.length === 0 ? (
-                              <tr>
-                                <td
-                                  colSpan={7}
-                                  className="text-center text-muted py-4"
-                                >
-                                  No documents found in this category.
-                                </td>
-                              </tr>
-                            ) : (
-                              groupDocs.map((doc: Document) => (
-                                <tr key={doc.id}>
-                                  <td>
-                                    <div className="d-flex align-items-center gap-2">
-                                      <FileIcon
-                                        fileType={doc.fileType}
-                                        fileName={doc.title}
-                                      />
-                                      <div className="d-flex flex-column gap-1 align-items-start">
-                                        <DocumentTypePill
-                                          documentType={doc.documentType}
-                                        />
-                                        <ClassificationBadge
-                                          classification={
-                                            doc.classification as ClassificationType
-                                          }
-                                        />
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td>
-                                    <Link
-                                      to={`/documents/${doc.id}`}
-                                      className="fw-bold text-decoration-none"
-                                    >
-                                      {doc.title}
-                                    </Link>
-                                  </td>
-                                  <td className="text-muted">
-                                    {formatUserName(doc.uploadedBy)}
-                                  </td>
-                                  <td>
-                                    <StatusBadge status={doc.lifecycleStatus} />
-                                  </td>
-                                  <td className="text-muted">
-                                    {doc.controlNumber || "—"}
-                                  </td>
-                                  <td className="text-muted">
-                                    {new Date(
-                                      doc.createdAt,
-                                    ).toLocaleDateString()}
-                                  </td>
-                                  <td>
-                                    <div className="d-flex align-items-center justify-content-end gap-2">
-                                      {doc.isCheckedOut && (
-                                        <i
-                                          className="bi bi-lock-fill text-danger me-1"
-                                          title="Checked Out"
-                                        ></i>
-                                      )}
-                                      <DocumentActionsMenu
-                                        doc={doc}
-                                        isUploader={isUploader}
-                                        canManageDocuments={canManageDocuments}
-                                        onForwardClick={handleSendClick}
-                                        onSendClick={(doc) => {
-                                          window.location.href = `/documents/${doc.id}/send`;
-                                        }}
-                                        onReviewClick={handleReviewClick}
-                                        onDeleteClick={handleDeleteClick}
-                                        onCheckOutClick={handleCheckOutClick}
-                                        onCheckInClick={handleCheckInClick}
-                                        onDiscardCheckOutClick={
-                                          handleDiscardCheckOutClick
-                                        }
-                                        currentUserId={userData?.id}
-                                      />
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
+                          ) : (
+                            groupDocs.map((doc: Document) => (
+                              <DocRow
+                                key={doc.id}
+                                doc={doc}
+                                showTypePill={false}
+                                {...sharedRowProps}
+                              />
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
-
-                    {/* Note: Pagination is maintained at the API query level, but with accordion grouping it applies to the whole set requested per page. */}
-                    {/* To correctly paginate grouped data, it is recommended to either increase itemsPerPage or maintain global pagination below all accordions. */}
                   </div>
                 )}
               </div>
             );
           })}
 
-        {/* Global Pagination Controls across all fetched documents */}
+        {/* Global pagination */}
         {totalPages > 1 && (
           <div className="d-flex justify-content-center mt-4 pb-3">
             <nav>
@@ -603,6 +607,17 @@ const Documents: React.FC = () => {
         "?
       </ConfirmModal>
 
+      <ConfirmModal
+        show={!!documentToDiscard}
+        onClose={() => setDocumentToDiscard(null)}
+        onConfirm={confirmDiscardCheckOut}
+        title="Discard Check Out"
+        isConfirming={discardCheckOutMutation.isPending}
+      >
+        Are you sure you want to discard the check out for "
+        {documentToDiscard?.title}"?
+      </ConfirmModal>
+
       <Suspense fallback={null}>
         {selectedDoc && showSendModal && (
           <ForwardDocumentModal
@@ -611,7 +626,6 @@ const Documents: React.FC = () => {
             documentId={selectedDoc.id}
           />
         )}
-
         {selectedDoc && showReviewModal && (
           <ReviewDocumentModal
             show={showReviewModal}
@@ -619,14 +633,12 @@ const Documents: React.FC = () => {
             documentId={selectedDoc.id}
           />
         )}
-
         {showUploadModal && (
           <UploadModal
             show={showUploadModal}
             onClose={() => setShowUploadModal(false)}
           />
         )}
-
         {selectedDoc && showCheckOutModal && (
           <CheckOutModal
             show={showCheckOutModal}
@@ -634,7 +646,6 @@ const Documents: React.FC = () => {
             documentId={selectedDoc.id}
           />
         )}
-
         {selectedDoc && showCheckInModal && (
           <CheckInModal
             show={showCheckInModal}

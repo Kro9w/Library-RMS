@@ -11,6 +11,110 @@ const getInitials = (name: string) => {
   return (parts[0]?.[0] ?? "?").toUpperCase();
 };
 
+// ── Stacked Bar Chart ──────────────────────────────────────────────────────
+interface TypeBarChartProps {
+  documents: any[];
+  tab: "archives" | "destruction";
+}
+
+const TypeBarChart: React.FC<TypeBarChartProps> = ({ documents, tab }) => {
+  const [hoveredType, setHoveredType] = useState<string | null>(null);
+
+  // Group by document type
+  const typeGroups: Record<string, { count: number; color: string }> = {};
+  documents.forEach((doc: any) => {
+    const name = doc.documentType?.name || "Uncategorized";
+    const rawColor = doc.documentType?.color;
+    const color = rawColor
+      ? rawColor.startsWith("#")
+        ? rawColor
+        : `#${rawColor}`
+      : "#a1a1aa";
+    if (!typeGroups[name]) {
+      typeGroups[name] = { count: 0, color };
+    }
+    typeGroups[name].count++;
+  });
+
+  const entries = Object.entries(typeGroups).sort(
+    (a, b) => b[1].count - a[1].count,
+  );
+  const total = documents.length;
+
+  if (total === 0) {
+    return (
+      <div className="archives-type-chart-card">
+        <span className="archives-type-chart-label">By Document Type</span>
+        <div className="archives-stacked-bar" />
+        <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: 0 }}>
+          No data
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="archives-type-chart-card">
+      <span className="archives-type-chart-label">
+        {tab === "archives" ? "Archived" : "Destroyed"} by Document Type
+      </span>
+
+      {/* Stacked bar */}
+      <div className="archives-stacked-bar" title={`${total} total records`}>
+        {entries.map(([name, { count, color }]) => {
+          const pct = (count / total) * 100;
+          return (
+            <div
+              key={name}
+              className="archives-stacked-segment"
+              style={{
+                width: `${pct}%`,
+                backgroundColor: color,
+                opacity: hoveredType && hoveredType !== name ? 0.35 : 1,
+                transition:
+                  "opacity 150ms ease, width 400ms cubic-bezier(0.4,0,0.2,1)",
+              }}
+              onMouseEnter={() => setHoveredType(name)}
+              onMouseLeave={() => setHoveredType(null)}
+              title={`${name}: ${count} (${pct.toFixed(1)}%)`}
+            />
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div className="archives-type-legend">
+        {entries.map(([name, { count, color }]) => {
+          const pct = ((count / total) * 100).toFixed(1);
+          return (
+            <div
+              key={name}
+              className="archives-type-legend-item"
+              onMouseEnter={() => setHoveredType(name)}
+              onMouseLeave={() => setHoveredType(null)}
+              style={{
+                opacity: hoveredType && hoveredType !== name ? 0.4 : 1,
+                transition: "opacity 150ms ease",
+                cursor: "default",
+              }}
+            >
+              <span
+                className="archives-type-legend-dot"
+                style={{ backgroundColor: color }}
+              />
+              <span className="archives-type-legend-name">{name}</span>
+              <span className="archives-type-legend-count">
+                {count} · {pct}%
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ── Main Page ──────────────────────────────────────────────────────────────
 export const ArchivesPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"archives" | "destruction">(
     "archives",
@@ -31,15 +135,17 @@ export const ArchivesPage: React.FC = () => {
       { enabled: activeTab === "destruction" },
     );
 
-  // Fetch totals for both tabs (page 1, size 1) for the stat strip
-  const { data: archiveTotals } = trpc.archives.getArchivedDocuments.useQuery({
+  // Larger fetch for chart data (all docs in current tab, no pagination)
+  const { data: archiveAllData } = trpc.archives.getArchivedDocuments.useQuery({
     page: 1,
-    pageSize: 1,
+    pageSize: 1000,
   });
-  const { data: destroyTotals } = trpc.archives.getDestroyedDocuments.useQuery({
-    page: 1,
-    pageSize: 1,
-  });
+  const { data: destroyAllData } = trpc.archives.getDestroyedDocuments.useQuery(
+    {
+      page: 1,
+      pageSize: 1000,
+    },
+  );
 
   const utils = trpc.useUtils();
   const [downloadingFileId, setDownloadingFileId] = useState<string | null>(
@@ -84,6 +190,15 @@ export const ArchivesPage: React.FC = () => {
   const totalCount = data?.totalCount || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
+  // Chart uses the full (unpaginated) dataset
+  const chartDocs =
+    activeTab === "archives"
+      ? archiveAllData?.documents || []
+      : destroyAllData?.documents || [];
+
+  const archiveTotalCount = archiveAllData?.totalCount ?? 0;
+  const destroyTotalCount = destroyAllData?.totalCount ?? 0;
+
   const groupedDocuments = React.useMemo(() => {
     const groups: Record<string, { docs: typeof documents; color?: string }> =
       {};
@@ -112,45 +227,15 @@ export const ArchivesPage: React.FC = () => {
 
   return (
     <div className="container mt-4">
-      {/* Header */}
+      {/* ── Page header with tab strip on right ── */}
       <div className="archives-page-header">
         <div>
           <h2>Disposition Register</h2>
           <p className="text-muted mb-0" style={{ fontSize: "13px" }}>
-            Institutional records that have been archived or permanently
-            destroyed per retention schedule.
+            Institutional records archived or permanently destroyed per
+            retention schedule.
           </p>
         </div>
-      </div>
-
-      {/* Stats strip */}
-      <div className="archives-stats-strip">
-        <div className="archives-stat-chip">
-          <div className="archives-stat-chip-icon icon-archive">
-            <i className="bi bi-archive" />
-          </div>
-          <div className="d-flex flex-column">
-            <span className="archives-stat-chip-label">Archived</span>
-            <span className="archives-stat-chip-value">
-              {archiveTotals?.totalCount ?? "—"}
-            </span>
-          </div>
-        </div>
-        <div className="archives-stat-chip">
-          <div className="archives-stat-chip-icon icon-destroy">
-            <i className="bi bi-trash3" />
-          </div>
-          <div className="d-flex flex-column">
-            <span className="archives-stat-chip-label">Destroyed</span>
-            <span className="archives-stat-chip-value">
-              {destroyTotals?.totalCount ?? "—"}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Tab strip + search */}
-      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
         <div className="archives-tab-strip">
           <button
             className={`archives-tab ${activeTab === "archives" ? "active" : ""}`}
@@ -167,8 +252,70 @@ export const ArchivesPage: React.FC = () => {
             Destruction Register
           </button>
         </div>
+      </div>
 
-        <div className="archives-search-wrap">
+      {/* ── Stats + Chart row ── */}
+      <div className="archives-overview-row">
+        {/* Archive stat chip */}
+        <div
+          className="archives-stat-chip"
+          style={{
+            borderColor:
+              activeTab === "archives" ? "var(--info)" : "var(--border)",
+            transition: "border-color 200ms ease",
+          }}
+        >
+          <div className="archives-stat-chip-icon icon-archive">
+            <i className="bi bi-archive" />
+          </div>
+          <div className="d-flex flex-column">
+            <span className="archives-stat-chip-label">Archived</span>
+            <span className="archives-stat-chip-value">
+              {archiveTotalCount}
+            </span>
+          </div>
+        </div>
+
+        {/* Destruction stat chip */}
+        <div
+          className="archives-stat-chip"
+          style={{
+            borderColor:
+              activeTab === "destruction" ? "var(--danger)" : "var(--border)",
+            transition: "border-color 200ms ease",
+          }}
+        >
+          <div className="archives-stat-chip-icon icon-destroy">
+            <i className="bi bi-trash3" />
+          </div>
+          <div className="d-flex flex-column">
+            <span className="archives-stat-chip-label">Destroyed</span>
+            <span className="archives-stat-chip-value">
+              {destroyTotalCount}
+            </span>
+          </div>
+        </div>
+
+        {/* Type distribution chart */}
+        <TypeBarChart documents={chartDocs} tab={activeTab} />
+      </div>
+
+      {/* ── Search row ── */}
+      <div className="d-flex align-items-center gap-3 mb-4">
+        {activeTab === "destruction" && (
+          <div
+            className="archives-destruction-notice"
+            style={{ margin: 0, flex: 1 }}
+          >
+            <i className="bi bi-shield-exclamation" />
+            <span>
+              Records below have been <strong>permanently destroyed</strong>{" "}
+              from storage. Only metadata tombstones remain for audit
+              compliance.
+            </span>
+          </div>
+        )}
+        <div className="archives-search-wrap" style={{ marginLeft: "auto" }}>
           <i className="bi bi-search archives-search-icon" />
           <input
             type="text"
@@ -183,20 +330,7 @@ export const ArchivesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Destruction notice */}
-      {activeTab === "destruction" && (
-        <div className="archives-destruction-notice">
-          <i className="bi bi-shield-exclamation" />
-          <span>
-            The records below have been <strong>permanently destroyed</strong>{" "}
-            from storage in accordance with their retention schedule. Only
-            metadata tombstones remain for audit compliance. File contents
-            cannot be recovered.
-          </span>
-        </div>
-      )}
-
-      {/* Content */}
+      {/* ── Content ── */}
       {isLoading ? (
         <div className="archives-loading">
           <div className="archives-spinner" />
@@ -218,7 +352,7 @@ export const ArchivesPage: React.FC = () => {
           <p>
             {search
               ? `No records match "${search}". Try a different search term.`
-              : `Documents that have been ${activeTab === "archives" ? "archived" : "destroyed"} through the disposition process will appear here.`}
+              : `Documents disposed through the ${activeTab === "archives" ? "archival" : "destruction"} process will appear here.`}
           </p>
         </div>
       ) : (
@@ -358,7 +492,7 @@ export const ArchivesPage: React.FC = () => {
                                             </>
                                           )}
                                         </button>
-                                        {doc.archiveManifestUrl && (
+                                        {doc.lifecycle?.archiveManifestUrl && (
                                           <button
                                             className="archives-action-btn btn-manifest"
                                             onClick={() =>
@@ -406,39 +540,35 @@ export const ArchivesPage: React.FC = () => {
                         </tbody>
                       </table>
 
-                      {/* Per-group pagination if needed */}
+                      {totalPages > 1 && (
+                        <div className="archives-pagination">
+                          <span className="archives-pagination-info">
+                            Page {page} of {totalPages} · {totalCount} total
+                            records
+                          </span>
+                          <div className="archives-pagination-controls">
+                            <button
+                              className="archives-page-btn"
+                              onClick={() => setPage((p) => p - 1)}
+                              disabled={page === 1}
+                            >
+                              <i className="bi bi-chevron-left" /> Previous
+                            </button>
+                            <button
+                              className="archives-page-btn"
+                              onClick={() => setPage((p) => p + 1)}
+                              disabled={page === totalPages}
+                            >
+                              Next <i className="bi bi-chevron-right" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               );
             })}
-
-          {/* Global pagination */}
-          {totalPages > 1 && (
-            <div className="archives-pagination mt-3">
-              <span className="archives-pagination-info">
-                Page {page} of {totalPages} · {totalCount} total records
-              </span>
-              <div className="archives-pagination-controls">
-                <button
-                  className="archives-page-btn"
-                  onClick={() => setPage((p) => p - 1)}
-                  disabled={page === 1}
-                >
-                  <i className="bi bi-chevron-left" />
-                  Previous
-                </button>
-                <button
-                  className="archives-page-btn"
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={page === totalPages}
-                >
-                  Next
-                  <i className="bi bi-chevron-right" />
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>

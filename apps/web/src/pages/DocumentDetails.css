@@ -1,5 +1,3 @@
-/* ── Document Details ── */
-
 .document-details-container {
   display: grid;
   grid-template-columns: 1fr 300px;
@@ -715,4 +713,209 @@ body[data-bs-theme="dark"] .cert-destroy .disposition-cert-row span {
   color: var(--text-muted);
   margin: 0;
   font-style: italic;
+}
+
+/* ── Disposition block — redesigned to match system ── */
+
+.disposition-block {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* Ready state */
+.disposition-block.disposition-ready {
+  border-color: #fde047;
+}
+
+/* Pending state */
+.disposition-block.disposition-pending {
+  border-color: #93c5fd;
+}
+
+.disposition-block-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid;
+}
+
+.disposition-ready .disposition-block-header {
+  background-color: var(--warning-subtle);
+  border-bottom-color: #fde047;
+}
+
+.disposition-pending .disposition-block-header {
+  background-color: var(--info-subtle);
+  border-bottom-color: #93c5fd;
+}
+
+body[data-bs-theme="dark"] .disposition-ready .disposition-block-header {
+  background-color: rgba(202, 138, 4, 0.08);
+  border-bottom-color: rgba(202, 138, 4, 0.3);
+}
+
+body[data-bs-theme="dark"] .disposition-pending .disposition-block-header {
+  background-color: rgba(37, 99, 235, 0.08);
+  border-bottom-color: rgba(37, 99, 235, 0.3);
+}
+
+.disposition-block-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.disposition-ready .disposition-block-icon {
+  background-color: #fef9c3;
+  color: #854d0e;
+  border: 1px solid #fde047;
+}
+
+.disposition-pending .disposition-block-icon {
+  background-color: var(--info-subtle);
+  color: var(--info);
+  border: 1px solid #93c5fd;
+}
+
+body[data-bs-theme="dark"] .disposition-ready .disposition-block-icon {
+  background-color: rgba(202, 138, 4, 0.12);
+  color: #fbbf24;
+  border-color: rgba(202, 138, 4, 0.3);
+}
+
+body[data-bs-theme="dark"] .disposition-pending .disposition-block-icon {
+  background-color: rgba(37, 99, 235, 0.12);
+  color: #60a5fa;
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+.disposition-block-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+.disposition-ready .disposition-block-title {
+  color: #854d0e;
+}
+
+.disposition-pending .disposition-block-title {
+  color: #1e40af;
+}
+
+body[data-bs-theme="dark"] .disposition-ready .disposition-block-title {
+  color: #fbbf24;
+}
+
+body[data-bs-theme="dark"] .disposition-pending .disposition-block-title {
+  color: #60a5fa;
+}
+
+.disposition-block-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.disposition-block-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.disposition-block-desc strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.disposition-block-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.disposition-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background-color: var(--bg-subtle);
+  color: var(--text-secondary);
+  transition: all 120ms ease;
+  text-align: left;
+}
+
+.disposition-action-btn:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.disposition-action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.disposition-action-btn i {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.disposition-action-btn.btn-approve {
+  background-color: var(--brand-subtle);
+  border-color: var(--brand-muted);
+  color: var(--brand);
+}
+
+.disposition-action-btn.btn-approve i {
+  color: var(--brand);
+}
+
+.disposition-action-btn.btn-approve:hover:not(:disabled) {
+  background-color: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.disposition-action-btn.btn-approve:hover:not(:disabled) i {
+  color: #fff;
+}
+
+.disposition-action-btn.btn-reject {
+  color: var(--danger);
+  border-color: #fca5a5;
+  background-color: var(--danger-subtle);
+}
+
+.disposition-action-btn.btn-reject i {
+  color: var(--danger);
+}
+
+.disposition-action-btn.btn-reject:hover:not(:disabled) {
+  background-color: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.disposition-action-btn.btn-reject:hover:not(:disabled) i {
+  color: #fff;
 }
