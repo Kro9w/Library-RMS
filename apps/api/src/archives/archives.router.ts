@@ -20,7 +20,7 @@ export class ArchivesRouter {
         .input(
           z.object({
             page: z.number().min(1).default(1),
-            pageSize: z.number().min(1).max(100).default(10),
+            pageSize: z.number().min(1).max(1000).default(10),
             search: z.string().optional(),
           }),
         )
@@ -67,10 +67,18 @@ export class ArchivesRouter {
               skip,
               take,
               orderBy: { lifecycle: { dispositionDate: 'desc' } },
-              include: {
-                documentType: true,
-                uploadedBy: true,
-                lifecycle: true,
+              select: {
+                id: true,
+                title: true,
+                controlNumber: true,
+                documentType: { select: { name: true, color: true } },
+                uploadedBy: { select: { firstName: true, lastName: true } },
+                lifecycle: {
+                  select: {
+                    dispositionDate: true,
+                    archiveManifestUrl: true,
+                  },
+                },
               },
             }),
           ]);
@@ -82,7 +90,7 @@ export class ArchivesRouter {
         .input(
           z.object({
             page: z.number().min(1).default(1),
-            pageSize: z.number().min(1).max(100).default(10),
+            pageSize: z.number().min(1).max(1000).default(10),
             search: z.string().optional(),
           }),
         )
@@ -129,10 +137,18 @@ export class ArchivesRouter {
               skip,
               take,
               orderBy: { lifecycle: { dispositionDate: 'desc' } },
-              include: {
-                documentType: true,
-                uploadedBy: true,
-                lifecycle: true,
+              select: {
+                id: true,
+                title: true,
+                controlNumber: true,
+                documentType: { select: { name: true, color: true } },
+                uploadedBy: { select: { firstName: true, lastName: true } },
+                lifecycle: {
+                  select: {
+                    dispositionDate: true,
+                    archiveManifestUrl: true,
+                  },
+                },
               },
             }),
           ]);

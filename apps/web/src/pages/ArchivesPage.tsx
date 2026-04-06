@@ -315,6 +315,8 @@ export const ArchivesPage: React.FC = () => {
             </span>
           </div>
         )}
+      </div>
+      <div className="d-flex align-items-center gap-3 mb-4">
         <div className="archives-search-wrap" style={{ marginLeft: "auto" }}>
           <i className="bi bi-search archives-search-icon" />
           <input

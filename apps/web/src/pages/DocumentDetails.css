@@ -111,22 +111,28 @@
   justify-content: center;
   height: 78vh;
   border-radius: var(--radius-xl);
-  background-color: var(--bg-subtle);
+  background-color: var(--danger-subtle);
   border: 1px dashed var(--border-strong);
-  color: var(--text-muted);
+  border-color: var(--danger);
+  color: var(--danger);
   text-align: center;
   gap: 10px;
 }
 
 .preview-fallback i {
   font-size: 32px;
-  opacity: 0.25;
+  color: var(--danger);
+}
+
+.preview-fallback h4 {
+  margin: 0;
+  color: var(--danger);
 }
 
 .preview-fallback p {
   font-size: 13px;
   margin: 0;
-  color: var(--text-muted);
+  color: var(--danger);
 }
 
 /* ── Sidebar action stack ── */

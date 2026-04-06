@@ -249,11 +249,8 @@ export const DocumentDetails: React.FC = () => {
         {/* Left: document viewer */}
         <div className="document-viewer">
           {document.lifecycle?.dispositionStatus === "DESTROYED" ? (
-            <div className="preview-fallback text-danger bg-danger-subtle border border-danger rounded">
-              <i
-                className="bi bi-trash3-fill mb-3"
-                style={{ fontSize: "48px" }}
-              ></i>
+            <div className="preview-fallback">
+              <i className="bi bi-trash3-fill" style={{ fontSize: "48px" }}></i>
               <h4 className="fw-bold">Document Destroyed</h4>
               <p className="text-dark w-75 mt-2" style={{ fontSize: "14px" }}>
                 The physical contents of this document have been permanently
