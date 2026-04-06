@@ -1,0 +1,594 @@
+/* ── Archives Page ── */
+
+.archives-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.archives-page-header h2 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+/* ── Tab strip ── */
+.archives-tab-strip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  margin-bottom: 20px;
+  width: fit-content;
+}
+
+.archives-tab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+}
+
+.archives-tab i {
+  font-size: 13px;
+}
+
+.archives-tab:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.archives-tab.active {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-xs);
+}
+
+.archives-tab.active.tab-destruction {
+  color: var(--danger);
+}
+
+/* ── Filters bar ── */
+.archives-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.archives-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+  max-width: 380px;
+}
+
+.archives-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.archives-search-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px 0 32px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-xs);
+  transition:
+    border-color var(--transition-base),
+    box-shadow var(--transition-base);
+}
+
+.archives-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.archives-search-input:focus {
+  outline: none;
+  border-color: var(--brand-muted);
+  box-shadow: var(--ring);
+}
+
+/* ── Stats strip ── */
+.archives-stats-strip {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.archives-stat-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  font-size: 13px;
+}
+
+.archives-stat-chip-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.archives-stat-chip-icon.icon-archive {
+  background-color: var(--info-subtle);
+  color: var(--info);
+}
+
+.archives-stat-chip-icon.icon-destroy {
+  background-color: var(--danger-subtle);
+  color: var(--danger);
+}
+
+.archives-stat-chip-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.archives-stat-chip-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+}
+
+/* ── Document group accordion ── */
+.archives-group {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+  margin-bottom: 10px;
+  transition: box-shadow var(--transition-slow);
+}
+
+.archives-group:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.archives-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 18px;
+  background-color: var(--bg-surface);
+  cursor: pointer;
+  border: none;
+  width: 100%;
+  text-align: left;
+  transition: background-color var(--transition-fast);
+  gap: 12px;
+}
+
+.archives-group-header:hover {
+  background-color: var(--bg-hover);
+}
+
+.archives-group-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.archives-group-type-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-color: var(--text-muted);
+}
+
+.archives-group-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.archives-group-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.archives-group-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border);
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+}
+
+.archives-group-chevron {
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: transform 200ms ease;
+}
+
+.archives-group-chevron.open {
+  transform: rotate(180deg);
+}
+
+/* ── Document table inside group ── */
+.archives-table-wrap {
+  border-top: 1px solid var(--border);
+}
+
+.archives-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.archives-table th {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 10px 18px;
+  background-color: var(--bg-subtle);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  text-align: left;
+}
+
+.archives-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-muted);
+  vertical-align: middle;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.archives-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.archives-table tbody tr:hover td {
+  background-color: var(--bg-subtle);
+}
+
+/* Document title cell */
+.archives-doc-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 13px;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+.archives-doc-cn {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  margin-top: 2px;
+  display: block;
+}
+
+/* Date cell */
+.archives-date {
+  white-space: nowrap;
+}
+
+.archives-date-primary {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.archives-date-secondary {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* Uploader cell */
+.archives-uploader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.archives-uploader-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--brand-subtle);
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid var(--brand-muted);
+  flex-shrink: 0;
+}
+
+.archives-uploader-name {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Action buttons */
+.archives-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.archives-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background-color: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+  box-shadow: var(--shadow-xs);
+}
+
+.archives-action-btn:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.archives-action-btn.btn-download:hover {
+  background-color: var(--brand-subtle);
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.archives-action-btn.btn-manifest:hover {
+  background-color: var(--bg-subtle);
+  border-color: var(--border-strong);
+}
+
+.archives-action-btn.btn-certificate {
+  color: var(--danger);
+  border-color: #fca5a5;
+}
+
+.archives-action-btn.btn-certificate:hover {
+  background-color: var(--danger-subtle);
+  border-color: var(--danger);
+}
+
+/* ── Empty state ── */
+.archives-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 32px;
+  text-align: center;
+  gap: 10px;
+}
+
+.archives-empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.archives-empty-icon.icon-archive {
+  background-color: var(--info-subtle);
+  color: var(--info);
+  border: 1px solid #93c5fd;
+}
+
+.archives-empty-icon.icon-destroy {
+  background-color: var(--danger-subtle);
+  color: var(--danger);
+  border: 1px solid #fca5a5;
+}
+
+.archives-empty h4 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.archives-empty p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+  max-width: 320px;
+}
+
+/* ── Pagination ── */
+.archives-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  background-color: var(--bg-subtle);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.archives-pagination-info {
+  font-weight: 500;
+}
+
+.archives-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.archives-page-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.archives-page-btn:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.archives-page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Destruction tab specific ── */
+.archives-destruction-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background-color: var(--danger-subtle);
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  color: #7f1d1d;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+body[data-bs-theme="dark"] .archives-destruction-notice {
+  background-color: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.3);
+  color: #f87171;
+}
+
+.archives-destruction-notice i {
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--danger);
+}
+
+/* ── Loading skeleton ── */
+.archives-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.archives-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: archiveSpin 0.7s linear infinite;
+}
+
+@keyframes archiveSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Disposition status badge inside table ── */
+.archives-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: var(--radius-full);
+  line-height: 1.6;
+  white-space: nowrap;
+  border: 1px solid;
+}
+
+.archives-status-badge.status-archived {
+  background-color: var(--info-subtle);
+  color: var(--info);
+  border-color: #93c5fd;
+}
+
+.archives-status-badge.status-destroyed {
+  background-color: var(--danger-subtle);
+  color: var(--danger);
+  border-color: #fca5a5;
+}

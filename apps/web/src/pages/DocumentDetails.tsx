@@ -669,44 +669,75 @@ export const DocumentDetails: React.FC = () => {
 
               {/* Disposition Certificate */}
               {(document.dispositionStatus === "DESTROYED" ||
-                document.dispositionStatus === "ARCHIVED") && (
-                <div className="disposition-block disposition-executed mt-3 border border-success bg-success-subtle rounded p-3">
-                  <div className="disposition-header d-flex align-items-center mb-2 text-success">
-                    <i className="bi bi-shield-check disposition-icon me-2 fs-5"></i>
-                    <h6 className="disposition-title mb-0 fw-bold">
-                      {document.dispositionStatus === "DESTROYED"
-                        ? "Certificate of Destruction"
-                        : "Archival Record"}
-                    </h6>
-                  </div>
-                  <p className="disposition-text mb-1 small">
-                    This document was officially{" "}
-                    <strong>
-                      {document.dispositionStatus === "DESTROYED"
-                        ? "Destroyed"
-                        : "Archived"}
-                    </strong>{" "}
-                    on{" "}
-                    <strong>
-                      {document.dispositionDate
-                        ? new Date(document.dispositionDate).toLocaleDateString(
-                            undefined,
-                            {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            },
-                          )
-                        : "Unknown Date"}
-                    </strong>
-                    .
-                  </p>
-                  <p className="disposition-text mb-0 small text-muted">
-                    This record serves as proof of compliance with the defined
-                    records retention schedule.
-                  </p>
-                </div>
-              )}
+                document.dispositionStatus === "ARCHIVED") &&
+                (() => {
+                  const isArchived = document.dispositionStatus === "ARCHIVED";
+                  const certClass = isArchived
+                    ? "cert-archive"
+                    : "cert-destroy";
+
+                  return (
+                    <div
+                      className={`disposition-certificate ${certClass} mt-3`}
+                    >
+                      {/* Header */}
+                      <div className="disposition-cert-header">
+                        <div className="disposition-cert-icon">
+                          <i
+                            className={`bi ${isArchived ? "bi-archive-fill" : "bi-shield-check"}`}
+                          />
+                        </div>
+                        <h6 className="disposition-cert-title">
+                          {isArchived
+                            ? "Archival Record"
+                            : "Certificate of Destruction"}
+                        </h6>
+                      </div>
+
+                      {/* Body */}
+                      <div className="disposition-cert-body">
+                        <div className="disposition-cert-row">
+                          <strong>Status</strong>
+                          <span>
+                            {isArchived
+                              ? "Permanently archived per retention schedule"
+                              : "File contents permanently destroyed"}
+                          </span>
+                        </div>
+
+                        {document.dispositionDate && (
+                          <div className="disposition-cert-row">
+                            <strong>Date</strong>
+                            <span>
+                              {new Date(
+                                document.dispositionDate,
+                              ).toLocaleDateString(undefined, {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}
+                            </span>
+                          </div>
+                        )}
+
+                        {document.dispositionActionSnapshot && (
+                          <div className="disposition-cert-row">
+                            <strong>Action</strong>
+                            <span>{document.dispositionActionSnapshot}</span>
+                          </div>
+                        )}
+
+                        <div className="disposition-cert-divider" />
+
+                        <p className="disposition-cert-compliance">
+                          {isArchived
+                            ? "This record has been transferred to the institutional archives. The file remains accessible to authorized administrators."
+                            : "This record serves as a compliance tombstone. File contents have been irrevocably removed from storage in accordance with the defined disposition policy."}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
             </div>
           </div>
         </div>

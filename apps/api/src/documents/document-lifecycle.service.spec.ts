@@ -36,10 +36,12 @@ describe('DocumentLifecycleService', () => {
     it('should return Legal Hold if isUnderLegalHold is true', () => {
       const result = service.computeLifecycleStatus({
         createdAt: new Date(),
-        activeRetentionSnapshot: null,
-        inactiveRetentionSnapshot: null,
-        dispositionStatus: null,
-        isUnderLegalHold: true,
+        lifecycle: {
+          activeRetentionSnapshot: 1,
+          inactiveRetentionSnapshot: 1,
+          dispositionStatus: null,
+          isUnderLegalHold: true,
+        }
       });
       expect(result).toBe('Legal Hold');
     });
@@ -47,10 +49,12 @@ describe('DocumentLifecycleService', () => {
     it('should return Destroyed if dispositionStatus is DESTROYED', () => {
       const result = service.computeLifecycleStatus({
         createdAt: new Date(),
-        activeRetentionSnapshot: null,
-        inactiveRetentionSnapshot: null,
-        dispositionStatus: 'DESTROYED',
-        isUnderLegalHold: false,
+        lifecycle: {
+          activeRetentionSnapshot: 1,
+          inactiveRetentionSnapshot: 1,
+          dispositionStatus: 'DESTROYED',
+          isUnderLegalHold: false,
+        }
       });
       expect(result).toBe('Destroyed');
     });
@@ -58,10 +62,12 @@ describe('DocumentLifecycleService', () => {
     it('should return Active if no retention schedule exists', () => {
       const result = service.computeLifecycleStatus({
         createdAt: new Date(),
-        activeRetentionSnapshot: null,
-        inactiveRetentionSnapshot: null,
-        dispositionStatus: null,
-        isUnderLegalHold: false,
+        lifecycle: {
+          activeRetentionSnapshot: null,
+          inactiveRetentionSnapshot: null,
+          dispositionStatus: null,
+          isUnderLegalHold: false,
+        }
       });
       expect(result).toBe('Active');
     });
@@ -72,10 +78,12 @@ describe('DocumentLifecycleService', () => {
 
       const result = service.computeLifecycleStatus({
         createdAt: pastDate,
-        activeRetentionSnapshot: 1, // 1 year active
-        inactiveRetentionSnapshot: 1, // 1 year inactive
-        dispositionStatus: null,
-        isUnderLegalHold: false,
+        lifecycle: {
+          activeRetentionSnapshot: 1,
+          inactiveRetentionSnapshot: 1,
+          dispositionStatus: null,
+          isUnderLegalHold: false,
+        }
       });
       expect(result).toBe('Ready');
     });
@@ -86,10 +94,12 @@ describe('DocumentLifecycleService', () => {
 
       const result = service.computeLifecycleStatus({
         createdAt: pastDate,
-        activeRetentionSnapshot: 1, // 1 year active
-        inactiveRetentionSnapshot: 2, // 2 year inactive
-        dispositionStatus: null,
-        isUnderLegalHold: false,
+        lifecycle: {
+          activeRetentionSnapshot: 1,
+          inactiveRetentionSnapshot: 2,
+          dispositionStatus: null,
+          isUnderLegalHold: false,
+        }
       });
       expect(result).toBe('Inactive');
     });

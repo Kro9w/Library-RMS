@@ -51,7 +51,9 @@ export class ArchivesRouter {
 
           const whereClause: Prisma.DocumentWhereInput = {
             institutionId: dbUser.institutionId,
-            dispositionStatus: 'ARCHIVED',
+            lifecycle: {
+              dispositionStatus: 'ARCHIVED',
+            },
             title: input.search
               ? { contains: input.search, mode: 'insensitive' }
               : undefined,
@@ -63,10 +65,11 @@ export class ArchivesRouter {
               where: whereClause,
               skip,
               take,
-              orderBy: { dispositionDate: 'desc' },
+              orderBy: { lifecycle: { dispositionDate: 'desc' } },
               include: {
                 documentType: true,
                 uploadedBy: true,
+                lifecycle: true,
               },
             }),
           ]);
@@ -109,7 +112,9 @@ export class ArchivesRouter {
 
           const whereClause: Prisma.DocumentWhereInput = {
             institutionId: dbUser.institutionId,
-            dispositionStatus: 'DESTROYED',
+            lifecycle: {
+              dispositionStatus: 'DESTROYED',
+            },
             title: input.search
               ? { contains: input.search, mode: 'insensitive' }
               : undefined,
@@ -121,10 +126,11 @@ export class ArchivesRouter {
               where: whereClause,
               skip,
               take,
-              orderBy: { dispositionDate: 'desc' },
+              orderBy: { lifecycle: { dispositionDate: 'desc' } },
               include: {
                 documentType: true,
                 uploadedBy: true,
+                lifecycle: true,
               },
             }),
           ]);
@@ -145,12 +151,13 @@ export class ArchivesRouter {
 
           const doc = await this.prisma.document.findUnique({
             where: { id: input.id },
+            include: { lifecycle: true },
           });
 
           if (
             !doc ||
-            doc.dispositionStatus !== 'ARCHIVED' ||
-            !doc.archiveManifestUrl
+            doc.lifecycle?.dispositionStatus !== 'ARCHIVED' ||
+            !doc.lifecycle?.archiveManifestUrl
           ) {
             throw new TRPCError({
               code: 'NOT_FOUND',
@@ -161,7 +168,7 @@ export class ArchivesRouter {
           const { data, error } = await this.supabase
             .getAdminClient()
             .storage.from(env.SUPABASE_ARCHIVE_BUCKET_NAME)
-            .createSignedUrl(doc.archiveManifestUrl, 300);
+            .createSignedUrl(doc.lifecycle.archiveManifestUrl, 300);
 
           if (error || !data) {
             throw new TRPCError({

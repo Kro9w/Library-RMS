@@ -57,17 +57,21 @@ export class DocumentsRouter {
             where: {
               controlNumber: input.controlNumber,
               OR: [
-                { recordStatus: 'IN_TRANSIT' },
+                { workflow: { recordStatus: 'IN_TRANSIT' } },
                 { classification: 'FOR_APPROVAL' },
-                { status: { not: null } },
+                { workflow: { status: { not: null } } },
               ],
             },
             select: {
               id: true,
               title: true,
               controlNumber: true,
-              recordStatus: true,
-              status: true,
+              workflow: {
+                select: {
+                  recordStatus: true,
+                  status: true,
+                }
+              },
               classification: true,
               createdAt: true,
               transitRoutes: {
@@ -179,9 +183,13 @@ export class DocumentsRouter {
             });
           }
 
+          const docWorkflow = await this.prisma.documentWorkflow.findUnique({
+            where: { documentId: document.id }
+          });
+
           if (
             document.classification === 'FOR_APPROVAL' ||
-            document.recordStatus === 'IN_TRANSIT'
+            docWorkflow?.recordStatus === 'IN_TRANSIT'
           ) {
             throw new TRPCError({
               code: 'BAD_REQUEST',
@@ -411,15 +419,27 @@ export class DocumentsRouter {
               title: true,
               createdAt: true,
               documentType: true,
-              recordStatus: true,
-              isCheckedOut: true,
-              checkedOutById: true,
-              checkedOutBy: {
+              workflow: {
                 select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                },
+                  recordStatus: true,
+                  isCheckedOut: true,
+                  checkedOutById: true,
+                  checkedOutBy: {
+                    select: {
+                      id: true,
+                      firstName: true,
+                      lastName: true,
+                    },
+                  },
+                  reviewRequester: {
+                    select: {
+                      firstName: true,
+                      middleName: true,
+                      lastName: true,
+                    },
+                  },
+                  status: true,
+                }
               },
               versions: {
                 orderBy: { versionNumber: 'desc' },
@@ -445,14 +465,6 @@ export class DocumentsRouter {
                   lastName: true,
                 },
               },
-              reviewRequester: {
-                select: {
-                  firstName: true,
-                  middleName: true,
-                  lastName: true,
-                },
-              },
-              status: true,
               remarks: {
                 include: {
                   author: {
@@ -472,21 +484,25 @@ export class DocumentsRouter {
                   createdAt: 'desc',
                 },
               },
-              activeRetentionSnapshot: true,
-              activeRetentionMonthsSnapshot: true,
-              activeRetentionDaysSnapshot: true,
-              inactiveRetentionSnapshot: true,
-              inactiveRetentionMonthsSnapshot: true,
-              inactiveRetentionDaysSnapshot: true,
-              dispositionActionSnapshot: true,
-              dispositionStatus: true,
-              dispositionDate: true,
+              lifecycle: {
+                select: {
+                  activeRetentionSnapshot: true,
+                  activeRetentionMonthsSnapshot: true,
+                  activeRetentionDaysSnapshot: true,
+                  inactiveRetentionSnapshot: true,
+                  inactiveRetentionMonthsSnapshot: true,
+                  inactiveRetentionDaysSnapshot: true,
+                  dispositionActionSnapshot: true,
+                  dispositionStatus: true,
+                  dispositionDate: true,
+                  isUnderLegalHold: true,
+                  legalHoldReason: true,
+                  dispositionRequesterId: true,
+                }
+              },
               classification: true,
               originalSenderId: true,
               uploadedById: true,
-              isUnderLegalHold: true,
-              legalHoldReason: true,
-              dispositionRequesterId: true,
               transitRoutes: {
                 orderBy: { sequenceOrder: 'asc' },
                 include: {
@@ -551,6 +567,7 @@ export class DocumentsRouter {
               .optional()
               .default('CONFIDENTIAL'),
             transitRoute: z.array(z.string()).optional(),
+            metadata: z.record(z.string(), z.any()).optional(),
           }),
         )
         .output(z.any())
@@ -693,8 +710,17 @@ export class DocumentsRouter {
               documentTypeId: input.documentTypeId,
               controlNumber: input.controlNumber,
               classification: input.classification as any,
-              recordStatus: finalRecordStatus as any,
-              ...retentionSnapshot,
+              metadata: input.metadata ? (input.metadata as Prisma.InputJsonValue) : Prisma.JsonNull,
+              lifecycle: {
+                create: {
+                  ...retentionSnapshot,
+                }
+              },
+              workflow: {
+                create: {
+                  recordStatus: finalRecordStatus as any,
+                }
+              },
               versions: {
                 create: {
                   versionNumber: 1,
@@ -792,7 +818,11 @@ export class DocumentsRouter {
               classification: true,
               uploadedById: true,
               originalSenderId: true,
-              dispositionStatus: true,
+              lifecycle: {
+                select: {
+                  dispositionStatus: true,
+                }
+              },
               versions: {
                 where: input.versionId ? { id: input.versionId } : undefined,
                 orderBy: { versionNumber: 'desc' as const },
@@ -808,7 +838,7 @@ export class DocumentsRouter {
             });
           }
 
-          if (doc.dispositionStatus === 'DESTROYED') {
+          if (doc.lifecycle?.dispositionStatus === 'DESTROYED') {
             return { signedUrl: null };
           }
 
@@ -925,26 +955,34 @@ export class DocumentsRouter {
             institutionId: true,
             documentType: true,
             controlNumber: true,
-            recordStatus: true,
-            isCheckedOut: true,
+            workflow: {
+              select: {
+                recordStatus: true,
+                isCheckedOut: true,
+              }
+            },
             versions: {
               orderBy: { versionNumber: 'desc' as const },
               take: 1,
             },
-            activeRetentionSnapshot: true,
-            activeRetentionMonthsSnapshot: true,
-            activeRetentionDaysSnapshot: true,
-            inactiveRetentionSnapshot: true,
-            inactiveRetentionMonthsSnapshot: true,
-            inactiveRetentionDaysSnapshot: true,
-            dispositionActionSnapshot: true,
-            dispositionStatus: true,
-            dispositionDate: true,
+            lifecycle: {
+              select: {
+                activeRetentionSnapshot: true,
+                activeRetentionMonthsSnapshot: true,
+                activeRetentionDaysSnapshot: true,
+                inactiveRetentionSnapshot: true,
+                inactiveRetentionMonthsSnapshot: true,
+                inactiveRetentionDaysSnapshot: true,
+                dispositionActionSnapshot: true,
+                dispositionStatus: true,
+                dispositionDate: true,
+                isUnderLegalHold: true,
+                legalHoldReason: true,
+                dispositionRequesterId: true,
+              }
+            },
             classification: true,
             originalSenderId: true,
-            isUnderLegalHold: true,
-            legalHoldReason: true,
-            dispositionRequesterId: true,
           };
 
           // Optimized path for "Ready for Disposition"
@@ -977,8 +1015,9 @@ export class DocumentsRouter {
           const whereClause: Prisma.DocumentWhereInput = {
             institutionId: ctx.dbUser.institutionId,
             OR: [
-              { dispositionStatus: null },
-              { dispositionStatus: { notIn: ['ARCHIVED', 'DESTROYED'] } },
+              { lifecycle: { dispositionStatus: null } },
+              { lifecycle: { dispositionStatus: { notIn: ['ARCHIVED', 'DESTROYED'] } } },
+              { lifecycle: null } // Safety check in case it's entirely missing
             ],
           };
 
@@ -1003,8 +1042,9 @@ export class DocumentsRouter {
             aclWhere,
             {
               OR: [
-                { dispositionStatus: null },
-                { dispositionStatus: { notIn: ['ARCHIVED', 'DESTROYED'] } },
+                { lifecycle: { dispositionStatus: null } },
+                { lifecycle: { dispositionStatus: { notIn: ['ARCHIVED', 'DESTROYED'] } } },
+                { lifecycle: null }
               ],
             },
           ];
@@ -1157,6 +1197,7 @@ export class DocumentsRouter {
 
           const documents = await this.prisma.document.findMany({
             where: whereClause,
+            include: { workflow: true }
           });
 
           if (documents.length === 0) {
@@ -1170,7 +1211,7 @@ export class DocumentsRouter {
 
           // If the document is IN_TRANSIT and FOR_APPROVAL, automatically enforce the "for review"
           if (
-            documents[0].recordStatus === 'IN_TRANSIT' &&
+            documents[0].workflow?.recordStatus === 'IN_TRANSIT' &&
             documents[0].classification === 'FOR_APPROVAL' &&
             documents[0].uploadedById !== recipient.id &&
             documents[0].originalSenderId !== recipient.id
@@ -1182,13 +1223,13 @@ export class DocumentsRouter {
             documents[0].uploadedById === recipient.id ||
             documents[0].originalSenderId === recipient.id;
           const isOriginatorResubmitting =
-            documents[0].recordStatus === 'IN_TRANSIT' &&
+            documents[0].workflow?.recordStatus === 'IN_TRANSIT' &&
             documents[0].classification === 'FOR_APPROVAL' &&
             (user.id === documents[0].uploadedById ||
               user.id === documents[0].originalSenderId) &&
-            (documents[0].status ===
+            (documents[0].workflow?.status ===
               'Returned for Corrections/Revision/Clarification' ||
-              documents[0].status === 'Disapproved');
+              documents[0].workflow?.status === 'Disapproved');
 
           const isAutoReceive =
             isReturningToOriginator || isOriginatorResubmitting;
@@ -1228,13 +1269,13 @@ export class DocumentsRouter {
           // we must clear the historical "decision" logged on the CURRENT transit route stop
           // so the UI correctly reverts to a generic pending "Current" state icon instead of sticking to the "Returned" icon.
           if (
-            documents[0].recordStatus === 'IN_TRANSIT' &&
+            documents[0].workflow?.recordStatus === 'IN_TRANSIT' &&
             documents[0].classification === 'FOR_APPROVAL' &&
             (user.id === documents[0].uploadedById ||
               user.id === documents[0].originalSenderId) &&
-            (documents[0].status ===
+            (documents[0].workflow?.status ===
               'Returned for Corrections/Revision/Clarification' ||
-              documents[0].status === 'Disapproved')
+              documents[0].workflow?.status === 'Disapproved')
           ) {
             // Find the CURRENT route stop for this document
             const currentStop =
@@ -1260,9 +1301,14 @@ export class DocumentsRouter {
           const updatedDocument = await this.prisma.document.update({
             where: { id: input.documentId },
             data: {
-              reviewRequesterId: isReview ? user.id : null,
-              status: isReview ? null : undefined, // Clear status if re-submitting for review
+              workflow: {
+                update: {
+                  reviewRequesterId: isReview ? user.id : null,
+                  status: isReview ? null : undefined, // Clear status if re-submitting for review
+                }
+              }
             },
+            include: { workflow: true }
           });
 
           await this.logService.logAction(
@@ -1278,7 +1324,7 @@ export class DocumentsRouter {
           // Notifications
           const senderName = `${dbUser.firstName} ${dbUser.lastName}`.trim();
           const isTransit =
-            updatedDocument.recordStatus === 'IN_TRANSIT' &&
+            updatedDocument.workflow?.recordStatus === 'IN_TRANSIT' &&
             updatedDocument.classification === 'FOR_APPROVAL';
 
           if (isReturningToOriginator) {
@@ -1657,7 +1703,7 @@ export class DocumentsRouter {
 
           const document = await this.prisma.document.findUnique({
             where: { id: input.documentId },
-            include: { transitRoutes: { include: { department: true } } },
+            include: { transitRoutes: { include: { department: true } }, workflow: true },
           });
 
           if (!document) {
@@ -1670,7 +1716,7 @@ export class DocumentsRouter {
           // Verify permissions for transit route vs standard approval
           const isTransit =
             document.classification === 'FOR_APPROVAL' &&
-            document.recordStatus === 'IN_TRANSIT';
+            document.workflow?.recordStatus === 'IN_TRANSIT';
 
           if (isTransit) {
             const currentRouteStop = document.transitRoutes.find(
@@ -1761,11 +1807,20 @@ export class DocumentsRouter {
           const nextVersionNumber = (maxVersion._max.versionNumber || 0) + 1;
 
           const updateData: Prisma.DocumentUpdateInput = {
-            status: input.status,
+            workflow: {
+              update: {
+                status: input.status,
+              }
+            }
           };
 
           if (input.status === 'Approved') {
-            updateData.recordStatus = 'FINAL';
+            updateData.workflow = {
+              update: {
+                status: input.status,
+                recordStatus: 'FINAL'
+              }
+            };
             updateData.classification = 'CONFIDENTIAL';
 
             if (input.finalStorageKey) {
@@ -1881,6 +1936,7 @@ export class DocumentsRouter {
           const updatedDocument = await this.prisma.document.update({
             where: { id: input.documentId },
             data: updateData,
+            include: { workflow: true }
           });
 
           await this.logService.logAction(
@@ -1894,11 +1950,11 @@ export class DocumentsRouter {
           );
 
           // Notification to the requester
-          if (document.reviewRequesterId) {
+          if (document.workflow?.reviewRequesterId) {
             const reviewerName =
               `${dbUser.firstName} ${dbUser.lastName}`.trim();
             await this.createNotification(
-              document.reviewRequesterId,
+              document.workflow.reviewRequesterId,
               'Review Completed',
               `${reviewerName} has marked your document "${updatedDocument.title}" as ${input.status}.`,
               updatedDocument.id,
@@ -2015,9 +2071,14 @@ export class DocumentsRouter {
               institutionId: dbUser.institutionId,
             },
             data: {
-              isUnderLegalHold: true,
-              legalHoldReason: input.reason,
+              lifecycle: {
+                update: {
+                  isUnderLegalHold: true,
+                  legalHoldReason: input.reason,
+                }
+              }
             },
+            include: { lifecycle: true }
           });
 
           await this.logService.logAction(
@@ -2055,9 +2116,14 @@ export class DocumentsRouter {
               institutionId: dbUser.institutionId,
             },
             data: {
-              isUnderLegalHold: false,
-              legalHoldReason: null,
+              lifecycle: {
+                update: {
+                  isUnderLegalHold: false,
+                  legalHoldReason: null,
+                }
+              }
             },
+            include: { lifecycle: true }
           });
 
           await this.logService.logAction(
@@ -2105,6 +2171,7 @@ export class DocumentsRouter {
 
           const doc = await ctx.prisma.document.findUnique({
             where: { id: input.documentId },
+            include: { lifecycle: true }
           });
 
           if (!doc || doc.institutionId !== dbUser.institutionId) {
@@ -2114,7 +2181,7 @@ export class DocumentsRouter {
             });
           }
 
-          if (doc.isUnderLegalHold) {
+          if (doc.lifecycle?.isUnderLegalHold) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'Document is under legal hold',
@@ -2122,7 +2189,7 @@ export class DocumentsRouter {
           }
 
           const status =
-            this.documentLifecycleService.computeLifecycleStatus(doc);
+            this.documentLifecycleService.computeLifecycleStatus(doc as any);
           if (status !== 'Ready') {
             throw new TRPCError({
               code: 'BAD_REQUEST',
@@ -2133,9 +2200,14 @@ export class DocumentsRouter {
           const updatedDoc = await this.prisma.document.update({
             where: { id: input.documentId },
             data: {
-              dispositionStatus: 'PENDING_DISPOSITION',
-              dispositionRequesterId: user.id,
+              lifecycle: {
+                update: {
+                  dispositionStatus: 'PENDING_DISPOSITION',
+                  dispositionRequesterId: user.id,
+                }
+              }
             },
+            include: { lifecycle: true }
           });
 
           await this.logService.logAction(
@@ -2169,11 +2241,12 @@ export class DocumentsRouter {
 
           const doc = await ctx.prisma.document.findUnique({
             where: { id: input.documentId },
+            include: { lifecycle: true }
           });
 
           if (!doc) throw new TRPCError({ code: 'NOT_FOUND' });
 
-          if (doc.isUnderLegalHold) {
+          if (doc.lifecycle?.isUnderLegalHold) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'Document is under legal hold',
@@ -2183,8 +2256,8 @@ export class DocumentsRouter {
           // We allow executing if it's PENDING_DISPOSITION, or if it hasn't been requested yet (direct execution).
           // However, we shouldn't execute it twice.
           if (
-            doc.dispositionStatus === 'ARCHIVED' ||
-            doc.dispositionStatus === 'DESTROYED'
+            doc.lifecycle?.dispositionStatus === 'ARCHIVED' ||
+            doc.lifecycle?.dispositionStatus === 'DESTROYED'
           ) {
             throw new TRPCError({
               code: 'BAD_REQUEST',
@@ -2195,8 +2268,8 @@ export class DocumentsRouter {
           // If there IS a requester, and it's the current user, enforce separation of duties.
           // If there is NO requester (direct execution by an admin), this check is bypassed.
           if (
-            doc.dispositionRequesterId &&
-            user.id === doc.dispositionRequesterId
+            doc.lifecycle?.dispositionRequesterId &&
+            user.id === doc.lifecycle?.dispositionRequesterId
           ) {
             throw new TRPCError({
               code: 'FORBIDDEN',
@@ -2205,7 +2278,7 @@ export class DocumentsRouter {
             });
           }
 
-          const action = doc.dispositionActionSnapshot;
+          const action = doc.lifecycle?.dispositionActionSnapshot;
 
           if (action === 'DESTROY') {
             // Delete from S3 for all versions
@@ -2247,9 +2320,14 @@ export class DocumentsRouter {
             const updatedDoc = await this.prisma.document.update({
               where: { id: doc.id },
               data: {
-                dispositionStatus: 'DESTROYED',
-                dispositionDate: new Date(),
+                lifecycle: {
+                  update: {
+                    dispositionStatus: 'DESTROYED',
+                    dispositionDate: new Date(),
+                  }
+                }
               },
+              include: { lifecycle: true }
             });
 
             await this.logService.logAction(
@@ -2394,11 +2472,16 @@ export class DocumentsRouter {
             const updatedDoc = await this.prisma.document.update({
               where: { id: doc.id },
               data: {
-                dispositionStatus: 'ARCHIVED',
-                dispositionDate: new Date(),
-                archiveManifestUrl: manifestKey,
-                archiveHash: latestHash,
+                lifecycle: {
+                  update: {
+                    dispositionStatus: 'ARCHIVED',
+                    dispositionDate: new Date(),
+                    archiveManifestUrl: manifestKey,
+                    archiveHash: latestHash,
+                  }
+                }
               },
+              include: { lifecycle: true }
             });
 
             await this.logService.logAction(
@@ -2434,11 +2517,12 @@ export class DocumentsRouter {
 
           const doc = await ctx.prisma.document.findUnique({
             where: { id: input.documentId },
+            include: { lifecycle: true }
           });
 
           if (!doc) throw new TRPCError({ code: 'NOT_FOUND' });
 
-          if (doc.dispositionStatus !== 'PENDING_DISPOSITION') {
+          if (doc.lifecycle?.dispositionStatus !== 'PENDING_DISPOSITION') {
             throw new TRPCError({
               code: 'BAD_REQUEST',
               message: 'Document is not pending disposition',
@@ -2448,9 +2532,14 @@ export class DocumentsRouter {
           const updatedDoc = await this.prisma.document.update({
             where: { id: input.documentId },
             data: {
-              dispositionStatus: null,
-              dispositionRequesterId: null,
+              lifecycle: {
+                update: {
+                  dispositionStatus: null,
+                  dispositionRequesterId: null,
+                }
+              }
             },
+            include: { lifecycle: true }
           });
 
           await this.logService.logAction(
@@ -2492,6 +2581,7 @@ export class DocumentsRouter {
             },
             include: {
               documentAccesses: true,
+              workflow: true
             },
           });
 
@@ -2502,14 +2592,14 @@ export class DocumentsRouter {
             });
           }
 
-          if (doc.recordStatus === 'FINAL') {
+          if (doc.workflow?.recordStatus === 'FINAL') {
             throw new TRPCError({
               code: 'BAD_REQUEST',
               message: 'Cannot check out a final document.',
             });
           }
 
-          if (doc.isCheckedOut) {
+          if (doc.workflow?.isCheckedOut) {
             throw new TRPCError({
               code: 'CONFLICT',
               message: 'Document is already checked out.',
@@ -2520,7 +2610,7 @@ export class DocumentsRouter {
           let hasWriteAccess = false;
 
           // Transit routing logic check
-          if (doc.recordStatus === 'IN_TRANSIT') {
+          if (doc.workflow?.recordStatus === 'IN_TRANSIT') {
             const documentWithRoutes = await this.prisma.document.findUnique({
               where: { id: doc.id },
               include: { transitRoutes: true },
@@ -2531,9 +2621,9 @@ export class DocumentsRouter {
 
             // Allow originators to check out if the document has been returned/disapproved so they can fix it
             if (
-              doc.status ===
+              doc.workflow?.status ===
                 'Returned for Corrections/Revision/Clarification' ||
-              doc.status === 'Disapproved'
+              doc.workflow?.status === 'Disapproved'
             ) {
               if (
                 doc.uploadedById === user.id ||
@@ -2611,9 +2701,14 @@ export class DocumentsRouter {
           const updatedDoc = await this.prisma.document.update({
             where: { id: input.documentId },
             data: {
-              isCheckedOut: true,
-              checkedOutById: user.id,
+              workflow: {
+                update: {
+                  isCheckedOut: true,
+                  checkedOutById: user.id,
+                }
+              }
             },
+            include: { workflow: true }
           });
 
           await this.logService.logAction(
@@ -2654,6 +2749,7 @@ export class DocumentsRouter {
 
           const doc = await this.prisma.document.findUnique({
             where: { id: input.documentId },
+            include: { workflow: true }
           });
 
           if (!doc || doc.institutionId !== dbUser.institutionId) {
@@ -2663,7 +2759,7 @@ export class DocumentsRouter {
             });
           }
 
-          if (!doc.isCheckedOut || doc.checkedOutById !== user.id) {
+          if (!doc.workflow?.isCheckedOut || doc.workflow?.checkedOutById !== user.id) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'You must check out the document first to check it in.',
@@ -2697,7 +2793,7 @@ export class DocumentsRouter {
 
           if (
             doc.classification === 'FOR_APPROVAL' &&
-            doc.recordStatus === 'IN_TRANSIT'
+            doc.workflow?.recordStatus === 'IN_TRANSIT'
           ) {
             isFinal = 'IN_TRANSIT'; // Never automatically finalize transit docs on check-in
           }
@@ -2711,9 +2807,13 @@ export class DocumentsRouter {
           const updatedDoc = await this.prisma.document.update({
             where: { id: input.documentId },
             data: {
-              isCheckedOut: false,
-              checkedOutById: null,
-              recordStatus: isFinal as any,
+              workflow: {
+                update: {
+                  isCheckedOut: false,
+                  checkedOutById: null,
+                  recordStatus: isFinal as any,
+                }
+              },
               versions: {
                 create: {
                   versionNumber: nextVersionNumber,
@@ -2726,6 +2826,7 @@ export class DocumentsRouter {
               },
             },
             include: {
+              workflow: true,
               versions: {
                 orderBy: { versionNumber: 'desc' as const },
                 take: 1,
@@ -2763,6 +2864,7 @@ export class DocumentsRouter {
 
           const doc = await this.prisma.document.findUnique({
             where: { id: input.documentId },
+            include: { workflow: true }
           });
 
           if (!doc || doc.institutionId !== dbUser.institutionId) {
@@ -2772,7 +2874,7 @@ export class DocumentsRouter {
             });
           }
 
-          if (!doc.isCheckedOut) {
+          if (!doc.workflow?.isCheckedOut) {
             throw new TRPCError({
               code: 'BAD_REQUEST',
               message: 'Document is not checked out.',
@@ -2785,7 +2887,7 @@ export class DocumentsRouter {
           );
 
           if (
-            doc.checkedOutById !== user.id &&
+            doc.workflow?.checkedOutById !== user.id &&
             doc.uploadedById !== user.id &&
             !canManageDocuments
           ) {
@@ -2798,9 +2900,14 @@ export class DocumentsRouter {
           const updatedDoc = await this.prisma.document.update({
             where: { id: input.documentId },
             data: {
-              isCheckedOut: false,
-              checkedOutById: null,
+              workflow: {
+                update: {
+                  isCheckedOut: false,
+                  checkedOutById: null,
+                }
+              }
             },
+            include: { workflow: true }
           });
 
           await this.logService.logAction(

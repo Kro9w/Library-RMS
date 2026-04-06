@@ -8,14 +8,16 @@ export class DocumentLifecycleService {
 
   public computeLifecycleStatus(doc: {
     createdAt: Date;
-    activeRetentionSnapshot: number | null;
-    activeRetentionMonthsSnapshot?: number | null;
-    activeRetentionDaysSnapshot?: number | null;
-    inactiveRetentionSnapshot: number | null;
-    inactiveRetentionMonthsSnapshot?: number | null;
-    inactiveRetentionDaysSnapshot?: number | null;
-    dispositionStatus: string | null;
-    isUnderLegalHold: boolean;
+    lifecycle?: {
+      activeRetentionSnapshot: number | null;
+      activeRetentionMonthsSnapshot?: number | null;
+      activeRetentionDaysSnapshot?: number | null;
+      inactiveRetentionSnapshot: number | null;
+      inactiveRetentionMonthsSnapshot?: number | null;
+      inactiveRetentionDaysSnapshot?: number | null;
+      dispositionStatus: string | null;
+      isUnderLegalHold: boolean;
+    } | null;
   }):
     | 'Active'
     | 'Inactive'
@@ -24,15 +26,17 @@ export class DocumentLifecycleService {
     | 'Destroyed'
     | 'Legal Hold'
     | null {
-    if (doc.isUnderLegalHold) return 'Legal Hold';
+    if (!doc.lifecycle) return 'Active';
 
-    if (doc.dispositionStatus === 'DESTROYED') return 'Destroyed';
-    if (doc.dispositionStatus === 'ARCHIVED') return 'Archived';
+    if (doc.lifecycle.isUnderLegalHold) return 'Legal Hold';
+
+    if (doc.lifecycle.dispositionStatus === 'DESTROYED') return 'Destroyed';
+    if (doc.lifecycle.dispositionStatus === 'ARCHIVED') return 'Archived';
 
     // If no retention schedule, treat as Active
     if (
-      doc.activeRetentionSnapshot === null ||
-      doc.activeRetentionSnapshot === undefined
+      doc.lifecycle.activeRetentionSnapshot === null ||
+      doc.lifecycle.activeRetentionSnapshot === undefined
     ) {
       return 'Active';
     }
@@ -42,26 +46,26 @@ export class DocumentLifecycleService {
 
     const activeUntil = new Date(created);
     activeUntil.setFullYear(
-      activeUntil.getFullYear() + doc.activeRetentionSnapshot,
+      activeUntil.getFullYear() + doc.lifecycle.activeRetentionSnapshot,
     );
     activeUntil.setMonth(
-      activeUntil.getMonth() + (doc.activeRetentionMonthsSnapshot || 0),
+      activeUntil.getMonth() + (doc.lifecycle.activeRetentionMonthsSnapshot || 0),
     );
     activeUntil.setDate(
-      activeUntil.getDate() + (doc.activeRetentionDaysSnapshot || 0),
+      activeUntil.getDate() + (doc.lifecycle.activeRetentionDaysSnapshot || 0),
     );
 
     if (now < activeUntil) return 'Active';
 
     const inactiveUntil = new Date(activeUntil);
     inactiveUntil.setFullYear(
-      inactiveUntil.getFullYear() + (doc.inactiveRetentionSnapshot || 0),
+      inactiveUntil.getFullYear() + (doc.lifecycle.inactiveRetentionSnapshot || 0),
     );
     inactiveUntil.setMonth(
-      inactiveUntil.getMonth() + (doc.inactiveRetentionMonthsSnapshot || 0),
+      inactiveUntil.getMonth() + (doc.lifecycle.inactiveRetentionMonthsSnapshot || 0),
     );
     inactiveUntil.setDate(
-      inactiveUntil.getDate() + (doc.inactiveRetentionDaysSnapshot || 0),
+      inactiveUntil.getDate() + (doc.lifecycle.inactiveRetentionDaysSnapshot || 0),
     );
 
     if (now < inactiveUntil) return 'Inactive';
@@ -83,8 +87,10 @@ export class DocumentLifecycleService {
   ) {
     const lifecycleWhereClause: Prisma.DocumentWhereInput = {
       institutionId: institutionId,
-      dispositionStatus: { notIn: ['DESTROYED', 'ARCHIVED'] },
-      activeRetentionSnapshot: { not: null },
+      lifecycle: {
+        dispositionStatus: { notIn: ['DESTROYED', 'ARCHIVED'] },
+        activeRetentionSnapshot: { not: null },
+      },
       AND: [aclWhere],
     };
 
@@ -102,21 +108,22 @@ export class DocumentLifecycleService {
     const rawQuery = Prisma.sql`
       SELECT d.id
       FROM "Document" d
+      INNER JOIN "DocumentLifecycle" l ON d.id = l."documentId"
       WHERE d."institutionId" = ${institutionId}
-        AND d."dispositionStatus" NOT IN ('DESTROYED', 'ARCHIVED')
-        AND d."activeRetentionSnapshot" IS NOT NULL
-        AND d."isUnderLegalHold" = false
+        AND (l."dispositionStatus" NOT IN ('DESTROYED', 'ARCHIVED') OR l."dispositionStatus" IS NULL)
+        AND l."activeRetentionSnapshot" IS NOT NULL
+        AND l."isUnderLegalHold" = false
         AND (d."createdAt" + 
-             make_interval(years => d."activeRetentionSnapshot") + 
-             make_interval(months => COALESCE(d."activeRetentionMonthsSnapshot", 0)) + 
-             make_interval(days => COALESCE(d."activeRetentionDaysSnapshot", 0))) <= NOW()
+             make_interval(years => l."activeRetentionSnapshot") + 
+             make_interval(months => COALESCE(l."activeRetentionMonthsSnapshot", 0)) + 
+             make_interval(days => COALESCE(l."activeRetentionDaysSnapshot", 0))) <= NOW()
         AND (d."createdAt" + 
-             make_interval(years => d."activeRetentionSnapshot") + 
-             make_interval(months => COALESCE(d."activeRetentionMonthsSnapshot", 0)) + 
-             make_interval(days => COALESCE(d."activeRetentionDaysSnapshot", 0)) + 
-             make_interval(years => COALESCE(d."inactiveRetentionSnapshot", 0)) +
-             make_interval(months => COALESCE(d."inactiveRetentionMonthsSnapshot", 0)) +
-             make_interval(days => COALESCE(d."inactiveRetentionDaysSnapshot", 0))) <= NOW()
+             make_interval(years => l."activeRetentionSnapshot") + 
+             make_interval(months => COALESCE(l."activeRetentionMonthsSnapshot", 0)) + 
+             make_interval(days => COALESCE(l."activeRetentionDaysSnapshot", 0)) + 
+             make_interval(years => COALESCE(l."inactiveRetentionSnapshot", 0)) +
+             make_interval(months => COALESCE(l."inactiveRetentionMonthsSnapshot", 0)) +
+             make_interval(days => COALESCE(l."inactiveRetentionDaysSnapshot", 0))) <= NOW()
     `;
 
     const rawResults = await this.prisma.$queryRaw<{ id: string }[]>(rawQuery);

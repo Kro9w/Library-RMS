@@ -1,15 +1,18 @@
 generator client {
   provider = "prisma-client-js"
 }
+
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
+
 enum DispositionAction {
   ARCHIVE
   DESTROY
 }
+
 enum Classification {
   DEPARTMENTAL
   INSTITUTIONAL
@@ -17,53 +20,59 @@ enum Classification {
   CONFIDENTIAL
   FOR_APPROVAL
 }
+
 enum PermissionLevel {
   READ
   WRITE
 }
+
 enum RecordStatus {
   DRAFT
   FINAL
   IN_TRANSIT
 }
+
 enum DistributionStatus {
   PENDING
   RECEIVED
 }
+
 enum TransitStatus {
   PENDING
   CURRENT
   APPROVED
   REJECTED
 }
+
 // apps/api/prisma/schema.prisma
 model User {
-  id         String  @id // Supabase Auth User ID
-  email      String  @unique
-  firstName  String
-  middleName String?
-  lastName   String
-  imageUrl   String? // URL for the user's profile picture
-  institution   Institution? @relation(fields: [institutionId], references: [id])
-  institutionId String?
-  campus   Campus? @relation(fields: [campusId], references: [id])
-  campusId String?
-  department   Department? @relation(fields: [departmentId], references: [id])
-  departmentId String?
-  documents                Document[]        @relation("uploadedBy")
-  documentVersions         DocumentVersion[] @relation("versionUploadedBy")
+  id                       String                 @id // Supabase Auth User ID
+  email                    String                 @unique
+  firstName                String
+  middleName               String?
+  lastName                 String
+  imageUrl                 String? // URL for the user's profile picture
+  institution              Institution?           @relation(fields: [institutionId], references: [id])
+  institutionId            String?
+  campus                   Campus?                @relation(fields: [campusId], references: [id])
+  campusId                 String?
+  department               Department?            @relation(fields: [departmentId], references: [id])
+  departmentId             String?
+  documents                Document[]             @relation("uploadedBy")
+  documentVersions         DocumentVersion[]      @relation("versionUploadedBy")
   roles                    Role[] // Implicit M:N
   logs                     Log[]
   Remark                   Remark[]
-  reviewRequested          Document[]        @relation("DocumentReviewRequester")
-  checkedOutDocs           Document[]        @relation("CheckedOutDocs")
+  reviewRequested          DocumentWorkflow[]     @relation("DocumentReviewRequester")
+  checkedOutDocs           DocumentWorkflow[]     @relation("CheckedOutDocs")
   notifications            Notification[]
   documentAccesses         DocumentAccess[]
-  dispositionRequestedDocs Document[]        @relation("dispositionRequester")
-  sentDistributions     DocumentDistribution[] @relation("DistributionSender")
-  receivedDistributions DocumentDistribution[] @relation("DistributionRecipient")
-  approvedTransitRoutes DocumentTransitRoute[] @relation("RouteApprovedBy")
+  dispositionRequestedDocs DocumentLifecycle[]    @relation("dispositionRequester")
+  sentDistributions        DocumentDistribution[] @relation("DistributionSender")
+  receivedDistributions    DocumentDistribution[] @relation("DistributionRecipient")
+  approvedTransitRoutes    DocumentTransitRoute[] @relation("RouteApprovedBy")
 }
+
 model Notification {
   id         String   @id @default(cuid())
   user       User     @relation(fields: [userId], references: [id])
@@ -73,8 +82,10 @@ model Notification {
   isRead     Boolean  @default(false)
   documentId String? // Optional reference to a document for navigation
   createdAt  DateTime @default(now())
+
   @@index([userId])
 }
+
 model Role {
   id                   String           @id @default(cuid())
   name                 String
@@ -85,9 +96,10 @@ model Role {
   canManageInstitution Boolean          @default(false)
   users                User[] // Implicit M:N
   documentAccesses     DocumentAccess[]
-  department   Department @relation(fields: [departmentId], references: [id])
-  departmentId String
+  department           Department       @relation(fields: [departmentId], references: [id])
+  departmentId         String
 }
+
 model Institution {
   id               String           @id @default(cuid())
   name             String
@@ -99,6 +111,7 @@ model Institution {
   logs             Log[]
   documentAccesses DocumentAccess[]
 }
+
 model Campus {
   id               String           @id @default(cuid())
   name             String
@@ -110,11 +123,12 @@ model Campus {
   documentAccesses DocumentAccess[]
   logs             Log[]
 }
+
 model Department {
-  id               String           @id @default(cuid())
+  id               String                 @id @default(cuid())
   name             String
-  icon             String           @default("default-icon.png")
-  campus           Campus           @relation(fields: [campusId], references: [id])
+  icon             String                 @default("default-icon.png")
+  campus           Campus                 @relation(fields: [campusId], references: [id])
   campusId         String
   users            User[]
   roles            Role[]
@@ -123,6 +137,7 @@ model Department {
   transitRoutes    DocumentTransitRoute[]
   logs             Log[]
 }
+
 model Log {
   id            String      @id @default(cuid())
   user          User        @relation(fields: [userId], references: [id])
@@ -137,56 +152,76 @@ model Log {
   userRole      String
   createdAt     DateTime    @default(now())
 }
+
 model DocumentType {
-  id                        String            @id @default(cuid())
-  name                      String
-  color                     String
-  institution               Institution       @relation(fields: [institutionId], references: [id])
-  institutionId             String
-  documents                 Document[]
-  activeRetentionDuration   Int               @default(0) // In Years
-  activeRetentionMonths     Int               @default(0) // In Months
-  activeRetentionDays       Int               @default(0) // In Days
-  
-  inactiveRetentionDuration Int               @default(0) // In Years
-  inactiveRetentionMonths   Int               @default(0) // In Months
-  inactiveRetentionDays     Int               @default(0) // In Days
-  
-  dispositionAction         DispositionAction @default(ARCHIVE)
+  id                      String      @id @default(cuid())
+  name                    String
+  color                   String
+  institution             Institution @relation(fields: [institutionId], references: [id])
+  institutionId           String
+  documents               Document[]
+  activeRetentionDuration Int         @default(0) // In Years
+  activeRetentionMonths   Int         @default(0) // In Months
+  activeRetentionDays     Int         @default(0) // In Days
+
+  inactiveRetentionDuration Int @default(0) // In Years
+  inactiveRetentionMonths   Int @default(0) // In Months
+  inactiveRetentionDays     Int @default(0) // In Days
+
+  dispositionAction DispositionAction @default(ARCHIVE)
 }
+
 model Document {
-  id            String  @id @default(cuid())
-  fileName      String
-  controlNumber String?
-  title         String
-  content       String
-  documentType   DocumentType? @relation(fields: [documentTypeId], references: [id])
-  documentTypeId String?
-  uploadedBy   User   @relation("uploadedBy", fields: [uploadedById], references: [id])
-  uploadedById String
+  id               String                 @id @default(cuid())
+  fileName         String
+  controlNumber    String?
+  title            String
+  content          String
+  documentType     DocumentType?          @relation(fields: [documentTypeId], references: [id])
+  documentTypeId   String?
+  uploadedBy       User                   @relation("uploadedBy", fields: [uploadedById], references: [id])
+  uploadedById     String
   originalSenderId String?
-  classification Classification @default(INTERNAL)
-  institution   Institution @relation(fields: [institutionId], references: [id])
-  institutionId String
+  classification   Classification         @default(INTERNAL)
+  institution      Institution            @relation(fields: [institutionId], references: [id])
+  institutionId    String
   // Optional relations to quickly filter by campus or department
-  campus   Campus? @relation(fields: [campusId], references: [id])
-  campusId String?
-  department   Department? @relation(fields: [departmentId], references: [id])
-  departmentId String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  recordStatus   RecordStatus @default(DRAFT)
-  isCheckedOut   Boolean      @default(false)
-  checkedOutBy   User?        @relation("CheckedOutDocs", fields: [checkedOutById], references: [id])
-  checkedOutById String?
-  versions DocumentVersion[]
-  reviewRequester   User?   @relation("DocumentReviewRequester", fields: [reviewRequesterId], references: [id])
-  reviewRequesterId String?
-  status  String? // eg. approved, returned, disapproved
-  remarks Remark[]
-  activeRetentionSnapshot         Int?
-  activeRetentionMonthsSnapshot   Int?
-  activeRetentionDaysSnapshot     Int?
+  campus           Campus?                @relation(fields: [campusId], references: [id])
+  campusId         String?
+  department       Department?            @relation(fields: [departmentId], references: [id])
+  departmentId     String?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  versions         DocumentVersion[]
+  remarks          Remark[]
+  documentAccesses DocumentAccess[]
+  distributions    DocumentDistribution[]
+  transitRoutes    DocumentTransitRoute[]
+
+  lifecycle DocumentLifecycle?
+  workflow  DocumentWorkflow?
+
+  metadata Json?
+
+  @@index([institutionId])
+  @@index([uploadedById])
+  @@index([documentTypeId])
+  @@index([classification])
+  @@index([originalSenderId])
+  @@index([campusId])
+  @@index([departmentId])
+  @@index([campusId, departmentId])
+  @@index([institutionId, classification])
+}
+
+model DocumentLifecycle {
+  id         String   @id @default(cuid())
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String   @unique
+
+  activeRetentionSnapshot       Int?
+  activeRetentionMonthsSnapshot Int?
+  activeRetentionDaysSnapshot   Int?
 
   inactiveRetentionSnapshot       Int?
   inactiveRetentionMonthsSnapshot Int?
@@ -197,36 +232,47 @@ model Document {
   dispositionDate           DateTime? // The exact date the disposition was executed
   archiveManifestUrl        String?
   archiveHash               String?
+
   isUnderLegalHold Boolean @default(false)
   legalHoldReason  String?
+
   dispositionRequesterId String?
   dispositionRequester   User?   @relation("dispositionRequester", fields: [dispositionRequesterId], references: [id])
-  documentAccesses DocumentAccess[]
-  distributions    DocumentDistribution[]
-  transitRoutes    DocumentTransitRoute[]
-  @@index([institutionId])
-  @@index([uploadedById])
-  @@index([documentTypeId])
-  @@index([classification])
-  @@index([originalSenderId])
-  @@index([campusId])
-  @@index([departmentId])
 }
+
+model DocumentWorkflow {
+  id         String   @id @default(cuid())
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String   @unique
+
+  recordStatus RecordStatus @default(DRAFT)
+  status       String? // eg. approved, returned, disapproved
+
+  isCheckedOut   Boolean @default(false)
+  checkedOutBy   User?   @relation("CheckedOutDocs", fields: [checkedOutById], references: [id])
+  checkedOutById String?
+
+  reviewRequester   User?   @relation("DocumentReviewRequester", fields: [reviewRequesterId], references: [id])
+  reviewRequesterId String?
+}
+
 model DocumentVersion {
-  id            String  @id @default(cuid())
+  id            String   @id @default(cuid())
   versionNumber Int
-  s3Key         String  @unique
+  s3Key         String   @unique
   s3Bucket      String
   fileType      String?
   fileSize      Int?
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  documentId String
-  uploadedBy   User   @relation("versionUploadedBy", fields: [uploadedById], references: [id])
-  uploadedById String
-  createdAt DateTime @default(now())
+  document      Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId    String
+  uploadedBy    User     @relation("versionUploadedBy", fields: [uploadedById], references: [id])
+  uploadedById  String
+  createdAt     DateTime @default(now())
+
   @@index([documentId])
   @@index([uploadedById])
 }
+
 model Remark {
   id         String   @id @default(cuid())
   message    String
@@ -236,22 +282,24 @@ model Remark {
   authorId   String
   createdAt  DateTime @default(now())
 }
+
 model DocumentAccess {
-  id         String   @id @default(cuid())
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  documentId String
+  id            String          @id @default(cuid())
+  document      Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId    String
   // Can be granted to a specific user, role, department, campus, or institution
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  roleId String?
-  role   Role?   @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  departmentId String?
-  department   Department? @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  campusId String?
-  campus   Campus? @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  userId        String?
+  user          User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId        String?
+  role          Role?           @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  departmentId  String?
+  department    Department?     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  campusId      String?
+  campus        Campus?         @relation(fields: [campusId], references: [id], onDelete: Cascade)
   institutionId String?
-  institution   Institution? @relation(fields: [institutionId], references: [id], onDelete: Cascade)
-  permission PermissionLevel @default(READ)
+  institution   Institution?    @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  permission    PermissionLevel @default(READ)
+
   @@index([documentId])
   @@index([userId])
   @@index([roleId])
@@ -259,35 +307,39 @@ model DocumentAccess {
   @@index([campusId])
   @@index([institutionId])
 }
+
 model DocumentDistribution {
-  id         String   @id @default(cuid())
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  documentId String
-  sender   User   @relation("DistributionSender", fields: [senderId], references: [id])
-  senderId String
-  recipient   User   @relation("DistributionRecipient", fields: [recipientId], references: [id])
+  id          String             @id @default(cuid())
+  document    Document           @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId  String
+  sender      User               @relation("DistributionSender", fields: [senderId], references: [id])
+  senderId    String
+  recipient   User               @relation("DistributionRecipient", fields: [recipientId], references: [id])
   recipientId String
-  status DistributionStatus @default(PENDING) // Enum: PENDING, RECEIVED
-  createdAt  DateTime  @default(now())
-  receivedAt DateTime?
+  status      DistributionStatus @default(PENDING) // Enum: PENDING, RECEIVED
+  createdAt   DateTime           @default(now())
+  receivedAt  DateTime?
+
   @@index([documentId])
   @@index([senderId])
   @@index([recipientId])
 }
+
 model DocumentTransitRoute {
-  id           String        @id @default(cuid())
-  document     Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  documentId   String
-  department   Department    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  departmentId String
+  id            String        @id @default(cuid())
+  document      Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId    String
+  department    Department    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  departmentId  String
   sequenceOrder Int
   status        TransitStatus @default(PENDING)
-  decision      String?       // e.g. "Noted", "For Endorsement", "Approved"
-  approvedBy   User?         @relation("RouteApprovedBy", fields: [approvedById], references: [id])
-  approvedById String?
-  approvedAt   DateTime?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  decision      String? // e.g. "Noted", "For Endorsement", "Approved"
+  approvedBy    User?         @relation("RouteApprovedBy", fields: [approvedById], references: [id])
+  approvedById  String?
+  approvedAt    DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
   @@index([documentId])
   @@index([departmentId])
   @@index([approvedById])

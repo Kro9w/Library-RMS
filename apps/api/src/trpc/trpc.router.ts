@@ -70,12 +70,12 @@ export class TrpcRouter {
           where: documentWhere,
         });
 
-        const docsByStatusQuery = ctx.prisma.document.groupBy({
+        const docsByStatusQuery = ctx.prisma.documentWorkflow.groupBy({
           by: ['status'],
           _count: {
             status: true,
           },
-          where: documentWhere,
+          where: { document: documentWhere },
         });
 
         const [

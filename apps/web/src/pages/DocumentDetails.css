@@ -566,3 +566,153 @@ body[data-bs-theme="dark"] .checked-out-indicator {
   border-color: rgba(220, 38, 38, 0.25);
   color: #f87171;
 }
+
+/* ── Disposition Certificate / Archival Record ── */
+.disposition-certificate {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+/* Archive variant */
+.disposition-certificate.cert-archive {
+  border-color: #93c5fd;
+  background-color: var(--info-subtle);
+}
+body[data-bs-theme="dark"] .disposition-certificate.cert-archive {
+  background-color: rgba(37, 99, 235, 0.06);
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+/* Destroy variant */
+.disposition-certificate.cert-destroy {
+  border-color: #fca5a5;
+  background-color: var(--danger-subtle);
+}
+body[data-bs-theme="dark"] .disposition-certificate.cert-destroy {
+  background-color: rgba(220, 38, 38, 0.06);
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+.disposition-cert-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid;
+}
+
+.cert-archive .disposition-cert-header {
+  border-bottom-color: #93c5fd;
+  background-color: rgba(37, 99, 235, 0.06);
+}
+body[data-bs-theme="dark"] .cert-archive .disposition-cert-header {
+  border-bottom-color: rgba(37, 99, 235, 0.25);
+}
+
+.cert-destroy .disposition-cert-header {
+  border-bottom-color: #fca5a5;
+  background-color: rgba(220, 38, 38, 0.05);
+}
+body[data-bs-theme="dark"] .cert-destroy .disposition-cert-header {
+  border-bottom-color: rgba(220, 38, 38, 0.25);
+}
+
+.disposition-cert-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.cert-archive .disposition-cert-icon {
+  background-color: var(--info-subtle);
+  color: var(--info);
+  border: 1px solid #93c5fd;
+}
+
+.cert-destroy .disposition-cert-icon {
+  background-color: var(--danger-subtle);
+  color: var(--danger);
+  border: 1px solid #fca5a5;
+}
+
+.disposition-cert-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+.cert-archive .disposition-cert-title {
+  color: var(--info);
+}
+
+.cert-destroy .disposition-cert-title {
+  color: var(--danger);
+}
+
+.disposition-cert-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.disposition-cert-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.disposition-cert-row strong {
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 52px;
+  flex-shrink: 0;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-top: 2px;
+}
+
+.cert-archive .disposition-cert-row span {
+  color: #1e40af;
+}
+body[data-bs-theme="dark"] .cert-archive .disposition-cert-row span {
+  color: #60a5fa;
+}
+
+.cert-destroy .disposition-cert-row span {
+  color: #991b1b;
+}
+body[data-bs-theme="dark"] .cert-destroy .disposition-cert-row span {
+  color: #f87171;
+}
+
+.disposition-cert-divider {
+  height: 1px;
+  margin: 4px 0;
+}
+.cert-archive .disposition-cert-divider {
+  background-color: #bfdbfe;
+}
+.cert-destroy .disposition-cert-divider {
+  background-color: #fecaca;
+}
+
+.disposition-cert-compliance {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin: 0;
+  font-style: italic;
+}
