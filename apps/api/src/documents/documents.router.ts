@@ -884,19 +884,34 @@ export class DocumentsRouter {
             });
           }
 
-          for (const version of doc.versions) {
+          const keysByBucket = doc.versions.reduce((acc, version) => {
             if (version.s3Key && version.s3Bucket) {
-              const { error: storageError } = await this.supabase
-                .getAdminClient()
-                .storage.from(version.s3Bucket)
-                .remove([version.s3Key]);
-              if (storageError) {
-                console.error(
-                  'Failed to delete file from storage:',
-                  storageError,
-                );
+              if (!acc[version.s3Bucket]) {
+                acc[version.s3Bucket] = [];
               }
+              acc[version.s3Bucket].push(version.s3Key);
             }
+            return acc;
+          }, {} as Record<string, string[]>);
+
+          const bucketEntries = Object.entries(keysByBucket);
+          
+          if (bucketEntries.length > 0) {
+            const adminClient = this.supabase.getAdminClient();
+            await Promise.all(
+              bucketEntries.map(async ([bucket, keys]) => {
+                const { error: storageError } = await adminClient.storage
+                  .from(bucket)
+                  .remove(keys);
+
+                if (storageError) {
+                  this.logService.logError(
+                    `Failed to batch delete files from storage bucket ${bucket}:`,
+                    storageError,
+                  );
+                }
+              })
+            );
           }
 
           await this.logService.logAction(
@@ -1571,44 +1586,67 @@ export class DocumentsRouter {
           const action = doc.lifecycle?.dispositionActionSnapshot;
 
           if (action === 'DESTROY') {
-            // Delete from S3 for all versions
             const versions = await this.prisma.documentVersion.findMany({
               where: { documentId: doc.id },
             });
 
-            for (const version of versions) {
+            const keysByBucket = versions.reduce((acc, version) => {
               if (
                 version.s3Key &&
                 version.s3Bucket &&
                 version.s3Key !== 'DESTROYED'
               ) {
-                const { error: storageError } = await this.supabase
-                  .getAdminClient()
-                  .storage.from(version.s3Bucket)
-                  .remove([version.s3Key]);
-
-                if (storageError) {
-                  console.error(
-                    'Failed to delete file from storage during disposition:',
-                    storageError,
-                  );
-                  throw new TRPCError({
-                    code: 'INTERNAL_SERVER_ERROR',
-                    message: 'Failed to delete physical file from storage.',
-                  });
+                if (!acc[version.s3Bucket]) {
+                  acc[version.s3Bucket] = [];
                 }
+                acc[version.s3Bucket].push(version.s3Key);
+              }
+              return acc;
+            }, {} as Record<string, string[]>);
 
-                // Update the database record to permanently overwrite the s3Key pointer.
-                // We use 'DESTROYED' as a tombstone string since the schema requires a unique String.
-                // Using a unique CUID tombstone ensures it satisfies the `@unique` constraint safely.
-                await this.prisma.documentVersion.update({
+            const bucketEntries = Object.entries(keysByBucket);
+
+            if (bucketEntries.length > 0) {
+              const adminClient = this.supabase.getAdminClient();
+              await Promise.all(
+                bucketEntries.map(async ([bucket, keys]) => {
+                  const { error: storageError } = await adminClient.storage
+                    .from(bucket)
+                    .remove(keys);
+
+                  if (storageError) {
+                    this.logService.logError(
+                      `Failed to batch delete files from storage bucket ${bucket} during disposition:`,
+                      storageError,
+                    );
+                    throw new TRPCError({
+                      code: 'INTERNAL_SERVER_ERROR',
+                      message: 'Failed to delete physical file from storage.',
+                    });
+                  }
+                })
+              );
+            }
+
+            const updatePromises = versions
+              .filter(
+                (version) =>
+                  version.s3Key &&
+                  version.s3Bucket &&
+                  version.s3Key !== 'DESTROYED'
+              )
+              .map((version) =>
+                this.prisma.documentVersion.update({
                   where: { id: version.id },
                   data: {
                     s3Key: `DESTROYED-${version.id}`,
                     fileSize: 0,
                   },
-                });
-              }
+                })
+              );
+
+            if (updatePromises.length > 0) {
+              await this.prisma.$transaction(updatePromises);
             }
 
             const updatedDoc = await this.prisma.document.update({

@@ -28,6 +28,10 @@ export class LogService {
     });
   }
 
+  logError(message: string, error?: unknown) {
+    console.error(message, error);
+  }
+
   async logActions(
     logs: {
       userId: string;
