@@ -20,22 +20,23 @@ interface TypeBarChartProps {
 const TypeBarChart: React.FC<TypeBarChartProps> = ({ documents, tab }) => {
   const [hoveredType, setHoveredType] = useState<string | null>(null);
 
-  const typeGroups: Record<string, { count: number; color: string }> = {};
-  documents.forEach((doc: any) => {
-    const name = doc.documentType?.name || "Uncategorized";
-    const rawColor = doc.documentType?.color;
-    const color = rawColor
-      ? rawColor.startsWith("#")
-        ? rawColor
-        : `#${rawColor}`
-      : "#a1a1aa";
-    if (!typeGroups[name]) typeGroups[name] = { count: 0, color };
-    typeGroups[name].count++;
-  });
+  const entries = useMemo(() => {
+    const typeGroups: Record<string, { count: number; color: string }> = {};
+    documents.forEach((doc: any) => {
+      const name = doc.documentType?.name || "Uncategorized";
+      const rawColor = doc.documentType?.color;
+      const color = rawColor
+        ? rawColor.startsWith("#")
+          ? rawColor
+          : `#${rawColor}`
+        : "#a1a1aa";
+      if (!typeGroups[name]) typeGroups[name] = { count: 0, color };
+      typeGroups[name].count++;
+    });
 
-  const entries = Object.entries(typeGroups).sort(
-    (a, b) => b[1].count - a[1].count,
-  );
+    return Object.entries(typeGroups).sort((a, b) => b[1].count - a[1].count);
+  }, [documents]);
+
   const total = documents.length;
 
   if (total === 0) {
@@ -146,51 +147,76 @@ export default function AdminMasterArchives() {
     string | null
   >(null);
 
-  const handleDownloadManifest = async (id: string) => {
-    try {
-      setDownloadingManifestId(id);
-      const result = await utils.archives.getArchiveManifestUrl.fetch({ id });
-      if (result.signedUrl) window.open(result.signedUrl, "_blank");
-    } catch {
-      alert("Failed to fetch manifest");
-    } finally {
-      setDownloadingManifestId(null);
-    }
-  };
+  const handleDownloadManifest = React.useCallback(
+    async (id: string) => {
+      try {
+        setDownloadingManifestId(id);
+        const result = await utils.archives.getArchiveManifestUrl.fetch({ id });
+        if (result.signedUrl) window.open(result.signedUrl, "_blank");
+      } catch {
+        alert("Failed to fetch manifest");
+      } finally {
+        setDownloadingManifestId(null);
+      }
+    },
+    [utils.archives.getArchiveManifestUrl],
+  );
 
-  const handleDownloadFile = async (documentId: string) => {
-    try {
-      setDownloadingFileId(documentId);
-      const result = await utils.documents.getSignedDocumentUrl.fetch({
-        documentId,
-      });
-      if (result.signedUrl) window.open(result.signedUrl, "_blank");
-    } catch {
-      alert("Failed to fetch document file");
-    } finally {
-      setDownloadingFileId(null);
-    }
-  };
+  const handleDownloadFile = React.useCallback(
+    async (documentId: string) => {
+      try {
+        setDownloadingFileId(documentId);
+        const result = await utils.documents.getSignedDocumentUrl.fetch({
+          documentId,
+        });
+        if (result.signedUrl) window.open(result.signedUrl, "_blank");
+      } catch {
+        alert("Failed to fetch document file");
+      } finally {
+        setDownloadingFileId(null);
+      }
+    },
+    [utils.documents.getSignedDocumentUrl],
+  );
 
   const isLoading =
     activeTab === "archives" ? isLoadingArchived : isLoadingDestroyed;
-  const rawTableData: any[] =
-    (activeTab === "archives"
-      ? archivedData?.documents
-      : destroyedData?.documents) || [];
-  const totalCount =
-    (activeTab === "archives"
-      ? archivedData?.totalCount
-      : destroyedData?.totalCount) || 0;
-  const totalPages = Math.ceil(totalCount / pageSize);
 
-  const chartDocs =
-    activeTab === "archives"
+  const rawTableData: any[] = useMemo(() => {
+    return (
+      (activeTab === "archives"
+        ? archivedData?.documents
+        : destroyedData?.documents) || []
+    );
+  }, [activeTab, archivedData?.documents, destroyedData?.documents]);
+
+  const totalCount = useMemo(() => {
+    return (
+      (activeTab === "archives"
+        ? archivedData?.totalCount
+        : destroyedData?.totalCount) || 0
+    );
+  }, [activeTab, archivedData?.totalCount, destroyedData?.totalCount]);
+
+  const totalPages = useMemo(
+    () => Math.ceil(totalCount / pageSize),
+    [totalCount, pageSize],
+  );
+
+  const chartDocs = useMemo(() => {
+    return activeTab === "archives"
       ? archiveAllData?.documents || []
       : destroyAllData?.documents || [];
+  }, [activeTab, archiveAllData?.documents, destroyAllData?.documents]);
 
-  const archiveTotalCount = archiveAllData?.totalCount ?? 0;
-  const destroyTotalCount = destroyAllData?.totalCount ?? 0;
+  const archiveTotalCount = useMemo(
+    () => archiveAllData?.totalCount ?? 0,
+    [archiveAllData?.totalCount],
+  );
+  const destroyTotalCount = useMemo(
+    () => destroyAllData?.totalCount ?? 0,
+    [destroyAllData?.totalCount],
+  );
 
   // Extract unique campuses/depts from full data for filter dropdowns
   const campusOptions = useMemo(() => {
@@ -220,13 +246,13 @@ export default function AdminMasterArchives() {
     });
   }, [rawTableData, filterCampus, filterDept]);
 
-  const switchTab = (tab: "archives" | "destruction") => {
+  const switchTab = React.useCallback((tab: "archives" | "destruction") => {
     setActiveTab(tab);
     setPage(1);
     setSearch("");
     setFilterCampus("");
     setFilterDept("");
-  };
+  }, []);
 
   return (
     <div>
