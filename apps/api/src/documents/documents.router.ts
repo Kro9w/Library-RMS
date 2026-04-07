@@ -1905,142 +1905,152 @@ export class DocumentsRouter {
           const aclWhere = this.accessControlService.generateAclWhereClause(
             ctx.dbUser,
           );
-          const doc = await this.prisma.document.findFirst({
-            where: {
-              id: input.documentId,
-              institutionId: dbUser.institutionId,
-              AND: [aclWhere],
-            },
-            include: {
-              documentAccesses: true,
-              workflow: true,
-            },
-          });
 
-          if (!doc) {
-            throw new TRPCError({
-              code: 'NOT_FOUND',
-              message: 'Document not found or access denied.',
+          const updatedDoc = await this.prisma.$transaction(async (tx) => {
+            const lockedDocs = await tx.$queryRaw<any[]>`
+              SELECT id FROM "Document"
+              WHERE id = ${input.documentId} AND "institutionId" = ${dbUser.institutionId}
+              FOR UPDATE
+            `;
+
+            if (lockedDocs.length === 0) {
+              throw new TRPCError({
+                code: 'NOT_FOUND',
+                message: 'Document not found or access denied.',
+              });
+            }
+
+            const doc = await tx.document.findFirst({
+              where: {
+                id: input.documentId,
+                institutionId: dbUser.institutionId as string,
+                AND: [aclWhere],
+              },
+              include: {
+                documentAccesses: true,
+                workflow: true,
+              },
             });
-          }
 
-          if (doc.workflow?.recordStatus === 'FINAL') {
-            throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: 'Cannot check out a final document.',
-            });
-          }
+            if (!doc) {
+              throw new TRPCError({
+                code: 'NOT_FOUND',
+                message: 'Document not found or access denied.',
+              });
+            }
 
-          if (doc.workflow?.isCheckedOut) {
-            throw new TRPCError({
-              code: 'CONFLICT',
-              message: 'Document is already checked out.',
-            });
-          }
+            if (doc.workflow?.recordStatus === 'FINAL') {
+              throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: 'Cannot check out a final document.',
+              });
+            }
 
-          // Verify write access
-          let hasWriteAccess = false;
+            if (doc.workflow?.isCheckedOut) {
+              throw new TRPCError({
+                code: 'CONFLICT',
+                message: 'Document is already checked out.',
+              });
+            }
 
-          // Transit routing logic check
-          if (doc.workflow?.recordStatus === 'IN_TRANSIT') {
-            const documentWithRoutes = await this.prisma.document.findUnique({
-              where: { id: doc.id },
-              include: { transitRoutes: true },
-            });
-            const currentRouteStop = documentWithRoutes?.transitRoutes.find(
-              (r) => r.status === 'CURRENT',
-            );
+            let hasWriteAccess = false;
 
-            // Allow originators to check out if the document has been returned/disapproved so they can fix it
-            if (
-              doc.workflow?.status ===
-                'Returned for Corrections/Revision/Clarification' ||
-              doc.workflow?.status === 'Disapproved'
-            ) {
+            if (doc.workflow?.recordStatus === 'IN_TRANSIT') {
+              const documentWithRoutes = await tx.document.findUnique({
+                where: { id: doc.id },
+                include: { transitRoutes: true },
+              });
+              const currentRouteStop = documentWithRoutes?.transitRoutes.find(
+                (r) => r.status === 'CURRENT',
+              );
+
               if (
-                doc.uploadedById === user.id ||
-                doc.originalSenderId === user.id
+                doc.workflow?.status ===
+                  'Returned for Corrections/Revision/Clarification' ||
+                doc.workflow?.status === 'Disapproved'
+              ) {
+                if (
+                  doc.uploadedById === user.id ||
+                  doc.originalSenderId === user.id
+                ) {
+                  hasWriteAccess = true;
+                }
+              }
+
+              if (
+                !hasWriteAccess &&
+                currentRouteStop &&
+                dbUser.departmentId === currentRouteStop.departmentId
+              ) {
+                const hasLevel1Or2 = dbUser.roles.some(
+                  (r) =>
+                    (r.level === 1 || r.level === 2) &&
+                    r.departmentId === currentRouteStop.departmentId,
+                );
+                if (hasLevel1Or2) {
+                  hasWriteAccess = true;
+                }
+              }
+
+              if (
+                !hasWriteAccess &&
+                !this.accessControlService.checkPermission(
+                  dbUser,
+                  'canManageDocuments',
+                )
+              ) {
+                throw new TRPCError({
+                  code: 'FORBIDDEN',
+                  message:
+                    'Only Level 1 or 2 users of the currently active office in the transit route can check out this document.',
+                });
+              }
+            } else {
+              if (
+                this.accessControlService.checkPermission(
+                  dbUser,
+                  'canManageDocuments',
+                ) ||
+                doc.uploadedById === user.id
               ) {
                 hasWriteAccess = true;
+              } else {
+                const writeAclWhere =
+                  this.accessControlService.generateAclWhereClause(
+                    dbUser,
+                    'WRITE',
+                  );
+
+                const writeAccessCheck = await tx.document.findFirst({
+                  where: {
+                    id: input.documentId,
+                    institutionId: dbUser.institutionId as string,
+                    AND: [writeAclWhere],
+                  },
+                });
+                if (writeAccessCheck) hasWriteAccess = true;
+              }
+
+              if (!hasWriteAccess) {
+                throw new TRPCError({
+                  code: 'FORBIDDEN',
+                  message: 'You do not have write access to this document.',
+                });
               }
             }
 
-            if (
-              !hasWriteAccess &&
-              currentRouteStop &&
-              dbUser.departmentId === currentRouteStop.departmentId
-            ) {
-              // Allow Level 1 and Level 2 users of the active department to check out
-              const hasLevel1Or2 = dbUser.roles.some(
-                (r) =>
-                  (r.level === 1 || r.level === 2) &&
-                  r.departmentId === currentRouteStop.departmentId,
-              );
-              if (hasLevel1Or2) {
-                hasWriteAccess = true;
-              }
-            }
-
-            if (
-              !hasWriteAccess &&
-              !this.accessControlService.checkPermission(
-                dbUser,
-                'canManageDocuments',
-              )
-            ) {
-              throw new TRPCError({
-                code: 'FORBIDDEN',
-                message:
-                  'Only Level 1 or 2 users of the currently active office in the transit route can check out this document.',
-              });
-            }
-          } else {
-            // Standard Verify write access
-            if (
-              this.accessControlService.checkPermission(
-                dbUser,
-                'canManageDocuments',
-              ) ||
-              doc.uploadedById === user.id
-            ) {
-              hasWriteAccess = true;
-            } else {
-              // Correctly verify using AccessControlService write clause
-              const writeAclWhere =
-                this.accessControlService.generateAclWhereClause(
-                  dbUser,
-                  'WRITE',
-                );
-
-              const writeAccessCheck = await this.prisma.document.findFirst({
-                where: {
-                  id: input.documentId,
-                  institutionId: dbUser.institutionId,
-                  AND: [writeAclWhere],
-                },
-              });
-              if (writeAccessCheck) hasWriteAccess = true;
-            }
-
-            if (!hasWriteAccess) {
-              throw new TRPCError({
-                code: 'FORBIDDEN',
-                message: 'You do not have write access to this document.',
-              });
-            }
-          }
-
-          const updatedDoc = await this.prisma.document.update({
-            where: { id: input.documentId },
-            data: {
-              workflow: {
-                update: {
-                  isCheckedOut: true,
-                  checkedOutById: user.id,
+            return tx.document.update({
+              where: { id: input.documentId },
+              data: {
+                workflow: {
+                  update: {
+                    isCheckedOut: true,
+                    checkedOutById: user.id,
+                  },
                 },
               },
-            },
-            include: { workflow: true },
+              include: { workflow: true },
+            });
           });
 
           await this.logService.logAction(
@@ -2048,7 +2058,7 @@ export class DocumentsRouter {
             dbUser.institutionId,
             'Checked Out Document',
             dbUser.roles.map((r) => r.name),
-            doc.title,
+            updatedDoc.title,
             dbUser.campusId || undefined,
             dbUser.departmentId || undefined,
           );
