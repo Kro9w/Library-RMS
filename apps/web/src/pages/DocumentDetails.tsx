@@ -146,17 +146,43 @@ export const DocumentDetails: React.FC = () => {
     document.classification === "FOR_APPROVAL";
 
   const canReview =
-    ((canManageDocuments && isReviewDocument) || hasTransitReviewAccess) &&
+    ((isCurrentTransitOffice && canManageDocuments && isReviewDocument) ||
+      hasTransitReviewAccess) &&
     !isReturnedOrDisapproved &&
     !isOriginator;
 
   // Originators or Global Admins can forward/resubmit.
   // Reviewers (who only have `canReview` because of transit routing) do not see the forward button
   // because their explicit action is to use the Review Document modal to Endorse/Return the document.
-  const canSendOrResubmit = (isOriginator || canManageDocuments) && !canReview;
+  // Intermediate offices (who just happened to be in the route) should NOT be able to Resubmit, ONLY the originator.
+  const canSendOrResubmit =
+    (isOriginator || canManageInstitution) && !canReview;
   const isSendDisabled =
     document.workflow?.isCheckedOut ||
     (hasBeenSent && !isReturnedOrDisapproved);
+
+  // Allow sending based on matching backend rules
+  const canBroadcastDocument = (() => {
+    if (
+      document.classification === "FOR_APPROVAL" ||
+      document.workflow?.recordStatus === "IN_TRANSIT"
+    ) {
+      return false; // Routed/In-transit documents cannot be broadcast directly
+    }
+    if (document.classification === "CONFIDENTIAL") {
+      return isOriginator || canManageInstitution;
+    }
+    if (
+      document.classification === "INSTITUTIONAL" ||
+      document.classification === "INTERNAL"
+    ) {
+      return isOriginator || canManageInstitution || highestRoleLevel <= 1;
+    }
+    if (document.classification === "DEPARTMENTAL") {
+      return isOriginator || canManageDocuments || highestRoleLevel <= 2;
+    }
+    return false;
+  })();
 
   const getPreviewDetails = (doc: Document) => {
     if (!urlData?.signedUrl) return null;
@@ -349,10 +375,8 @@ export const DocumentDetails: React.FC = () => {
                         </button>
                       )}
 
-                      {document.classification !== "FOR_APPROVAL" &&
-                        document.workflow?.recordStatus !== "IN_TRANSIT" &&
-                        !document.workflow?.isCheckedOut &&
-                        (canManageDocuments || isOriginator) && (
+                      {canBroadcastDocument &&
+                        !document.workflow?.isCheckedOut && (
                           <button
                             className="doc-action-btn doc-action-btn-primary"
                             onClick={() =>
@@ -405,9 +429,9 @@ export const DocumentDetails: React.FC = () => {
                   document.lifecycle?.dispositionStatus !== "ARCHIVED" &&
                   document.workflow?.recordStatus !== "FINAL" &&
                   !document.workflow?.isCheckedOut &&
-                  (document.uploadedById === user?.id ||
-                    document.originalSenderId === user?.id ||
-                    canManageDocuments) && (
+                  (isOriginator ||
+                    canManageInstitution ||
+                    isCurrentTransitOffice) && (
                     <button
                       className="doc-action-btn"
                       onClick={() => setShowCheckOutModal(true)}
@@ -825,6 +849,7 @@ export const DocumentDetails: React.FC = () => {
           show={showResubmitModal}
           onClose={() => setShowResubmitModal(false)}
           onSuccess={(title, message) => {
+            utils.documents.getById.invalidate({ id: document.id });
             setAlertConfig({ show: true, title, message });
           }}
           documentId={document.id}
@@ -844,6 +869,7 @@ export const DocumentDetails: React.FC = () => {
           show={showReviewModal}
           onClose={() => setShowReviewModal(false)}
           onSuccess={(title, message) => {
+            utils.documents.getById.invalidate({ id: document.id });
             setAlertConfig({ show: true, title, message });
           }}
           documentId={document.id}

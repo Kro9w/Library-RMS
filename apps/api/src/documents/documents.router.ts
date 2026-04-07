@@ -88,8 +88,14 @@ export class DocumentsRouter {
             });
           }
 
+          // Map workflow status to the root object to be consumed by the frontend easily
+          const resultDoc = {
+            ...doc,
+            status: doc.workflow?.status || null,
+          };
+
           // Return only non-sensitive data needed for the progress view
-          return doc;
+          return resultDoc;
         }),
 
       /**
@@ -272,6 +278,7 @@ export class DocumentsRouter {
 
           return {
             ...doc,
+            status: doc.workflow?.status || null,
             fileType: latestVersion?.fileType,
             s3Key: latestVersion?.s3Key,
             s3Bucket: latestVersion?.s3Bucket,

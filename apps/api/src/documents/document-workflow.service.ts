@@ -66,22 +66,16 @@ export class DocumentWorkflowService {
       dbUser,
       'canManageDocuments',
     );
+    const canManageInstitution = this.accessControlService.checkPermission(
+      dbUser,
+      'canManageInstitution',
+    );
     const isOriginator = async (docId: string) => {
       const d = await this.prisma.document.findUnique({
         where: { id: docId },
       });
       return d?.uploadedById === user.id || d?.originalSenderId === user.id;
     };
-
-    // Basic ownership check
-    const hasAccess = (await isOriginator(input.documentId)) || canManageDocs;
-
-    if (!hasAccess) {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'You do not have permission to send this document.',
-      });
-    }
 
     const document = await this.prisma.document.findUnique({
       where: {
@@ -112,26 +106,36 @@ export class DocumentWorkflowService {
       });
     }
 
-    // Authority Check matching initial upload rules
-    if (
+    const _isOriginator = await isOriginator(input.documentId);
+
+    // Authority Check based on classification
+    if (document.classification === 'CONFIDENTIAL') {
+      // For CONFIDENTIAL documents, strictly only the originator or global admins can broadcast.
+      // Intermediate reviewers who received the document through routing cannot.
+      if (!_isOriginator && !canManageInstitution) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message:
+            'Only the originator or institution administrators can broadcast CONFIDENTIAL documents.',
+        });
+      }
+    } else if (
       document.classification === 'INSTITUTIONAL' ||
       document.classification === 'INTERNAL'
     ) {
-      if (highestRoleLevel > 1 && !canManageDocs) {
+      if (!_isOriginator && highestRoleLevel > 1 && !canManageInstitution) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message:
-            'Only Executives, Level 1 users, or Admins can send Institutional or Internal documents.',
+            'Only Executives, Level 1 users, Originators, or Admins can cascade/send Institutional or Internal documents.',
         });
       }
-    }
-
-    if (document.classification === 'DEPARTMENTAL') {
-      if (highestRoleLevel > 2 && !canManageDocs) {
+    } else if (document.classification === 'DEPARTMENTAL') {
+      if (!_isOriginator && highestRoleLevel > 2 && !canManageDocs) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message:
-            'Only Level 1 and 2 users or Admins can send Departmental documents.',
+            'Only Level 1/2 users, Originators, or Admins can send Departmental documents.',
         });
       }
     }
