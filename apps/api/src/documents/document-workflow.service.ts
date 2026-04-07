@@ -187,28 +187,68 @@ export class DocumentWorkflowService {
       });
     }
 
-    // In PostgreSQL/Prisma, createMany will fail if duplicate unique constraints are hit. To avoid failing on re-sends,
-    // we should first fetch existing accesses and filter out duplicates.
-    const existingAccesses = await this.prisma.documentAccess.findMany({
-      where: { documentId: document.id },
-    });
+    // Fetch existing accesses in a targeted manner to avoid N*M filtering in memory
+    const finalAccesses = await this.prisma.$transaction(async (tx) => {
+      // Build conditions dynamically to avoid querying if arrays are empty
+      const orConditions: any[] = [];
+      if (input.institutionIds.length > 0) {
+        orConditions.push({ institutionId: { in: input.institutionIds } });
+      }
+      if (input.campusIds.length > 0) {
+        orConditions.push({ campusId: { in: input.campusIds } });
+      }
+      if (input.departmentIds.length > 0) {
+        orConditions.push({ departmentId: { in: input.departmentIds } });
+      }
+      if (input.userIds.length > 0) {
+        orConditions.push({ userId: { in: input.userIds } });
+      }
 
-    const isDuplicate = (req: any) =>
-      existingAccesses.some(
-        (ex) =>
-          ex.institutionId === req.institutionId &&
-          ex.campusId === req.campusId &&
-          ex.departmentId === req.departmentId &&
-          ex.userId === req.userId,
+      let existingAccesses: {
+        institutionId: string | null;
+        campusId: string | null;
+        departmentId: string | null;
+        userId: string | null;
+      }[] = [];
+
+      if (orConditions.length > 0) {
+        existingAccesses = await tx.documentAccess.findMany({
+          where: {
+            documentId: document.id,
+            OR: orConditions,
+          },
+          select: {
+            institutionId: true,
+            campusId: true,
+            departmentId: true,
+            userId: true,
+          },
+        });
+      }
+
+      // Use a Set for O(1) duplicate checks instead of an O(N*M) array.some() loop
+      const existingSet = new Set(
+        existingAccesses.map(
+          (ex) =>
+            `${ex.institutionId || ''}-${ex.campusId || ''}-${ex.departmentId || ''}-${ex.userId || ''}`,
+        ),
       );
 
-    const finalAccesses = accessesToCreate.filter((a) => !isDuplicate(a));
+      const newAccesses = accessesToCreate.filter(
+        (a) =>
+          !existingSet.has(
+            `${a.institutionId || ''}-${a.campusId || ''}-${a.departmentId || ''}-${a.userId || ''}`,
+          ),
+      );
 
-    if (finalAccesses.length > 0) {
-      await this.prisma.documentAccess.createMany({
-        data: finalAccesses,
-      });
-    }
+      if (newAccesses.length > 0) {
+        await tx.documentAccess.createMany({
+          data: newAccesses,
+        });
+      }
+
+      return newAccesses;
+    });
 
     // Build generic log
     let broadTargetName = '';
