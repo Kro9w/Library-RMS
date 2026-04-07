@@ -139,7 +139,7 @@ export class TrpcRouter {
 
         const docsByStatus = docsByStatusRaw.map((group) => ({
           name: group.status || 'Uncategorized',
-          value: (group._count as any).status,
+          value: group._count.status,
         }));
 
         return {
@@ -147,7 +147,7 @@ export class TrpcRouter {
           recentUploadsCount,
           recentFiles: recentFiles.map((f) => {
             // Format name here: First Middle Last
-            const u = (f as any).uploadedBy;
+            const u = f.uploadedBy;
             const nameParts = [u.firstName, u.middleName, u.lastName].filter(
               Boolean,
             );

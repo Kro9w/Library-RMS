@@ -156,7 +156,6 @@ export class ArchivesRouter {
           return { documents, totalCount };
         }),
 
-      
       getAllArchivedDocuments: protectedProcedure
         .input(
           z.object({
@@ -180,7 +179,8 @@ export class ArchivesRouter {
           if (!hasAccess) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'Insufficient permissions. Master Archives requires System Admin access.',
+              message:
+                'Insufficient permissions. Master Archives requires System Admin access.',
             });
           }
 
@@ -249,7 +249,8 @@ export class ArchivesRouter {
           if (!hasAccess) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'Insufficient permissions. Master Destruction Register requires System Admin access.',
+              message:
+                'Insufficient permissions. Master Destruction Register requires System Admin access.',
             });
           }
 

@@ -1,9 +1,11 @@
 import React, { useEffect, useRef } from "react";
+import { trpc } from "../trpc";
 import { Modal } from "bootstrap";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 import { formatUserName } from "../utils/user";
 import { useForwardDocument } from "../hooks/useForwardDocument";
 import "./StandardModal.css";
+import "./ReviewDocumentModal.css";
 
 type User = AppRouterOutputs["documents"]["getAppUsers"][0];
 
@@ -110,6 +112,119 @@ export const ForwardDocumentModal: React.FC<ForwardDocumentModalProps> = ({
     color: "var(--text-muted)",
   };
 
+  const { data: document } = trpc.documents.getById.useQuery({
+    id: documentId,
+  });
+
+  const isTransit =
+    document?.classification === "FOR_APPROVAL" &&
+    document?.workflow?.recordStatus === "IN_TRANSIT";
+
+  const renderRoutingProgress = () => {
+    if (
+      !isTransit ||
+      !document?.transitRoutes ||
+      document.transitRoutes.length === 0
+    ) {
+      return null;
+    }
+
+    const sortedRoutes = [...document.transitRoutes].sort(
+      (a: any, b: any) => a.sequenceOrder - b.sequenceOrder,
+    );
+
+    const timelineNodes = [
+      ...sortedRoutes,
+      {
+        id: "virtual-end",
+        isVirtual: true,
+        department: { name: "Original Sender" },
+      },
+    ];
+
+    const currentIndex = sortedRoutes.findIndex(
+      (r: any) => r.status === "CURRENT",
+    );
+
+    let activeIdx = currentIndex;
+
+    if (currentIndex === -1) {
+      const hasStarted = sortedRoutes.some(
+        (r: any) => r.status === "APPROVED" || r.status === "REJECTED",
+      );
+
+      if (!hasStarted) {
+        activeIdx = -1;
+      } else {
+        activeIdx = sortedRoutes.length;
+      }
+    }
+
+    const getStepStyle = (route: any, _index: number) => {
+      if (route.isVirtual)
+        return {
+          iconClass: "bi-person-fill",
+          stepClass: "routing-step-pending",
+        };
+      if (route.status === "APPROVED")
+        return {
+          iconClass: "bi-check-circle-fill",
+          stepClass: "routing-step-approved",
+        };
+      if (route.status === "CURRENT")
+        return {
+          iconClass: "bi-record-circle-fill",
+          stepClass: "routing-step-current",
+        };
+      if (route.status === "REJECTED")
+        return {
+          iconClass: "bi-x-circle-fill",
+          stepClass: "routing-step-rejected",
+        };
+      return { iconClass: "bi-circle", stepClass: "routing-step-pending" };
+    };
+
+    return (
+      <div className="review-modal-route-wrap">
+        <p className="review-modal-route-label">
+          <i className="bi bi-signpost-split"></i>
+          Routing Progress
+        </p>
+        <div className="review-modal-route-steps">
+          {timelineNodes.map((route: any, index: number) => {
+            const { iconClass, stepClass } = getStepStyle(route, index);
+            const isNext = index === activeIdx + 1;
+
+            return (
+              <React.Fragment key={route.id}>
+                <div
+                  className={`review-route-step ${stepClass} ${isNext ? "review-route-step-next" : ""}`}
+                >
+                  {isNext && (
+                    <span className="review-route-next-badge">NEXT</span>
+                  )}
+                  <div className="review-route-icon">
+                    <i className={`bi ${iconClass}`}></i>
+                  </div>
+                  <span className="review-route-name">
+                    {route.department?.name || "Unknown"}
+                  </span>
+                </div>
+                {index < timelineNodes.length - 1 && (
+                  <div
+                    className={`review-route-connector ${
+                      index < activeIdx ? "review-route-connector-done" : ""
+                    }`}
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   if (!show) return null;
 
   return (
@@ -120,6 +235,7 @@ export const ForwardDocumentModal: React.FC<ForwardDocumentModalProps> = ({
       <div
         className="standard-modal-dialog"
         onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: "600px" }}
       >
         <div className="standard-modal-header">
           <div className="standard-modal-icon">
@@ -141,6 +257,7 @@ export const ForwardDocumentModal: React.FC<ForwardDocumentModalProps> = ({
         </div>
 
         <div className="standard-modal-body">
+          {renderRoutingProgress()}
           <div className="row g-3">
             {/* Campus Selection */}
             <div className="col-12">

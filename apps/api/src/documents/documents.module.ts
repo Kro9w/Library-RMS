@@ -18,7 +18,11 @@ import { DocumentsController } from './documents.controller';
     AccessControlModule,
   ],
   controllers: [DocumentsController],
-  providers: [DocumentsRouter, DocumentLifecycleService, DocumentWorkflowService],
+  providers: [
+    DocumentsRouter,
+    DocumentLifecycleService,
+    DocumentWorkflowService,
+  ],
   exports: [DocumentsRouter, DocumentLifecycleService, DocumentWorkflowService],
 })
 export class DocumentsModule {}

@@ -26,9 +26,6 @@ export class DocumentsRouter {
 
   createRouter() {
     return router({
-      /**
-       * Public lookup of document progress by Control Number
-       */
       lookupByControlNumber: publicProcedure
         .input(z.object({ controlNumber: z.string() }))
         .output(z.any())
@@ -51,7 +48,7 @@ export class DocumentsRouter {
                 select: {
                   recordStatus: true,
                   status: true,
-                }
+                },
               },
               classification: true,
               createdAt: true,
@@ -187,7 +184,7 @@ export class DocumentsRouter {
                     },
                   },
                   status: true,
-                }
+                },
               },
               versions: {
                 orderBy: { versionNumber: 'desc' },
@@ -246,7 +243,7 @@ export class DocumentsRouter {
                   isUnderLegalHold: true,
                   legalHoldReason: true,
                   dispositionRequesterId: true,
-                }
+                },
               },
               classification: true,
               originalSenderId: true,
@@ -458,16 +455,18 @@ export class DocumentsRouter {
               documentTypeId: input.documentTypeId,
               controlNumber: input.controlNumber,
               classification: input.classification as any,
-              metadata: input.metadata ? (input.metadata as Prisma.InputJsonValue) : Prisma.JsonNull,
+              metadata: input.metadata
+                ? (input.metadata as Prisma.InputJsonValue)
+                : Prisma.JsonNull,
               lifecycle: {
                 create: {
                   ...retentionSnapshot,
-                }
+                },
               },
               workflow: {
                 create: {
                   recordStatus: finalRecordStatus as any,
-                }
+                },
               },
               versions: {
                 create: {
@@ -492,7 +491,7 @@ export class DocumentsRouter {
                 documentId: document.id,
                 departmentId: deptId,
                 sequenceOrder: index,
-                status: index === 0 ? 'CURRENT' : 'PENDING',
+                status: 'PENDING',
               })),
             });
           }
@@ -569,7 +568,7 @@ export class DocumentsRouter {
               lifecycle: {
                 select: {
                   dispositionStatus: true,
-                }
+                },
               },
               versions: {
                 where: input.versionId ? { id: input.versionId } : undefined,
@@ -707,7 +706,7 @@ export class DocumentsRouter {
               select: {
                 recordStatus: true,
                 isCheckedOut: true,
-              }
+              },
             },
             versions: {
               orderBy: { versionNumber: 'desc' as const },
@@ -727,7 +726,7 @@ export class DocumentsRouter {
                 isUnderLegalHold: true,
                 legalHoldReason: true,
                 dispositionRequesterId: true,
-              }
+              },
             },
             classification: true,
             originalSenderId: true,
@@ -764,8 +763,12 @@ export class DocumentsRouter {
             institutionId: ctx.dbUser.institutionId,
             OR: [
               { lifecycle: { dispositionStatus: null } },
-              { lifecycle: { dispositionStatus: { notIn: ['ARCHIVED', 'DESTROYED'] } } },
-              { lifecycle: null } // Safety check in case it's entirely missing
+              {
+                lifecycle: {
+                  dispositionStatus: { notIn: ['ARCHIVED', 'DESTROYED'] },
+                },
+              },
+              { lifecycle: null }, // Safety check in case it's entirely missing
             ],
           };
 
@@ -791,8 +794,12 @@ export class DocumentsRouter {
             {
               OR: [
                 { lifecycle: { dispositionStatus: null } },
-                { lifecycle: { dispositionStatus: { notIn: ['ARCHIVED', 'DESTROYED'] } } },
-                { lifecycle: null }
+                {
+                  lifecycle: {
+                    dispositionStatus: { notIn: ['ARCHIVED', 'DESTROYED'] },
+                  },
+                },
+                { lifecycle: null },
               ],
             },
           ];
@@ -1350,10 +1357,10 @@ export class DocumentsRouter {
                 update: {
                   isUnderLegalHold: true,
                   legalHoldReason: input.reason,
-                }
-              }
+                },
+              },
             },
-            include: { lifecycle: true }
+            include: { lifecycle: true },
           });
 
           await this.logService.logAction(
@@ -1395,10 +1402,10 @@ export class DocumentsRouter {
                 update: {
                   isUnderLegalHold: false,
                   legalHoldReason: null,
-                }
-              }
+                },
+              },
             },
-            include: { lifecycle: true }
+            include: { lifecycle: true },
           });
 
           await this.logService.logAction(
@@ -1446,7 +1453,7 @@ export class DocumentsRouter {
 
           const doc = await ctx.prisma.document.findUnique({
             where: { id: input.documentId },
-            include: { lifecycle: true }
+            include: { lifecycle: true },
           });
 
           if (!doc || doc.institutionId !== dbUser.institutionId) {
@@ -1463,8 +1470,9 @@ export class DocumentsRouter {
             });
           }
 
-          const status =
-            this.documentLifecycleService.computeLifecycleStatus(doc as any);
+          const status = this.documentLifecycleService.computeLifecycleStatus(
+            doc as any,
+          );
           if (status !== 'Ready') {
             throw new TRPCError({
               code: 'BAD_REQUEST',
@@ -1479,10 +1487,10 @@ export class DocumentsRouter {
                 update: {
                   dispositionStatus: 'PENDING_DISPOSITION',
                   dispositionRequesterId: user.id,
-                }
-              }
+                },
+              },
             },
-            include: { lifecycle: true }
+            include: { lifecycle: true },
           });
 
           await this.logService.logAction(
@@ -1516,7 +1524,7 @@ export class DocumentsRouter {
 
           const doc = await ctx.prisma.document.findUnique({
             where: { id: input.documentId },
-            include: { lifecycle: true }
+            include: { lifecycle: true },
           });
 
           if (!doc) throw new TRPCError({ code: 'NOT_FOUND' });
@@ -1562,7 +1570,11 @@ export class DocumentsRouter {
             });
 
             for (const version of versions) {
-              if (version.s3Key && version.s3Bucket && version.s3Key !== 'DESTROYED') {
+              if (
+                version.s3Key &&
+                version.s3Bucket &&
+                version.s3Key !== 'DESTROYED'
+              ) {
                 const { error: storageError } = await this.supabase
                   .getAdminClient()
                   .storage.from(version.s3Bucket)
@@ -1599,10 +1611,10 @@ export class DocumentsRouter {
                   update: {
                     dispositionStatus: 'DESTROYED',
                     dispositionDate: new Date(),
-                  }
-                }
+                  },
+                },
               },
-              include: { lifecycle: true }
+              include: { lifecycle: true },
             });
 
             await this.logService.logAction(
@@ -1753,10 +1765,10 @@ export class DocumentsRouter {
                     dispositionDate: new Date(),
                     archiveManifestUrl: manifestKey,
                     archiveHash: latestHash,
-                  }
-                }
+                  },
+                },
               },
-              include: { lifecycle: true }
+              include: { lifecycle: true },
             });
 
             await this.logService.logAction(
@@ -1792,7 +1804,7 @@ export class DocumentsRouter {
 
           const doc = await ctx.prisma.document.findUnique({
             where: { id: input.documentId },
-            include: { lifecycle: true }
+            include: { lifecycle: true },
           });
 
           if (!doc) throw new TRPCError({ code: 'NOT_FOUND' });
@@ -1811,10 +1823,10 @@ export class DocumentsRouter {
                 update: {
                   dispositionStatus: null,
                   dispositionRequesterId: null,
-                }
-              }
+                },
+              },
             },
-            include: { lifecycle: true }
+            include: { lifecycle: true },
           });
 
           await this.logService.logAction(
@@ -1856,7 +1868,7 @@ export class DocumentsRouter {
             },
             include: {
               documentAccesses: true,
-              workflow: true
+              workflow: true,
             },
           });
 
@@ -1980,10 +1992,10 @@ export class DocumentsRouter {
                 update: {
                   isCheckedOut: true,
                   checkedOutById: user.id,
-                }
-              }
+                },
+              },
             },
-            include: { workflow: true }
+            include: { workflow: true },
           });
 
           await this.logService.logAction(
@@ -2024,7 +2036,7 @@ export class DocumentsRouter {
 
           const doc = await this.prisma.document.findUnique({
             where: { id: input.documentId },
-            include: { workflow: true }
+            include: { workflow: true },
           });
 
           if (!doc || doc.institutionId !== dbUser.institutionId) {
@@ -2034,7 +2046,10 @@ export class DocumentsRouter {
             });
           }
 
-          if (!doc.workflow?.isCheckedOut || doc.workflow?.checkedOutById !== user.id) {
+          if (
+            !doc.workflow?.isCheckedOut ||
+            doc.workflow?.checkedOutById !== user.id
+          ) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'You must check out the document first to check it in.',
@@ -2087,7 +2102,7 @@ export class DocumentsRouter {
                   isCheckedOut: false,
                   checkedOutById: null,
                   recordStatus: isFinal as any,
-                }
+                },
               },
               versions: {
                 create: {
@@ -2139,7 +2154,7 @@ export class DocumentsRouter {
 
           const doc = await this.prisma.document.findUnique({
             where: { id: input.documentId },
-            include: { workflow: true }
+            include: { workflow: true },
           });
 
           if (!doc || doc.institutionId !== dbUser.institutionId) {
@@ -2179,10 +2194,10 @@ export class DocumentsRouter {
                 update: {
                   isCheckedOut: false,
                   checkedOutById: null,
-                }
-              }
+                },
+              },
             },
-            include: { workflow: true }
+            include: { workflow: true },
           });
 
           await this.logService.logAction(

@@ -3,6 +3,7 @@ import { initTRPC, TRPCError } from '@trpc/server';
 import { OpenApiMeta } from 'trpc-openapi';
 import { PrismaService } from '../prisma/prisma.service';
 import { User, Role, Institution } from '@prisma/client';
+import { SupabaseUser } from '../types/express';
 
 export type UserWithRoles = User & {
   roles: Role[];
@@ -10,8 +11,8 @@ export type UserWithRoles = User & {
 };
 
 export type Context = {
-  user: any; // Supabase user
-  dbUser?: UserWithRoles; // Updated type
+  user: SupabaseUser | null;
+  dbUser?: UserWithRoles;
   prisma: PrismaService;
 };
 

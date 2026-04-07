@@ -175,12 +175,12 @@
 }
 
 .review-route-step-next .review-route-icon {
-  background-color: var(--info-subtle);
-  color: var(--info);
-  border: 1px solid #93c5fd;
+  background-color: var(--brand-subtle);
+  color: var(--brand-muted);
+  border: 1px dashed var(--brand-muted);
 }
 .review-route-step-next .review-route-name {
-  color: var(--info);
+  color: var(--brand-muted);
   font-weight: 600;
 }
 

@@ -305,10 +305,7 @@ export class DocumentWorkflowService {
     };
 
     if (
-      !this.accessControlService.checkPermission(
-        dbUser,
-        'canManageDocuments',
-      )
+      !this.accessControlService.checkPermission(dbUser, 'canManageDocuments')
     ) {
       whereClause.uploadedById = user.id;
     }
@@ -325,9 +322,39 @@ export class DocumentWorkflowService {
       });
     }
 
+    if (
+      documents[0].classification === "FOR_APPROVAL" && 
+      (user.id === documents[0].uploadedById || user.id === documents[0].originalSenderId)
+    ) {
+      const firstRouteStop = await this.prisma.documentTransitRoute.findFirst({
+        where: {
+          documentId: input.documentId,
+          sequenceOrder: 0,
+        },
+      });
+
+      if (firstRouteStop && firstRouteStop.status === 'PENDING') {
+        await this.prisma.documentTransitRoute.update({
+          where: { id : firstRouteStop.id },
+          data: { status: 'CURRENT' },
+        });
+
+        if (documents[0].workflow?.recordStatus !== 'IN_TRANSIT') {
+          await this.prisma.documentWorkflow.update({
+            where: { id : input.documentId },
+            data: { recordStatus: 'IN_TRANSIT' },
+          });
+
+          if (documents[0].workflow) {
+            documents[0].workflow.recordStatus = 'IN_TRANSIT';
+          }
+        }
+      }
+    }
+
     let isReview = false;
 
-    // If the document is IN_TRANSIT and FOR_APPROVAL, automatically enforce the "for review"
+    // If the document is IN_TRANSIT and FOR_APPROVAL, automatically enforces the "for review"
     if (
       documents[0].workflow?.recordStatus === 'IN_TRANSIT' &&
       documents[0].classification === 'FOR_APPROVAL' &&
@@ -349,8 +376,7 @@ export class DocumentWorkflowService {
         'Returned for Corrections/Revision/Clarification' ||
         documents[0].workflow?.status === 'Disapproved');
 
-    const isAutoReceive =
-      isReturningToOriginator || isOriginatorResubmitting;
+    const isAutoReceive = isReturningToOriginator || isOriginatorResubmitting;
 
     // ONLY create a DocumentDistribution if it is a formal, first-time transfer.
     // If the document is being sent back and forth between the originator and reviewer, bypass the distribution table to reduce redundancy.
@@ -396,18 +422,14 @@ export class DocumentWorkflowService {
         documents[0].workflow?.status === 'Disapproved')
     ) {
       // Find the CURRENT route stop for this document
-      const currentStop =
-        await this.prisma.documentTransitRoute.findFirst({
-          where: {
-            documentId: documents[0].id,
-            status: 'CURRENT',
-          },
-        });
+      const currentStop = await this.prisma.documentTransitRoute.findFirst({
+        where: {
+          documentId: documents[0].id,
+          status: 'CURRENT',
+        },
+      });
 
-      if (
-        currentStop &&
-        currentStop.departmentId === recipient.departmentId
-      ) {
+      if (currentStop && currentStop.departmentId === recipient.departmentId) {
         await this.prisma.documentTransitRoute.update({
           where: { id: currentStop.id },
           data: { decision: null },
@@ -545,8 +567,7 @@ export class DocumentWorkflowService {
         if (
           dbUser.roles.some(
             (r: any) =>
-              r.level === 1 &&
-              r.departmentId === currentRouteStop.departmentId,
+              r.level === 1 && r.departmentId === currentRouteStop.departmentId,
           )
         ) {
           hasTransitAccess = true;

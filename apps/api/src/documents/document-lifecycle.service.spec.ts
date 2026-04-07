@@ -41,7 +41,7 @@ describe('DocumentLifecycleService', () => {
           inactiveRetentionSnapshot: 1,
           dispositionStatus: null,
           isUnderLegalHold: true,
-        }
+        },
       });
       expect(result).toBe('Legal Hold');
     });
@@ -54,7 +54,7 @@ describe('DocumentLifecycleService', () => {
           inactiveRetentionSnapshot: 1,
           dispositionStatus: 'DESTROYED',
           isUnderLegalHold: false,
-        }
+        },
       });
       expect(result).toBe('Destroyed');
     });
@@ -67,7 +67,7 @@ describe('DocumentLifecycleService', () => {
           inactiveRetentionSnapshot: null,
           dispositionStatus: null,
           isUnderLegalHold: false,
-        }
+        },
       });
       expect(result).toBe('Active');
     });
@@ -83,7 +83,7 @@ describe('DocumentLifecycleService', () => {
           inactiveRetentionSnapshot: 1,
           dispositionStatus: null,
           isUnderLegalHold: false,
-        }
+        },
       });
       expect(result).toBe('Ready');
     });
@@ -99,7 +99,7 @@ describe('DocumentLifecycleService', () => {
           inactiveRetentionSnapshot: 2,
           dispositionStatus: null,
           isUnderLegalHold: false,
-        }
+        },
       });
       expect(result).toBe('Inactive');
     });

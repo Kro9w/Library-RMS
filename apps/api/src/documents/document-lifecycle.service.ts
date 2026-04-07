@@ -49,7 +49,8 @@ export class DocumentLifecycleService {
       activeUntil.getFullYear() + doc.lifecycle.activeRetentionSnapshot,
     );
     activeUntil.setMonth(
-      activeUntil.getMonth() + (doc.lifecycle.activeRetentionMonthsSnapshot || 0),
+      activeUntil.getMonth() +
+        (doc.lifecycle.activeRetentionMonthsSnapshot || 0),
     );
     activeUntil.setDate(
       activeUntil.getDate() + (doc.lifecycle.activeRetentionDaysSnapshot || 0),
@@ -59,13 +60,16 @@ export class DocumentLifecycleService {
 
     const inactiveUntil = new Date(activeUntil);
     inactiveUntil.setFullYear(
-      inactiveUntil.getFullYear() + (doc.lifecycle.inactiveRetentionSnapshot || 0),
+      inactiveUntil.getFullYear() +
+        (doc.lifecycle.inactiveRetentionSnapshot || 0),
     );
     inactiveUntil.setMonth(
-      inactiveUntil.getMonth() + (doc.lifecycle.inactiveRetentionMonthsSnapshot || 0),
+      inactiveUntil.getMonth() +
+        (doc.lifecycle.inactiveRetentionMonthsSnapshot || 0),
     );
     inactiveUntil.setDate(
-      inactiveUntil.getDate() + (doc.lifecycle.inactiveRetentionDaysSnapshot || 0),
+      inactiveUntil.getDate() +
+        (doc.lifecycle.inactiveRetentionDaysSnapshot || 0),
     );
 
     if (now < inactiveUntil) return 'Inactive';

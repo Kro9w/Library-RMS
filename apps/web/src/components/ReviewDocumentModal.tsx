@@ -173,7 +173,20 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
     const currentIndex = sortedRoutes.findIndex(
       (r: any) => r.status === "CURRENT",
     );
-    const activeIdx = currentIndex === -1 ? sortedRoutes.length : currentIndex;
+
+    let activeIdx = currentIndex;
+
+    if (currentIndex === -1) {
+      const hasStarted = sortedRoutes.some(
+        (r: any) => r.status === "APPROVED" || r.status === "REJECTED",
+      );
+
+      if (!hasStarted) {
+        activeIdx = -1;
+      } else {
+        activeIdx = sortedRoutes.length;
+      }
+    }
 
     const getStepStyle = (route: any, _index: number) => {
       if (route.isVirtual)

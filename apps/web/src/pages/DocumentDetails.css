@@ -23,8 +23,8 @@
   flex-direction: column;
   gap: 12px;
   min-width: 0;
-  position: sticky;
-  top: 24px;
+  position: relative;
+  top: 0;
 }
 
 /* ── Shared card ── */
