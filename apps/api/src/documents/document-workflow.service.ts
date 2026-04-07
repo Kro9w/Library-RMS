@@ -696,12 +696,18 @@ export class DocumentWorkflowService {
               },
             });
 
-            // Find Level 1 users in the next department
+            // Find Level 0 (apex), Level 1 users, or those with document management permissions in the next department
             const nextDeptUsers = await this.prisma.user.findMany({
               where: {
                 departmentId: nextRouteStop.departmentId,
                 roles: {
-                  some: { level: 1 },
+                  some: {
+                    OR: [
+                      { level: 0 },
+                      { level: 1 },
+                      { canManageDocuments: true },
+                    ],
+                  },
                 },
               },
             });

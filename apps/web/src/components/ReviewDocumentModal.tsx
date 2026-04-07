@@ -7,6 +7,7 @@ import "./ReviewDocumentModal.css";
 interface ReviewDocumentModalProps {
   show: boolean;
   onClose: () => void;
+  onSuccess?: (title: string, message: string) => void;
   documentId: string;
 }
 
@@ -21,6 +22,7 @@ type ReviewStatus =
 export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
   show,
   onClose,
+  onSuccess,
   documentId,
 }) => {
   const [step, setStep] = useState<1 | 2>(1);
@@ -102,6 +104,33 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
 
       if (targetRecipientId) {
         setShowSendModal(true);
+      }
+    } else {
+      if (onSuccess) {
+        // 1. Safely grab the document title
+        const docName = document?.title
+          ? `"${document.title}"`
+          : "The document";
+
+        let title = "Review Submitted";
+        let msg = `${docName} has been successfully reviewed.`;
+
+        // 2. Inject it into your specific status messages
+        if (status === "Approved") {
+          title = "Document Approved";
+          msg = `${docName} has been approved and sent back to the originator.`;
+        } else if (status === "Noted") {
+          title = "Document Noted";
+          msg = `${docName} has been marked as noted.`;
+        } else if (status === "For Endorsement") {
+          title = "Document Endorsed";
+          msg = `${docName} has been successfully endorsed to the next office.`;
+        } else if (status === "Disapproved") {
+          title = "Document Disapproved";
+          msg = `${docName} has been disapproved and sent back to the originator.`;
+        }
+
+        onSuccess(title, msg);
       }
     }
 
@@ -421,6 +450,15 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
         <ForwardDocumentModal
           show={showSendModal}
           onClose={() => setShowSendModal(false)}
+          onSuccess={(_title, _msg) => {
+            setShowSendModal(false);
+            if (onSuccess) {
+              onSuccess(
+                "Document Returned",
+                "The document has been successfully returned for corrections.",
+              );
+            }
+          }}
           documentId={documentId}
         />
       )}

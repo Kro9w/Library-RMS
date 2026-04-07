@@ -824,6 +824,9 @@ export const DocumentDetails: React.FC = () => {
         <ForwardDocumentModal
           show={showResubmitModal}
           onClose={() => setShowResubmitModal(false)}
+          onSuccess={(title, message) => {
+            setAlertConfig({ show: true, title, message });
+          }}
           documentId={document.id}
           initialRecipientId={
             isReturnedOrDisapproved &&
@@ -840,6 +843,9 @@ export const DocumentDetails: React.FC = () => {
         <ReviewDocumentModal
           show={showReviewModal}
           onClose={() => setShowReviewModal(false)}
+          onSuccess={(title, message) => {
+            setAlertConfig({ show: true, title, message });
+          }}
           documentId={document.id}
         />
       )}
@@ -863,7 +869,10 @@ export const DocumentDetails: React.FC = () => {
       <AlertModal
         show={alertConfig.show}
         title={alertConfig.title}
-        onClose={() => setAlertConfig({ ...alertConfig, show: false })}
+        onClose={() => {
+          setAlertConfig({ show: false, title: "", message: "" });
+          utils.documents.getById.invalidate({ id });
+        }}
       >
         {alertConfig.message}
       </AlertModal>

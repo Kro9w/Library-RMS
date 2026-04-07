@@ -25,6 +25,7 @@ interface Department {
 interface ForwardDocumentModalProps {
   show: boolean;
   onClose: () => void;
+  onSuccess?: (title: string, message: string) => void;
   documentId: string;
   initialRecipientId?: string | null;
   forceRecipientLock?: boolean; // If true, disable the dropdowns
@@ -36,6 +37,7 @@ interface ForwardDocumentModalProps {
 export const ForwardDocumentModal: React.FC<ForwardDocumentModalProps> = ({
   show,
   onClose,
+  onSuccess,
   documentId,
   initialRecipientId,
   forceRecipientLock = false,
@@ -87,6 +89,10 @@ export const ForwardDocumentModal: React.FC<ForwardDocumentModalProps> = ({
     };
   }, [show]);
 
+  const { data: document } = trpc.documents.getById.useQuery({
+    id: documentId,
+  });
+
   const handleSend = async () => {
     if (!documentId || !state.recipientId) return;
 
@@ -95,6 +101,20 @@ export const ForwardDocumentModal: React.FC<ForwardDocumentModalProps> = ({
       recipientId: state.recipientId,
     });
 
+    if (onSuccess) {
+      const selectedDept = computed.departments.find(
+        (dept: Department) => dept.id === state.selectedDeptId,
+      );
+
+      const deptName = selectedDept?.name || "the selected office";
+
+      const docName = document?.title ? `"${document.title}"` : "The document";
+
+      onSuccess(
+        "Document Forwarded",
+        `${docName} has been successfully forwarded to ${deptName}.`,
+      );
+    }
     onClose();
   };
 
@@ -111,10 +131,6 @@ export const ForwardDocumentModal: React.FC<ForwardDocumentModalProps> = ({
     borderColor: "var(--border)",
     color: "var(--text-muted)",
   };
-
-  const { data: document } = trpc.documents.getById.useQuery({
-    id: documentId,
-  });
 
   const isTransit =
     document?.classification === "FOR_APPROVAL" &&
