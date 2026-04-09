@@ -1964,46 +1964,53 @@ export class DocumentsRouter {
                 (r) => r.status === 'CURRENT',
               );
 
-              if (
+              const isReturnedOrDisapproved =
                 doc.workflow?.status ===
                   'Returned for Corrections/Revision/Clarification' ||
-                doc.workflow?.status === 'Disapproved'
-              ) {
+                doc.workflow?.status === 'Disapproved';
+
+              if (isReturnedOrDisapproved) {
                 if (
                   doc.uploadedById === user.id ||
                   doc.originalSenderId === user.id
                 ) {
                   hasWriteAccess = true;
                 }
-              }
-
-              if (
-                !hasWriteAccess &&
-                currentRouteStop &&
-                dbUser.departmentId === currentRouteStop.departmentId
-              ) {
-                const hasLevel1Or2 = dbUser.roles.some(
-                  (r) =>
-                    (r.level === 1 || r.level === 2) &&
-                    r.departmentId === currentRouteStop.departmentId,
-                );
-                if (hasLevel1Or2) {
-                  hasWriteAccess = true;
+                
+                if (!hasWriteAccess && !this.accessControlService.checkPermission(dbUser, 'canManageDocuments')) {
+                  throw new TRPCError({
+                    code: 'FORBIDDEN',
+                    message: 'Only the originator can check out a returned or disapproved document.',
+                  });
                 }
-              }
+              } else {
+                if (
+                  currentRouteStop &&
+                  dbUser.departmentId === currentRouteStop.departmentId
+                ) {
+                  const hasLevel1Or2 = dbUser.roles.some(
+                    (r) =>
+                      (r.level === 1 || r.level === 2) &&
+                      r.departmentId === currentRouteStop.departmentId,
+                  );
+                  if (hasLevel1Or2) {
+                    hasWriteAccess = true;
+                  }
+                }
 
-              if (
-                !hasWriteAccess &&
-                !this.accessControlService.checkPermission(
-                  dbUser,
-                  'canManageDocuments',
-                )
-              ) {
-                throw new TRPCError({
-                  code: 'FORBIDDEN',
-                  message:
-                    'Only Level 1 or 2 users of the currently active office in the transit route can check out this document.',
-                });
+                if (
+                  !hasWriteAccess &&
+                  !this.accessControlService.checkPermission(
+                    dbUser,
+                    'canManageDocuments',
+                  )
+                ) {
+                  throw new TRPCError({
+                    code: 'FORBIDDEN',
+                    message:
+                      'Only Level 1 or 2 users of the currently active office in the transit route can check out this document.',
+                  });
+                }
               }
             } else {
               if (
