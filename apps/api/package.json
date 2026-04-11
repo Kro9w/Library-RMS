@@ -21,7 +21,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "migrate:dev": "dotenv -e ../../.env -- prisma migrate dev",
     "prisma:studio": "dotenv -e ../../.env -- prisma studio",
-    "seed:acl": "dotenv -e ../../.env -- ts-node prisma/seed-acl.ts"
+    "seed:acl": "dotenv -e .env -- ts-node prisma/seed-acl.ts",
+    "seed:demo": "dotenv -e .env -- ts-node prisma/seed-demo-users.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.20",

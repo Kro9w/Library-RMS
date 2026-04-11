@@ -6,19 +6,15 @@ import { TRPCError } from '@trpc/server';
 export class AccessControlService {
   /**
    * Helper function to check if a user has a specific permission.
-   * Super Admins inherently have all permissions via canManageInstitution.
    */
   public checkPermission(
     user: { roles?: Role[] } | undefined,
     permission: keyof Role,
   ): boolean {
-    if (!user) return false;
-    if (!user.roles) return false;
+    if (!user?.roles) return false;
 
-    // Super Admins inherently have all permissions via canManageInstitution
     if (user.roles.some((role: Role) => role.canManageInstitution)) return true;
 
-    // We only care if *any* role has the permission
     return user.roles.some((role: Role) => role[permission] === true);
   }
 
@@ -46,7 +42,6 @@ export class AccessControlService {
    * - Any of their assigned roles
    * - Their department
    * - Their campus
-   * - Their institution
    */
   public generateAclWhereClause(
     userCtx: {

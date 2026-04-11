@@ -374,7 +374,7 @@ export class DocumentWorkflowService {
 
     let isReview = false;
 
-    // If the document is IN_TRANSIT and FOR_APPROVAL, automatically enforces the "for review"
+    
     if (
       documents[0].workflow?.recordStatus === 'IN_TRANSIT' &&
       documents[0].classification === 'FOR_APPROVAL' &&
@@ -480,7 +480,7 @@ export class DocumentWorkflowService {
       dbUser.departmentId || undefined,
     );
 
-    // Notifications
+    
     const senderName = `${dbUser.firstName} ${dbUser.lastName}`.trim();
     const isTransit =
       updatedDocument.workflow?.recordStatus === 'IN_TRANSIT' &&
@@ -560,7 +560,7 @@ export class DocumentWorkflowService {
       });
     }
 
-    // Verify permissions for transit route vs standard approval
+    
     const isTransit =
       document.classification === 'FOR_APPROVAL' &&
       document.workflow?.recordStatus === 'IN_TRANSIT';
@@ -575,7 +575,7 @@ export class DocumentWorkflowService {
         currentRouteStop &&
         dbUser.departmentId === currentRouteStop.departmentId
       ) {
-        // Allow Level 1 users of the active department to review
+        
         if (
           dbUser.roles.some(
             (r: any) =>
@@ -586,7 +586,7 @@ export class DocumentWorkflowService {
         }
       }
 
-      // Allow fallback to global admins
+      
       if (
         !hasTransitAccess &&
         !this.accessControlService.checkPermission(dbUser, 'canManageDocuments')
@@ -601,7 +601,7 @@ export class DocumentWorkflowService {
       this.accessControlService.requirePermission(dbUser, 'canManageDocuments');
     }
 
-    // Format Immutability: You cannot approve a draft (editable format)
+    
     if (input.status === 'Approved') {
       const allowedFinalFormats = [
         'application/pdf',
@@ -610,7 +610,7 @@ export class DocumentWorkflowService {
         'image/tiff',
       ];
 
-      // Look up latest version file type
+      
       const latestVersion = await this.prisma.documentVersion.findFirst({
         where: { documentId: document.id },
         orderBy: { versionNumber: 'desc' },
@@ -684,7 +684,7 @@ export class DocumentWorkflowService {
 
       if (currentRouteStop) {
         if (isAdvancingRoute) {
-          // Update current stop to APPROVED
+          
           await this.prisma.documentTransitRoute.update({
             where: { id: currentRouteStop.id },
             data: {
@@ -695,7 +695,7 @@ export class DocumentWorkflowService {
             },
           });
 
-          // Find next stop and set to CURRENT
+          
           const nextRouteStop = document.transitRoutes.find(
             (r) => r.sequenceOrder === currentRouteStop.sequenceOrder + 1,
           );
@@ -708,7 +708,7 @@ export class DocumentWorkflowService {
               },
             });
 
-            // Find Level 0 (apex), Level 1 users, or those with document management permissions in the next department
+            
             const nextDeptUsers = await this.prisma.user.findMany({
               where: {
                 departmentId: nextRouteStop.departmentId,
@@ -725,10 +725,10 @@ export class DocumentWorkflowService {
             });
 
             if (nextDeptUsers.length > 0) {
-              // Do NOT auto-grant READ access to the department.
-              // They must formally click "Receive" to get personal READ access and log the transfer.
+              
+              
 
-              // Create pending distributions for Level 1 users to receive
+              
               await this.prisma.documentDistribution.createMany({
                 data: nextDeptUsers.map((targetUser) => ({
                   documentId: document.id,
@@ -738,7 +738,7 @@ export class DocumentWorkflowService {
                 })),
               });
 
-              // Send notifications explicitly
+              
               await this.createNotification(
                 nextDeptUsers.map((targetUser) => targetUser.id),
                 'Review Requested (In Transit)',
@@ -747,13 +747,13 @@ export class DocumentWorkflowService {
               );
             }
 
-            // Update log action string for advancing
+            
             const currentDept = currentRouteStop.department;
             const nextDept = nextRouteStop.department;
             logActionString = `${currentDept?.name || 'An office'} has endorsed the document to ${nextDept?.name || 'the next office'}`;
           }
         } else if (input.status === 'Approved') {
-          // Mark final stop as approved
+          
           await this.prisma.documentTransitRoute.update({
             where: { id: currentRouteStop.id },
             data: {
@@ -764,7 +764,7 @@ export class DocumentWorkflowService {
             },
           });
         } else {
-          // If Returning or Disapproved, we do not advance route status to APPROVED, but we do record the decision on the current node
+          
           await this.prisma.documentTransitRoute.update({
             where: { id: currentRouteStop.id },
             data: {
@@ -790,7 +790,7 @@ export class DocumentWorkflowService {
       dbUser.departmentId || undefined,
     );
 
-    // Notification to the requester
+    
     if (document.workflow?.reviewRequesterId) {
       const reviewerName = `${dbUser.firstName} ${dbUser.lastName}`.trim();
       await this.createNotification(
