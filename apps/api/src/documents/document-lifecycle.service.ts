@@ -33,7 +33,6 @@ export class DocumentLifecycleService {
     if (doc.lifecycle.dispositionStatus === 'DESTROYED') return 'Destroyed';
     if (doc.lifecycle.dispositionStatus === 'ARCHIVED') return 'Archived';
 
-    // If no retention schedule, treat as Active
     if (
       doc.lifecycle.activeRetentionSnapshot === null ||
       doc.lifecycle.activeRetentionSnapshot === undefined
@@ -50,10 +49,10 @@ export class DocumentLifecycleService {
     );
     activeUntil.setMonth(
       activeUntil.getMonth() +
-        (doc.lifecycle.activeRetentionMonthsSnapshot || 0),
+        (doc.lifecycle.activeRetentionMonthsSnapshot ?? 0),
     );
     activeUntil.setDate(
-      activeUntil.getDate() + (doc.lifecycle.activeRetentionDaysSnapshot || 0),
+      activeUntil.getDate() + (doc.lifecycle.activeRetentionDaysSnapshot ?? 0),
     );
 
     if (now < activeUntil) return 'Active';
@@ -61,15 +60,15 @@ export class DocumentLifecycleService {
     const inactiveUntil = new Date(activeUntil);
     inactiveUntil.setFullYear(
       inactiveUntil.getFullYear() +
-        (doc.lifecycle.inactiveRetentionSnapshot || 0),
+        (doc.lifecycle.inactiveRetentionSnapshot ?? 0),
     );
     inactiveUntil.setMonth(
       inactiveUntil.getMonth() +
-        (doc.lifecycle.inactiveRetentionMonthsSnapshot || 0),
+        (doc.lifecycle.inactiveRetentionMonthsSnapshot ?? 0),
     );
     inactiveUntil.setDate(
       inactiveUntil.getDate() +
-        (doc.lifecycle.inactiveRetentionDaysSnapshot || 0),
+        (doc.lifecycle.inactiveRetentionDaysSnapshot ?? 0),
     );
 
     if (now < inactiveUntil) return 'Inactive';

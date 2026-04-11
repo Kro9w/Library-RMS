@@ -972,7 +972,7 @@ export class DocumentsRouter {
             // Assume the owner/uploader is the sender in a physical exchange
             senderId = document.uploadedById;
 
-            // Prevent receiving a document you uploaded
+            
             if (senderId === user.id) {
               throw new TRPCError({
                 code: 'BAD_REQUEST',
@@ -1316,7 +1316,7 @@ export class DocumentsRouter {
             'canManageDocuments',
           );
 
-          // Only Level 1/0 or System Admins can approve or directly execute dispositions. Level 2 can only request.
+          
           const isHighLevelAdmin = dbUser.roles.some(
             (r) =>
               r.canManageInstitution || (r.canManageDocuments && r.level <= 1),
@@ -1969,7 +1969,7 @@ export class DocumentsRouter {
             doc.classification === 'FOR_APPROVAL' &&
             doc.workflow?.recordStatus === 'IN_TRANSIT'
           ) {
-            isFinal = 'IN_TRANSIT'; // Never automatically finalize transit docs on check-in
+            isFinal = 'IN_TRANSIT'; 
           }
 
           const maxVersion = await this.prisma.documentVersion.aggregate({

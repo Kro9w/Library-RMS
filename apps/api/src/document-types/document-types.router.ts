@@ -1,6 +1,6 @@
-// apps/api/src/document-types/document-types.router.ts
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { protectedProcedure, router } from '../trpc/trpc';
 import { LogService } from '../log/log.service';
 import { DispositionAction } from '@prisma/client';
@@ -11,14 +11,12 @@ export class DocumentTypesRouter {
 
   createRouter() {
     return router({
-      // Procedure to get all document types globally
       getAll: protectedProcedure.query(async ({ ctx }) => {
         return ctx.prisma.documentType.findMany({
           orderBy: { name: 'asc' },
         });
       }),
 
-      // Procedure to create a new document type
       create: protectedProcedure
         .input(
           z.object({
@@ -39,9 +37,10 @@ export class DocumentTypesRouter {
           const canManageInstitution =
             ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (!canManageInstitution) {
-            throw new Error(
-              'Only global admins can manage document types.',
-            );
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Only global admins can manage document types.',
+            });
           }
           const newDocType = await ctx.prisma.documentType.create({
             data: {
@@ -69,7 +68,6 @@ export class DocumentTypesRouter {
           return newDocType;
         }),
 
-      // Procedure to update an existing document type
       update: protectedProcedure
         .input(
           z.object({
@@ -89,9 +87,10 @@ export class DocumentTypesRouter {
           const canManageInstitution =
             ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (!canManageInstitution) {
-            throw new Error(
-              'Only global admins can manage document types.',
-            );
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Only global admins can manage document types.',
+            });
           }
           return ctx.prisma.documentType.update({
             where: { id: input.id },
@@ -109,16 +108,16 @@ export class DocumentTypesRouter {
           });
         }),
 
-      // Procedure to delete a document type
       delete: protectedProcedure
         .input(z.object({ id: z.string() }))
         .mutation(async ({ ctx, input }) => {
           const canManageInstitution =
             ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (!canManageInstitution) {
-            throw new Error(
-              'Only global admins can manage document types.',
-            );
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'Only global admins can manage document types.',
+            });
           }
           const deletedDocType = await ctx.prisma.documentType.delete({
             where: { id: input.id },
