@@ -795,7 +795,7 @@ export const DocumentDetails: React.FC = () => {
 
                         <p className="disposition-cert-compliance">
                           {isArchived
-                            ? "This record has been transferred to the institutional archives. The file remains accessible to authorized administrators."
+                            ? "This record has been transferred to the archives. The file remains accessible to authorized administrators."
                             : "This record serves as a compliance tombstone. File contents have been irrevocably removed from storage in accordance with the defined disposition policy."}
                         </p>
                       </div>

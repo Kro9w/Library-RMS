@@ -2,12 +2,11 @@
 import { initTRPC, TRPCError } from '@trpc/server';
 import { OpenApiMeta } from 'trpc-openapi';
 import { PrismaService } from '../prisma/prisma.service';
-import { User, Role, Institution } from '@prisma/client';
+import { User, Role } from '@prisma/client';
 import { SupabaseUser } from '../types/express';
 
 export type UserWithRoles = User & {
   roles: Role[];
-  institution: Institution | null;
 };
 
 export type Context = {
@@ -26,12 +25,11 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
     throw new TRPCError({ code: 'UNAUTHORIZED' });
   }
 
-  // Fetch user with roles and institution in one go
+  // Fetch user with roles in one go
   const dbUser = await ctx.prisma.user.findUnique({
     where: { id: ctx.user.id },
     include: {
       roles: true,
-      institution: true,
     },
   });
 

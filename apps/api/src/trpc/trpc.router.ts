@@ -38,11 +38,10 @@ export class TrpcRouter {
         const twentyFourHoursAgo = new Date();
         twentyFourHoursAgo.setDate(twentyFourHoursAgo.getDate() - 1);
         const departmentId = ctx.dbUser.departmentId;
-        const institutionId = ctx.dbUser.institutionId;
         const campusId = ctx.dbUser.campusId;
 
         // Basic check if user belongs to a department
-        if (!departmentId || !institutionId || !campusId) {
+        if (!departmentId || !campusId) {
           return {
             totalDocuments: 0,
             recentUploadsCount: 0,
@@ -58,7 +57,6 @@ export class TrpcRouter {
         );
 
         const documentWhere = {
-          institutionId,
           AND: [aclWhere],
         };
 

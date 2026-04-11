@@ -50,8 +50,6 @@ model User {
   middleName               String?
   lastName                 String
   imageUrl                 String? // URL for the user's profile picture
-  institution              Institution?           @relation(fields: [institutionId], references: [id])
-  institutionId            String?
   campus                   Campus?                @relation(fields: [campusId], references: [id])
   campusId                 String?
   department               Department?            @relation(fields: [departmentId], references: [id])
@@ -98,23 +96,9 @@ model Role {
   departmentId         String
 }
 
-model Institution {
-  id               String           @id @default(cuid())
-  name             String
-  acronym          String
-  users            User[]
-  campuses         Campus[]
-  documents        Document[]
-  documentTypes    DocumentType[]
-  logs             Log[]
-  documentAccesses DocumentAccess[]
-}
-
 model Campus {
   id               String           @id @default(cuid())
-  name             String
-  institution      Institution      @relation(fields: [institutionId], references: [id])
-  institutionId    String
+  name             String           @unique
   departments      Department[]
   users            User[]
   documents        Document[]
@@ -134,6 +118,8 @@ model Department {
   documentAccesses DocumentAccess[]
   transitRoutes    DocumentTransitRoute[]
   logs             Log[]
+
+  @@unique([name, campusId])
 }
 
 model Log {
@@ -141,8 +127,6 @@ model Log {
   user          User        @relation(fields: [userId], references: [id])
   userId        String
   action        String
-  institution   Institution @relation(fields: [institutionId], references: [id])
-  institutionId String
   campus        Campus?     @relation(fields: [campusId], references: [id])
   campusId      String?
   department    Department? @relation(fields: [departmentId], references: [id])
@@ -153,10 +137,8 @@ model Log {
 
 model DocumentType {
   id                      String      @id @default(cuid())
-  name                    String
+  name                    String      @unique
   color                   String
-  institution             Institution @relation(fields: [institutionId], references: [id])
-  institutionId           String
   documents               Document[]
   activeRetentionDuration Int         @default(0) // In Years
   activeRetentionMonths   Int         @default(0) // In Months
@@ -181,8 +163,6 @@ model Document {
   uploadedById     String
   originalSenderId String?
   classification   Classification         @default(INTERNAL)
-  institution      Institution            @relation(fields: [institutionId], references: [id])
-  institutionId    String
   // Optional relations to quickly filter by campus or department
   campus           Campus?                @relation(fields: [campusId], references: [id])
   campusId         String?
@@ -201,7 +181,6 @@ model Document {
 
   metadata Json?
 
-  @@index([institutionId])
   @@index([uploadedById])
   @@index([documentTypeId])
   @@index([classification])
@@ -209,7 +188,6 @@ model Document {
   @@index([campusId])
   @@index([departmentId])
   @@index([campusId, departmentId])
-  @@index([institutionId, classification])
 }
 
 model DocumentLifecycle {
@@ -294,8 +272,6 @@ model DocumentAccess {
   department    Department?     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
   campusId      String?
   campus        Campus?         @relation(fields: [campusId], references: [id], onDelete: Cascade)
-  institutionId String?
-  institution   Institution?    @relation(fields: [institutionId], references: [id], onDelete: Cascade)
   permission    PermissionLevel @default(READ)
 
   @@index([documentId])
@@ -303,7 +279,6 @@ model DocumentAccess {
   @@index([roleId])
   @@index([departmentId])
   @@index([campusId])
-  @@index([institutionId])
 }
 
 model DocumentDistribution {

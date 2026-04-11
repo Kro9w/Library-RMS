@@ -11,14 +11,9 @@ export class DocumentTypesRouter {
 
   createRouter() {
     return router({
-      // Procedure to get all document types for the current user's institution
+      // Procedure to get all document types globally
       getAll: protectedProcedure.query(async ({ ctx }) => {
-        const institutionId = ctx.dbUser.institutionId as string;
-        // Basic check if user belongs to org
-        if (!institutionId) return [];
-
         return ctx.prisma.documentType.findMany({
-          where: { institutionId: institutionId },
           orderBy: { name: 'asc' },
         });
       }),
@@ -45,15 +40,13 @@ export class DocumentTypesRouter {
             ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (!canManageInstitution) {
             throw new Error(
-              'Only Institution Admins can manage document types.',
+              'Only global admins can manage document types.',
             );
           }
-          const institutionId = ctx.dbUser.institutionId as string;
           const newDocType = await ctx.prisma.documentType.create({
             data: {
               name: input.name,
               color: input.color,
-              institutionId: institutionId,
               activeRetentionDuration: input.activeRetentionDuration,
               activeRetentionMonths: input.activeRetentionMonths,
               activeRetentionDays: input.activeRetentionDays,
@@ -66,7 +59,6 @@ export class DocumentTypesRouter {
 
           await this.logService.logAction(
             ctx.dbUser.id,
-            institutionId,
             `Created document type: ${newDocType.name}`,
             ctx.dbUser.roles.map((r) => r.name),
             undefined,
@@ -98,7 +90,7 @@ export class DocumentTypesRouter {
             ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (!canManageInstitution) {
             throw new Error(
-              'Only Institution Admins can manage document types.',
+              'Only global admins can manage document types.',
             );
           }
           return ctx.prisma.documentType.update({
@@ -125,7 +117,7 @@ export class DocumentTypesRouter {
             ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
           if (!canManageInstitution) {
             throw new Error(
-              'Only Institution Admins can manage document types.',
+              'Only global admins can manage document types.',
             );
           }
           const deletedDocType = await ctx.prisma.documentType.delete({
@@ -134,7 +126,6 @@ export class DocumentTypesRouter {
 
           await this.logService.logAction(
             ctx.dbUser.id,
-            deletedDocType.institutionId,
             `Deleted document type: ${deletedDocType.name}`,
             ctx.dbUser.roles.map((r) => r.name),
             undefined,

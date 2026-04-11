@@ -34,16 +34,12 @@ export class LogRouter {
             scope,
           } = input;
 
-          const institutionId = ctx.dbUser.institutionId as string;
-
           const hasMasterAccess = ctx.dbUser.roles.some(
             (r) => r.canManageInstitution,
           );
           const isCampusExecutive = ctx.dbUser.roles.some((r) => r.level === 0);
 
-          const whereClause: any = {
-            institutionId,
-          };
+          const whereClause: any = {};
 
           // Handle explicitly provided filters
           if (campusId) whereClause.campusId = campusId;
@@ -103,7 +99,6 @@ export class LogRouter {
               skip: (page - 1) * limit,
               include: {
                 user: true,
-                institution: true,
                 campus: true,
                 department: true,
               },

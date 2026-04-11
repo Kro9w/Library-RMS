@@ -123,7 +123,6 @@ export function Navbar({ sidebarMode, setSidebarMode }: NavbarProps) {
     `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=9B2335&color=fff&size=128`;
 
   // Breadcrumb parts
-  const institutionAcronym = dbUser?.institution?.acronym || "CSU";
   const campusName = dbUser?.campus?.name
     ? `${dbUser.campus.name} Campus`
     : null;
@@ -338,9 +337,7 @@ export function Navbar({ sidebarMode, setSidebarMode }: NavbarProps) {
           {(campusName || deptName) && (
             <div className="topbar-breadcrumb">
               <span className="topbar-breadcrumb-sep">/</span>
-              <span className="topbar-breadcrumb-root">
-                {institutionAcronym}
-              </span>
+              <span className="topbar-breadcrumb-root">CSU</span>
               {campusName && (
                 <>
                   <span className="topbar-breadcrumb-sep">/</span>

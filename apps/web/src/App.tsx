@@ -41,7 +41,7 @@ const SendDocumentPage = React.lazy(() =>
     default: module.SendDocumentPage,
   })),
 );
-const JoinInstitution = React.lazy(() => import("./pages/JoinInstitution"));
+const Onboarding = React.lazy(() => import("./pages/Onboarding"));
 const Users = React.lazy(() =>
   import("./pages/Users").then((module) => ({ default: module.Users })),
 );
@@ -100,7 +100,6 @@ const AuthRedirectHandler: React.FC = () => {
   const supabaseClient = useSupabaseClient(); // Get the Supabase client
 
   const {
-    data: dbUser,
     isLoading: isLoadingDbUser,
     isError,
     error,
@@ -120,19 +119,28 @@ const AuthRedirectHandler: React.FC = () => {
     }
   }, [isError, error, supabaseClient]);
 
+  const utils = trpc.useUtils();
+
   useEffect(() => {
     if (!isLoadingDbUser && session) {
-      if (dbUser && !dbUser.institutionId && location.pathname !== "/join") {
-        navigate("/join", { replace: true });
+      const dbUser = utils.user.getMe.getData();
+
+      if (
+        dbUser &&
+        (!dbUser.campusId || !dbUser.departmentId) &&
+        location.pathname !== "/onboarding"
+      ) {
+        navigate("/onboarding", { replace: true });
       } else if (
         dbUser &&
-        dbUser.institutionId &&
-        location.pathname === "/join"
+        dbUser.campusId &&
+        dbUser.departmentId &&
+        location.pathname === "/onboarding"
       ) {
         navigate("/", { replace: true });
       }
     }
-  }, [session, dbUser, isLoadingDbUser, navigate, location.pathname]);
+  }, [session, isLoadingDbUser, navigate, location.pathname, utils]);
 
   return null;
 };
@@ -150,7 +158,7 @@ const AppContent: React.FC = () => {
     return null;
   }
 
-  const showNavbar = session && location.pathname !== "/join";
+  const showNavbar = session && location.pathname !== "/onboarding";
 
   const mainContentClass = showNavbar
     ? `main-content ${sidebarMode === "expanded" ? "expanded" : "collapsed"}`
@@ -262,9 +270,9 @@ const AppContent: React.FC = () => {
               }
             />
             <Route
-              path="/join"
+              path="/onboarding"
               element={
-                session ? <JoinInstitution /> : <Navigate to="/login" replace />
+                session ? <Onboarding /> : <Navigate to="/login" replace />
               }
             />
             {session && (

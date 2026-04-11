@@ -1,17 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { trpc } from "../trpc";
 import { useNavigate } from "react-router-dom";
 import { AlertModal } from "../components/AlertModal";
-import "./JoinInstitution.css";
+import "./Onboarding.css";
 
-const JoinInstitution: React.FC = () => {
+const Onboarding: React.FC = () => {
   const [step, setStep] = useState(1);
   const [alertConfig, setAlertConfig] = useState<{
     show: boolean;
     title: string;
     message: string;
   }>({ show: false, title: "", message: "" });
-  const [selectedOrgId, setSelectedOrgId] = useState("");
   const [selectedCampusId, setSelectedCampusId] = useState("");
   const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
   const [isCreatingDept, setIsCreatingDept] = useState(false);
@@ -22,22 +21,11 @@ const JoinInstitution: React.FC = () => {
   const utils = trpc.useUtils();
 
   const { data: me } = trpc.user.getMe.useQuery();
-  const { data: institutions } = trpc.user.getAllInstitutions.useQuery();
-  const { data: campuses } = trpc.user.getCampuses.useQuery(
-    { institutionId: selectedOrgId },
-    { enabled: !!selectedOrgId },
-  );
+  const { data: campuses } = trpc.user.getCampuses.useQuery();
   const { data: departments } = trpc.user.getDepartments.useQuery(
     { campusId: selectedCampusId },
     { enabled: !!selectedCampusId },
   );
-
-  useEffect(() => {
-    if (institutions && institutions.length > 0 && !selectedOrgId) {
-      const csu = institutions.find((o: any) => o.acronym === "CSU");
-      setSelectedOrgId(csu ? csu.id : institutions[0].id);
-    }
-  }, [institutions, selectedOrgId]);
 
   const joinOrg = trpc.user.joinInstitution.useMutation({
     onSuccess: () => setStep(3),
@@ -67,14 +55,12 @@ const JoinInstitution: React.FC = () => {
       if (isCreatingDept) {
         if (!newDeptName.trim()) return;
         createDeptAndJoin.mutate({
-          institutionId: selectedOrgId,
           campusId: selectedCampusId,
           departmentName: newDeptName,
         });
       } else {
         if (!selectedDepartmentId) return;
         joinOrg.mutate({
-          institutionId: selectedOrgId,
           campusId: selectedCampusId,
           departmentId: selectedDepartmentId,
         });
@@ -175,7 +161,7 @@ const JoinInstitution: React.FC = () => {
                   value={selectedCampusId}
                   onChange={(e) => setSelectedCampusId(e.target.value)}
                   required
-                  disabled={!selectedOrgId || !campuses?.length}
+                  disabled={!campuses?.length}
                 >
                   <option value="" disabled>
                     Select a campus…
@@ -335,4 +321,4 @@ const JoinInstitution: React.FC = () => {
   );
 };
 
-export default JoinInstitution;
+export default Onboarding;

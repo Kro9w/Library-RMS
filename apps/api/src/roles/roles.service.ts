@@ -24,7 +24,7 @@ export class RolesService {
       include: { roles: true },
     });
 
-    // Retrieve org id via department
+    // Retrieve org info via department
     const department = await this.prisma.department.findUnique({
       where: { id: data.departmentId },
       include: { campus: true },
@@ -34,7 +34,6 @@ export class RolesService {
       data: {
         action: `Created role: ${newRole.name} for department: ${department?.name}`,
         userId: userId,
-        institutionId: department?.campus?.institutionId || '',
         userRole: user?.roles.map((role) => role.name).join(', ') || '',
       },
     });
@@ -47,16 +46,9 @@ export class RolesService {
     return await this.prisma.role.findMany({ where: { departmentId } });
   }
 
-  // Get all roles for an ORGANIZATION (traversing campuses & depts)
-  async getRolesByInstitution(institutionId: string): Promise<Role[]> {
+  // Get all roles globally across the single tenant
+  async getAllRoles(): Promise<Role[]> {
     return await this.prisma.role.findMany({
-      where: {
-        department: {
-          campus: {
-            institutionId: institutionId,
-          },
-        },
-      },
       include: {
         department: { include: { campus: true } }, // useful for frontend to see which dept it belongs to
       },
@@ -95,7 +87,6 @@ export class RolesService {
       data: {
         action: `Updated role: ${updatedRole.name}`,
         userId: userId,
-        institutionId: updatedRole.department.campus.institutionId,
         userRole: user?.roles.map((role) => role.name).join(', ') || '',
       },
     });
@@ -125,7 +116,6 @@ export class RolesService {
       data: {
         action: `Deleted role: ${roleToDelete.name}`,
         userId: userId,
-        institutionId: roleToDelete.department.campus.institutionId,
         userRole: user?.roles.map((role) => role.name).join(', ') || '',
       },
     });
@@ -165,7 +155,6 @@ export class RolesService {
       data: {
         action: `Assigned role: ${role.name} to user: ${targetUser?.email}`,
         userId: currentUserId,
-        institutionId: role.department.campus.institutionId,
         userRole: currentUser?.roles.map((r) => r.name).join(', ') || '',
       },
     });
@@ -203,7 +192,6 @@ export class RolesService {
       data: {
         action: `Unassigned role: ${role.name} from user: ${targetUser?.email}`,
         userId: currentUserId,
-        institutionId: role.department.campus.institutionId,
         userRole: currentUser?.roles.map((r) => r.name).join(', ') || '',
       },
     });

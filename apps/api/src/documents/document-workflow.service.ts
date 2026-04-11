@@ -39,20 +39,13 @@ export class DocumentWorkflowService {
     ctx: any,
     input: {
       documentId: string;
-      institutionIds: string[];
+      isInstitutional: boolean;
       campusIds: string[];
       departmentIds: string[];
       userIds: string[];
     },
   ) {
     const { user, dbUser } = ctx;
-
-    if (!dbUser.institutionId) {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'User does not belong to an institution.',
-      });
-    }
 
     const highestRoleLevel =
       dbUser.roles.length > 0
@@ -80,7 +73,6 @@ export class DocumentWorkflowService {
     const document = await this.prisma.document.findUnique({
       where: {
         id: input.documentId,
-        institutionId: dbUser.institutionId,
       },
     });
 
@@ -142,13 +134,11 @@ export class DocumentWorkflowService {
 
     const accessesToCreate: any[] = [];
 
-    if (document.classification === 'INSTITUTIONAL') {
-      for (const id of input.institutionIds)
-        accessesToCreate.push({
-          documentId: document.id,
-          institutionId: id,
-          permission: 'READ',
-        });
+    if (document.classification === 'INSTITUTIONAL' && input.isInstitutional) {
+      // Institutional classification means it's available globally across the single tenant,
+      // but we might still track explicit distributions. We don't need a specific institutionId.
+      // We will skip adding a specific ACL row for 'Institution' since the concept is now implicit,
+      // or we can add an empty constraint (handled elsewhere if needed).
     }
     if (
       document.classification === 'INSTITUTIONAL' ||
@@ -191,9 +181,7 @@ export class DocumentWorkflowService {
     const finalAccesses = await this.prisma.$transaction(async (tx) => {
       // Build conditions dynamically to avoid querying if arrays are empty
       const orConditions: any[] = [];
-      if (input.institutionIds.length > 0) {
-        orConditions.push({ institutionId: { in: input.institutionIds } });
-      }
+      
       if (input.campusIds.length > 0) {
         orConditions.push({ campusId: { in: input.campusIds } });
       }
@@ -205,7 +193,6 @@ export class DocumentWorkflowService {
       }
 
       let existingAccesses: {
-        institutionId: string | null;
         campusId: string | null;
         departmentId: string | null;
         userId: string | null;
@@ -218,7 +205,6 @@ export class DocumentWorkflowService {
             OR: orConditions,
           },
           select: {
-            institutionId: true,
             campusId: true,
             departmentId: true,
             userId: true,
@@ -230,14 +216,14 @@ export class DocumentWorkflowService {
       const existingSet = new Set(
         existingAccesses.map(
           (ex) =>
-            `${ex.institutionId || ''}-${ex.campusId || ''}-${ex.departmentId || ''}-${ex.userId || ''}`,
+            `${ex.campusId || ''}-${ex.departmentId || ''}-${ex.userId || ''}`,
         ),
       );
 
       const newAccesses = accessesToCreate.filter(
         (a) =>
           !existingSet.has(
-            `${a.institutionId || ''}-${a.campusId || ''}-${a.departmentId || ''}-${a.userId || ''}`,
+            `${a.campusId || ''}-${a.departmentId || ''}-${a.userId || ''}`,
           ),
       );
 
@@ -252,14 +238,13 @@ export class DocumentWorkflowService {
 
     // Build generic log
     let broadTargetName = '';
-    if (input.institutionIds.length > 0) broadTargetName = 'Institution(s)';
+    if (input.isInstitutional) broadTargetName = 'Institution';
     else if (input.campusIds.length > 0) broadTargetName = 'Campus(es)';
     else if (input.departmentIds.length > 0) broadTargetName = 'Department(s)';
     else if (input.userIds.length > 0) broadTargetName = 'Specific User(s)';
 
     await this.logService.logAction(
       user.id,
-      dbUser.institutionId,
       `Sent Document to ${broadTargetName}`,
       dbUser.roles.map((r: any) => r.name),
       document.title,
@@ -276,10 +261,8 @@ export class DocumentWorkflowService {
     for (const uid of input.userIds) targetsForNotification.add(uid);
 
     const broadScopesWhere: any[] = [];
-    if (input.institutionIds.length > 0)
-      broadScopesWhere.push({
-        institutionId: { in: input.institutionIds },
-      });
+    if (input.isInstitutional)
+      broadScopesWhere.push({}); // Empty matches everything globally
     if (input.campusIds.length > 0)
       broadScopesWhere.push({ campusId: { in: input.campusIds } });
     if (input.departmentIds.length > 0)
@@ -324,13 +307,6 @@ export class DocumentWorkflowService {
   ) {
     const { user, dbUser } = ctx;
 
-    if (!dbUser.institutionId) {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'User does not belong to an institution.',
-      });
-    }
-
     const recipient = await this.prisma.user.findUnique({
       where: { id: input.recipientId },
     });
@@ -345,7 +321,7 @@ export class DocumentWorkflowService {
     // Verify ownership of all documents to prevent unauthorized access
     const whereClause: any = {
       id: input.documentId,
-      institutionId: dbUser.institutionId,
+      
     };
 
     if (
@@ -497,7 +473,6 @@ export class DocumentWorkflowService {
 
     await this.logService.logAction(
       user.id,
-      dbUser.institutionId,
       `Sent Document to ${recipient.firstName} ${recipient.lastName} (Pending Receipt)`,
       dbUser.roles.map((r: any) => r.name),
       updatedDocument.title,
@@ -569,13 +544,6 @@ export class DocumentWorkflowService {
     },
   ) {
     const { user, dbUser } = ctx;
-
-    if (!dbUser.institutionId) {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'User does not belong to an institution.',
-      });
-    }
 
     const document = await this.prisma.document.findUnique({
       where: { id: input.documentId },
@@ -815,7 +783,6 @@ export class DocumentWorkflowService {
 
     await this.logService.logAction(
       user.id,
-      dbUser.institutionId,
       logActionString,
       dbUser.roles.map((r: any) => r.name),
       updatedDocument.title,

@@ -51,7 +51,6 @@ export class AccessControlService {
   public generateAclWhereClause(
     userCtx: {
       id: string;
-      institutionId?: string | null;
       campusId?: string | null;
       departmentId?: string | null;
       roles?: { id: string }[];
@@ -63,10 +62,6 @@ export class AccessControlService {
     const aclConditions: Prisma.DocumentAccessWhereInput[] = [
       { userId: userCtx.id },
     ];
-
-    if (userCtx.institutionId) {
-      aclConditions.push({ institutionId: userCtx.institutionId });
-    }
 
     if (userCtx.campusId) {
       aclConditions.push({ campusId: userCtx.campusId });

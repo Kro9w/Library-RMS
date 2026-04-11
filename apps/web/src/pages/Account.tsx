@@ -222,12 +222,6 @@ const Account: React.FC = () => {
             <span className="account-info-value">{dbUser.email}</span>
           </div>
           <div className="account-info-row">
-            <span className="account-info-label">Institution</span>
-            <span className="account-info-value">
-              {dbUser.institution?.name || "—"}
-            </span>
-          </div>
-          <div className="account-info-row">
             <span className="account-info-label">Campus</span>
             <span className="account-info-value">
               {dbUser.campus?.name || "—"}

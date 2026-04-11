@@ -110,7 +110,6 @@ describe('DocumentLifecycleService', () => {
       (prisma.$queryRaw as jest.Mock).mockResolvedValue([]);
 
       const result = await service.getReadyForDispositionDocuments(
-        'inst-id',
         'user-id',
         {},
         {
@@ -132,7 +131,6 @@ describe('DocumentLifecycleService', () => {
       ]);
 
       const result = await service.getReadyForDispositionDocuments(
-        'inst-id',
         'user-id',
         {},
         {

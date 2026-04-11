@@ -3,11 +3,7 @@ import { trpc } from "../../trpc";
 import { ConfirmModal } from "../../components/ConfirmModal";
 
 export default function AdminCampuses() {
-  const { data: dbUser } = trpc.user.getMe.useQuery();
-  const { data: campuses, refetch } = trpc.user.getCampuses.useQuery(
-    { institutionId: dbUser?.institutionId || "" },
-    { enabled: !!dbUser?.institutionId },
-  );
+  const { data: campuses, refetch } = trpc.user.getCampuses.useQuery();
 
   const createCampus = trpc.user.createCampus.useMutation({
     onSuccess: () => {

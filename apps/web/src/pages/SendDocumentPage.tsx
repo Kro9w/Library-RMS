@@ -52,7 +52,6 @@ interface SendConfirmationModalProps {
   onClose: () => void;
   isPending: boolean;
   institutionSelected: boolean;
-  institutionName?: string;
   selectedCampuses: Set<string>;
   allCampuses: any[];
   selectedDepts: Set<string>;
@@ -68,7 +67,6 @@ const SendConfirmationModal: React.FC<SendConfirmationModalProps> = ({
   onClose,
   isPending,
   institutionSelected,
-  institutionName,
   selectedCampuses,
   allCampuses,
   selectedDepts,
@@ -90,7 +88,7 @@ const SendConfirmationModal: React.FC<SendConfirmationModalProps> = ({
       : 0;
 
   const scopeLabel = institutionSelected
-    ? `the entire ${institutionName || "institution"}`
+    ? `the entire organization`
     : selectedCampuses.size > 0
       ? `${campusCount} campus${campusCount !== 1 ? "es" : ""}`
       : selectedDepts.size > 0
@@ -394,7 +392,6 @@ const SearchableList: React.FC<GroupedSearchableListProps> = ({
 
 interface AudienceSummaryProps {
   institutionSelected: boolean;
-  institutionName?: string;
   campusCount: number;
   deptCount: number;
   userCount: number;
@@ -402,15 +399,14 @@ interface AudienceSummaryProps {
 
 const AudienceSummary: React.FC<AudienceSummaryProps> = ({
   institutionSelected,
-  institutionName,
   campusCount,
   deptCount,
   userCount,
 }) => {
   const chips: { icon: string; text: string }[] = [];
 
-  if (institutionSelected && institutionName) {
-    chips.push({ icon: "bi-globe2", text: institutionName });
+  if (institutionSelected) {
+    chips.push({ icon: "bi-globe2", text: "Organization-wide" });
   }
   if (campusCount > 0) {
     chips.push({
@@ -725,8 +721,7 @@ export const SendDocumentPage: React.FC = () => {
 
       await sendMutation.mutateAsync({
         documentId: id,
-        institutionIds:
-          institutionSelected && orgHierarchy ? [orgHierarchy.id] : [],
+        isInstitutional: institutionSelected,
         campusIds: implicitCampusIds,
         departmentIds: implicitDepartmentIds,
         userIds: Array.from(selectedUsers),
@@ -821,7 +816,6 @@ export const SendDocumentPage: React.FC = () => {
         {/* ── Audience summary bar ── */}
         <AudienceSummary
           institutionSelected={institutionSelected}
-          institutionName={orgHierarchy?.name}
           campusCount={selectedCampuses.size}
           deptCount={selectedDepts.size}
           userCount={selectedUsers.size}
@@ -893,16 +887,16 @@ export const SendDocumentPage: React.FC = () => {
             {/* SCOPE step */}
             {currentStep.id === "scope" && (
               <StepWrapper
-                heading="Institution-wide send"
+                heading="Organization-wide send"
                 description={
                   institutionSelected
-                    ? `Sending to the entire ${orgHierarchy?.name || "institution"}. You can add specific individual recipients in the next step.`
-                    : "Select this to grant read access to every user in the institution, or skip this to narrow down by campuses, departments, or individuals."
+                    ? `Sending to the entire organization. You can add specific individual recipients in the next step.`
+                    : "Select this to grant read access to every user in the organization, or skip this to narrow down by campuses, departments, or individuals."
                 }
               >
                 <CheckCard
                   id="institution-wide"
-                  label={orgHierarchy?.name ?? "Institution"}
+                  label={"Organization"}
                   sublabel={`${allCampuses.length} campus${allCampuses.length !== 1 ? "es" : ""} · All departments`}
                   checked={institutionSelected}
                   onChange={handleInstitutionToggle}
@@ -915,7 +909,7 @@ export const SendDocumentPage: React.FC = () => {
                   >
                     <i className="bi bi-info-circle"></i>
                     <p>
-                      Institution-wide selected. The wizard will skip to the
+                      Organization-wide selected. The wizard will skip to the
                       individual users step so you can optionally add one-off
                       recipients, then confirm.
                     </p>
@@ -1024,7 +1018,7 @@ export const SendDocumentPage: React.FC = () => {
                 }
                 description={
                   isInstitutionWide
-                    ? "Optionally add individual users who should receive this document in addition to the institution-wide access already granted."
+                    ? "Optionally add individual users who should receive this document in addition to the organization-wide access already granted."
                     : selectedDepts.size > 0
                       ? `Showing users from the ${selectedDepts.size} selected department${selectedDepts.size !== 1 ? "s" : ""}. Select specific individuals or add one-off recipients.`
                       : selectedCampuses.size > 0
@@ -1052,7 +1046,6 @@ export const SendDocumentPage: React.FC = () => {
               >
                 <ConfirmSummary
                   institutionSelected={institutionSelected}
-                  institutionName={orgHierarchy?.name}
                   selectedCampuses={selectedCampuses}
                   allCampuses={allCampuses}
                   selectedDepts={selectedDepts}
@@ -1075,7 +1068,7 @@ export const SendDocumentPage: React.FC = () => {
               </button>
 
               <div className="send-wizard__footer-right">
-                {/* Skip only on non-confirm, non-scope-when-institution-wide steps */}
+                {/* Skip only on non-confirm, non-scope-when-organization-wide steps */}
                 {currentStep.id !== "confirm" &&
                   !(currentStep.id === "scope" && institutionSelected) && (
                     <button className="send-skip-btn" onClick={handleSkip}>
@@ -1120,7 +1113,6 @@ export const SendDocumentPage: React.FC = () => {
         onClose={() => setShowConfirmModal(false)}
         isPending={sendMutation.isPending}
         institutionSelected={institutionSelected}
-        institutionName={orgHierarchy?.name}
         selectedCampuses={selectedCampuses}
         allCampuses={allCampuses}
         selectedDepts={selectedDepts}
@@ -1161,7 +1153,6 @@ const StepWrapper: React.FC<{
 
 const ConfirmSummary: React.FC<{
   institutionSelected: boolean;
-  institutionName?: string;
   selectedCampuses: Set<string>;
   allCampuses: any[];
   selectedDepts: Set<string>;
@@ -1170,7 +1161,6 @@ const ConfirmSummary: React.FC<{
   allUsers: any[];
 }> = ({
   institutionSelected,
-  institutionName,
   selectedCampuses,
   allCampuses,
   selectedDepts,
@@ -1201,13 +1191,13 @@ const ConfirmSummary: React.FC<{
 
   return (
     <div className="send-confirm">
-      {institutionSelected && institutionName && (
+      {institutionSelected && (
         <ConfirmGroup
           icon="bi-globe2"
-          label="Institution"
+          label="Organization"
           color="var(--success)"
         >
-          <span className="send-confirm-item">{institutionName}</span>
+          <span className="send-confirm-item">Organization-wide</span>
         </ConfirmGroup>
       )}
 

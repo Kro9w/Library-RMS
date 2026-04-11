@@ -8,7 +8,6 @@ export class LogService {
 
   async logAction(
     userId: string,
-    institutionId: string,
     action: string,
     roles: string[],
     targetName?: string,
@@ -21,7 +20,6 @@ export class LogService {
       data: {
         action: actionString,
         userId,
-        institutionId,
         campusId,
         departmentId,
         userRole: roles.join(', '),
@@ -32,7 +30,6 @@ export class LogService {
   async logActionTx(
     tx: Prisma.TransactionClient,
     userId: string,
-    institutionId: string,
     action: string,
     roles: string[],
     targetName?: string,
@@ -45,7 +42,6 @@ export class LogService {
       data: {
         action: actionString,
         userId,
-        institutionId,
         campusId,
         departmentId,
         userRole: roles.join(', '),
@@ -60,7 +56,6 @@ export class LogService {
   async logActions(
     logs: {
       userId: string;
-      institutionId: string;
       action: string;
       roles: string[];
       targetName?: string;
@@ -73,7 +68,6 @@ export class LogService {
         ? `${log.action}: '${log.targetName}'`
         : log.action,
       userId: log.userId,
-      institutionId: log.institutionId,
       campusId: log.campusId,
       departmentId: log.departmentId,
       userRole: log.roles.join(', '),
@@ -88,7 +82,6 @@ export class LogService {
     tx: Prisma.TransactionClient,
     logs: {
       userId: string;
-      institutionId: string;
       action: string;
       roles: string[];
       targetName?: string;
@@ -101,7 +94,6 @@ export class LogService {
         ? `${log.action}: '${log.targetName}'`
         : log.action,
       userId: log.userId,
-      institutionId: log.institutionId,
       campusId: log.campusId,
       departmentId: log.departmentId,
       userRole: log.roles.join(', '),

@@ -25,7 +25,7 @@ const LogsPage: React.FC = () => {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
 
-  // Get all users in the institution so we can filter based on the active tab
+  // Get all users in the organization so we can filter based on the active tab
   const { data: allUsersData } = trpc.user.getUsersWithRoles.useQuery();
 
   const usersData = allUsersData?.filter((u) => {

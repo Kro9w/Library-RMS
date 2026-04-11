@@ -2,7 +2,6 @@ import { Prisma } from '@prisma/client';
 
 export interface LogActionParams {
   userId: string;
-  institutionId: string;
   action: string;
   roles: string[];
   targetName?: string;
@@ -22,7 +21,6 @@ export async function logAction(
     data: {
       action: actionString,
       userId: params.userId,
-      institutionId: params.institutionId,
       campusId: params.campusId,
       departmentId: params.departmentId,
       userRole: params.roles.join(', '),

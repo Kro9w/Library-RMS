@@ -117,7 +117,6 @@ describe('AccessControlService', () => {
     it('should build full OR clauses based on user context', () => {
       const result = service.generateAclWhereClause({
         id: 'user-1',
-        institutionId: 'inst-1',
         campusId: 'camp-1',
         departmentId: 'dept-1',
         roles: [{ id: 'role-1' }, { id: 'role-2' }],
@@ -128,7 +127,6 @@ describe('AccessControlService', () => {
           some: {
             OR: [
               { userId: 'user-1' },
-              { institutionId: 'inst-1' },
               { campusId: 'camp-1' },
               { departmentId: 'dept-1' },
               { roleId: { in: ['role-1', 'role-2'] } },

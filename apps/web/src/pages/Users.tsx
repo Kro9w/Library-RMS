@@ -308,11 +308,11 @@ export function Users() {
         isConfirming={removeUserFromInstitution.isPending}
       >
         {userToRemove && currentUser && userToRemove.id === currentUser.id ? (
-          <span>You can't remove yourself from the institution!</span>
+          <span>You can't remove yourself from the organization!</span>
         ) : (
           <>
             Are you sure you want to remove {formatUserName(userToRemove)} from
-            the institution?
+            the organization?
           </>
         )}
       </ConfirmModal>

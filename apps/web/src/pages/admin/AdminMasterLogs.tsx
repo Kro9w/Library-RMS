@@ -19,13 +19,7 @@ export default function AdminMasterLogs() {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
 
-  const { data: me } = trpc.user.getMe.useQuery();
-  const institutionId = me?.institutionId || "";
-
-  const { data: campusesData } = trpc.user.getCampuses.useQuery(
-    { institutionId },
-    { enabled: !!institutionId },
-  );
+  const { data: campusesData } = trpc.user.getCampuses.useQuery();
 
   // Instead of querying all departments, we can conditionally fetch based on selected campus,
   // but if we want them all available we might just fetch the hierarchy.

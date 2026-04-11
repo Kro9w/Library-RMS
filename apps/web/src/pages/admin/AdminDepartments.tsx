@@ -2,11 +2,7 @@ import { useState } from "react";
 import { trpc } from "../../trpc";
 
 export default function AdminDepartments() {
-  const { data: dbUser } = trpc.user.getMe.useQuery();
-  const { data: campuses } = trpc.user.getCampuses.useQuery(
-    { institutionId: dbUser?.institutionId || "" },
-    { enabled: !!dbUser?.institutionId },
-  );
+  const { data: campuses } = trpc.user.getCampuses.useQuery();
 
   const [selectedCampusId, setSelectedCampusId] = useState<string>("");
 

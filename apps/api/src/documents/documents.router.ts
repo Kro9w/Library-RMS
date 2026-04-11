@@ -105,7 +105,7 @@ export class DocumentsRouter {
         .input(
           z.object({
             documentId: z.string(),
-            institutionIds: z.array(z.string()),
+            isInstitutional: z.boolean().default(false), // Replaces institutionIds
             campusIds: z.array(z.string()),
             departmentIds: z.array(z.string()),
             userIds: z.array(z.string()),
@@ -148,13 +148,6 @@ export class DocumentsRouter {
         .input(z.object({ id: z.string() }))
         .output(z.any())
         .query(async ({ ctx, input }) => {
-          if (!ctx.dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
-
           const aclWhere = this.accessControlService.generateAclWhereClause(
             ctx.dbUser,
           );
@@ -162,7 +155,6 @@ export class DocumentsRouter {
           const doc = await this.prisma.document.findFirst({
             where: {
               id: input.id,
-              institutionId: ctx.dbUser.institutionId,
               AND: [aclWhere],
             },
             select: {
@@ -325,13 +317,6 @@ export class DocumentsRouter {
         .output(z.any())
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
-          if (!dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
-
           const highestRoleLevel =
             dbUser.roles.length > 0
               ? dbUser.roles.reduce(
@@ -456,7 +441,6 @@ export class DocumentsRouter {
               content: '',
               uploadedById: user.id,
               originalSenderId: user.id,
-              institutionId: dbUser.institutionId,
               campusId: dbUser.campusId,
               departmentId: dbUser.departmentId,
               documentTypeId: input.documentTypeId,
@@ -520,7 +504,6 @@ export class DocumentsRouter {
 
           await this.logService.logAction(
             user.id,
-            dbUser.institutionId,
             'Created Document',
             dbUser.roles.map((r) => r.name),
             (document as any).title,
@@ -551,13 +534,6 @@ export class DocumentsRouter {
         )
         .output(z.object({ signedUrl: z.string().nullable() }))
         .query(async ({ ctx, input }) => {
-          if (!ctx.dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
-
           const aclWhere = this.accessControlService.generateAclWhereClause(
             ctx.dbUser,
           );
@@ -565,7 +541,6 @@ export class DocumentsRouter {
           const doc = await this.prisma.document.findFirst({
             where: {
               id: input.documentId,
-              institutionId: ctx.dbUser.institutionId,
               AND: [aclWhere],
             },
             select: {
@@ -629,21 +604,13 @@ export class DocumentsRouter {
             method: 'GET',
             path: '/documents.getAppUsers',
             tags: ['documents', 'users'],
-            summary: 'Get all users in the institution',
+            summary: 'Get all users in the organization',
           },
         })
         .input(z.void())
         .output(z.any())
-        .query(async ({ ctx }) => {
-          if (!ctx.dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
-          return this.prisma.user.findMany({
-            where: { institutionId: ctx.dbUser.institutionId },
-          });
+        .query(async () => {
+          return this.prisma.user.findMany();
         }),
 
       // Consolidated getAll procedure
@@ -653,7 +620,7 @@ export class DocumentsRouter {
             method: 'GET',
             path: '/documents.getAll',
             tags: ['documents'],
-            summary: 'Get all documents in the institution',
+            summary: 'Get all documents in the organization',
           },
         })
         .input(
@@ -672,13 +639,6 @@ export class DocumentsRouter {
           }),
         )
         .query(async ({ ctx, input }) => {
-          if (!ctx.dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
-
           const { page, perPage, search, filter, lifecycleFilter } = input;
           const skip = (page - 1) * perPage;
 
@@ -706,7 +666,7 @@ export class DocumentsRouter {
               },
             },
             uploadedById: true,
-            institutionId: true,
+            
             documentType: true,
             controlNumber: true,
             workflow: {
@@ -747,7 +707,6 @@ export class DocumentsRouter {
 
             const { totalCount, documents } =
               await this.documentLifecycleService.getReadyForDispositionDocuments(
-                ctx.dbUser.institutionId,
                 ctx.user.id,
                 aclWhere,
                 {
@@ -767,7 +726,6 @@ export class DocumentsRouter {
 
           // Standard path (No lifecycle filter or 'all')
           const whereClause: Prisma.DocumentWhereInput = {
-            institutionId: ctx.dbUser.institutionId,
             OR: [
               { lifecycle: { dispositionStatus: null } },
               {
@@ -843,13 +801,6 @@ export class DocumentsRouter {
         .input(z.object({ id: z.string() }))
         .output(z.any())
         .mutation(async ({ ctx, input }) => {
-          if (!ctx.dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
-
           this.accessControlService.requirePermission(
             ctx.dbUser,
             'canManageDocuments',
@@ -862,13 +813,11 @@ export class DocumentsRouter {
           const doc = await this.prisma.document.findFirst({
             where: {
               id: input.id,
-              institutionId: ctx.dbUser.institutionId,
               AND: [aclWhere],
             },
             select: {
               id: true,
               title: true,
-              institutionId: true,
               versions: {
                 select: {
                   s3Key: true,
@@ -916,7 +865,6 @@ export class DocumentsRouter {
 
           await this.logService.logAction(
             ctx.dbUser.id,
-            doc.institutionId,
             'Deleted Document',
             ctx.dbUser.roles.map((r) => r.name),
             doc.title,
@@ -953,13 +901,6 @@ export class DocumentsRouter {
         )
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
-
-          if (!dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
 
           if (!input.controlNumber && !input.distributionId) {
             throw new TRPCError({
@@ -1018,7 +959,6 @@ export class DocumentsRouter {
             document = (await this.prisma.document.findFirst({
               where: {
                 controlNumber: input.controlNumber,
-                institutionId: dbUser.institutionId,
               },
             })) as any;
 
@@ -1098,7 +1038,6 @@ export class DocumentsRouter {
 
           await this.logService.logAction(
             user.id,
-            dbUser.institutionId,
             `Received Document via Control Number/Distribution`,
             dbUser.roles.map((r) => r.name),
             document.title,
@@ -1121,20 +1060,10 @@ export class DocumentsRouter {
        * Get pending distributions for the current user
        */
       getMyPendingDistributions: protectedProcedure.query(async ({ ctx }) => {
-        if (!ctx.dbUser.institutionId) {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'User does not belong to an institution.',
-          });
-        }
-
         return this.prisma.documentDistribution.findMany({
           where: {
             recipientId: ctx.user.id,
             status: 'PENDING',
-            document: {
-              institutionId: ctx.dbUser.institutionId,
-            },
           },
           include: {
             document: {
@@ -1169,13 +1098,6 @@ export class DocumentsRouter {
       getDocumentDistributions: protectedProcedure
         .input(z.object({ documentId: z.string() }))
         .query(async ({ ctx, input }) => {
-          if (!ctx.dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
-
           // Verify user has access to see distributions (either has READ access or is owner)
           const aclWhere = this.accessControlService.generateAclWhereClause(
             ctx.dbUser,
@@ -1183,7 +1105,6 @@ export class DocumentsRouter {
           const doc = await this.prisma.document.findFirst({
             where: {
               id: input.documentId,
-              institutionId: ctx.dbUser.institutionId,
               AND: [aclWhere],
             },
           });
@@ -1270,14 +1191,7 @@ export class DocumentsRouter {
 
       getRemarks: protectedProcedure
         .input(z.object({ documentId: z.string() }))
-        .query(async ({ ctx, input }) => {
-          if (!ctx.dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
-
+        .query(async ({ input }) => {
           return this.prisma.remark.findMany({
             where: {
               documentId: input.documentId,
@@ -1293,34 +1207,6 @@ export class DocumentsRouter {
                   lastName: true,
                 },
               },
-            },
-          });
-        }),
-
-      getAllInstitutions: protectedProcedure
-        .meta({
-          openapi: {
-            method: 'GET',
-            path: '/documents.getAllInstitutions',
-            tags: ['documents', 'admin'],
-            summary: 'Get all institutions',
-          },
-        })
-        .input(z.void())
-        .output(z.any())
-        .query(async ({ ctx }) => {
-          this.accessControlService.requirePermission(
-            ctx.dbUser,
-            'canManageDocuments',
-          );
-
-          if (!ctx.dbUser.institutionId) {
-            return [];
-          }
-
-          return this.prisma.institution.findMany({
-            where: {
-              id: ctx.dbUser.institutionId,
             },
           });
         }),
@@ -1342,14 +1228,7 @@ export class DocumentsRouter {
             'canManageUsers',
           );
 
-          if (!ctx.dbUser.institutionId) {
-            return [];
-          }
-
           return this.prisma.user.findMany({
-            where: {
-              institutionId: ctx.dbUser.institutionId,
-            },
           });
         }),
 
@@ -1357,12 +1236,6 @@ export class DocumentsRouter {
         .input(z.object({ documentId: z.string(), reason: z.string() }))
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
-          if (!dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
 
           this.accessControlService.requirePermission(
             dbUser,
@@ -1372,7 +1245,6 @@ export class DocumentsRouter {
           const doc = await ctx.prisma.document.update({
             where: {
               id: input.documentId,
-              institutionId: dbUser.institutionId,
             },
             data: {
               lifecycle: {
@@ -1387,7 +1259,6 @@ export class DocumentsRouter {
 
           await this.logService.logAction(
             user.id,
-            dbUser.institutionId,
             `Applied Legal Hold: ${input.reason}`,
             dbUser.roles.map((r) => r.name),
             doc.title,
@@ -1402,12 +1273,6 @@ export class DocumentsRouter {
         .input(z.object({ documentId: z.string() }))
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
-          if (!dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
 
           this.accessControlService.requirePermission(
             dbUser,
@@ -1417,7 +1282,6 @@ export class DocumentsRouter {
           const doc = await ctx.prisma.document.update({
             where: {
               id: input.documentId,
-              institutionId: dbUser.institutionId,
             },
             data: {
               lifecycle: {
@@ -1432,7 +1296,6 @@ export class DocumentsRouter {
 
           await this.logService.logAction(
             user.id,
-            dbUser.institutionId,
             'Removed Legal Hold',
             dbUser.roles.map((r) => r.name),
             doc.title,
@@ -1447,12 +1310,6 @@ export class DocumentsRouter {
         .input(z.object({ documentId: z.string() }))
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
-          if (!dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
 
           this.accessControlService.requirePermission(
             dbUser,
@@ -1478,7 +1335,7 @@ export class DocumentsRouter {
             include: { lifecycle: true },
           });
 
-          if (!doc || doc.institutionId !== dbUser.institutionId) {
+          if (!doc) {
             throw new TRPCError({
               code: 'NOT_FOUND',
               message: 'Document not found',
@@ -1517,7 +1374,6 @@ export class DocumentsRouter {
 
           await this.logService.logAction(
             user.id,
-            dbUser.institutionId,
             'Disposition Approval Requested',
             dbUser.roles.map((r) => r.name),
             doc.title,
@@ -1532,12 +1388,6 @@ export class DocumentsRouter {
         .input(z.object({ documentId: z.string() }))
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
-          if (!dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
 
           this.accessControlService.requirePermission(
             dbUser,
@@ -1664,7 +1514,6 @@ export class DocumentsRouter {
 
             await this.logService.logAction(
               user.id,
-              dbUser.institutionId,
               'Approved and Executed Disposition (DESTROY)',
               dbUser.roles.map((r) => r.name),
               doc.title,
@@ -1749,7 +1598,6 @@ export class DocumentsRouter {
                 },
                 versions: true,
                 documentType: true,
-                institution: true,
                 campus: true,
                 department: true,
               },
@@ -1766,7 +1614,6 @@ export class DocumentsRouter {
               creator: fullDoc?.uploadedBy
                 ? `${fullDoc.uploadedBy.firstName} ${fullDoc.uploadedBy.lastName}`
                 : null,
-              institution: fullDoc?.institution?.name,
               campus: fullDoc?.campus?.name,
               department: fullDoc?.department?.name,
               documentType: fullDoc?.documentType?.name,
@@ -1818,7 +1665,6 @@ export class DocumentsRouter {
 
             await this.logService.logAction(
               user.id,
-              dbUser.institutionId,
               'Approved and Executed Disposition (ARCHIVE)',
               dbUser.roles.map((r) => r.name),
               doc.title,
@@ -1835,12 +1681,6 @@ export class DocumentsRouter {
         .input(z.object({ documentId: z.string() }))
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
-          if (!dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
 
           this.accessControlService.requirePermission(
             dbUser,
@@ -1876,7 +1716,6 @@ export class DocumentsRouter {
 
           await this.logService.logAction(
             user.id,
-            dbUser.institutionId,
             'Rejected Disposition Request',
             dbUser.roles.map((r) => r.name),
             doc.title,
@@ -1895,13 +1734,6 @@ export class DocumentsRouter {
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
 
-          if (!dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
-
           const aclWhere = this.accessControlService.generateAclWhereClause(
             ctx.dbUser,
           );
@@ -1909,7 +1741,7 @@ export class DocumentsRouter {
           const updatedDoc = await this.prisma.$transaction(async (tx) => {
             const lockedDocs = await tx.$queryRaw<any[]>`
               SELECT id FROM "Document"
-              WHERE id = ${input.documentId} AND "institutionId" = ${dbUser.institutionId}
+              WHERE id = ${input.documentId}
               FOR UPDATE
             `;
 
@@ -1923,7 +1755,6 @@ export class DocumentsRouter {
             const doc = await tx.document.findFirst({
               where: {
                 id: input.documentId,
-                institutionId: dbUser.institutionId as string,
                 AND: [aclWhere],
               },
               include: {
@@ -2031,7 +1862,6 @@ export class DocumentsRouter {
                 const writeAccessCheck = await tx.document.findFirst({
                   where: {
                     id: input.documentId,
-                    institutionId: dbUser.institutionId as string,
                     AND: [writeAclWhere],
                   },
                 });
@@ -2062,7 +1892,6 @@ export class DocumentsRouter {
 
           await this.logService.logAction(
             user.id,
-            dbUser.institutionId,
             'Checked Out Document',
             dbUser.roles.map((r) => r.name),
             updatedDoc.title,
@@ -2089,19 +1918,12 @@ export class DocumentsRouter {
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
 
-          if (!dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
-
           const doc = await this.prisma.document.findUnique({
             where: { id: input.documentId },
             include: { workflow: true },
           });
 
-          if (!doc || doc.institutionId !== dbUser.institutionId) {
+          if (!doc) {
             throw new TRPCError({
               code: 'NOT_FOUND',
               message: 'Document not found.',
@@ -2188,7 +2010,6 @@ export class DocumentsRouter {
 
           await this.logService.logAction(
             user.id,
-            dbUser.institutionId,
             `Checked In Document (v${nextVersionNumber})`,
             dbUser.roles.map((r) => r.name),
             doc.title,
@@ -2207,19 +2028,12 @@ export class DocumentsRouter {
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
 
-          if (!dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
-
           const doc = await this.prisma.document.findUnique({
             where: { id: input.documentId },
             include: { workflow: true },
           });
 
-          if (!doc || doc.institutionId !== dbUser.institutionId) {
+          if (!doc) {
             throw new TRPCError({
               code: 'NOT_FOUND',
               message: 'Document not found.',
@@ -2264,7 +2078,6 @@ export class DocumentsRouter {
 
           await this.logService.logAction(
             user.id,
-            dbUser.institutionId,
             'Discarded Check Out',
             dbUser.roles.map((r) => r.name),
             doc.title,

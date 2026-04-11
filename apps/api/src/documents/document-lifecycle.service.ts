@@ -78,7 +78,6 @@ export class DocumentLifecycleService {
   }
 
   public async getReadyForDispositionDocuments(
-    institutionId: string,
     userId: string,
     aclWhere: Prisma.DocumentWhereInput,
     options: {
@@ -90,7 +89,6 @@ export class DocumentLifecycleService {
     },
   ) {
     const lifecycleWhereClause: Prisma.DocumentWhereInput = {
-      institutionId: institutionId,
       lifecycle: {
         dispositionStatus: { notIn: ['DESTROYED', 'ARCHIVED'] },
         activeRetentionSnapshot: { not: null },
@@ -113,8 +111,7 @@ export class DocumentLifecycleService {
       SELECT d.id
       FROM "Document" d
       INNER JOIN "DocumentLifecycle" l ON d.id = l."documentId"
-      WHERE d."institutionId" = ${institutionId}
-        AND (l."dispositionStatus" NOT IN ('DESTROYED', 'ARCHIVED') OR l."dispositionStatus" IS NULL)
+      WHERE (l."dispositionStatus" NOT IN ('DESTROYED', 'ARCHIVED') OR l."dispositionStatus" IS NULL)
         AND l."activeRetentionSnapshot" IS NOT NULL
         AND l."isUnderLegalHold" = false
         AND (d."createdAt" + 

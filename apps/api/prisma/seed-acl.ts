@@ -14,7 +14,6 @@ async function main() {
       id: true,
       uploadedById: true,
       classification: true,
-      institutionId: true,
       campusId: true,
       departmentId: true,
       documentAccesses: true,
@@ -43,12 +42,8 @@ async function main() {
     }
 
     // 2. Map classification to broad access
-    if (doc.classification === 'INSTITUTIONAL' && doc.institutionId) {
-      accessesToCreate.push({
-        documentId: doc.id,
-        institutionId: doc.institutionId,
-        permission: PermissionLevel.READ,
-      });
+    if (doc.classification === 'INSTITUTIONAL') {
+      // Handled implicitly by RBAC now.
     } else if (doc.classification === 'INTERNAL' as any && doc.campusId) {
       accessesToCreate.push({
         documentId: doc.id,

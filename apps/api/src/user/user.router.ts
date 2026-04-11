@@ -168,22 +168,21 @@ export class UserRouter {
             method: 'POST',
             path: '/user.joinInstitution',
             tags: ['user', 'institution'],
-            summary: 'Join an institution',
+            summary: 'Join the organization',
           },
         })
         .input(
           z.object({
-            institutionId: z.string().min(1),
             campusId: z.string().min(1),
             departmentId: z.string().min(1),
           }),
         )
         .output(z.any())
         .mutation(async ({ ctx, input }) => {
-          if (ctx.dbUser.institutionId) {
+          if (ctx.dbUser.campusId || ctx.dbUser.departmentId) {
             throw new TRPCError({
               code: 'BAD_REQUEST',
-              message: 'User already belongs to an institution.',
+              message: 'User already belongs to a department/campus.',
             });
           }
 
@@ -200,24 +199,6 @@ export class UserRouter {
             });
           }
 
-          if (dept.campus.institutionId !== input.institutionId) {
-            throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: 'Invalid campus for this institution.',
-            });
-          }
-
-          const institution = await this.prisma.institution.findUnique({
-            where: { id: input.institutionId },
-          });
-
-          if (!institution) {
-            throw new TRPCError({
-              code: 'NOT_FOUND',
-              message: 'Institution not found.',
-            });
-          }
-
           const targetRoleRecord = await this.determineInitialRole(
             ctx.dbUser.email,
             dept.name,
@@ -227,7 +208,6 @@ export class UserRouter {
           await this.prisma.user.update({
             where: { id: ctx.dbUser.id },
             data: {
-              institutionId: institution.id,
               campusId: input.campusId,
               departmentId: input.departmentId,
               roles: {
@@ -238,43 +218,40 @@ export class UserRouter {
 
           await this.logService.logAction(
             ctx.dbUser.id,
-            institution.id,
-            `Joined institution: ${institution.name}, Campus: ${dept.campus.name}, Dept: ${dept.name} as ${targetRoleRecord.name}`,
+            `Joined Organization - Campus: ${dept.campus.name}, Dept: ${dept.name} as ${targetRoleRecord.name}`,
             [targetRoleRecord.name],
             undefined, // No target name
             dept.campusId, // campusId
             dept.id, // departmentId
           );
 
-          return institution;
+          return { success: true };
         }),
 
       // New Mutation: Create Department and Join
       createDepartmentAndJoin: protectedProcedure
         .input(
           z.object({
-            institutionId: z.string().min(1),
             campusId: z.string().min(1),
             departmentName: z.string().min(1),
           }),
         )
         .mutation(async ({ ctx, input }) => {
-          if (ctx.dbUser.institutionId) {
+          if (ctx.dbUser.campusId || ctx.dbUser.departmentId) {
             throw new TRPCError({
               code: 'BAD_REQUEST',
-              message: 'User already belongs to an institution.',
+              message: 'User already belongs to a department/campus.',
             });
           }
 
           const campus = await ctx.prisma.campus.findUnique({
             where: { id: input.campusId },
-            include: { institution: true },
           });
 
-          if (!campus || campus.institutionId !== input.institutionId) {
+          if (!campus) {
             throw new TRPCError({
               code: 'BAD_REQUEST',
-              message: 'Invalid campus or institution.',
+              message: 'Invalid campus.',
             });
           }
 
@@ -305,7 +282,6 @@ export class UserRouter {
           await ctx.prisma.user.update({
             where: { id: ctx.dbUser.id },
             data: {
-              institutionId: input.institutionId,
               campusId: input.campusId,
               departmentId: dept.id,
               roles: { connect: { id: targetRoleRecord.id } },
@@ -314,7 +290,6 @@ export class UserRouter {
 
           await this.logService.logAction(
             ctx.dbUser.id,
-            input.institutionId,
             `Created/Joined Department: ${dept.name}, Campus: ${campus.name} as ${targetRoleRecord.name}`,
             [targetRoleRecord.name],
             undefined,
@@ -359,17 +334,14 @@ export class UserRouter {
             where: { id: input.userId },
           });
 
-          if (ctx.dbUser.institutionId) {
-            await this.logService.logAction(
-              ctx.dbUser.id,
-              ctx.dbUser.institutionId,
-              `Deleted user: ${deletedUser.email ?? 'Unknown'}`,
-              ctx.dbUser.roles.map((r) => r.name),
-              undefined,
-              ctx.dbUser.campusId || undefined,
-              ctx.dbUser.departmentId || undefined,
-            );
-          }
+          await this.logService.logAction(
+            ctx.dbUser.id,
+            `Deleted user: ${deletedUser.email ?? 'Unknown'}`,
+            ctx.dbUser.roles.map((r) => r.name),
+            undefined,
+            ctx.dbUser.campusId || undefined,
+            ctx.dbUser.departmentId || undefined,
+          );
 
           return deletedUser;
         }),
@@ -390,7 +362,6 @@ export class UserRouter {
 
         if (canManageInstitution) {
           return ctx.prisma.user.findMany({
-            where: { institutionId: ctx.dbUser.institutionId },
             include: { roles: true, campus: true, department: true },
           });
         }
@@ -414,10 +385,6 @@ export class UserRouter {
         });
       }),
 
-      getAllInstitutions: protectedProcedure.query(async ({ ctx }) => {
-        return ctx.prisma.institution.findMany();
-      }),
-
       removeUserFromInstitution: protectedProcedure
         .input(z.object({ userId: z.string() }))
         .mutation(async ({ ctx, input }) => {
@@ -429,24 +396,20 @@ export class UserRouter {
           const updatedUser = await ctx.prisma.user.update({
             where: { id: input.userId },
             data: {
-              institutionId: null,
               campusId: null,
               departmentId: null,
               roles: { set: [] }, // Clear roles
             },
           });
 
-          if (ctx.dbUser.institutionId) {
-            await this.logService.logAction(
-              ctx.dbUser.id,
-              ctx.dbUser.institutionId,
-              `Removed user: ${updatedUser.email ?? 'Unknown'} from institution`,
-              ctx.dbUser.roles.map((r) => r.name),
-              undefined,
-              ctx.dbUser.campusId || undefined,
-              ctx.dbUser.departmentId || undefined,
-            );
-          }
+          await this.logService.logAction(
+            ctx.dbUser.id,
+            `Removed user: ${updatedUser.email ?? 'Unknown'} from organization`,
+            ctx.dbUser.roles.map((r) => r.name),
+            undefined,
+            ctx.dbUser.campusId || undefined,
+            ctx.dbUser.departmentId || undefined,
+          );
 
           return updatedUser;
         }),
@@ -454,11 +417,8 @@ export class UserRouter {
       // --- New Hierarchy Management Endpoints ---
 
       getCampuses: protectedProcedure
-        .input(z.object({ institutionId: z.string().min(1) }))
-        .query(async ({ ctx, input }) => {
-          return ctx.prisma.campus.findMany({
-            where: { institutionId: input.institutionId },
-          });
+        .query(async ({ ctx }) => {
+          return ctx.prisma.campus.findMany();
         }),
 
       getDepartments: protectedProcedure
@@ -477,17 +437,9 @@ export class UserRouter {
             'canManageUsers',
           );
 
-          if (!ctx.dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: 'User must belong to an institution.',
-            });
-          }
-
           return ctx.prisma.campus.create({
             data: {
               name: input.name,
-              institutionId: ctx.dbUser.institutionId,
             },
           });
         }),
@@ -500,7 +452,7 @@ export class UserRouter {
           if (!canManageInstitution) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'Only Institution Admins can update campuses.',
+              message: 'Only global admins can update campuses.',
             });
           }
 
@@ -508,10 +460,10 @@ export class UserRouter {
             where: { id: input.id },
           });
 
-          if (!campus || campus.institutionId !== ctx.dbUser.institutionId) {
+          if (!campus) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'Campus not found or access denied.',
+              message: 'Campus not found.',
             });
           }
 
@@ -529,7 +481,7 @@ export class UserRouter {
           if (!canManageInstitution) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'Only Institution Admins can delete campuses.',
+              message: 'Only global admins can delete campuses.',
             });
           }
 
@@ -537,10 +489,10 @@ export class UserRouter {
             where: { id: input.id },
           });
 
-          if (!campus || campus.institutionId !== ctx.dbUser.institutionId) {
+          if (!campus) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'Campus not found or access denied.',
+              message: 'Campus not found.',
             });
           }
 
@@ -563,15 +515,14 @@ export class UserRouter {
             'canManageUsers',
           );
 
-          // Verify campus belongs to same institution
           const campus = await ctx.prisma.campus.findUnique({
             where: { id: input.campusId },
           });
 
-          if (!campus || campus.institutionId !== ctx.dbUser.institutionId) {
+          if (!campus) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'Cannot create department in this campus.',
+              message: 'Campus not found.',
             });
           }
 
@@ -604,10 +555,10 @@ export class UserRouter {
             include: { campus: true },
           });
 
-          if (!dept || dept.campus.institutionId !== ctx.dbUser.institutionId) {
+          if (!dept) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'Department not found or access denied.',
+              message: 'Department not found.',
             });
           }
 
@@ -628,7 +579,7 @@ export class UserRouter {
           if (!canManageInstitution) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'Only Institution Admins can delete departments.',
+              message: 'Only global admins can delete departments.',
             });
           }
 
@@ -637,10 +588,10 @@ export class UserRouter {
             include: { campus: true },
           });
 
-          if (!dept || dept.campus.institutionId !== ctx.dbUser.institutionId) {
+          if (!dept) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'Department not found or access denied.',
+              message: 'Department not found.',
             });
           }
 
@@ -664,7 +615,7 @@ export class UserRouter {
           if (!canManageInstitution) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'Only Institution Admins can reassign users globally.',
+              message: 'Only global admins can reassign users globally.',
             });
           }
 
@@ -672,13 +623,10 @@ export class UserRouter {
             where: { id: input.userId },
           });
 
-          if (
-            !targetUser ||
-            targetUser.institutionId !== ctx.dbUser.institutionId
-          ) {
+          if (!targetUser) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'User not found or access denied.',
+              message: 'User not found.',
             });
           }
 
@@ -687,11 +635,7 @@ export class UserRouter {
             include: { campus: true },
           });
 
-          if (
-            !dept ||
-            dept.campusId !== input.campusId ||
-            dept.campus.institutionId !== ctx.dbUser.institutionId
-          ) {
+          if (!dept || dept.campusId !== input.campusId) {
             throw new TRPCError({
               code: 'BAD_REQUEST',
               message: 'Invalid campus or department hierarchy.',
@@ -722,25 +666,13 @@ export class UserRouter {
         }),
 
       getInstitutionHierarchy: protectedProcedure.query(async ({ ctx }) => {
-        if (!ctx.dbUser.institutionId) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: 'User must belong to an institution.',
-          });
-        }
-
-        const org = await ctx.prisma.institution.findUnique({
-          where: { id: ctx.dbUser.institutionId },
+        const campuses = await ctx.prisma.campus.findMany({
           include: {
-            campuses: {
+            departments: {
               include: {
-                departments: {
+                users: {
                   include: {
-                    users: {
-                      include: {
-                        roles: true,
-                      },
-                    },
+                    roles: true,
                   },
                 },
               },
@@ -748,14 +680,7 @@ export class UserRouter {
           },
         });
 
-        if (!org) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'Institution not found.',
-          });
-        }
-
-        return org;
+        return { campuses };
       }),
     });
   }

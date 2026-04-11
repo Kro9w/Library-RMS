@@ -157,34 +157,14 @@ const CAMPUS_DATA = [
 async function main() {
   console.log('Start seeding ...');
 
-  // Seed Institution: CSU
-  let institution = await prisma.institution.findFirst({
-    where: { name: 'Cagayan State University' },
-  });
-
-  if (!institution) {
-    institution = await prisma.institution.create({
-      data: {
-        name: 'Cagayan State University',
-        acronym: 'CSU',
-      },
-    });
-    console.log(`Created Institution: ${institution.name}`);
-  } else {
-    console.log(`Using existing Institution: ${institution.name}`);
-  }
-
   // 1. Batch Seed Campuses
-  const existingCampuses = await prisma.campus.findMany({
-    where: { institutionId: institution.id }
-  });
+  const existingCampuses = await prisma.campus.findMany();
   
   const existingCampusNames = new Set(existingCampuses.map(c => c.name));
   const campusesToCreate = CAMPUS_DATA
     .filter(c => !existingCampusNames.has(c.name))
     .map(c => ({
       name: c.name,
-      institutionId: institution.id,
     }));
 
   if (campusesToCreate.length > 0) {
@@ -193,9 +173,7 @@ async function main() {
   }
 
   // Refetch all campuses to get their generated IDs
-  const allCampuses = await prisma.campus.findMany({
-    where: { institutionId: institution.id }
-  });
+  const allCampuses = await prisma.campus.findMany();
   const campusMap = new Map(allCampuses.map(c => [c.name, c.id]));
 
   // 2. Batch Seed Departments

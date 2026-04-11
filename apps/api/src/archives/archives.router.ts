@@ -27,7 +27,7 @@ export class ArchivesRouter {
         .query(async ({ ctx, input }) => {
           const { dbUser } = ctx;
 
-          if (!dbUser.institutionId || !dbUser.departmentId) {
+          if (!dbUser.departmentId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'User does not belong to an office/department.',
@@ -50,7 +50,6 @@ export class ArchivesRouter {
           const take = input.pageSize;
 
           const whereClause: Prisma.DocumentWhereInput = {
-            institutionId: dbUser.institutionId,
             departmentId: dbUser.departmentId,
             lifecycle: {
               dispositionStatus: 'ARCHIVED',
@@ -97,7 +96,7 @@ export class ArchivesRouter {
         .query(async ({ ctx, input }) => {
           const { dbUser } = ctx;
 
-          if (!dbUser.institutionId || !dbUser.departmentId) {
+          if (!dbUser.departmentId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'User does not belong to an office/department.',
@@ -120,7 +119,6 @@ export class ArchivesRouter {
           const take = input.pageSize;
 
           const whereClause: Prisma.DocumentWhereInput = {
-            institutionId: dbUser.institutionId,
             departmentId: dbUser.departmentId,
             lifecycle: {
               dispositionStatus: 'DESTROYED',
@@ -167,7 +165,7 @@ export class ArchivesRouter {
         .query(async ({ ctx, input }) => {
           const { dbUser } = ctx;
 
-          if (!dbUser.institutionId || !dbUser.departmentId) {
+          if (!dbUser.departmentId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'User does not belong to an office/department.',
@@ -188,8 +186,6 @@ export class ArchivesRouter {
           const take = input.pageSize;
 
           const whereClause: Prisma.DocumentWhereInput = {
-            institutionId: dbUser.institutionId,
-            departmentId: dbUser.departmentId,
             lifecycle: {
               dispositionStatus: 'ARCHIVED',
             },
@@ -237,7 +233,7 @@ export class ArchivesRouter {
         .query(async ({ ctx, input }) => {
           const { dbUser } = ctx;
 
-          if (!dbUser.institutionId || !dbUser.departmentId) {
+          if (!dbUser.departmentId) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'User does not belong to an office/department.',
@@ -258,8 +254,6 @@ export class ArchivesRouter {
           const take = input.pageSize;
 
           const whereClause: Prisma.DocumentWhereInput = {
-            institutionId: dbUser.institutionId,
-            departmentId: dbUser.departmentId,
             lifecycle: {
               dispositionStatus: 'DESTROYED',
             },
@@ -299,15 +293,7 @@ export class ArchivesRouter {
       getArchiveManifestUrl: protectedProcedure
         .input(z.object({ id: z.string() }))
         .query(async ({ ctx, input }) => {
-          const { dbUser } = ctx;
-          if (!dbUser.institutionId) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'User does not belong to an institution.',
-            });
-          }
-
-          const doc = await this.prisma.document.findUnique({
+          const doc = await ctx.prisma.document.findUnique({
             where: { id: input.id },
             include: { lifecycle: true },
           });
