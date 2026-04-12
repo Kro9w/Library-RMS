@@ -1,4 +1,3 @@
-// apps/api/src/trpc/trpc.router.ts
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { protectedProcedure, publicProcedure, router } from './trpc';
@@ -40,7 +39,6 @@ export class TrpcRouter {
         const departmentId = ctx.dbUser.departmentId;
         const campusId = ctx.dbUser.campusId;
 
-        // Basic check if user belongs to a department
         if (!departmentId || !campusId) {
           return {
             totalDocuments: 0,
@@ -108,7 +106,6 @@ export class TrpcRouter {
           docsByTypeQuery,
         ]);
 
-        // Fetch document types to get their names and colors
         const documentTypeIds = docsByTypeRaw
           .map((group) => group.documentTypeId)
           .filter((id): id is string => id !== null);
@@ -123,8 +120,7 @@ export class TrpcRouter {
           const docType = documentTypes.find(
             (t) => t.id === group.documentTypeId,
           );
-          let color = docType?.color || '#AAB8C2'; // Default color if not found
-          // Ensure hex colors start with '#'
+          let color = docType?.color || '#AAB8C2';
           if (color && !color.startsWith('#')) {
             color = `#${color}`;
           }
@@ -144,7 +140,6 @@ export class TrpcRouter {
           totalDocuments,
           recentUploadsCount,
           recentFiles: recentFiles.map((f) => {
-            // Format name here: First Middle Last
             const u = f.uploadedBy;
             const nameParts = [u.firstName, u.middleName, u.lastName].filter(
               Boolean,

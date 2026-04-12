@@ -1,4 +1,3 @@
-// apps/web/src/components/Roles/RolePill.tsx
 import React from "react";
 import "./RolePill.css";
 

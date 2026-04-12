@@ -13,7 +13,6 @@ import { AccessControlService } from '../documents/access-control.service';
 import { ArchivesModule } from '../archives/archives.module';
 
 @Module({
-  // 3. Add PrismaModule and SupabaseModule here
   imports: [
     DocumentsModule,
     UserModule,

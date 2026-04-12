@@ -21,7 +21,6 @@ const Upload: React.FC = () => {
     "INSTITUTIONAL" | "INTERNAL" | "DEPARTMENTAL" | "RESTRICTED"
   >("RESTRICTED");
 
-  // Determine accepted file types based on classification
   const acceptedTypes: Record<string, string[]> =
     classification === "INSTITUTIONAL" || classification === "INTERNAL"
       ? {
@@ -84,12 +83,10 @@ const Upload: React.FC = () => {
       setFiles([]);
       setShowAlert(true);
 
-      // Invalidate queries to refetch document list and dashboard stats
       await utils.documents.invalidate();
       await utils.getDashboardStats.invalidate();
     } catch (err: any) {
       console.error(err);
-      // Display Supabase error directly if available
       setError(err.message || "An error occurred during upload.");
     } finally {
       setUploading(false);

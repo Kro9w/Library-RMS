@@ -23,7 +23,6 @@ export function DocumentTypesPanel() {
   const handleSave = () => {
     if (!name.trim()) return;
 
-    // Ensure color is stored correctly (without # if backend expects it that way, but actually the old code used `#${c}` to render, meaning it stores without #)
     const cleanColor = color.startsWith("#") ? color.slice(1) : color;
 
     if (editingId) {
@@ -52,7 +51,6 @@ export function DocumentTypesPanel() {
   const handleEdit = (type: { id: string; name: string; color: string }) => {
     setEditingId(type.id);
     setName(type.name);
-    // ensure hex format for the color picker
     setColor(
       type.color.length === 6 && !type.color.startsWith("#")
         ? `#${type.color}`

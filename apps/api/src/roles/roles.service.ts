@@ -1,4 +1,4 @@
-// apps/api/src/roles/roles.service.ts
+
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role } from '@prisma/client';
@@ -24,7 +24,7 @@ export class RolesService {
       include: { roles: true },
     });
 
-    // Retrieve org info via department
+
     const department = await this.prisma.department.findUnique({
       where: { id: data.departmentId },
       include: { campus: true },
@@ -41,16 +41,16 @@ export class RolesService {
     return newRole;
   }
 
-  // Get all roles for a DEPARTMENT
+
   async getRolesByDepartment(departmentId: string): Promise<Role[]> {
     return await this.prisma.role.findMany({ where: { departmentId } });
   }
 
-  // Get all roles globally across the single tenant
+
   async getAllRoles(): Promise<Role[]> {
     return await this.prisma.role.findMany({
       include: {
-        department: { include: { campus: true } }, // useful for frontend to see which dept it belongs to
+        department: { include: { campus: true } },
       },
     });
   }
@@ -95,7 +95,7 @@ export class RolesService {
   }
 
   async deleteRole(id: string, userId: string): Promise<Role> {
-    // Need to fetch department info before deletion for logging
+
     const roleToDelete = await this.prisma.role.findUnique({
       where: { id },
       include: { department: { include: { campus: true } } },

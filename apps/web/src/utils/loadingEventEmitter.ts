@@ -1,4 +1,3 @@
-// apps/web/src/utils/loadingEventEmitter.ts
 import mitt from 'mitt';
 
 type Events = {

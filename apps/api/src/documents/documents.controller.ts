@@ -25,7 +25,6 @@ export class DocumentsController {
         file.mimetype === 'application/pdf' ||
         file.originalname.toLowerCase().endsWith('.pdf');
 
-      // 1. FAST PATH: If the file is a PDF, try extracting text natively first
       if (isPdf) {
         try {
           const parser = new PDFParse({ data: file.buffer });
@@ -45,12 +44,11 @@ export class DocumentsController {
           );
         }
 
-        // 2. FALLBACK PATH: If PDF is image-based (no native text match), convert first page to image
         try {
           const parser = new PDFParse({ data: file.buffer });
           const screenshot = await parser.getScreenshot({
             imageBuffer: true,
-            scale: 2.0, // High resolution for OCR
+            scale: 2.0,
           });
 
           if (screenshot && screenshot.pages && screenshot.pages.length > 0) {
@@ -64,14 +62,12 @@ export class DocumentsController {
           return { controlNumber: null };
         }
 
-        // Safeguard against empty buffers
         if (!imageBuffer || imageBuffer.length === 0) {
           console.warn('PDF to Image conversion returned empty buffer');
           return { controlNumber: null };
         }
       }
 
-      // 3. OCR PATH: Run Tesseract on the image buffer (or the converted PDF page)
       if (!imageBuffer || imageBuffer.length === 0) {
         return { controlNumber: null };
       }
@@ -90,7 +86,6 @@ export class DocumentsController {
       }
     } catch (error) {
       console.error('OCR Extraction failed completely:', error);
-      // Return null rather than failing so the frontend can fallback gracefully
       return { controlNumber: null };
     }
   }

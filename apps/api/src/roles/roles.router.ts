@@ -22,7 +22,7 @@ export class RolesRouter {
             departmentId: ctx.dbUser.departmentId,
           },
           orderBy: {
-            level: 'asc', // 1 (Leader) -> 4 (Member)
+            level: 'asc',
           },
         });
       }),
@@ -31,12 +31,12 @@ export class RolesRouter {
         .input(
           z.object({
             name: z.string().min(1),
-            level: z.number().min(1).max(4).default(4), // Prevents manually creating level 0 roles
-            // Optional overrides
+            level: z.number().min(1).max(4).default(4),
+
             canManageUsers: z.boolean().optional(),
             canManageRoles: z.boolean().optional(),
             canManageDocuments: z.boolean().optional(),
-            departmentId: z.string().optional(), // Admin can specify, else uses user's dept
+            departmentId: z.string().optional(),
           }),
         )
         .mutation(async ({ ctx, input }) => {
@@ -60,7 +60,7 @@ export class RolesRouter {
             });
           }
 
-          // Determine permissions based on level if not provided
+
           const defaults = this.getPermissionsForLevel(input.level);
 
           return ctx.prisma.role.create({
@@ -81,7 +81,7 @@ export class RolesRouter {
           z.object({
             id: z.string(),
             name: z.string().optional(),
-            level: z.number().min(1).max(4).optional(), // Prevents updating role TO level 0
+            level: z.number().min(1).max(4).optional(),
             canManageUsers: z.boolean().optional(),
             canManageRoles: z.boolean().optional(),
             canManageDocuments: z.boolean().optional(),
@@ -93,7 +93,7 @@ export class RolesRouter {
             'canManageRoles',
           );
 
-          // Fetch existing role to check ownership
+
           const existingRole = await ctx.prisma.role.findUnique({
             where: { id: input.id },
           });
@@ -245,9 +245,9 @@ export class RolesRouter {
             });
           }
 
-          // 1. Check if trying to assign Level 0 or 1
+
           if (role.level <= 1) {
-            // 2. Get target user's department
+
             if (!targetUser.departmentId) {
               throw new TRPCError({
                 code: 'BAD_REQUEST',
@@ -255,14 +255,14 @@ export class RolesRouter {
               });
             }
 
-            // 3. Check if this Department already has a Level 0 or 1 leader
+
             const existingLeader = await ctx.prisma.user.findFirst({
               where: {
                 departmentId: targetUser.departmentId,
                 roles: {
                   some: { level: { lte: 1 } },
                 },
-                id: { not: targetUser.id }, // Exclude self (re-assignment is fine)
+                id: { not: targetUser.id },
               },
             });
 
@@ -346,7 +346,7 @@ export class RolesRouter {
 
   private getPermissionsForLevel(level: number) {
     switch (level) {
-      case 0: // Executive
+      case 0:
       case 1:
         return {
           canManageUsers: true,

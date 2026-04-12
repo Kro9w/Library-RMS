@@ -46,7 +46,6 @@ export const RolesSettings: React.FC = () => {
 
   const handleLevelChange = (newLevel: number) => {
     setLevel(newLevel);
-    // Auto-set permissions based on level (Client-side mirror of backend default)
     switch (newLevel) {
       case 1: // Leader
         setPermissions({

@@ -19,13 +19,11 @@ const LogsPage: React.FC = () => {
   const nextPage = () => setPage((p) => Math.min(p + 1, totalPages));
   const prevPage = () => setPage((p) => Math.max(p - 1, 1));
 
-  // Filters
   const [userId, setUserId] = useState<string>("");
   const [actionQuery, setActionQuery] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
 
-  // Get all users in the organization so we can filter based on the active tab
   const { data: allUsersData } = trpc.user.getUsersWithRoles.useQuery();
 
   const usersData = allUsersData?.filter((u) => {

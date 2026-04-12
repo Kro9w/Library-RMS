@@ -1,10 +1,8 @@
-// apps/web/src/pages/Dashboard.tsx
 import { useState, useMemo, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { trpc } from "../trpc";
 import { LoadingAnimation } from "../components/ui/LoadingAnimation";
 
-// --- Imports ---
 import "./Documents.css";
 import "./Dashboard.css";
 
@@ -15,19 +13,16 @@ import { UploadModal } from "../components/UploadModal";
 import { ForwardDocumentModal } from "../components/ForwardDocumentModal";
 import { ReceiveDocumentModal } from "../components/ReceiveDocumentModal";
 
-// --- 1. IMPORT TRPC OUTPUT TYPE (Fixes 'any' errors) ---
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
 const PIE_CHART_COLORS = ["#BA3B46", "#ED9B40", "#AAB8C2", "#E1E8ED"];
 
-// --- 2. DEFINE TYPES FROM TRPC (Fixes 'any' errors) ---
 type RecentFile = AppRouterOutputs["getDashboardStats"]["recentFiles"][0];
 type DocTypeStat = AppRouterOutputs["getDashboardStats"]["docsByType"][0];
 type DocStatusStat = AppRouterOutputs["getDashboardStats"]["docsByStatus"][0];
 
 export function Dashboard() {
   const { data, isLoading, isError, error } = trpc.getDashboardStats.useQuery();
-  // Fetch current user for the greeting
   const { data: user } = trpc.user.getMe.useQuery();
 
   useForm<{
@@ -58,7 +53,6 @@ export function Dashboard() {
     }
   }, [searchParams, setSearchParams]);
 
-  // --- Greeting Logic ---
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     let timeGreeting = "Good morning";
@@ -68,8 +62,6 @@ export function Dashboard() {
       timeGreeting = "Good evening";
     }
 
-    // User might not have loaded yet, or firstName might be missing if legacy
-    // But our types say firstName is string.
     const name = user?.firstName || "User";
     return `${timeGreeting}, ${name}`;
   }, [user]);
@@ -180,7 +172,6 @@ export function Dashboard() {
                 </div>
                 <ul className="document-list">
                   {recentFiles.length > 0 ? (
-                    // --- 5. EXPLICIT TYPE ADDED ---
                     recentFiles.map((file: RecentFile) => (
                       <li
                         key={file.id}

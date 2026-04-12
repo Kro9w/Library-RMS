@@ -1,4 +1,3 @@
-// apps/web/src/components/Settings/AppearanceSettings.tsx
 import { useTheme } from "../../Theme";
 
 export function AppearanceSettings() {

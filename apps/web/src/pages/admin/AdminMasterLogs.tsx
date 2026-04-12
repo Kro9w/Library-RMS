@@ -12,7 +12,6 @@ export default function AdminMasterLogs() {
   const nextPage = () => setPage((p) => Math.min(p + 1, totalPages));
   const prevPage = () => setPage((p) => Math.max(p - 1, 1));
 
-  // Filters
   const [campusId, setCampusId] = useState<string>("");
   const [departmentId, setDepartmentId] = useState<string>("");
   const [actionQuery, setActionQuery] = useState<string>("");
@@ -21,15 +20,11 @@ export default function AdminMasterLogs() {
 
   const { data: campusesData } = trpc.user.getCampuses.useQuery();
 
-  // Instead of querying all departments, we can conditionally fetch based on selected campus,
-  // but if we want them all available we might just fetch the hierarchy.
-  // Since `user.getDepartments` requires `campusId`, we use it when campusId is selected.
   const { data: departmentsData } = trpc.user.getDepartments.useQuery(
     { campusId },
     { enabled: !!campusId },
   );
 
-  // Get all users for the institution for the filter dropdown
   const { data: usersData } = trpc.user.getUsersWithRoles.useQuery();
 
   const [userId, setUserId] = useState<string>("");

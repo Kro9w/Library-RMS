@@ -1,4 +1,3 @@
-// apps/web/src/components/AuthLayout.tsx
 import React from "react";
 import "../pages/Auth.css";
 

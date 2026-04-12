@@ -1,4 +1,3 @@
-// apps/web/src/pages/LoginPage.tsx
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../supabase";
@@ -29,11 +28,8 @@ const LoginPage: React.FC = () => {
       if (authError) throw authError;
 
       if (data.user) {
-        // Sync the user in our DB
-        // We need to parse the metadata which should contain the name parts
         const meta = data.user.user_metadata || {};
 
-        // Handle cases where we might still have old metadata or need to split display_name
         let firstName = meta.first_name;
         const middleName = meta.middle_name;
         let lastName = meta.last_name;
@@ -49,7 +45,6 @@ const LoginPage: React.FC = () => {
           }
         }
 
-        // Fallback if completely missing
         if (!firstName) firstName = "User";
         if (!lastName) lastName = ".";
 

@@ -37,7 +37,6 @@ describe('UserRouter - determineInitialRole', () => {
     const mockRole = { id: 'role-1', name: 'University President' };
     prismaMock.role.findFirst.mockResolvedValueOnce(mockRole);
 
-    // Call the private method (we bypass TypeScript's visibility modifier for testing)
     const result = await (router as any).determineInitialRole(
       'jakecalantas.blis@gmail.com',
       'Office of the University President',
@@ -55,8 +54,6 @@ describe('UserRouter - determineInitialRole', () => {
 
   it('should assign vacant Apex role (level 1 or 0) if department is not University President and role has no users', async () => {
     const mockApexRole = { id: 'role-2', name: 'Director', users: [] };
-    // Mocks:
-    // 1st call for president check will not be called (due to short circuit)
     prismaMock.role.findFirst.mockResolvedValueOnce(mockApexRole);
 
     const result = await (router as any).determineInitialRole(
@@ -86,8 +83,8 @@ describe('UserRouter - determineInitialRole', () => {
     const mockNewUserRole = { id: 'role-3', name: 'User' };
 
     prismaMock.role.findFirst
-      .mockResolvedValueOnce(mockApexRoleTaken) // Apex role check
-      .mockResolvedValueOnce(null); // 'User' role lookup
+      .mockResolvedValueOnce(mockApexRoleTaken)
+      .mockResolvedValueOnce(null);
 
     prismaMock.role.create.mockResolvedValueOnce(mockNewUserRole);
 

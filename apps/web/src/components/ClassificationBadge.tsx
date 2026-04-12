@@ -15,7 +15,6 @@ export const ClassificationBadge: React.FC<ClassificationBadgeProps> = ({
   if (!classification) {
     return null;
   }
-  // Define properties mapping to custom CSS classes
   const badgeProps: Record<
     string,
     { label: string; className: string; icon: string }

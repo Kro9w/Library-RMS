@@ -4,9 +4,6 @@ import { Document, Page } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
-// 👇 Just import this file once. Do not set workerSrc here.
-import "../pdf-worker";
-
 interface PdfViewerProps {
   fileUrl: string;
 }

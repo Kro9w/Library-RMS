@@ -22,7 +22,6 @@ export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
   const fType = fileType || "";
   const fName = fileName || "";
 
-  // TIFF (Master Copy)
   if (RE_TIFF_TYPE.test(fType) || RE_TIFF_EXT.test(fName)) {
     return (
       <i
@@ -34,7 +33,6 @@ export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
     );
   }
 
-  // CSV (Data Set)
   if (RE_CSV_TYPE.test(fType) || RE_CSV_EXT.test(fName)) {
     return (
       <i
@@ -46,7 +44,6 @@ export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
     );
   }
 
-  // PDF
   if (RE_PDF_TYPE.test(fType) || RE_PDF_EXT.test(fName)) {
     return (
       <i
@@ -58,7 +55,6 @@ export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
     );
   }
 
-  // Word (DOCX)
   if (RE_WORD_TYPE.test(fType) || RE_WORD_EXT.test(fName)) {
     return (
       <i
@@ -70,7 +66,6 @@ export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
     );
   }
 
-  // Excel (Spreadsheet)
   if (RE_EXCEL_TYPE.test(fType) || RE_EXCEL_EXT.test(fName)) {
     return (
       <i
@@ -82,7 +77,6 @@ export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
     );
   }
 
-  // Image
   if (RE_IMAGE_TYPE.test(fType)) {
     return (
       <i
@@ -94,7 +88,6 @@ export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
     );
   }
 
-  // Text
   if (RE_TEXT_TYPE.test(fType)) {
     return (
       <i
@@ -106,7 +99,6 @@ export const FileIcon: React.FC<FileIconProps> = ({ fileType, fileName }) => {
     );
   }
 
-  // Default
   return (
     <i
       className="bi bi-file-earmark-fill text-muted"

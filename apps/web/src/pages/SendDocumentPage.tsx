@@ -382,8 +382,6 @@ const SearchableList: React.FC<GroupedSearchableListProps> = ({
   );
 };
 
-// Audience summary ui
-
 interface AudienceSummaryProps {
   institutionSelected: boolean;
   campusCount: number;
@@ -456,7 +454,6 @@ export const SendDocumentPage: React.FC = () => {
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  // Selection state
   const [institutionSelected, setInstitutionSelected] = useState(false);
   const [selectedCampuses, setSelectedCampuses] = useState<Set<string>>(
     new Set(),
@@ -464,7 +461,6 @@ export const SendDocumentPage: React.FC = () => {
   const [selectedDepts, setSelectedDepts] = useState<Set<string>>(new Set());
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
 
-  // Wizard step index
   const [stepIndex, setStepIndex] = useState(0);
   const [skippedSteps, setSkippedSteps] = useState<Set<number>>(new Set());
 
@@ -609,8 +605,6 @@ export const SendDocumentPage: React.FC = () => {
     },
     [clampedStepIndex, skippedSteps],
   );
-
-  // Navigation
 
   const handleNext = () => {
     if (clampedStepIndex < steps.length - 1)
@@ -894,7 +888,6 @@ export const SendDocumentPage: React.FC = () => {
                   selected={selectedCampuses}
                   onToggle={(id, c) => {
                     toggleSet(setSelectedCampuses, id, c);
-                    // When deselecting a campus, remove departments of that campus from selection
                     if (!c) {
                       const campus = allCampuses.find(
                         (campus: any) => campus.id === id,
@@ -1098,8 +1091,6 @@ export const SendDocumentPage: React.FC = () => {
   );
 };
 
-// Step wrapper
-
 const StepWrapper: React.FC<{
   heading: string;
   description: string;
@@ -1113,8 +1104,6 @@ const StepWrapper: React.FC<{
     <div className="send-step__content">{children}</div>
   </div>
 );
-
-// Confirm summary
 
 const ConfirmSummary: React.FC<{
   institutionSelected: boolean;

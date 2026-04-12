@@ -19,7 +19,6 @@ import { trpc } from "./trpc";
 import { TRPCClientError } from "@trpc/client";
 import { usePermissions } from "./hooks/usePermissions";
 
-// Lazy-loaded components
 const Dashboard = React.lazy(() =>
   import("./pages/Dashboard").then((module) => ({ default: module.Dashboard })),
 );
@@ -46,7 +45,6 @@ const Users = React.lazy(() =>
   import("./pages/Users").then((module) => ({ default: module.Users })),
 );
 const LogsPage = React.lazy(() => import("./pages/LogsPage"));
-const WordAuth = React.lazy(() => import("./pages/WordAuth"));
 const FAQpage = React.lazy(() => import("./pages/FAQpage"));
 const ArchivesPage = React.lazy(() =>
   import("./pages/ArchivesPage").then((module) => ({
@@ -54,7 +52,6 @@ const ArchivesPage = React.lazy(() =>
   })),
 );
 
-// Admin Pages
 const AdminLayout = React.lazy(() => import("./pages/admin/AdminLayout"));
 const AdminCampuses = React.lazy(() => import("./pages/admin/AdminCampuses"));
 const AdminDepartments = React.lazy(
@@ -85,7 +82,6 @@ const AdminRoute: React.FC<{ children: React.ReactElement }> = ({
     return null;
   }
 
-  // Use granular permission rather than legacy isAdmin
   if (!canManageUsers) {
     return <Navigate to="/" replace />;
   }
@@ -175,7 +171,6 @@ const AppContent: React.FC = () => {
       <div className={mainContentClass}>
         <Suspense fallback={null}>
           <Routes>
-            <Route path="/word-auth" element={<WordAuth />} />
             <Route
               path="/login"
               element={!session ? <LoginPage /> : <Navigate to="/" replace />}

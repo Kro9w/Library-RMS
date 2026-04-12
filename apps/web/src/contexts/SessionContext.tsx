@@ -19,7 +19,6 @@ export const SessionProvider = ({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setIsLoading(false);
@@ -45,8 +44,6 @@ export const SessionProvider = ({
     <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
   );
 };
-
-// --- Custom Hooks (Mimicking the old API) ---
 
 export const useSession = () => {
   const context = useContext(SessionContext);

@@ -11,7 +11,6 @@ const getInitials = (name: string) => {
   return (parts[0]?.[0] ?? "?").toUpperCase();
 };
 
-// ── Stacked Bar Chart (reused from ArchivesPage) ─────────────────────────
 interface TypeBarChartProps {
   documents: any[];
   tab: "archives" | "destruction";
@@ -103,7 +102,6 @@ const TypeBarChart: React.FC<TypeBarChartProps> = ({ documents, tab }) => {
   );
 };
 
-// ── Main Component ────────────────────────────────────────────────────────
 export default function AdminMasterArchives() {
   const [activeTab, setActiveTab] = useState<"archives" | "destruction">(
     "archives",
@@ -114,7 +112,6 @@ export default function AdminMasterArchives() {
   const [filterDept, setFilterDept] = useState("");
   const pageSize = 25;
 
-  // Paginated data for table
   const { data: archivedData, isLoading: isLoadingArchived } =
     trpc.archives.getAllArchivedDocuments.useQuery(
       { page, pageSize, search },
@@ -127,7 +124,6 @@ export default function AdminMasterArchives() {
       { enabled: activeTab === "destruction" },
     );
 
-  // Full data for chart + filter dropdowns (large fetch, cached)
   const { data: archiveAllData } =
     trpc.archives.getAllArchivedDocuments.useQuery({
       page: 1,
@@ -218,7 +214,6 @@ export default function AdminMasterArchives() {
     [destroyAllData?.totalCount],
   );
 
-  // Extract unique campuses/depts from full data for filter dropdowns
   const campusOptions = useMemo(() => {
     const map: Record<string, string> = {};
     chartDocs.forEach((d: any) => {
@@ -237,7 +232,6 @@ export default function AdminMasterArchives() {
     return Object.entries(map).sort((a, b) => a[1].localeCompare(b[1]));
   }, [chartDocs, filterCampus]);
 
-  // Client-side filter on top of server paginated data
   const tableData = useMemo(() => {
     return rawTableData.filter((d: any) => {
       if (filterCampus && d.campus?.id !== filterCampus) return false;

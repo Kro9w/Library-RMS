@@ -1,4 +1,3 @@
-// apps/web/src/pages/FAQPage.tsx
 import React, { useState, useMemo } from "react";
 import "./FAQpage.css";
 

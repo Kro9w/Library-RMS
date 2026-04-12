@@ -103,14 +103,11 @@ const Onboarding: React.FC = () => {
           </div>
           <div className="onboarding-aside-copy">
             <h1>
-              Welcome to
+              Welcome,
               <br />
-              Plume RMS
+              <i>{me?.firstName || "User"}!</i>
             </h1>
-            <p>
-              Let's get your workspace set up. This will only take a moment —
-              just select your campus and department to get started.
-            </p>
+            <p>Hop right in! Let's get your workspace set up.</p>
           </div>
           <div className="onboarding-aside-quote">
             <blockquote>"Organized records, empowered decisions."</blockquote>

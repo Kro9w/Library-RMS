@@ -61,7 +61,6 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
     ];
 
     if (isFinalStop) {
-      // If it's the final stop, they cannot Endorse it further
       baseStatuses = baseStatuses.filter((s) => s !== "For Endorsement");
       return ["Approved", ...baseStatuses];
     }
@@ -107,7 +106,6 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
       }
     } else {
       if (onSuccess) {
-        // 1. Safely grab the document title
         const docName = document?.title
           ? `"${document.title}"`
           : "The document";
@@ -115,7 +113,6 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
         let title = "Review Submitted";
         let msg = `${docName} has been successfully reviewed.`;
 
-        // 2. Inject it into your specific status messages
         if (status === "Approved") {
           title = "Document Approved";
           msg = `${docName} has been approved and sent back to the originator.`;
@@ -137,7 +134,6 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
     onClose();
   };
 
-  // Status metadata
   const STATUS_META: Record<
     string,
     { icon: string; colorClass: string; btnLabel: string }
@@ -176,7 +172,6 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
 
   const meta = status ? STATUS_META[status] : null;
 
-  // Routing progress for transit docs
   const renderRoutingProgress = () => {
     if (
       !isTransit ||

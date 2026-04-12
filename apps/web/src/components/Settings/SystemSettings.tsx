@@ -1,4 +1,3 @@
-// apps/web/src/components/Settings/SystemSettings.tsx
 import { useState } from "react";
 
 export function SystemSettings() {
@@ -7,8 +6,6 @@ export function SystemSettings() {
   );
 
   const checkDbHealth = () => {
-    // Simulate an API call to your backend
-    // In a real scenario, you'd trigger a tRPC query here
     setTimeout(() => {
       setDbStatus("checked");
     }, 1000);

@@ -20,7 +20,6 @@ export const ReceiveDocumentModal: React.FC<ReceiveDocumentModalProps> = ({
   const utils = trpc.useUtils();
   const navigate = useNavigate();
 
-  // Fetch pending distributions for this user
   const { data: pendingDistributions, isLoading } =
     trpc.documents.getMyPendingDistributions.useQuery(undefined, {
       enabled: show,

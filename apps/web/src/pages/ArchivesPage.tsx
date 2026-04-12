@@ -11,7 +11,6 @@ const getInitials = (name: string) => {
   return (parts[0]?.[0] ?? "?").toUpperCase();
 };
 
-// ── Stacked Bar Chart ──────────────────────────────────────────────────────
 interface TypeBarChartProps {
   documents: any[];
   tab: "archives" | "destruction";
@@ -20,7 +19,6 @@ interface TypeBarChartProps {
 const TypeBarChart: React.FC<TypeBarChartProps> = ({ documents, tab }) => {
   const [hoveredType, setHoveredType] = useState<string | null>(null);
 
-  // Group by document type
   const typeGroups: Record<string, { count: number; color: string }> = {};
   documents.forEach((doc: any) => {
     const name = doc.documentType?.name || "Uncategorized";
@@ -114,7 +112,6 @@ const TypeBarChart: React.FC<TypeBarChartProps> = ({ documents, tab }) => {
   );
 };
 
-// ── Main Page ──────────────────────────────────────────────────────────────
 export const ArchivesPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"archives" | "destruction">(
     "archives",
@@ -135,7 +132,6 @@ export const ArchivesPage: React.FC = () => {
       { enabled: activeTab === "destruction" },
     );
 
-  // Larger fetch for chart data (all docs in current tab, no pagination)
   const { data: archiveAllData } = trpc.archives.getArchivedDocuments.useQuery({
     page: 1,
     pageSize: 1000,
@@ -190,7 +186,6 @@ export const ArchivesPage: React.FC = () => {
   const totalCount = data?.totalCount || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  // Chart uses the full (unpaginated) dataset
   const chartDocs =
     activeTab === "archives"
       ? archiveAllData?.documents || []

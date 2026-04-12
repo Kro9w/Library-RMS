@@ -28,7 +28,7 @@ export class DocumentsRouter {
         .input(z.object({ controlNumber: z.string() }))
         .output(z.any())
         .query(async ({ input }) => {
-          // Find any document by control number that matches the criteria (has transit routes or remarks/approval status)
+
           const doc = await this.prisma.document.findFirst({
             where: {
               controlNumber: input.controlNumber,
@@ -310,7 +310,7 @@ export class DocumentsRouter {
                   (min, role) => Math.min(min, role.level),
                   Infinity,
                 )
-              : 4; // Default to lowest privilege if no roles are assigned
+              : 4;
 
           const canManageDocs = this.accessControlService.checkPermission(
             dbUser,
@@ -328,7 +328,7 @@ export class DocumentsRouter {
             });
           }
 
-          // Allow Level 1 users OR Admin equivalents (canManageDocuments) to broadcast wide
+
           if (
             input.classification === 'INSTITUTIONAL' ||
             input.classification === 'INTERNAL'
@@ -341,7 +341,7 @@ export class DocumentsRouter {
               });
             }
           }
-          // Allow Level 1 & 2 users OR Admin equivalents to broadcast internally
+
           if (input.classification === 'DEPARTMENTAL') {
             if (highestRoleLevel > 2 && !canManageDocs) {
               throw new TRPCError({
@@ -593,7 +593,7 @@ export class DocumentsRouter {
           return this.prisma.user.findMany();
         }),
 
-      // Consolidated getAll procedure
+
       getAll: protectedProcedure
         .meta({
           openapi: {
@@ -702,7 +702,7 @@ export class DocumentsRouter {
             };
           }
 
-          // Standard path (No lifecycle filter or 'all')
+
           const whereClause: Prisma.DocumentWhereInput = {
             OR: [
               { lifecycle: { dispositionStatus: null } },
@@ -711,7 +711,7 @@ export class DocumentsRouter {
                   dispositionStatus: { notIn: ['ARCHIVED', 'DESTROYED'] },
                 },
               },
-              { lifecycle: null }, // Safety check in case it's entirely missing
+              { lifecycle: null },
             ],
           };
 
@@ -885,7 +885,7 @@ export class DocumentsRouter {
           let document;
           let senderId = '';
 
-          // Workflow A: Receiving from a pending distribution in the system
+
           if (input.distributionId) {
             const distribution =
               await this.prisma.documentDistribution.findUnique({
@@ -917,7 +917,7 @@ export class DocumentsRouter {
             document = distribution.document as any;
             senderId = distribution.senderId;
 
-            // Mark distribution as received
+
             await this.prisma.documentDistribution.update({
               where: { id: distribution.id },
               data: {
@@ -926,7 +926,7 @@ export class DocumentsRouter {
               },
             });
           }
-          // Workflow B: Receiving via Control Number directly
+
           else if (input.controlNumber) {
             document = (await this.prisma.document.findFirst({
               where: {
@@ -941,7 +941,7 @@ export class DocumentsRouter {
               });
             }
 
-            // Assume the owner/uploader is the sender in a physical exchange
+
             senderId = document.uploadedById;
 
             
@@ -974,7 +974,7 @@ export class DocumentsRouter {
                 });
               }
 
-              // Check for preceding uncompleted stops
+
               const precedingPendingStops = await this.prisma.documentTransitRoute.findMany({
                 where: {
                   documentId: document.id,
@@ -1001,7 +1001,7 @@ export class DocumentsRouter {
               }
             }
 
-            // Check if they already received it
+
             const existingAccess = await this.prisma.documentAccess.findFirst({
               where: {
                 documentId: document.id,
@@ -1016,7 +1016,7 @@ export class DocumentsRouter {
               });
             }
 
-            // Check if there is already a pending distribution for this control number and user to avoid duplicate logs
+
             const pendingDistribution =
               await this.prisma.documentDistribution.findFirst({
                 where: {
@@ -1035,7 +1035,7 @@ export class DocumentsRouter {
                 },
               });
             } else {
-              // Creates a new distribution record
+
               await this.prisma.documentDistribution.create({
                 data: {
                   documentId: document.id,
@@ -1048,7 +1048,7 @@ export class DocumentsRouter {
             }
           }
 
-          // Grant READ access
+
           await this.prisma.documentAccess.create({
             data: {
               documentId: document.id,
@@ -1066,7 +1066,7 @@ export class DocumentsRouter {
             dbUser.departmentId || undefined,
           );
 
-          // Notify sender
+
           await this.documentWorkflowService.createNotification(
             senderId,
             'Document Received',
@@ -1077,9 +1077,6 @@ export class DocumentsRouter {
           return document;
         }),
 
-      /**
-       * Get pending distributions for the current user
-       */
       getMyPendingDistributions: protectedProcedure.query(async ({ ctx }) => {
         return this.prisma.documentDistribution.findMany({
           where: {
@@ -1116,7 +1113,7 @@ export class DocumentsRouter {
       getDocumentDistributions: protectedProcedure
         .input(z.object({ documentId: z.string() }))
         .query(async ({ ctx, input }) => {
-          // Verify user has access to see distributions (either has READ access or is owner)
+
           const aclWhere = this.accessControlService.generateAclWhereClause(
             ctx.dbUser,
           );
@@ -1436,8 +1433,8 @@ export class DocumentsRouter {
             });
           }
 
-          // If there IS a requester, and it's the current user, enforce separation of duties.
-          // If there is NO requester (direct execution by an admin), this check is bypassed.
+
+
           if (
             doc.lifecycle?.dispositionRequesterId &&
             user.id === doc.lifecycle?.dispositionRequesterId
@@ -1547,7 +1544,7 @@ export class DocumentsRouter {
             for (const version of versions) {
               if (version.s3Key && version.s3Bucket) {
                 const adminClient = this.supabase.getAdminClient();
-                // Download file from active bucket
+
                 const { data: fileData, error: downloadError } =
                   await adminClient.storage
                     .from(version.s3Bucket)
@@ -1566,7 +1563,7 @@ export class DocumentsRouter {
 
                 latestHash = 'omitted-for-memory-safety';
 
-                // Upload to archive bucket
+
                 const { error: uploadError } = await adminClient.storage
                   .from(env.SUPABASE_ARCHIVE_BUCKET_NAME)
                   .upload(version.s3Key, fileData, {
@@ -1584,20 +1581,20 @@ export class DocumentsRouter {
                   });
                 }
 
-                // Update version s3 bucket
+
                 await this.prisma.documentVersion.update({
                   where: { id: version.id },
                   data: { s3Bucket: env.SUPABASE_ARCHIVE_BUCKET_NAME },
                 });
 
-                // Remove from active bucket
+
                 await adminClient.storage
                   .from(version.s3Bucket)
                   .remove([version.s3Key]);
               }
             }
 
-            // Create Archival Manifest
+
             const fullDoc = await this.prisma.document.findUnique({
               where: { id: doc.id },
               include: {
@@ -1739,9 +1736,6 @@ export class DocumentsRouter {
           return updatedDoc;
         }),
 
-      /**
-       * Check out a document for editing
-       */
       checkOutDocument: protectedProcedure
         .input(z.object({ documentId: z.string() }))
         .mutation(async ({ ctx, input }) => {
@@ -1899,7 +1893,16 @@ export class DocumentsRouter {
                   },
                 },
               },
-              include: { workflow: true },
+              select: {
+                id: true,
+                title: true,
+                workflow: {
+                  select: {
+                    isCheckedOut: true,
+                    checkedOutById: true,
+                  },
+                },
+              },
             });
           });
 
@@ -1915,9 +1918,6 @@ export class DocumentsRouter {
           return updatedDoc;
         }),
 
-      /**
-       * Check in a new version of a document
-       */
       checkInDocument: protectedProcedure
         .input(
           z.object({
@@ -2012,11 +2012,23 @@ export class DocumentsRouter {
                 },
               },
             },
-            include: {
-              workflow: true,
+            select: {
+              id: true,
+              title: true,
+              workflow: {
+                select: {
+                  isCheckedOut: true,
+                  checkedOutById: true,
+                  recordStatus: true,
+                },
+              },
               versions: {
                 orderBy: { versionNumber: 'desc' as const },
                 take: 1,
+                select: {
+                  id: true,
+                  versionNumber: true,
+                },
               },
             },
           });
@@ -2033,9 +2045,6 @@ export class DocumentsRouter {
           return updatedDoc;
         }),
 
-      /**
-       * Discard Check Out
-       */
       discardCheckOut: protectedProcedure
         .input(z.object({ documentId: z.string() }))
         .mutation(async ({ ctx, input }) => {

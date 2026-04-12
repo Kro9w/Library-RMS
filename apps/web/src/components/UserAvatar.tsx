@@ -1,4 +1,3 @@
-// apps/web/src/components/UserAvatar.tsx
 import { UserNameFields, formatUserName } from "../utils/user";
 
 type Props = {

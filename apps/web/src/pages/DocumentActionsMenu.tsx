@@ -55,7 +55,6 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
     if (isOpen) setIsOpen(false);
   });
 
-  // Handle window resize/scroll closing the menu
   useEffect(() => {
     const handleScrollOrResize = () => setIsOpen(false);
     if (isOpen) {
@@ -72,13 +71,10 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
     doc.classification === "FOR_APPROVAL" &&
     doc.workflow?.recordStatus === "IN_TRANSIT";
 
-  // Determine if the current user belongs to the currently active office in the transit route
   const currentTransitStop = isTransit
     ? doc.transitRoutes?.find((r: any) => r.status === "CURRENT")
     : null;
 
-  // Note: we can't reliably get currentUserDept directly from `doc` props without passing it.
-  // We'll rely on trpc Context here since it's lightweight
   const trpcCtx = trpc.useContext();
   const currentUser = trpcCtx.user.getMe.getData();
   const { canManageDocuments: _canManageDocsLocal } = usePermissions();
@@ -87,12 +83,10 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
     currentTransitStop &&
     currentUser?.departmentId === currentTransitStop.departmentId;
 
-  // Level 1 users of the current transit office should be able to review
   const hasTransitReviewAccess =
     isCurrentTransitOffice &&
     currentUser?.roles?.some((r: any) => r.level === 1);
 
-  // Allow originators to send it to the first office
   const isReturnedOrDisapproved =
     doc.workflow?.status ===
       "Returned for Corrections/Revision/Clarification" ||

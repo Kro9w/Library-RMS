@@ -69,7 +69,6 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({
         titleStr === "document received" ||
         titleStr.includes("review requested")
       ) {
-        // Redirect to dashboard with query param to open receive modal
         navigate(`/?openReceiveModal=true`);
       } else {
         navigate(`/documents/${notif.documentId}`);

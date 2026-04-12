@@ -4,9 +4,6 @@ import { TRPCError } from '@trpc/server';
 
 @Injectable()
 export class AccessControlService {
-  /**
-   * Helper function to check if a user has a specific permission.
-   */
   public checkPermission(
     user: { roles?: Role[] } | undefined,
     permission: keyof Role,
@@ -18,9 +15,6 @@ export class AccessControlService {
     return user.roles.some((role: Role) => role[permission] === true);
   }
 
-  /**
-   * Helper function to enforce permissions. Throws TRPCError if denied.
-   */
   public requirePermission(
     user: { roles?: Role[] } | undefined,
     permission: keyof Role,

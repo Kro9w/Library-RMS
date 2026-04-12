@@ -156,7 +156,6 @@ export const DocumentDetails: React.FC = () => {
     document.workflow?.isCheckedOut ||
     (hasBeenSent && !isReturnedOrDisapproved);
 
-  // Allow sending based on matching backend rules
   const canBroadcastDocument = (() => {
     if (
       document.classification === "FOR_APPROVAL" ||

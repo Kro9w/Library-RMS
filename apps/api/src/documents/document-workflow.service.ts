@@ -53,7 +53,7 @@ export class DocumentWorkflowService {
             (min: number, role: any) => Math.min(min, role.level),
             Infinity,
           )
-        : 4; // Default to lowest privilege if no roles are assigned
+        : 4;
 
     const canManageDocs = this.accessControlService.checkPermission(
       dbUser,
@@ -100,7 +100,7 @@ export class DocumentWorkflowService {
 
     const _isOriginator = await isOriginator(input.documentId);
 
-    // Authority Check based on classification
+
     if (document.classification === 'RESTRICTED') {
       if (!_isOriginator && !canManageInstitution) {
         throw new TRPCError({
@@ -110,7 +110,7 @@ export class DocumentWorkflowService {
         });
       }
 
-      // Check if trying to send to another campus
+
       if (
         input.campusIds.length > 0 &&
         input.campusIds.some((id) => id !== dbUser.campusId)
@@ -261,7 +261,7 @@ export class DocumentWorkflowService {
       return newAccesses;
     });
 
-    // Build generic log
+
     let broadTargetName = '';
     if (input.isInstitutional) broadTargetName = 'Institution';
     else if (input.campusIds.length > 0) broadTargetName = 'Campus(es)';
@@ -340,7 +340,7 @@ export class DocumentWorkflowService {
       });
     }
 
-    // Verify ownership of all documents to prevent unauthorized access
+
     const whereClause: any = {
       id: input.documentId,
     };
@@ -419,7 +419,7 @@ export class DocumentWorkflowService {
 
     const isAutoReceive = isReturningToOriginator || isOriginatorResubmitting;
 
-    // Only create a distribution if it is a formal and first-time transfer
+
     if (!isAutoReceive) {
       await this.prisma.documentDistribution.create({
         data: {
@@ -457,7 +457,7 @@ export class DocumentWorkflowService {
         'Returned for Corrections/Revision/Clarification' ||
         documents[0].workflow?.status === 'Disapproved')
     ) {
-      // Find the CURRENT route stop for this document
+
       const currentStop = await this.prisma.documentTransitRoute.findFirst({
         where: {
           documentId: documents[0].id,
@@ -473,14 +473,14 @@ export class DocumentWorkflowService {
       }
     }
 
-    // Update status
+
     const updatedDocument = await this.prisma.document.update({
       where: { id: input.documentId },
       data: {
         workflow: {
           update: {
             reviewRequesterId: isReview ? user.id : null,
-            status: isReview ? null : undefined, // Clear status if re-submitting for review
+            status: isReview ? null : undefined,
           },
         },
       },

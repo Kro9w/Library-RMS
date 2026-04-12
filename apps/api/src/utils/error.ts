@@ -1,18 +1,20 @@
-import { TRPCError } from '@trpc/server';
+import { TRPCClientError } from "@trpc/client";
 
-export function handleTRPCError(error: unknown): TRPCError {
-  if (error instanceof TRPCError) {
-    return error;
-  } else if (error instanceof Error) {
-    return new TRPCError({
-      code: 'INTERNAL_SERVER_ERROR',
-      message: error.message,
-      cause: error,
-    });
-  } else {
-    return new TRPCError({
-      code: 'INTERNAL_SERVER_ERROR',
-      message: 'An unknown error occurred',
-    });
+export function getErrorMessage(
+  error: unknown,
+  fallback = "An unexpected error occurred."
+): string {
+  if (error instanceof TRPCClientError) {
+    return error.message;
   }
+  
+  if (error instanceof Error) {
+    return error.message;
+  }
+  
+  if (typeof error === "string") {
+    return error;
+  }
+  
+  return fallback;
 }

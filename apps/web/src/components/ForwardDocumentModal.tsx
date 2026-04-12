@@ -9,7 +9,6 @@ import "./ReviewDocumentModal.css";
 
 type User = AppRouterOutputs["documents"]["getAppUsers"][0];
 
-// Define hierarchy types
 interface Campus {
   id: string;
   name: string;
@@ -76,7 +75,6 @@ export const ForwardDocumentModal: React.FC<ForwardDocumentModalProps> = ({
     let timeoutId: ReturnType<typeof setTimeout>;
 
     if (show && modalInstanceRef.current) {
-      // Ensure React has painted the modal content before showing it
       timeoutId = setTimeout(() => {
         modalInstanceRef.current?.show();
       }, 50);

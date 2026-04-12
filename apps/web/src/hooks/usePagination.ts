@@ -1,12 +1,5 @@
 import { useMemo } from "react";
 
-/**
- * Custom hook to generate pagination range.
- *
- * @param currentPage The current active page.
- * @param totalPages The total number of pages.
- * @returns An array of page numbers and/or "..." strings.
- */
 export const usePagination = (currentPage: number, totalPages: number) => {
   const paginationRange = useMemo(() => {
     const pages: (number | string)[] = [];

@@ -1,4 +1,3 @@
-// apps/web/src/pages/Users.tsx
 import { useState, useMemo, useEffect } from "react";
 import { trpc } from "../trpc";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
@@ -26,18 +25,15 @@ export function Users() {
 
   const [userToRemove, setUserToRemove] = useState<User | null>(null);
 
-  // State for collapsible departments
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>(
     {},
   );
 
-  // Helper to get highest role level (1 is highest priority)
   const getUserLevel = (user: User): number => {
     if (!user.roles || user.roles.length === 0) return 4;
     return Math.min(...user.roles.map((r: any) => r.level ?? 4));
   };
 
-  // Group users by department AND sort them by level
   const groupedUsers = useMemo(() => {
     if (!users) return {};
     const groups: Record<string, User[]> = {};
@@ -49,7 +45,6 @@ export function Users() {
       groups[deptName].push(user);
     });
 
-    // Sort users within each group: Level 1 -> Level 4
     Object.keys(groups).forEach((dept) => {
       groups[dept].sort((a, b) => {
         const levelA = getUserLevel(a);
@@ -57,7 +52,6 @@ export function Users() {
         if (levelA !== levelB) {
           return levelA - levelB; // Ascending: 1 is top
         }
-        // Tie-breaker: Name
         return formatUserNameLastFirst(a).localeCompare(
           formatUserNameLastFirst(b),
         );
@@ -67,12 +61,10 @@ export function Users() {
     return groups;
   }, [users]);
 
-  // Sort department names alphabetically
   const sortedDepts = useMemo(() => {
     return Object.keys(groupedUsers).sort((a, b) => a.localeCompare(b));
   }, [groupedUsers]);
 
-  // Set initial expanded state: Open current user's department, close others
   useEffect(() => {
     if (currentUser?.department?.name && sortedDepts.length > 0) {
       setExpandedDepts((prev) => {
@@ -190,7 +182,6 @@ export function Users() {
                                               width: "48px",
                                               height: "48px",
                                               objectFit: "cover",
-                                              // Removed border
                                             }}
                                           />
 

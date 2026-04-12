@@ -122,10 +122,12 @@ export function Navbar({ sidebarMode, setSidebarMode }: NavbarProps) {
     user?.user_metadata?.avatar_url ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=9B2335&color=fff&size=128`;
 
-  // Breadcrumb parts
-  const campusName = dbUser?.campus?.name
-    ? `${dbUser.campus.name} Campus`
-    : null;
+  let campusName;
+  if (dbUser?.campus?.name != "University Administration") {
+    campusName = dbUser?.campus?.name ? `${dbUser.campus.name} Campus` : null;
+  } else {
+    campusName = dbUser?.campus?.name ? `${dbUser.campus.name}` : null;
+  }
   const deptName = dbUser?.department?.name || null;
 
   const accountDropdown = (
@@ -179,7 +181,6 @@ export function Navbar({ sidebarMode, setSidebarMode }: NavbarProps) {
     sidebarMode === "expanded" ||
     (sidebarMode === "hover" && (isHovered || isModeMenuOpen));
 
-  // When expanding on hover, add a specific class to overlay rather than push
   const sidebarClassName = `sidebar ${isActuallyExpanded ? "expanded" : "collapsed"} ${
     sidebarMode === "hover" && isActuallyExpanded ? "hover-overlay" : ""
   }`;

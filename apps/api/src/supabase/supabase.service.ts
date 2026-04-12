@@ -19,10 +19,6 @@ export class SupabaseService implements OnModuleInit {
     );
   }
 
-  /**
-   * Returns the Supabase admin client.
-   * Use this for server-side operations.
-   */
   getAdminClient() {
     return this.supabaseAdmin;
   }

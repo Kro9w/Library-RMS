@@ -45,7 +45,6 @@ const CheckInModal = React.lazy(() =>
 
 type Document = AppRouterOutputs["documents"]["getAll"]["documents"][0];
 
-// Shared table row component for both recent and grouped views
 interface DocRowProps {
   doc: Document;
   showTypePill?: boolean; // true = recent view, false = grouped view

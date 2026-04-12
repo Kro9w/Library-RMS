@@ -6,7 +6,6 @@ export default function TitleUpdater() {
   const params = useParams();
 
   useEffect(() => {
-    // Map of routes to page titles
     const titles: Record<string, string> = {
       "/": "Dashboard",
       "/dashboard": "Dashboard",
@@ -22,12 +21,10 @@ export default function TitleUpdater() {
     const path = location.pathname;
     let title = titles[path];
 
-    // Handle dynamic document details route
     if (!title && path.startsWith("/documents/")) {
       title = `Document Details: ${params.documentId ?? ""}`;
     }
 
-    // Fallback: convert path into readable title
     if (!title) {
       title =
         path === "/"
@@ -39,8 +36,8 @@ export default function TitleUpdater() {
               .join(" - ");
     }
 
-    document.title = `${title} | Plume RMS`; // ✅ Final title format
+    document.title = `${title} | Plume RMS`;
   }, [location, params]);
 
-  return null; // No UI output
+  return null;
 }

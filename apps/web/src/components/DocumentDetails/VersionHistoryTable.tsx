@@ -1,7 +1,6 @@
 import React from "react";
 import { formatUserName } from "../../utils/user";
 
-// Keep formatFileTypeDisplay specific to the table context or extract from DocumentDetails context
 const formatFileTypeDisplay = (
   fileType: string | null | undefined,
   title: string,

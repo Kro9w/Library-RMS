@@ -1,4 +1,3 @@
-// apps/api/src/trpc/trpc.ts
 import { initTRPC, TRPCError } from '@trpc/server';
 import { OpenApiMeta } from 'trpc-openapi';
 import { PrismaService } from '../prisma/prisma.service';
@@ -25,7 +24,6 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
     throw new TRPCError({ code: 'UNAUTHORIZED' });
   }
 
-  // Fetch user with roles in one go
   const dbUser = await ctx.prisma.user.findUnique({
     where: { id: ctx.user.id },
     include: {
@@ -34,8 +32,6 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
   });
 
   if (!dbUser) {
-    // If authenticated via Supabase but not in our DB, we might want to throw or handle it.
-    // Usually strict authed procedures expect the user to exist in DB.
     throw new TRPCError({
       code: 'UNAUTHORIZED',
       message: 'User record not found in database.',
@@ -45,7 +41,7 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
   return next({
     ctx: {
       user: ctx.user,
-      dbUser: dbUser, // Pass the enriched DB user to the context
+      dbUser,
     },
   });
 });
@@ -64,20 +60,15 @@ const isSupabaseAuthed = t.middleware(async ({ ctx, next }) => {
 export const protectedProcedure = t.procedure.use(isAuthed);
 export const supabaseAuthedProcedure = t.procedure.use(isSupabaseAuthed);
 
-// Helper function to check permissions
 export const checkPermission = (
   user: UserWithRoles | undefined,
   permission: keyof Role,
 ) => {
-  if (!user) return false;
-  if (!user.roles) return false;
-  // Super Admins inherently have all permissions via canManageInstitution
+  if (!user?.roles) return false;
   if (user.roles.some((role: Role) => role.canManageInstitution)) return true;
-  // We only care if *any* role has the permission
   return user.roles.some((role: Role) => role[permission] === true);
 };
 
-// Helper function to enforce permissions
 export const requirePermission = (
   user: UserWithRoles | undefined,
   permission: keyof Role,

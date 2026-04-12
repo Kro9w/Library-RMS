@@ -1,4 +1,3 @@
-// apps/web/src/pages/SignUpPage.tsx
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../supabase";
@@ -12,7 +11,6 @@ const SignUpPage: React.FC = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // New Name Fields
   const [firstName, setFirstName] = useState("");
   const [middleName, setMiddleName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -40,7 +38,6 @@ const SignUpPage: React.FC = () => {
     }
 
     try {
-      // 1. Sign up with Supabase
       const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -49,7 +46,6 @@ const SignUpPage: React.FC = () => {
             first_name: firstName,
             middle_name: middleName,
             last_name: lastName,
-            // Keeping display_name for backward compat or if needed by other tools
             display_name: `${firstName} ${
               middleName ? middleName + " " : ""
             }${lastName}`,
@@ -61,14 +57,12 @@ const SignUpPage: React.FC = () => {
         throw authError;
       }
 
-      // 2. Handle email confirmation
       if (data.user && !data.session) {
         setShowAlert(true);
         setLoading(false);
         return;
       }
 
-      // 3. If auto-confirmed or no confirmation required, sync user
       if (data.user && data.session) {
         await syncUser.mutateAsync({
           email: data.user.email!,

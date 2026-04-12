@@ -1,4 +1,3 @@
-// apps/api/src/user/user.router.ts
 
 import { z } from 'zod';
 import {
@@ -28,7 +27,6 @@ export class UserRouter {
   ) {
     let targetRoleRecord: { id: string; name: string } | null = null;
 
-    // 1. Check for specific email to get University President role
     if (
       userEmail === 'jakecalantas.blis@gmail.com' &&
       departmentName === 'Office of the University President'
@@ -44,7 +42,6 @@ export class UserRouter {
       }
     }
 
-    // 2. If not president, check if this department has a level 1 role and if it's currently vacant.
     if (
       !targetRoleRecord &&
       departmentName !== 'Office of the University President'
@@ -64,7 +61,6 @@ export class UserRouter {
       }
     }
 
-    // 3. Fallback to default 'User' role
     if (!targetRoleRecord) {
       const roleName = 'User';
       let userRole = await this.prisma.role.findFirst({
@@ -93,10 +89,6 @@ export class UserRouter {
 
   createRouter() {
     return router({
-      /**
-       * Creates a user in our public.User table after
-       * a successful Supabase signup or login.
-       */
       syncUser: supabaseAuthedProcedure
         .meta({
           openapi: {
@@ -118,12 +110,9 @@ export class UserRouter {
         .mutation(async ({ ctx, input }) => {
           const { user: authUser } = ctx;
 
-          // Efficient upsert
           return this.prisma.user.upsert({
             where: { id: authUser.id },
-            update: {
-              // We typically don't update name on sync unless we want Supabase metadata to be source of truth
-            },
+            update: {},
             create: {
               id: authUser.id,
               email: input.email,
@@ -145,8 +134,6 @@ export class UserRouter {
         })
         .input(z.void())
         .query(async ({ ctx }) => {
-          // ctx.dbUser already has institution and roles included
-          // Optimization: fetch only campus and department instead of full user
           const userDetails = await this.prisma.user.findUnique({
             where: { id: ctx.dbUser.id },
             select: {
@@ -186,7 +173,6 @@ export class UserRouter {
             });
           }
 
-          // Verify hierarchy
           const dept = await this.prisma.department.findUnique({
             where: { id: input.departmentId },
             include: { campus: true },
@@ -220,15 +206,14 @@ export class UserRouter {
             ctx.dbUser.id,
             `Joined Organization - Campus: ${dept.campus.name}, Dept: ${dept.name} as ${targetRoleRecord.name}`,
             [targetRoleRecord.name],
-            undefined, // No target name
-            dept.campusId, // campusId
-            dept.id, // departmentId
+            undefined,
+            dept.campusId,
+            dept.id,
           );
 
           return { success: true };
         }),
 
-      // New Mutation: Create Department and Join
       createDepartmentAndJoin: protectedProcedure
         .input(
           z.object({
@@ -255,7 +240,6 @@ export class UserRouter {
             });
           }
 
-          // Find or Create Department
           let dept = await ctx.prisma.department.findFirst({
             where: {
               name: input.departmentName,
@@ -306,7 +290,6 @@ export class UserRouter {
             firstName: z.string().min(1),
             middleName: z.string().optional(),
             lastName: z.string().min(1),
-            // imageUrl is optional, but if provided, it must be a URL
             imageUrl: z.string().url().optional(),
           }),
         )
@@ -389,7 +372,7 @@ export class UserRouter {
             data: {
               campusId: null,
               departmentId: null,
-              roles: { set: [] }, // Clear roles
+              roles: { set: [] },
             },
           });
 
@@ -404,8 +387,6 @@ export class UserRouter {
 
           return updatedUser;
         }),
-
-      // --- New Hierarchy Management Endpoints ---
 
       getCampuses: protectedProcedure
         .query(async ({ ctx }) => {
@@ -540,7 +521,6 @@ export class UserRouter {
             'canManageUsers',
           );
 
-          // Verify ownership
           const dept = await ctx.prisma.department.findUnique({
             where: { id: input.id },
             include: { campus: true },
@@ -650,7 +630,7 @@ export class UserRouter {
               campusId: input.campusId,
               departmentId: input.departmentId,
               roles: {
-                set: rolesToConnect, // Overwrite roles
+                set: rolesToConnect,
               },
             },
           });
