@@ -112,7 +112,7 @@ export const ReceiveDocumentModal: React.FC<ReceiveDocumentModalProps> = ({
           {errorMsg && (
             <div className="standard-modal-notice standard-modal-notice-error">
               <i className="bi bi-exclamation-triangle-fill"></i>
-              <p>{errorMsg}</p>
+              <p style={{ whiteSpace: "pre-line" }}>{errorMsg}</p>
             </div>
           )}
 
@@ -121,7 +121,7 @@ export const ReceiveDocumentModal: React.FC<ReceiveDocumentModalProps> = ({
               className="mb-2 fw-bold text-muted text-uppercase"
               style={{ fontSize: "0.75rem", letterSpacing: "0.05em" }}
             >
-              Option 1: Receive via Control Number
+              Receive via Control Number
             </h6>
             <div className="d-flex gap-2">
               <input
@@ -171,7 +171,7 @@ export const ReceiveDocumentModal: React.FC<ReceiveDocumentModalProps> = ({
               className="mb-2 fw-bold text-muted text-uppercase"
               style={{ fontSize: "0.75rem", letterSpacing: "0.05em" }}
             >
-              Option 2: Pending Receipts
+              Pending Receipts
             </h6>
 
             {isLoading ? (

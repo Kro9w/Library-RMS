@@ -1,4 +1,3 @@
-// apps/web/src/pages/DocumentDetails.tsx
 import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import { trpc } from "../trpc";
@@ -151,10 +150,6 @@ export const DocumentDetails: React.FC = () => {
     !isReturnedOrDisapproved &&
     !isOriginator;
 
-  // Originators or Global Admins can forward/resubmit.
-  // Reviewers (who only have `canReview` because of transit routing) do not see the forward button
-  // because their explicit action is to use the Review Document modal to Endorse/Return the document.
-  // Intermediate offices (who just happened to be in the route) should NOT be able to Resubmit, ONLY the originator.
   const canSendOrResubmit =
     (isOriginator || canManageInstitution) && !canReview;
   const isSendDisabled =
@@ -183,6 +178,16 @@ export const DocumentDetails: React.FC = () => {
     }
     return false;
   })();
+
+  const getLocation = () => {
+    if (document.lifecycle?.dispositionStatus === "ARCHIVED") {
+      return `Archived by ${document.uploadedBy.department?.name}`;
+    }
+    if (currentTransitStop?.department) {
+      return `${currentTransitStop.department.campus?.name ?? document.uploadedBy.department?.campus?.name} / ${currentTransitStop.department.name}`;
+    }
+    return `${document.uploadedBy.department?.campus?.name} / ${document.uploadedBy.department?.name}`;
+  };
 
   const getPreviewDetails = (doc: Document) => {
     if (!urlData?.signedUrl) return null;
@@ -319,10 +324,7 @@ export const DocumentDetails: React.FC = () => {
 
               <div className="detail-row">
                 <strong>Location</strong>
-                <span>
-                  {document.uploadedBy.department?.campus?.name} /{" "}
-                  {document.uploadedBy.department?.name}
-                </span>
+                <span>{getLocation()}</span>
               </div>
               <div className="detail-row">
                 <strong>Owner</strong>
@@ -429,9 +431,11 @@ export const DocumentDetails: React.FC = () => {
                   document.lifecycle?.dispositionStatus !== "ARCHIVED" &&
                   document.workflow?.recordStatus !== "FINAL" &&
                   !document.workflow?.isCheckedOut &&
-                  (isOriginator ||
-                    canManageInstitution ||
-                    isCurrentTransitOffice) && (
+                  (isReturnedOrDisapproved
+                    ? isOriginator || canManageDocuments
+                    : isOriginator ||
+                      canManageInstitution ||
+                      isCurrentTransitOffice) && (
                     <button
                       className="doc-action-btn"
                       onClick={() => setShowCheckOutModal(true)}

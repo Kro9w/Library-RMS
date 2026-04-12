@@ -8,8 +8,6 @@ import { ClassificationBadge } from "../components/ClassificationBadge";
 import { useUser } from "../contexts/SessionContext";
 import "./SendDocumentPage.css";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
 type StepId = "scope" | "campuses" | "departments" | "users" | "confirm";
 type StepState = "active" | "done" | "skipped" | "pending";
 
@@ -43,8 +41,6 @@ function getStepsForClassification(classification: string): StepDef[] {
       return ALL_STEPS.filter((s) => s.id === "users" || s.id === "confirm");
   }
 }
-
-// ─── Confirmation Modal ───────────────────────────────────────────────────────
 
 interface SendConfirmationModalProps {
   show: boolean;
@@ -88,7 +84,7 @@ const SendConfirmationModal: React.FC<SendConfirmationModalProps> = ({
       : 0;
 
   const scopeLabel = institutionSelected
-    ? `the entire organization`
+    ? `the entire institution`
     : selectedCampuses.size > 0
       ? `${campusCount} campus${campusCount !== 1 ? "es" : ""}`
       : selectedDepts.size > 0
@@ -196,8 +192,6 @@ const SendConfirmationModal: React.FC<SendConfirmationModalProps> = ({
     </div>
   );
 };
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
 
 interface CheckCardProps {
   id: string;
@@ -388,7 +382,7 @@ const SearchableList: React.FC<GroupedSearchableListProps> = ({
   );
 };
 
-// ─── Audience summary chip ────────────────────────────────────────────────────
+// Audience summary ui
 
 interface AudienceSummaryProps {
   institutionSelected: boolean;
@@ -406,7 +400,7 @@ const AudienceSummary: React.FC<AudienceSummaryProps> = ({
   const chips: { icon: string; text: string }[] = [];
 
   if (institutionSelected) {
-    chips.push({ icon: "bi-globe2", text: "Organization-wide" });
+    chips.push({ icon: "bi-globe2", text: "Institution-wide" });
   }
   if (campusCount > 0) {
     chips.push({
@@ -449,8 +443,6 @@ const AudienceSummary: React.FC<AudienceSummaryProps> = ({
   );
 };
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-
 export const SendDocumentPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -464,7 +456,7 @@ export const SendDocumentPage: React.FC = () => {
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  // ── Selection state ──────────────────────────────────────────────────────
+  // Selection state
   const [institutionSelected, setInstitutionSelected] = useState(false);
   const [selectedCampuses, setSelectedCampuses] = useState<Set<string>>(
     new Set(),
@@ -472,12 +464,10 @@ export const SendDocumentPage: React.FC = () => {
   const [selectedDepts, setSelectedDepts] = useState<Set<string>>(new Set());
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
 
-  // ── Wizard step index ────────────────────────────────────────────────────
+  // Wizard step index
   const [stepIndex, setStepIndex] = useState(0);
-  // Track which step indices have been skipped
   const [skippedSteps, setSkippedSteps] = useState<Set<number>>(new Set());
 
-  // ── Data ─────────────────────────────────────────────────────────────────
   const { data: document, isLoading: isLoadingDoc } =
     trpc.documents.getById.useQuery({ id: id! }, { enabled: !!id });
 
@@ -489,11 +479,8 @@ export const SendDocumentPage: React.FC = () => {
 
   const sendMutation = trpc.documents.sendDocument.useMutation();
 
-  // ── Derived ──────────────────────────────────────────────────────────────
   const classification = (document?.classification ?? "CONFIDENTIAL") as string;
 
-  // Determine if institution-wide is selected (for INSTITUTIONAL docs)
-  // When institution-wide is checked, collapse to just scope + confirm
   const isInstitutionWide =
     classification === "INSTITUTIONAL" && institutionSelected;
 
@@ -502,7 +489,6 @@ export const SendDocumentPage: React.FC = () => {
     [classification],
   );
 
-  // If institution-wide is selected, only show scope + confirm
   const steps = useMemo(() => {
     if (isInstitutionWide) {
       return baseSteps.filter((s) => s.id === "scope" || s.id === "confirm");
@@ -510,7 +496,6 @@ export const SendDocumentPage: React.FC = () => {
     return baseSteps;
   }, [baseSteps, isInstitutionWide]);
 
-  // When institution-wide toggles and collapses steps, clamp stepIndex
   const clampedStepIndex = Math.min(stepIndex, steps.length - 1);
   const currentStep = steps[clampedStepIndex];
 
@@ -519,8 +504,6 @@ export const SendDocumentPage: React.FC = () => {
     [orgHierarchy],
   );
 
-  // Departments available based on selected campuses (for INSTITUTIONAL)
-  // or scoped by classification
   const relevantDepts = useMemo(() => {
     if (classification === "DEPARTMENTAL") {
       if (!dbUser?.departmentId) return [];
@@ -549,8 +532,6 @@ export const SendDocumentPage: React.FC = () => {
           }))
         : [];
     }
-    // INSTITUTIONAL: show departments from selected campuses
-    // If no campuses are selected yet, show all departments
     if (selectedCampuses.size === 0) {
       return allCampuses.flatMap((c: any) =>
         c.departments.map((d: any) => ({ ...d, campusName: c.name })),
@@ -563,8 +544,6 @@ export const SendDocumentPage: React.FC = () => {
       );
   }, [allCampuses, selectedCampuses, classification, dbUser]);
 
-  // Users available based on selected departments (for INSTITUTIONAL/INTERNAL)
-  // or scoped by classification
   const allUsers = useMemo(() => {
     let users = allCampuses.flatMap((c: any) =>
       c.departments.flatMap((d: any) =>
@@ -587,11 +566,10 @@ export const SendDocumentPage: React.FC = () => {
         users = users.filter((u: any) => u.campusId === dbUser.campusId);
       }
     } else if (classification === "CONFIDENTIAL") {
-      // Show all users for CONFIDENTIAL
+      if (dbUser?.campusId) {
+        users = users.filter((u: any) => u.campusId === dbUser.campusId);
+      }
     } else if (classification === "INSTITUTIONAL") {
-      // For INSTITUTIONAL: if departments are selected, narrow users to those departments.
-      // Otherwise if campuses are selected, narrow to those campuses.
-      // Otherwise show all.
       if (selectedDepts.size > 0) {
         users = users.filter((u: any) => selectedDepts.has(u.deptId));
       } else if (selectedCampuses.size > 0) {
@@ -602,14 +580,12 @@ export const SendDocumentPage: React.FC = () => {
     return users;
   }, [allCampuses, classification, dbUser, selectedCampuses, selectedDepts]);
 
-  // ── Campus items for list ─────────────────────────────────────────────────
   const campusItems = allCampuses.map((c: any) => ({
     id: c.id,
     label: c.name,
     sublabel: `${c.departments.length} department${c.departments.length !== 1 ? "s" : ""}`,
   }));
 
-  // ── Dept items for list ───────────────────────────────────────────────────
   const deptItems = relevantDepts.map((d: any) => ({
     id: d.id,
     label: d.name,
@@ -617,7 +593,6 @@ export const SendDocumentPage: React.FC = () => {
     group: (d as any).campusName,
   }));
 
-  // ── User items for list ───────────────────────────────────────────────────
   const userItems = allUsers.map((u: any) => ({
     id: u.id,
     label: formatUserName(u),
@@ -625,7 +600,6 @@ export const SendDocumentPage: React.FC = () => {
     group: `${u.campusName} — ${u.deptName}`,
   }));
 
-  // ── Compute step state for each step ──────────────────────────────────────
   const getStepState = useCallback(
     (idx: number): StepState => {
       if (idx === clampedStepIndex) return "active";
@@ -636,7 +610,7 @@ export const SendDocumentPage: React.FC = () => {
     [clampedStepIndex, skippedSteps],
   );
 
-  // ── Navigation ────────────────────────────────────────────────────────────
+  // Navigation
 
   const handleNext = () => {
     if (clampedStepIndex < steps.length - 1)
@@ -646,7 +620,6 @@ export const SendDocumentPage: React.FC = () => {
   const handleSkip = () => {
     const currentStepId = steps[clampedStepIndex].id;
 
-    // Clear selections for the step being skipped
     if (currentStepId === "scope") {
       setInstitutionSelected(false);
     } else if (currentStepId === "campuses") {
@@ -657,14 +630,12 @@ export const SendDocumentPage: React.FC = () => {
       setSelectedUsers(new Set());
     }
 
-    // Mark this step as skipped
     setSkippedSteps((prev) => {
       const next = new Set(prev);
       next.add(clampedStepIndex);
       return next;
     });
 
-    // Advance
     if (clampedStepIndex < steps.length - 1) {
       setStepIndex((i) => Math.min(i + 1, steps.length - 1));
     }
@@ -674,13 +645,9 @@ export const SendDocumentPage: React.FC = () => {
     if (clampedStepIndex > 0) setStepIndex((i) => i - 1);
   };
 
-  // Clicking a previously visited step — navigate without resetting
   const handleStepClick = (idx: number) => {
-    // Only allow navigating to steps before the current one
     if (idx < clampedStepIndex) {
       setStepIndex(idx);
-      // If a step was previously skipped but we go back to it,
-      // un-mark it as skipped so it can be re-done
       setSkippedSteps((prev) => {
         const next = new Set(prev);
         next.delete(idx);
@@ -692,11 +659,8 @@ export const SendDocumentPage: React.FC = () => {
   const handleInstitutionToggle = (checked: boolean) => {
     setInstitutionSelected(checked);
     if (checked) {
-      // When selecting institution-wide, clear narrower selections
-      // since they're redundant for a full institution send
       setSelectedCampuses(new Set());
       setSelectedDepts(new Set());
-      // Keep selectedUsers as those are additive one-off recipients
     }
   };
 
@@ -751,7 +715,6 @@ export const SendDocumentPage: React.FC = () => {
     }
   };
 
-  // ── Toggle helpers ────────────────────────────────────────────────────────
   const toggleSet = (
     setter: React.Dispatch<React.SetStateAction<Set<string>>>,
     id: string,
@@ -759,7 +722,11 @@ export const SendDocumentPage: React.FC = () => {
   ) => {
     setter((prev) => {
       const next = new Set(prev);
-      checked ? next.add(id) : next.delete(id);
+      if (checked) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
       return next;
     });
   };
@@ -773,7 +740,6 @@ export const SendDocumentPage: React.FC = () => {
     setter: React.Dispatch<React.SetStateAction<Set<string>>>,
   ) => setter(new Set());
 
-  // ── Loading ───────────────────────────────────────────────────────────────
   if (isLoadingDoc || isLoadingOrg) {
     return <div className="container mt-4" />;
   }
@@ -788,7 +754,6 @@ export const SendDocumentPage: React.FC = () => {
     selectedDepts.size +
     selectedUsers.size;
 
-  // ─────────────────────────────────────────────────────────────────────────
   return (
     <>
       <div className="send-page container mt-4 mb-5">
@@ -887,11 +852,11 @@ export const SendDocumentPage: React.FC = () => {
             {/* SCOPE step */}
             {currentStep.id === "scope" && (
               <StepWrapper
-                heading="Organization-wide send"
+                heading="Institution-wide send"
                 description={
                   institutionSelected
-                    ? `Sending to the entire organization. You can add specific individual recipients in the next step.`
-                    : "Select this to grant read access to every user in the organization, or skip this to narrow down by campuses, departments, or individuals."
+                    ? `Sending to the entire institution. You can add specific individual recipients in the next step.`
+                    : "Select this to grant read access to every user in the institution, or skip this to narrow down by campuses, departments, or individuals."
                 }
               >
                 <CheckCard
@@ -1133,7 +1098,7 @@ export const SendDocumentPage: React.FC = () => {
   );
 };
 
-// ─── Step wrapper ─────────────────────────────────────────────────────────────
+// Step wrapper
 
 const StepWrapper: React.FC<{
   heading: string;
@@ -1149,7 +1114,7 @@ const StepWrapper: React.FC<{
   </div>
 );
 
-// ─── Confirm summary ──────────────────────────────────────────────────────────
+// Confirm summary
 
 const ConfirmSummary: React.FC<{
   institutionSelected: boolean;

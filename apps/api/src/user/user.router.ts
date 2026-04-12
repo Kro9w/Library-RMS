@@ -357,15 +357,6 @@ export class UserRouter {
       }),
 
       getUsersWithRoles: protectedProcedure.query(async ({ ctx }) => {
-        const canManageInstitution =
-          ctx.dbUser.roles?.some((r) => r.canManageInstitution) ?? false;
-
-        if (canManageInstitution) {
-          return ctx.prisma.user.findMany({
-            include: { roles: true, campus: true, department: true },
-          });
-        }
-
         if (!ctx.dbUser.departmentId) {
           throw new TRPCError({
             code: 'FORBIDDEN',

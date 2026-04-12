@@ -1,5 +1,3 @@
-// apps/api/src/documents/documents.router.ts
-
 import { z } from 'zod';
 import { Prisma, PermissionLevel } from '@prisma/client';
 import { protectedProcedure, publicProcedure, router } from '../trpc/trpc';
@@ -88,24 +86,19 @@ export class DocumentsRouter {
             });
           }
 
-          // Map workflow status to the root object to be consumed by the frontend easily
           const resultDoc = {
             ...doc,
             status: doc.workflow?.status || null,
           };
 
-          // Return only non-sensitive data needed for the progress view
           return resultDoc;
         }),
 
-      /**
-       * Broadcast/Send a document based on its internal classification rules, granting direct READ access.
-       */
       sendDocument: protectedProcedure
         .input(
           z.object({
             documentId: z.string(),
-            isInstitutional: z.boolean().default(false), // Replaces institutionIds
+            isInstitutional: z.boolean().default(false),
             campusIds: z.array(z.string()),
             departmentIds: z.array(z.string()),
             userIds: z.array(z.string()),
@@ -115,9 +108,6 @@ export class DocumentsRouter {
           return this.documentWorkflowService.sendDocument(ctx, input);
         }),
 
-      /**
-       * Get storage configuration (bucket name)
-       */
       getStorageConfig: protectedProcedure
         .meta({
           openapi: {
@@ -133,9 +123,6 @@ export class DocumentsRouter {
           return { bucketName: env.SUPABASE_BUCKET_NAME };
         }),
 
-      /**
-       * Gets a single document by its ID.
-       */
       getById: protectedProcedure
         .meta({
           openapi: {
@@ -206,6 +193,9 @@ export class DocumentsRouter {
                   firstName: true,
                   middleName: true,
                   lastName: true,
+                  department: {
+                    select: { name: true, campus: { select: { name: true } } },
+                  },
                 },
               },
               remarks: {
@@ -279,9 +269,6 @@ export class DocumentsRouter {
           };
         }),
 
-      /**
-       * Creates a document record in our database.
-       */
       createDocumentRecord: protectedProcedure
         .meta({
           openapi: {
@@ -379,7 +366,6 @@ export class DocumentsRouter {
             });
           }
 
-          // Format Immutability: Institutional & Internal broadcasts must be non-editable formats
           if (
             input.classification === 'INSTITUTIONAL' ||
             input.classification === 'INTERNAL'
@@ -495,9 +481,6 @@ export class DocumentsRouter {
             permission: PermissionLevel.WRITE,
           });
 
-          // Uploading a document now only grants access to the uploader.
-          // Broadcasting (via the Send feature) will explicitly grant wide access later.
-
           await this.prisma.documentAccess.createMany({
             data: accessesToCreate,
           });
@@ -514,9 +497,6 @@ export class DocumentsRouter {
           return document as any;
         }),
 
-      /**
-       * Gets a temporary signed URL to view a private document.
-       */
       getSignedDocumentUrl: protectedProcedure
         .meta({
           openapi: {
@@ -642,7 +622,6 @@ export class DocumentsRouter {
           const { page, perPage, search, filter, lifecycleFilter } = input;
           const skip = (page - 1) * perPage;
 
-          // Helper to map and compute status
           const mapDocuments = (documents: any[]) => {
             return documents.map((doc) => ({
               ...doc,
@@ -699,7 +678,6 @@ export class DocumentsRouter {
             originalSenderId: true,
           };
 
-          // Optimized path for "Ready for Disposition"
           if (lifecycleFilter === 'ready') {
             const aclWhere = this.accessControlService.generateAclWhereClause(
               ctx.dbUser,
@@ -752,8 +730,6 @@ export class DocumentsRouter {
             ctx.dbUser,
           );
 
-          // We use AND here. Since we already have an OR for dispositionStatus above,
-          // we need to combine them carefully so the OR is preserved alongside aclWhere.
           whereClause.AND = [
             aclWhere,
             {
@@ -888,10 +864,6 @@ export class DocumentsRouter {
           return this.documentWorkflowService.forwardDocument(ctx, input);
         }),
 
-      /**
-       * Receive a document that was sent directly (via notification/distribution)
-       * or physically via Control Number.
-       */
       receiveDocument: protectedProcedure
         .input(
           z.object({
@@ -980,6 +952,55 @@ export class DocumentsRouter {
               });
             }
 
+            if (document.classification === 'FOR_APPROVAL') {
+              if (!dbUser.departmentId) {
+                throw new TRPCError({
+                  code: 'BAD_REQUEST',
+                  message: 'You cannot receive this document. You are not assigned to a department.',
+                });
+              }
+
+              const routeWithDepartment = await this.prisma.documentTransitRoute.findFirst({
+                where: {
+                  documentId: document.id,
+                  departmentId: dbUser.departmentId,
+                },
+              });
+
+              if (!routeWithDepartment) {
+                throw new TRPCError({
+                  code: 'BAD_REQUEST',
+                  message: 'You cannot receive this document. Your department is not part of the route. If you think this is a mistake, please contact the uploader of the document.',
+                });
+              }
+
+              // Check for preceding uncompleted stops
+              const precedingPendingStops = await this.prisma.documentTransitRoute.findMany({
+                where: {
+                  documentId: document.id,
+                  sequenceOrder: { lt: routeWithDepartment.sequenceOrder },
+                  status: { notIn: ['APPROVED', 'REJECTED'] },
+                },
+                include: {
+                  department: true,
+                },
+                orderBy: {
+                  sequenceOrder: 'asc',
+                },
+              });
+
+              if (precedingPendingStops.length > 0) {
+                const pendingOfficesList = precedingPendingStops
+                  .map((stop: any) => `\n• ${stop.department.name}`)
+                  .join('');
+
+                throw new TRPCError({
+                  code: 'BAD_REQUEST',
+                  message: `This document must first undergo the review of:${pendingOfficesList}`,
+                });
+              }
+            }
+
             // Check if they already received it
             const existingAccess = await this.prisma.documentAccess.findFirst({
               where: {
@@ -1014,7 +1035,7 @@ export class DocumentsRouter {
                 },
               });
             } else {
-              // Create a new received distribution record
+              // Creates a new distribution record
               await this.prisma.documentDistribution.create({
                 data: {
                   documentId: document.id,
@@ -1092,9 +1113,6 @@ export class DocumentsRouter {
         });
       }),
 
-      /**
-       * Get distributions for a specific document
-       */
       getDocumentDistributions: protectedProcedure
         .input(z.object({ documentId: z.string() }))
         .query(async ({ ctx, input }) => {
@@ -1408,8 +1426,6 @@ export class DocumentsRouter {
             });
           }
 
-          // We allow executing if it's PENDING_DISPOSITION, or if it hasn't been requested yet (direct execution).
-          // However, we shouldn't execute it twice.
           if (
             doc.lifecycle?.dispositionStatus === 'ARCHIVED' ||
             doc.lifecycle?.dispositionStatus === 'DESTROYED'
@@ -1548,9 +1564,6 @@ export class DocumentsRouter {
                   });
                 }
 
-                // We skip manually calculating the SHA256 hash here to avoid loading the entire
-                // potentially large file into a Node.js memory buffer, preventing OOM crashes.
-                // We upload the Blob directly.
                 latestHash = 'omitted-for-memory-safety';
 
                 // Upload to archive bucket

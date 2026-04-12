@@ -133,7 +133,7 @@ export function Users() {
               -{" "}
               {currentUser.campus.name === "University Administration"
                 ? currentUser.campus.name
-                : `${currentUser.campus.name} Campus`}
+                : `${currentUser.department!.name}`}
             </small>
           )}
         </h2>

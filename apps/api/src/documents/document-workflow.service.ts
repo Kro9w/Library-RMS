@@ -102,8 +102,6 @@ export class DocumentWorkflowService {
 
     // Authority Check based on classification
     if (document.classification === 'CONFIDENTIAL') {
-      // For CONFIDENTIAL documents, strictly only the originator or global admins can broadcast.
-      // Intermediate reviewers who received the document through routing cannot.
       if (!_isOriginator && !canManageInstitution) {
         throw new TRPCError({
           code: 'FORBIDDEN',
@@ -111,6 +109,42 @@ export class DocumentWorkflowService {
             'Only the originator or institution administrators can broadcast CONFIDENTIAL documents.',
         });
       }
+
+      // Check if trying to send to another campus
+      if (
+        input.campusIds.length > 0 &&
+        input.campusIds.some((id) => id !== dbUser.campusId)
+      ) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'CONFIDENTIAL documents can only be sent within your own campus.',
+        });
+      }
+
+      if (input.departmentIds.length > 0) {
+        const departments = await this.prisma.department.findMany({
+          where: { id: { in: input.departmentIds } },
+        });
+        if (departments.some((d) => d.campusId !== dbUser.campusId)) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'CONFIDENTIAL documents can only be sent within your own campus.',
+          });
+        }
+      }
+
+      if (input.userIds.length > 0) {
+        const users = await this.prisma.user.findMany({
+          where: { id: { in: input.userIds } },
+        });
+        if (users.some((u) => u.campusId !== dbUser.campusId)) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'CONFIDENTIAL documents can only be sent to users within your own campus.',
+          });
+        }
+      }
+
     } else if (
       document.classification === 'INSTITUTIONAL' ||
       document.classification === 'INTERNAL'
@@ -134,12 +168,6 @@ export class DocumentWorkflowService {
 
     const accessesToCreate: any[] = [];
 
-    if (document.classification === 'INSTITUTIONAL' && input.isInstitutional) {
-      // Institutional classification means it's available globally across the single tenant,
-      // but we might still track explicit distributions. We don't need a specific institutionId.
-      // We will skip adding a specific ACL row for 'Institution' since the concept is now implicit,
-      // or we can add an empty constraint (handled elsewhere if needed).
-    }
     if (
       document.classification === 'INSTITUTIONAL' ||
       document.classification === 'INTERNAL'
@@ -177,9 +205,7 @@ export class DocumentWorkflowService {
       });
     }
 
-    // Fetch existing accesses in a targeted manner to avoid N*M filtering in memory
     const finalAccesses = await this.prisma.$transaction(async (tx) => {
-      // Build conditions dynamically to avoid querying if arrays are empty
       const orConditions: any[] = [];
       
       if (input.campusIds.length > 0) {
@@ -212,7 +238,6 @@ export class DocumentWorkflowService {
         });
       }
 
-      // Use a Set for O(1) duplicate checks instead of an O(N*M) array.some() loop
       const existingSet = new Set(
         existingAccesses.map(
           (ex) =>
@@ -252,8 +277,6 @@ export class DocumentWorkflowService {
       dbUser.departmentId || undefined,
     );
 
-    // Build notifications specifically for Level 1/2 targets within broad scopes to reduce spam
-    // or directly for users.
     const senderName = `${dbUser.firstName} ${dbUser.lastName}`.trim();
 
     const targetsForNotification = new Set<string>();
@@ -262,7 +285,7 @@ export class DocumentWorkflowService {
 
     const broadScopesWhere: any[] = [];
     if (input.isInstitutional)
-      broadScopesWhere.push({}); // Empty matches everything globally
+      broadScopesWhere.push({});
     if (input.campusIds.length > 0)
       broadScopesWhere.push({ campusId: { in: input.campusIds } });
     if (input.departmentIds.length > 0)
@@ -285,7 +308,6 @@ export class DocumentWorkflowService {
       keyUsers.forEach((u) => targetsForNotification.add(u.id));
     }
 
-    // Filter out sender
     targetsForNotification.delete(user.id);
 
     await this.createNotification(
@@ -321,7 +343,6 @@ export class DocumentWorkflowService {
     // Verify ownership of all documents to prevent unauthorized access
     const whereClause: any = {
       id: input.documentId,
-      
     };
 
     if (
@@ -398,8 +419,7 @@ export class DocumentWorkflowService {
 
     const isAutoReceive = isReturningToOriginator || isOriginatorResubmitting;
 
-    // ONLY create a DocumentDistribution if it is a formal, first-time transfer.
-    // If the document is being sent back and forth between the originator and reviewer, bypass the distribution table to reduce redundancy.
+    // Only create a distribution if it is a formal and first-time transfer
     if (!isAutoReceive) {
       await this.prisma.documentDistribution.create({
         data: {
@@ -410,7 +430,6 @@ export class DocumentWorkflowService {
         },
       });
     } else {
-      // Ensure they have access if we bypassed the formal distribution process
       const existingAccess = await this.prisma.documentAccess.findFirst({
         where: {
           documentId: input.documentId,
@@ -429,9 +448,6 @@ export class DocumentWorkflowService {
       }
     }
 
-    // When an originator resubmits a returned/disapproved IN_TRANSIT document,
-    // we must clear the historical "decision" logged on the CURRENT transit route stop
-    // so the UI correctly reverts to a generic pending "Current" state icon instead of sticking to the "Returned" icon.
     if (
       documents[0].workflow?.recordStatus === 'IN_TRANSIT' &&
       documents[0].classification === 'FOR_APPROVAL' &&

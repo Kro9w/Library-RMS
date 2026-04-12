@@ -4,7 +4,7 @@ import { useUser } from "../contexts/SessionContext.tsx";
 import { useUploadDocument } from "../hooks/useUploadDocument";
 import { FileDropzone, TransitRouteBuilder } from "./UploadModalSubcomponents";
 import "./StandardModal.css";
-import "./UploadModal.css"; // Keep specific upload overrides
+import "./UploadModal.css";
 
 interface UploadModalProps {
   show: boolean;

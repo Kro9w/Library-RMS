@@ -118,7 +118,7 @@
 /* ── Notices ── */
 .standard-modal-notice {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 9px;
   padding: 11px 13px;
   border-radius: var(--radius-md);

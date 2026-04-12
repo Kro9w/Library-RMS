@@ -94,11 +94,16 @@ export const TransitRouteBuilder = ({
                 <option value="" disabled>
                   Select Department
                 </option>
-                {departmentsResponse?.map((d: any) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
+                {departmentsResponse?.map((d: any) => {
+                  if (d.id !== deptId && transitRoute.includes(d.id)) {
+                    return null;
+                  }
+                  return (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  );
+                })}
               </select>
               <button
                 type="button"
