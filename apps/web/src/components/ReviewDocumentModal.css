@@ -137,6 +137,7 @@
   justify-content: center;
   font-size: 16px;
   flex-shrink: 0;
+  padding: 1.3px 0.4px 0px 0px;
 }
 
 .review-route-name {

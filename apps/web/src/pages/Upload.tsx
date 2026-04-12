@@ -18,8 +18,8 @@ const Upload: React.FC = () => {
   const bucketName = import.meta.env.VITE_SUPABASE_BUCKET_NAME;
 
   const [classification, setClassification] = useState<
-    "INSTITUTIONAL" | "INTERNAL" | "DEPARTMENTAL" | "CONFIDENTIAL"
-  >("CONFIDENTIAL");
+    "INSTITUTIONAL" | "INTERNAL" | "DEPARTMENTAL" | "RESTRICTED"
+  >("RESTRICTED");
 
   // Determine accepted file types based on classification
   const acceptedTypes: Record<string, string[]> =
@@ -113,7 +113,7 @@ const Upload: React.FC = () => {
           }}
           style={{ marginLeft: "10px", padding: "5px" }}
         >
-          <option value="CONFIDENTIAL">Confidential (Draft / Review)</option>
+          <option value="RESTRICTED">Restricted (Draft / Review)</option>
           <option value="DEPARTMENTAL">Departmental (Department)</option>
           <option value="INTERNAL">Internal (Campus Broadcast)</option>
           <option value="INSTITUTIONAL">
@@ -123,7 +123,7 @@ const Upload: React.FC = () => {
         <p style={{ fontSize: "0.85em", color: "#666", marginTop: "5px" }}>
           {classification === "INSTITUTIONAL" || classification === "INTERNAL"
             ? "Note: Internal and Institutional broadcasts require finalized formats (PDF, JPEG, PNG, TIFF)."
-            : "Note: You can upload editable drafts (DOCX, Excel) for Departmental or Confidential items."}
+            : "Note: You can upload editable drafts (DOCX, Excel) for Departmental or Restricted items."}
         </p>
       </div>
 

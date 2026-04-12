@@ -292,11 +292,11 @@ export class DocumentsRouter {
                 'INSTITUTIONAL',
                 'INTERNAL',
                 'DEPARTMENTAL',
-                'CONFIDENTIAL',
+                'RESTRICTED',
                 'FOR_APPROVAL',
               ])
               .optional()
-              .default('CONFIDENTIAL'),
+              .default('RESTRICTED'),
             transitRoute: z.array(z.string()).optional(),
             metadata: z.record(z.string(), z.any()).optional(),
           }),

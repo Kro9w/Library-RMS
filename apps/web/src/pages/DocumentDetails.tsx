@@ -164,7 +164,7 @@ export const DocumentDetails: React.FC = () => {
     ) {
       return false; // Routed/In-transit documents cannot be broadcast directly
     }
-    if (document.classification === "CONFIDENTIAL") {
+    if (document.classification === "RESTRICTED") {
       return isOriginator || canManageInstitution;
     }
     if (

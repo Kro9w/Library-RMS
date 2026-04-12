@@ -101,12 +101,12 @@ export class DocumentWorkflowService {
     const _isOriginator = await isOriginator(input.documentId);
 
     // Authority Check based on classification
-    if (document.classification === 'CONFIDENTIAL') {
+    if (document.classification === 'RESTRICTED') {
       if (!_isOriginator && !canManageInstitution) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message:
-            'Only the originator or institution administrators can broadcast CONFIDENTIAL documents.',
+            'Only the originator or institution administrators can broadcast RESTRICTED documents.',
         });
       }
 
@@ -117,7 +117,7 @@ export class DocumentWorkflowService {
       ) {
         throw new TRPCError({
           code: 'FORBIDDEN',
-          message: 'CONFIDENTIAL documents can only be sent within your own campus.',
+          message: 'RESTRICTED documents can only be sent within your own campus.',
         });
       }
 
@@ -128,7 +128,7 @@ export class DocumentWorkflowService {
         if (departments.some((d) => d.campusId !== dbUser.campusId)) {
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: 'CONFIDENTIAL documents can only be sent within your own campus.',
+            message: 'RESTRICTED documents can only be sent within your own campus.',
           });
         }
       }
@@ -140,7 +140,7 @@ export class DocumentWorkflowService {
         if (users.some((u) => u.campusId !== dbUser.campusId)) {
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: 'CONFIDENTIAL documents can only be sent to users within your own campus.',
+            message: 'RESTRICTED documents can only be sent to users within your own campus.',
           });
         }
       }
@@ -673,7 +673,7 @@ export class DocumentWorkflowService {
           recordStatus: 'FINAL',
         },
       };
-      updateData.classification = 'CONFIDENTIAL';
+      updateData.classification = 'RESTRICTED';
 
       if (input.finalStorageKey) {
         updateData.versions = {

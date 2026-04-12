@@ -1,6 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap");
 
-/* ── Design Tokens (mirrored from main app) ── */
 :root {
   --brand: #9b2335;
   --brand-hover: #7d1c2a;
@@ -44,7 +43,6 @@
   --ring: 0 0 0 2px #fff, 0 0 0 4px rgba(155, 35, 53, 0.35);
 }
 
-/* ── Reset ── */
 *,
 *::before,
 *::after {
@@ -61,7 +59,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Root layout: full-page centered ── */
 .lookup-root {
   min-height: 100vh;
   display: flex;
@@ -126,7 +123,6 @@ body {
   text-transform: uppercase;
 }
 
-/* ── Hero card (search form) ── */
 .lookup-hero-card {
   background-color: var(--bg-surface);
   border: 1px solid var(--border);
@@ -149,7 +145,6 @@ body {
   line-height: 1.6;
 }
 
-/* ── Search form ── */
 .lookup-form {
   display: flex;
   gap: 8px;
@@ -241,7 +236,6 @@ body {
   }
 }
 
-/* ── Empty / error state ── */
 .lookup-empty-card {
   background-color: var(--bg-surface);
   border: 1px solid var(--border);
@@ -417,6 +411,7 @@ body {
   justify-content: center;
   font-size: 18px;
   flex-shrink: 0;
+  padding: 2px 0px 0px 0px;
 }
 
 .lookup-step-label {

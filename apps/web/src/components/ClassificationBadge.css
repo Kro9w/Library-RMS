@@ -54,7 +54,7 @@ body[data-bs-theme="dark"] .classification-badge-internal {
   border-color: #78350f;
 }
 
-/* CONFIDENTIAL — maroon/red family */
+/* RESTRICTED — maroon/red family */
 .classification-badge-restricted {
   background-color: #fff1f2;
   color: #9f1239;

@@ -119,8 +119,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
                     Departmental — department only
                   </option>
                 )}
-                <option value="CONFIDENTIAL">
-                  Confidential — sender & recipient only
+                <option value="RESTRICTED">
+                  Restricted — sender & recipient only
                 </option>
                 <option value="FOR_APPROVAL">
                   For Approval — requires approval routing

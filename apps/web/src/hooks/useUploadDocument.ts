@@ -11,8 +11,8 @@ export function useUploadDocument(onClose: () => void) {
   const [selectedDocumentType, setSelectedDocumentType] = useState<string | undefined>();
   const [controlNumber, setControlNumber] = useState<string | null>(null);
   const [classification, setClassification] = useState<
-    "INSTITUTIONAL" | "INTERNAL" | "DEPARTMENTAL" | "CONFIDENTIAL" | "FOR_APPROVAL"
-  >("CONFIDENTIAL");
+    "INSTITUTIONAL" | "INTERNAL" | "DEPARTMENTAL" | "RESTRICTED" | "FOR_APPROVAL"
+  >("RESTRICTED");
   const [transitRoute, setTransitRoute] = useState<string[]>([]);
   const [isScanning, setIsScanning] = useState(false);
 
@@ -118,7 +118,7 @@ export function useUploadDocument(onClose: () => void) {
       setFile(null);
       setControlNumber(null);
       setTransitRoute([]);
-      setClassification("CONFIDENTIAL");
+      setClassification("RESTRICTED");
       onClose();
       await utils.documents.invalidate();
       await utils.getDashboardStats.invalidate();

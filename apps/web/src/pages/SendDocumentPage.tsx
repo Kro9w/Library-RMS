@@ -36,7 +36,7 @@ function getStepsForClassification(classification: string): StepDef[] {
         (s) =>
           s.id !== "scope" && s.id !== "campuses" && s.id !== "departments",
       );
-    case "CONFIDENTIAL":
+    case "RESTRICTED":
     default:
       return ALL_STEPS.filter((s) => s.id === "users" || s.id === "confirm");
   }
@@ -479,7 +479,7 @@ export const SendDocumentPage: React.FC = () => {
 
   const sendMutation = trpc.documents.sendDocument.useMutation();
 
-  const classification = (document?.classification ?? "CONFIDENTIAL") as string;
+  const classification = (document?.classification ?? "RESTRICTED") as string;
 
   const isInstitutionWide =
     classification === "INSTITUTIONAL" && institutionSelected;
@@ -522,7 +522,7 @@ export const SendDocumentPage: React.FC = () => {
           }))
         : [];
     }
-    if (classification === "CONFIDENTIAL") {
+    if (classification === "RESTRICTED") {
       if (!dbUser?.campusId) return [];
       const userCampus = allCampuses.find((c: any) => c.id === dbUser.campusId);
       return userCampus
@@ -565,7 +565,7 @@ export const SendDocumentPage: React.FC = () => {
       if (dbUser?.campusId) {
         users = users.filter((u: any) => u.campusId === dbUser.campusId);
       }
-    } else if (classification === "CONFIDENTIAL") {
+    } else if (classification === "RESTRICTED") {
       if (dbUser?.campusId) {
         users = users.filter((u: any) => u.campusId === dbUser.campusId);
       }

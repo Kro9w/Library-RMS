@@ -56,7 +56,7 @@ async function main() {
         departmentId: doc.departmentId,
         permission: PermissionLevel.READ,
       });
-    } else if (doc.classification === 'CONFIDENTIAL') {
+    } else if (doc.classification === 'RESTRICTED') {
       // No broad access, only the owner has access (already added above)
     }
 

@@ -4,7 +4,7 @@ export type ClassificationType =
   | "DEPARTMENTAL"
   | "INSTITUTIONAL"
   | "INTERNAL"
-  | "CONFIDENTIAL"
+  | "RESTRICTED"
   | "FOR_APPROVAL";
 interface ClassificationBadgeProps {
   classification?: ClassificationType | null;
@@ -35,10 +35,10 @@ export const ClassificationBadge: React.FC<ClassificationBadgeProps> = ({
       className: "classification-badge-internal",
       icon: "bi-people-fill",
     },
-    CONFIDENTIAL: {
-      label: "Confidential",
+    RESTRICTED: {
+      label: "Restricted",
       className: "classification-badge-restricted",
-      icon: "bi-incognito",
+      icon: "bi-file-earmark-minus",
     },
     FOR_APPROVAL: {
       label: "For Approval",

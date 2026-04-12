@@ -194,7 +194,7 @@ const FAQ_CATEGORIES: FAQCategory[] = [
               </div>
               <div className="faq-class-item">
                 <span className="faq-class-badge faq-class-confidential">
-                  <i className="bi bi-incognito" /> Confidential
+                  <i className="bi bi-file-earmark-minus" /> Restricted
                 </span>
                 <span>
                   Visible only to the uploader and explicitly shared recipients.
@@ -254,7 +254,7 @@ const FAQ_CATEGORIES: FAQCategory[] = [
         answer: (
           <>
             <p>
-              Confidential documents can be routed for formal review by setting
+              Restricted documents can be routed for formal review by setting
               the classification to <em>For Approval</em> when sending:
             </p>
             <ol>
@@ -386,7 +386,7 @@ const FAQ_CATEGORIES: FAQCategory[] = [
             <strong>Approved</strong>, the document's transit lifecycle ends.
             Its record status is automatically finalized as{" "}
             <strong>FINAL</strong>, and its classification reverts to{" "}
-            <strong>CONFIDENTIAL</strong>. This secures the document, locking it
+            <strong>RESTRICTED</strong>. This secures the document, locking it
             from further edits, and gives the original owner the ability to
             broadcast the final approved document depending on their standard
             role permissions.
@@ -529,7 +529,7 @@ const FAQ_CATEGORIES: FAQCategory[] = [
                 select specific users within your department.
               </li>
               <li>
-                <strong>CONFIDENTIAL:</strong> Used strictly for user-to-user
+                <strong>RESTRICTED:</strong> Used strictly for user-to-user
                 dissemination. You will skip all scope/campus/department steps
                 and directly select the target users from a list.
               </li>
