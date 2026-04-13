@@ -18,7 +18,7 @@ const Upload: React.FC = () => {
   const bucketName = import.meta.env.VITE_SUPABASE_BUCKET_NAME;
 
   const [classification, setClassification] = useState<
-    "INSTITUTIONAL" | "INTERNAL" | "DEPARTMENTAL" | "RESTRICTED"
+    "INSTITUTIONAL" | "INTERNAL" | "DEPARTMENTAL" | "RESTRICTED" | "EXTERNAL"
   >("RESTRICTED");
 
   const acceptedTypes: Record<string, string[]> =
@@ -111,6 +111,7 @@ const Upload: React.FC = () => {
           style={{ marginLeft: "10px", padding: "5px" }}
         >
           <option value="RESTRICTED">Restricted (Draft / Review)</option>
+          <option value="EXTERNAL">External (Outside documents)</option>
           <option value="DEPARTMENTAL">Departmental (Department)</option>
           <option value="INTERNAL">Internal (Campus Broadcast)</option>
           <option value="INSTITUTIONAL">

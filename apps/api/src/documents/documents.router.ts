@@ -293,6 +293,7 @@ export class DocumentsRouter {
                 'INTERNAL',
                 'DEPARTMENTAL',
                 'RESTRICTED',
+                'EXTERNAL',
                 'FOR_APPROVAL',
               ])
               .optional()

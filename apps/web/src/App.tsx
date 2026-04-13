@@ -148,7 +148,14 @@ const AppContent: React.FC = () => {
   const { isLoading: isLoadingSession } = useSessionContext();
   const location = useLocation();
 
-  const [sidebarMode, setSidebarMode] = useState<SidebarMode>("expanded");
+  const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() => {
+    const saved = localStorage.getItem("sidebarMode");
+    return (saved as SidebarMode) || "hover";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("sidebarMode", sidebarMode);
+  }, [sidebarMode]);
 
   if (isLoadingSession) {
     return null;

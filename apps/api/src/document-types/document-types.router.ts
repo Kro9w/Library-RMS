@@ -12,10 +12,106 @@ export class DocumentTypesRouter {
   createRouter() {
     return router({
       getAll: protectedProcedure.query(async ({ ctx }) => {
+        const departmentId = ctx.dbUser.departmentId;
+
+        // If the user does not have a department, return all document types.
+        if (!departmentId) {
+          return ctx.prisma.documentType.findMany({
+            orderBy: { name: 'asc' },
+          });
+        }
+
+        // Check if the department has any linked document types.
+        const department = await ctx.prisma.department.findUnique({
+          where: { id: departmentId },
+          include: { documentTypes: { select: { id: true } } },
+        });
+
+        // If there are linked document types, only return those.
+        if (department && department.documentTypes.length > 0) {
+          return ctx.prisma.documentType.findMany({
+            where: {
+              departments: {
+                some: { id: departmentId },
+              },
+            },
+            orderBy: { name: 'asc' },
+          });
+        }
+
+        // If no types are linked to the department, return all.
         return ctx.prisma.documentType.findMany({
           orderBy: { name: 'asc' },
         });
       }),
+
+      getAllUnfiltered: protectedProcedure.query(async ({ ctx }) => {
+        return ctx.prisma.documentType.findMany({
+          orderBy: { name: 'asc' },
+        });
+      }),
+
+      getForDepartment: protectedProcedure
+        .input(z.object({ departmentId: z.string().min(1) }))
+        .query(async ({ ctx, input }) => {
+          return ctx.prisma.documentType.findMany({
+            where: {
+              departments: {
+                some: { id: input.departmentId },
+              },
+            },
+            orderBy: { name: 'asc' },
+          });
+        }),
+
+      updateDepartmentTypes: protectedProcedure
+        .input(
+          z.object({
+            departmentId: z.string().min(1),
+            documentTypeIds: z.array(z.string()),
+          }),
+        )
+        .mutation(async ({ ctx, input }) => {
+          const { roles, departmentId: userDeptId } = ctx.dbUser;
+          
+          const highestRoleLevel = roles?.length
+            ? Math.min(...roles.map((r) => r.level))
+            : 4;
+          const canManageInstitution = roles?.some((r) => r.canManageInstitution) ?? false;
+          const canManageDocuments = roles?.some((r) => r.canManageDocuments) ?? false;
+          
+          const isEligibleLevel = highestRoleLevel <= 1 && canManageDocuments;
+          
+          if (!canManageInstitution && (!isEligibleLevel || userDeptId !== input.departmentId)) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'You do not have permission to manage document types for this department.',
+            });
+          }
+
+          const existingTypes = await ctx.prisma.documentType.findMany({
+            where: {
+              departments: {
+                some: { id: input.departmentId },
+              },
+            },
+            select: { id: true },
+          });
+
+          const existingIds = existingTypes.map(t => t.id);
+          const toDisconnect = existingIds.filter(id => !input.documentTypeIds.includes(id));
+          const toConnect = input.documentTypeIds.filter(id => !existingIds.includes(id));
+
+          return ctx.prisma.department.update({
+            where: { id: input.departmentId },
+            data: {
+              documentTypes: {
+                disconnect: toDisconnect.map((id) => ({ id })),
+                connect: toConnect.map((id) => ({ id })),
+              },
+            },
+          });
+        }),
 
       create: protectedProcedure
         .input(

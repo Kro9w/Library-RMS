@@ -17,6 +17,7 @@ enum Classification {
   INTERNAL
   RESTRICTED
   FOR_APPROVAL
+  EXTERNAL
 }
 
 enum PermissionLevel {
@@ -107,6 +108,7 @@ model Campus {
 }
 
 model Department {
+  documentTypes    DocumentType[]
   id               String                 @id @default(cuid())
   name             String
   icon             String                 @default("default-icon.png")
@@ -136,6 +138,7 @@ model Log {
 }
 
 model DocumentType {
+  departments             Department[]
   id                      String      @id @default(cuid())
   name                    String      @unique
   color                   String

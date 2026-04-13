@@ -163,7 +163,10 @@ export const DocumentDetails: React.FC = () => {
     ) {
       return false; // Routed/In-transit documents cannot be broadcast directly
     }
-    if (document.classification === "RESTRICTED") {
+    if (
+      document.classification === "RESTRICTED" ||
+      document.classification === "EXTERNAL"
+    ) {
       return isOriginator || canManageInstitution;
     }
     if (

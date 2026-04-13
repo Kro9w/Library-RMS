@@ -101,12 +101,12 @@ export class DocumentWorkflowService {
     const _isOriginator = await isOriginator(input.documentId);
 
 
-    if (document.classification === 'RESTRICTED') {
+    if (document.classification === 'RESTRICTED' || document.classification === 'EXTERNAL') {
       if (!_isOriginator && !canManageInstitution) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message:
-            'Only the originator or institution administrators can broadcast RESTRICTED documents.',
+            'Only the originator or institution administrators can broadcast RESTRICTED or EXTERNAL documents.',
         });
       }
 
@@ -117,7 +117,7 @@ export class DocumentWorkflowService {
       ) {
         throw new TRPCError({
           code: 'FORBIDDEN',
-          message: 'RESTRICTED documents can only be sent within your own campus.',
+          message: 'RESTRICTED/EXTERNAL documents can only be sent within your own campus.',
         });
       }
 
@@ -128,7 +128,7 @@ export class DocumentWorkflowService {
         if (departments.some((d) => d.campusId !== dbUser.campusId)) {
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: 'RESTRICTED documents can only be sent within your own campus.',
+            message: 'RESTRICTED/EXTERNAL documents can only be sent within your own campus.',
           });
         }
       }
@@ -140,7 +140,7 @@ export class DocumentWorkflowService {
         if (users.some((u) => u.campusId !== dbUser.campusId)) {
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: 'RESTRICTED documents can only be sent to users within your own campus.',
+            message: 'RESTRICTED/EXTERNAL documents can only be sent to users within your own campus.',
           });
         }
       }

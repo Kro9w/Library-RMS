@@ -77,3 +77,15 @@ body[data-bs-theme="dark"] .classification-badge-approval {
   color: #c084fc;
   border-color: #581c87;
 }
+
+/* EXTERNAL — teal/cyan family */
+.classification-badge-external {
+  background-color: #f0fdfa;
+  color: #0f766e;
+  border-color: #5eead4;
+}
+body[data-bs-theme="dark"] .classification-badge-external {
+  background-color: #042f2e;
+  color: #2dd4bf;
+  border-color: #134e4a;
+}

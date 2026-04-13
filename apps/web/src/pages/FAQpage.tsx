@@ -532,6 +532,11 @@ const FAQ_CATEGORIES: FAQCategory[] = [
                 dissemination. You will skip all scope/campus/department steps
                 and directly select the target users from a list.
               </li>
+              <li>
+                <strong>EXTERNAL:</strong> For documents originating outside the
+                institution. Functionally identical to RESTRICTED for
+                dissemination.
+              </li>
             </ul>
             <p>
               When you use the Send wizard, departments will be neatly grouped

@@ -37,6 +37,7 @@ function getStepsForClassification(classification: string): StepDef[] {
           s.id !== "scope" && s.id !== "campuses" && s.id !== "departments",
       );
     case "RESTRICTED":
+    case "EXTERNAL":
     default:
       return ALL_STEPS.filter((s) => s.id === "users" || s.id === "confirm");
   }
@@ -518,7 +519,7 @@ export const SendDocumentPage: React.FC = () => {
           }))
         : [];
     }
-    if (classification === "RESTRICTED") {
+    if (classification === "RESTRICTED" || classification === "EXTERNAL") {
       if (!dbUser?.campusId) return [];
       const userCampus = allCampuses.find((c: any) => c.id === dbUser.campusId);
       return userCampus
@@ -561,7 +562,10 @@ export const SendDocumentPage: React.FC = () => {
       if (dbUser?.campusId) {
         users = users.filter((u: any) => u.campusId === dbUser.campusId);
       }
-    } else if (classification === "RESTRICTED") {
+    } else if (
+      classification === "RESTRICTED" ||
+      classification === "EXTERNAL"
+    ) {
       if (dbUser?.campusId) {
         users = users.filter((u: any) => u.campusId === dbUser.campusId);
       }

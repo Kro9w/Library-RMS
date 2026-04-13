@@ -5,9 +5,10 @@ import { AppearanceSettings } from "../components/Settings/AppearanceSettings";
 import { SystemSettings } from "../components/Settings/SystemSettings";
 import { RolesSettings } from "../components/Roles/RolesSettings";
 import { usePermissions } from "../hooks/usePermissions";
+import { DepartmentDocumentTypesSettings } from "../components/Settings/DepartmentDocumentTypeSettings";
 import "./Settings.css";
 
-type SettingsTab = "appearance" | "system" | "roles";
+type SettingsTab = "appearance" | "system" | "roles" | "documentTypes";
 
 export function Settings() {
   const { theme } = useTheme();
@@ -22,6 +23,14 @@ export function Settings() {
       (role: { canManageRoles: boolean }) => role.canManageRoles,
     ) ||
     false;
+
+  const canManageDepartmentTypes =
+    canManageInstitution ||
+    (user?.roles?.length &&
+      Math.min(...user.roles.map((r: { level: number }) => r.level)) <= 1 &&
+      user?.roles.some(
+        (r: { canManageDocuments: boolean }) => r.canManageDocuments,
+      ));
 
   useEffect(() => {
     document.body.setAttribute("data-bs-theme", theme);
@@ -41,12 +50,20 @@ export function Settings() {
             You do not have permission to view this page.
           </div>
         );
+      case "documentTypes":
+        return canManageDepartmentTypes ? (
+          <DepartmentDocumentTypesSettings />
+        ) : (
+          <div className="alert alert-danger">
+            You do not have permission to view this page.
+          </div>
+        );
       default:
         return null;
     }
   };
 
-  const hasAdminPermissions = canManageRoles;
+  const hasAdminPermissions = canManageRoles || canManageDepartmentTypes;
 
   return (
     <div className="container mt-4">
@@ -88,6 +105,18 @@ export function Settings() {
                   onClick={() => setActiveTab("roles")}
                 >
                   Roles
+                </button>
+              )}
+
+              {canManageDepartmentTypes && (
+                <button
+                  type="button"
+                  className={`settings-nav-item ${
+                    activeTab === "documentTypes" ? "active" : ""
+                  }`}
+                  onClick={() => setActiveTab("documentTypes")}
+                >
+                  Document Types
                 </button>
               )}
             </>

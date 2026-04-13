@@ -5,7 +5,8 @@ export type ClassificationType =
   | "INSTITUTIONAL"
   | "INTERNAL"
   | "RESTRICTED"
-  | "FOR_APPROVAL";
+  | "FOR_APPROVAL"
+  | "EXTERNAL";
 interface ClassificationBadgeProps {
   classification?: ClassificationType | null;
 }
@@ -43,6 +44,11 @@ export const ClassificationBadge: React.FC<ClassificationBadgeProps> = ({
       label: "For Approval",
       className: "classification-badge-approval",
       icon: "bi-file-earmark-check-fill",
+    },
+    EXTERNAL: {
+      label: "External",
+      className: "classification-badge-external",
+      icon: "bi-box-arrow-up-right",
     },
   };
   const badgeConfig = badgeProps[classification];
