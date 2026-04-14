@@ -3,7 +3,8 @@ import { trpc } from "../../trpc";
 import { RetentionHelpModal } from "./RetentionHelpModal";
 
 export function RetentionPolicyPanel() {
-  const { data: documentTypes, refetch } = trpc.documentTypes.getAll.useQuery();
+  const { data: documentTypes, refetch } =
+    trpc.documentTypes.getAllUnfiltered.useQuery();
   const updateMutation = trpc.documentTypes.update.useMutation();
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -20,7 +21,16 @@ export function RetentionPolicyPanel() {
   >("ARCHIVE");
   const [showHelpModal, setShowHelpModal] = useState(false);
 
-  const handleEdit = (type: any) => {
+  const handleEdit = (type: {
+    id: string;
+    activeRetentionDuration: number;
+    activeRetentionMonths: number;
+    activeRetentionDays: number;
+    inactiveRetentionDuration: number;
+    inactiveRetentionMonths: number;
+    inactiveRetentionDays: number;
+    dispositionAction: "ARCHIVE" | "DESTROY";
+  }) => {
     setEditingId(type.id);
     setActiveRetention(type.activeRetentionDuration || 0);
     setActiveRetentionMonths(type.activeRetentionMonths || 0);
@@ -46,7 +56,7 @@ export function RetentionPolicyPanel() {
     setDispositionAction("ARCHIVE");
   };
 
-  const handleSave = (type: any) => {
+  const handleSave = (type: { id: string; name: string; color: string }) => {
     updateMutation.mutate(
       {
         id: type.id,
@@ -105,179 +115,196 @@ export function RetentionPolicyPanel() {
               </tr>
             </thead>
             <tbody>
-              {documentTypes?.map((type) => {
-                const isEditing = editingId === type.id;
+              {documentTypes?.map(
+                (type: {
+                  id: string;
+                  name: string;
+                  color: string;
+                  activeRetentionDuration: number;
+                  activeRetentionMonths: number;
+                  activeRetentionDays: number;
+                  inactiveRetentionDuration: number;
+                  inactiveRetentionMonths: number;
+                  inactiveRetentionDays: number;
+                  dispositionAction: "ARCHIVE" | "DESTROY";
+                }) => {
+                  const isEditing = editingId === type.id;
 
-                return (
-                  <tr key={type.id}>
-                    <td>
-                      <div className="d-flex align-items-center gap-2">
-                        <span
-                          style={{
-                            backgroundColor: `#${type.color}`,
-                            width: "12px",
-                            height: "12px",
-                            borderRadius: "50%",
-                            display: "inline-block",
-                            marginRight: "8px",
-                          }}
-                        />
-                        <strong>{type.name}</strong>
-                      </div>
-                    </td>
+                  return (
+                    <tr key={type.id}>
+                      <td>
+                        <div className="d-flex align-items-center gap-2">
+                          <span
+                            style={{
+                              backgroundColor: `#${type.color}`,
+                              width: "12px",
+                              height: "12px",
+                              borderRadius: "50%",
+                              display: "inline-block",
+                              marginRight: "8px",
+                            }}
+                          />
+                          <strong>{type.name}</strong>
+                        </div>
+                      </td>
 
-                    {isEditing ? (
-                      <>
-                        <td>
-                          <div className="d-flex gap-1">
-                            <input
-                              type="number"
-                              min="0"
-                              placeholder="Y"
-                              title="Years"
-                              className="form-control form-control-sm"
-                              value={activeRetention}
+                      {isEditing ? (
+                        <>
+                          <td>
+                            <div className="d-flex gap-1">
+                              <input
+                                type="number"
+                                min="0"
+                                placeholder="Y"
+                                title="Years"
+                                className="form-control form-control-sm"
+                                value={activeRetention}
+                                onChange={(e) =>
+                                  setActiveRetention(Number(e.target.value))
+                                }
+                              />
+                              <input
+                                type="number"
+                                min="0"
+                                max="11"
+                                placeholder="M"
+                                title="Months"
+                                className="form-control form-control-sm"
+                                value={activeRetentionMonths}
+                                onChange={(e) =>
+                                  setActiveRetentionMonths(
+                                    Number(e.target.value),
+                                  )
+                                }
+                              />
+                              <input
+                                type="number"
+                                min="0"
+                                max="30"
+                                placeholder="D"
+                                title="Days"
+                                className="form-control form-control-sm"
+                                value={activeRetentionDays}
+                                onChange={(e) =>
+                                  setActiveRetentionDays(Number(e.target.value))
+                                }
+                              />
+                            </div>
+                          </td>
+                          <td>
+                            <div className="d-flex gap-1">
+                              <input
+                                type="number"
+                                min="0"
+                                placeholder="Y"
+                                title="Years"
+                                className="form-control form-control-sm"
+                                value={inactiveRetention}
+                                onChange={(e) =>
+                                  setInactiveRetention(Number(e.target.value))
+                                }
+                              />
+                              <input
+                                type="number"
+                                min="0"
+                                max="11"
+                                placeholder="M"
+                                title="Months"
+                                className="form-control form-control-sm"
+                                value={inactiveRetentionMonths}
+                                onChange={(e) =>
+                                  setInactiveRetentionMonths(
+                                    Number(e.target.value),
+                                  )
+                                }
+                              />
+                              <input
+                                type="number"
+                                min="0"
+                                max="30"
+                                placeholder="D"
+                                title="Days"
+                                className="form-control form-control-sm"
+                                value={inactiveRetentionDays}
+                                onChange={(e) =>
+                                  setInactiveRetentionDays(
+                                    Number(e.target.value),
+                                  )
+                                }
+                              />
+                            </div>
+                          </td>
+                          <td>
+                            <select
+                              className="form-select form-select-sm"
+                              value={dispositionAction}
                               onChange={(e) =>
-                                setActiveRetention(Number(e.target.value))
-                              }
-                            />
-                            <input
-                              type="number"
-                              min="0"
-                              max="11"
-                              placeholder="M"
-                              title="Months"
-                              className="form-control form-control-sm"
-                              value={activeRetentionMonths}
-                              onChange={(e) =>
-                                setActiveRetentionMonths(Number(e.target.value))
-                              }
-                            />
-                            <input
-                              type="number"
-                              min="0"
-                              max="30"
-                              placeholder="D"
-                              title="Days"
-                              className="form-control form-control-sm"
-                              value={activeRetentionDays}
-                              onChange={(e) =>
-                                setActiveRetentionDays(Number(e.target.value))
-                              }
-                            />
-                          </div>
-                        </td>
-                        <td>
-                          <div className="d-flex gap-1">
-                            <input
-                              type="number"
-                              min="0"
-                              placeholder="Y"
-                              title="Years"
-                              className="form-control form-control-sm"
-                              value={inactiveRetention}
-                              onChange={(e) =>
-                                setInactiveRetention(Number(e.target.value))
-                              }
-                            />
-                            <input
-                              type="number"
-                              min="0"
-                              max="11"
-                              placeholder="M"
-                              title="Months"
-                              className="form-control form-control-sm"
-                              value={inactiveRetentionMonths}
-                              onChange={(e) =>
-                                setInactiveRetentionMonths(
-                                  Number(e.target.value),
+                                setDispositionAction(
+                                  e.target.value as "ARCHIVE" | "DESTROY",
                                 )
                               }
-                            />
-                            <input
-                              type="number"
-                              min="0"
-                              max="30"
-                              placeholder="D"
-                              title="Days"
-                              className="form-control form-control-sm"
-                              value={inactiveRetentionDays}
-                              onChange={(e) =>
-                                setInactiveRetentionDays(Number(e.target.value))
-                              }
-                            />
-                          </div>
-                        </td>
-                        <td>
-                          <select
-                            className="form-select form-select-sm"
-                            value={dispositionAction}
-                            onChange={(e) =>
-                              setDispositionAction(
-                                e.target.value as "ARCHIVE" | "DESTROY",
-                              )
-                            }
-                          >
-                            <option value="ARCHIVE">Archive</option>
-                            <option value="DESTROY">Destroy</option>
-                          </select>
-                        </td>
-                        <td>
-                          <div className="d-flex gap-1">
-                            <button
-                              className="btn btn-sm btn-success"
-                              onClick={() => handleSave(type)}
-                              title="Save"
-                              disabled={updateMutation.isPending}
                             >
-                              <i className="bi bi-check-lg"></i>
-                            </button>
-                            <button
-                              className="btn btn-sm btn-secondary"
-                              onClick={handleCancel}
-                              title="Cancel"
+                              <option value="ARCHIVE">Archive</option>
+                              <option value="DESTROY">Destroy</option>
+                            </select>
+                          </td>
+                          <td>
+                            <div className="d-flex gap-1">
+                              <button
+                                className="btn btn-sm btn-success"
+                                onClick={() => handleSave(type)}
+                                title="Save"
+                                disabled={updateMutation.isPending}
+                              >
+                                <i className="bi bi-check-lg"></i>
+                              </button>
+                              <button
+                                className="btn btn-sm btn-secondary"
+                                onClick={handleCancel}
+                                title="Cancel"
+                              >
+                                <i className="bi bi-x-lg"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td>
+                            {type.activeRetentionDuration}y{" "}
+                            {type.activeRetentionMonths || 0}m{" "}
+                            {type.activeRetentionDays || 0}d
+                          </td>
+                          <td>
+                            {type.inactiveRetentionDuration}y{" "}
+                            {type.inactiveRetentionMonths || 0}m{" "}
+                            {type.inactiveRetentionDays || 0}d
+                          </td>
+                          <td>
+                            <span
+                              className={`badge ${
+                                type.dispositionAction === "DESTROY"
+                                  ? "bg-danger"
+                                  : "bg-info"
+                              }`}
                             >
-                              <i className="bi bi-x-lg"></i>
+                              {type.dispositionAction}
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              className="btn btn-sm btn-outline-primary"
+                              onClick={() => handleEdit(type)}
+                            >
+                              Edit
                             </button>
-                          </div>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td>
-                          {type.activeRetentionDuration}y{" "}
-                          {type.activeRetentionMonths || 0}m{" "}
-                          {type.activeRetentionDays || 0}d
-                        </td>
-                        <td>
-                          {type.inactiveRetentionDuration}y{" "}
-                          {type.inactiveRetentionMonths || 0}m{" "}
-                          {type.inactiveRetentionDays || 0}d
-                        </td>
-                        <td>
-                          <span
-                            className={`badge ${
-                              type.dispositionAction === "DESTROY"
-                                ? "bg-danger"
-                                : "bg-info"
-                            }`}
-                          >
-                            {type.dispositionAction}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={() => handleEdit(type)}
-                          >
-                            Edit
-                          </button>
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                );
-              })}
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  );
+                },
+              )}
               {documentTypes?.length === 0 && (
                 <tr>
                   <td colSpan={5} className="text-center text-muted">

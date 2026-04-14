@@ -11,7 +11,8 @@ const presetColors = [
 ];
 
 export function DocumentTypesPanel() {
-  const { data: documentTypes, refetch } = trpc.documentTypes.getAll.useQuery();
+  const { data: documentTypes, refetch } =
+    trpc.documentTypes.getAllUnfiltered.useQuery();
   const createMutation = trpc.documentTypes.create.useMutation();
   const updateMutation = trpc.documentTypes.update.useMutation();
   const deleteMutation = trpc.documentTypes.delete.useMutation();
@@ -195,40 +196,42 @@ export function DocumentTypesPanel() {
               </tr>
             </thead>
             <tbody>
-              {documentTypes?.map((type) => (
-                <tr key={type.id} className="align-middle">
-                  <td className="px-3 text-center">
-                    <div
-                      style={{
-                        backgroundColor: type.color.startsWith("#")
-                          ? type.color
-                          : `#${type.color}`,
-                        width: "20px",
-                        height: "20px",
-                        borderRadius: "50%",
-                        display: "inline-block",
-                        boxShadow: "var(--shadow-xs)",
-                      }}
-                    />
-                  </td>
-                  <td className="px-3 fw-medium">{type.name}</td>
-                  <td className="px-3 text-end">
-                    <button
-                      className="btn btn-sm btn-outline-primary me-2"
-                      onClick={() => handleEdit(type)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="btn btn-sm btn-outline-danger"
-                      onClick={() => handleDelete(type.id, type.name)}
-                      disabled={deleteMutation.isPending}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {documentTypes?.map(
+                (type: { id: string; name: string; color: string }) => (
+                  <tr key={type.id} className="align-middle">
+                    <td className="px-3 text-center">
+                      <div
+                        style={{
+                          backgroundColor: type.color.startsWith("#")
+                            ? type.color
+                            : `#${type.color}`,
+                          width: "20px",
+                          height: "20px",
+                          borderRadius: "50%",
+                          display: "inline-block",
+                          boxShadow: "var(--shadow-xs)",
+                        }}
+                      />
+                    </td>
+                    <td className="px-3 fw-medium">{type.name}</td>
+                    <td className="px-3 text-end">
+                      <button
+                        className="btn btn-sm btn-outline-primary me-2"
+                        onClick={() => handleEdit(type)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => handleDelete(type.id, type.name)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ),
+              )}
               {documentTypes?.length === 0 && (
                 <tr>
                   <td colSpan={3} className="text-center py-4 text-muted">
