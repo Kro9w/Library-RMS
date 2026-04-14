@@ -16,6 +16,7 @@ export const ReceiveDocumentModal: React.FC<ReceiveDocumentModalProps> = ({
 }) => {
   const [controlNumber, setControlNumber] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [receivingId, setReceivingId] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
   const navigate = useNavigate();
@@ -73,7 +74,12 @@ export const ReceiveDocumentModal: React.FC<ReceiveDocumentModalProps> = ({
 
   const handleReceiveFromPending = async (distributionId: string) => {
     setErrorMsg(null);
-    await receiveDocumentMutation.mutateAsync({ distributionId });
+    setReceivingId(distributionId);
+    try {
+      await receiveDocumentMutation.mutateAsync({ distributionId });
+    } finally {
+      setReceivingId(null);
+    }
   };
 
   if (!show) return null;
@@ -146,7 +152,9 @@ export const ReceiveDocumentModal: React.FC<ReceiveDocumentModalProps> = ({
                   !controlNumber.trim() || receiveDocumentMutation.isPending
                 }
               >
-                {receiveDocumentMutation.isPending && !errorMsg ? (
+                {receiveDocumentMutation.isPending &&
+                !receivingId &&
+                !errorMsg ? (
                   <>
                     <span className="standard-modal-spinner" />
                     Receiving...
@@ -239,7 +247,14 @@ export const ReceiveDocumentModal: React.FC<ReceiveDocumentModalProps> = ({
                       onClick={() => handleReceiveFromPending(dist.id)}
                       disabled={receiveDocumentMutation.isPending}
                     >
-                      Receive
+                      {receivingId === dist.id ? (
+                        <>
+                          <span className="standard-modal-spinner" />
+                          Receiving...
+                        </>
+                      ) : (
+                        "Receive"
+                      )}
                     </button>
                   </div>
                 ))}

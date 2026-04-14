@@ -60,7 +60,6 @@ export class RolesRouter {
             });
           }
 
-
           const defaults = this.getPermissionsForLevel(input.level);
 
           return ctx.prisma.role.create({
@@ -92,7 +91,6 @@ export class RolesRouter {
             ctx.dbUser,
             'canManageRoles',
           );
-
 
           const existingRole = await ctx.prisma.role.findUnique({
             where: { id: input.id },
@@ -245,16 +243,13 @@ export class RolesRouter {
             });
           }
 
-
           if (role.level <= 1) {
-
             if (!targetUser.departmentId) {
               throw new TRPCError({
                 code: 'BAD_REQUEST',
                 message: 'User must belong to a department to be a leader.',
               });
             }
-
 
             const existingLeader = await ctx.prisma.user.findFirst({
               where: {

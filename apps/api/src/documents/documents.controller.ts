@@ -4,14 +4,17 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import 'multer'; // Imports the ambient types for Express.Multer
+import 'multer';
 import * as Tesseract from 'tesseract.js';
 import { PDFParse } from 'pdf-parse';
 
 @Controller('documents')
 export class DocumentsController {
+  private readonly logger = new Logger(DocumentsController.name);
+
   @Post('extract-ocr')
   @UseInterceptors(FileInterceptor('file'))
   async extractOcr(@UploadedFile() file: Express.Multer.File) {
@@ -38,7 +41,7 @@ export class DocumentsController {
             }
           }
         } catch (pdfErr) {
-          console.warn(
+          this.logger.warn(
             'pdf-parse native extraction failed, falling back to OCR:',
             pdfErr,
           );
@@ -54,16 +57,16 @@ export class DocumentsController {
           if (screenshot && screenshot.pages && screenshot.pages.length > 0) {
             imageBuffer = Buffer.from(screenshot.pages[0].data);
           } else {
-            console.warn('PDF screenshot extraction returned no pages');
+            this.logger.warn('PDF screenshot extraction returned no pages');
             return { controlNumber: null };
           }
         } catch (convertErr) {
-          console.error('PDF to Image conversion failed:', convertErr);
+          this.logger.error('PDF to Image conversion failed:', convertErr);
           return { controlNumber: null };
         }
 
         if (!imageBuffer || imageBuffer.length === 0) {
-          console.warn('PDF to Image conversion returned empty buffer');
+          this.logger.warn('PDF to Image conversion returned empty buffer');
           return { controlNumber: null };
         }
       }
@@ -73,7 +76,8 @@ export class DocumentsController {
       }
 
       const result = await Tesseract.recognize(imageBuffer, 'eng', {
-        errorHandler: (e) => console.error('Tesseract inner worker error:', e),
+        errorHandler: (e) =>
+          this.logger.error('Tesseract inner worker error:', e),
       });
       const extractedText = result.data.text;
 
@@ -85,7 +89,7 @@ export class DocumentsController {
         return { controlNumber: null };
       }
     } catch (error) {
-      console.error('OCR Extraction failed completely:', error);
+      this.logger.error('OCR Extraction failed completely:', error);
       return { controlNumber: null };
     }
   }

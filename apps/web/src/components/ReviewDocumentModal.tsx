@@ -61,6 +61,7 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
     ];
 
     if (isFinalStop) {
+      // The last office can access all decisions except further endorsement
       baseStatuses = baseStatuses.filter((s) => s !== "For Endorsement");
       return ["Approved", ...baseStatuses];
     }
@@ -69,7 +70,11 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
       return ["Approved", ...baseStatuses];
     }
 
-    return baseStatuses;
+    // For non-last offices in transit, their only options are to endorse or return
+    return [
+      "For Endorsement",
+      "Returned for Corrections/Revision/Clarification",
+    ];
   }, [isTransit, isFinalStop]);
 
   useEffect(() => {

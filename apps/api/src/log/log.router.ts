@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { protectedProcedure, router } from '../trpc/trpc';
 
 @Injectable()
@@ -101,11 +102,17 @@ export class LogRouter {
       } else if (isCampusExecutive) {
         whereClause.campusId = ctx.dbUser.campusId;
       } else {
-        throw new Error('Unauthorized for CAMPUS scope');
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Unauthorized for CAMPUS scope',
+        });
       }
     } else if (scope === 'INSTITUTION') {
       if (!hasMasterAccess) {
-        throw new Error('Unauthorized for INSTITUTION scope');
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Unauthorized for INSTITUTION scope',
+        });
       }
     } else {
       if (hasMasterAccess) {

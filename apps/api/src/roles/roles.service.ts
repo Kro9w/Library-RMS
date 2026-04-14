@@ -1,4 +1,3 @@
-
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role } from '@prisma/client';
@@ -24,7 +23,6 @@ export class RolesService {
       include: { roles: true },
     });
 
-
     const department = await this.prisma.department.findUnique({
       where: { id: data.departmentId },
       include: { campus: true },
@@ -41,11 +39,9 @@ export class RolesService {
     return newRole;
   }
 
-
   async getRolesByDepartment(departmentId: string): Promise<Role[]> {
     return await this.prisma.role.findMany({ where: { departmentId } });
   }
-
 
   async getAllRoles(): Promise<Role[]> {
     return await this.prisma.role.findMany({
@@ -95,7 +91,6 @@ export class RolesService {
   }
 
   async deleteRole(id: string, userId: string): Promise<Role> {
-
     const roleToDelete = await this.prisma.role.findUnique({
       where: { id },
       include: { department: { include: { campus: true } } },

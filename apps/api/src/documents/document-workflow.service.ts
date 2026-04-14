@@ -100,8 +100,10 @@ export class DocumentWorkflowService {
 
     const _isOriginator = await isOriginator(input.documentId);
 
-
-    if (document.classification === 'RESTRICTED' || document.classification === 'EXTERNAL') {
+    if (
+      document.classification === 'RESTRICTED' ||
+      document.classification === 'EXTERNAL'
+    ) {
       if (!_isOriginator && !canManageInstitution) {
         throw new TRPCError({
           code: 'FORBIDDEN',
@@ -110,14 +112,14 @@ export class DocumentWorkflowService {
         });
       }
 
-
       if (
         input.campusIds.length > 0 &&
         input.campusIds.some((id) => id !== dbUser.campusId)
       ) {
         throw new TRPCError({
           code: 'FORBIDDEN',
-          message: 'RESTRICTED/EXTERNAL documents can only be sent within your own campus.',
+          message:
+            'RESTRICTED/EXTERNAL documents can only be sent within your own campus.',
         });
       }
 
@@ -128,7 +130,8 @@ export class DocumentWorkflowService {
         if (departments.some((d) => d.campusId !== dbUser.campusId)) {
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: 'RESTRICTED/EXTERNAL documents can only be sent within your own campus.',
+            message:
+              'RESTRICTED/EXTERNAL documents can only be sent within your own campus.',
           });
         }
       }
@@ -140,11 +143,11 @@ export class DocumentWorkflowService {
         if (users.some((u) => u.campusId !== dbUser.campusId)) {
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: 'RESTRICTED/EXTERNAL documents can only be sent to users within your own campus.',
+            message:
+              'RESTRICTED/EXTERNAL documents can only be sent to users within your own campus.',
           });
         }
       }
-
     } else if (
       document.classification === 'INSTITUTIONAL' ||
       document.classification === 'INTERNAL'
@@ -207,7 +210,7 @@ export class DocumentWorkflowService {
 
     const finalAccesses = await this.prisma.$transaction(async (tx) => {
       const orConditions: any[] = [];
-      
+
       if (input.campusIds.length > 0) {
         orConditions.push({ campusId: { in: input.campusIds } });
       }
@@ -261,7 +264,6 @@ export class DocumentWorkflowService {
       return newAccesses;
     });
 
-
     let broadTargetName = '';
     if (input.isInstitutional) broadTargetName = 'Institution';
     else if (input.campusIds.length > 0) broadTargetName = 'Campus(es)';
@@ -284,8 +286,7 @@ export class DocumentWorkflowService {
     for (const uid of input.userIds) targetsForNotification.add(uid);
 
     const broadScopesWhere: any[] = [];
-    if (input.isInstitutional)
-      broadScopesWhere.push({});
+    if (input.isInstitutional) broadScopesWhere.push({});
     if (input.campusIds.length > 0)
       broadScopesWhere.push({ campusId: { in: input.campusIds } });
     if (input.departmentIds.length > 0)
@@ -340,7 +341,6 @@ export class DocumentWorkflowService {
       });
     }
 
-
     const whereClause: any = {
       id: input.documentId,
     };
@@ -364,8 +364,9 @@ export class DocumentWorkflowService {
     }
 
     if (
-      documents[0].classification === "FOR_APPROVAL" && 
-      (user.id === documents[0].uploadedById || user.id === documents[0].originalSenderId)
+      documents[0].classification === 'FOR_APPROVAL' &&
+      (user.id === documents[0].uploadedById ||
+        user.id === documents[0].originalSenderId)
     ) {
       const firstRouteStop = await this.prisma.documentTransitRoute.findFirst({
         where: {
@@ -376,13 +377,13 @@ export class DocumentWorkflowService {
 
       if (firstRouteStop && firstRouteStop.status === 'PENDING') {
         await this.prisma.documentTransitRoute.update({
-          where: { id : firstRouteStop.id },
+          where: { id: firstRouteStop.id },
           data: { status: 'CURRENT' },
         });
 
         if (documents[0].workflow?.recordStatus !== 'IN_TRANSIT') {
           await this.prisma.documentWorkflow.update({
-            where: { id : input.documentId },
+            where: { id: input.documentId },
             data: { recordStatus: 'IN_TRANSIT' },
           });
 
@@ -395,7 +396,6 @@ export class DocumentWorkflowService {
 
     let isReview = false;
 
-    
     if (
       documents[0].workflow?.recordStatus === 'IN_TRANSIT' &&
       documents[0].classification === 'FOR_APPROVAL' &&
@@ -418,7 +418,6 @@ export class DocumentWorkflowService {
         documents[0].workflow?.status === 'Disapproved');
 
     const isAutoReceive = isReturningToOriginator || isOriginatorResubmitting;
-
 
     if (!isAutoReceive) {
       await this.prisma.documentDistribution.create({
@@ -457,7 +456,6 @@ export class DocumentWorkflowService {
         'Returned for Corrections/Revision/Clarification' ||
         documents[0].workflow?.status === 'Disapproved')
     ) {
-
       const currentStop = await this.prisma.documentTransitRoute.findFirst({
         where: {
           documentId: documents[0].id,
@@ -472,7 +470,6 @@ export class DocumentWorkflowService {
         });
       }
     }
-
 
     const updatedDocument = await this.prisma.document.update({
       where: { id: input.documentId },
@@ -496,7 +493,6 @@ export class DocumentWorkflowService {
       dbUser.departmentId || undefined,
     );
 
-    
     const senderName = `${dbUser.firstName} ${dbUser.lastName}`.trim();
     const isTransit =
       updatedDocument.workflow?.recordStatus === 'IN_TRANSIT' &&
@@ -576,7 +572,6 @@ export class DocumentWorkflowService {
       });
     }
 
-    
     const isTransit =
       document.classification === 'FOR_APPROVAL' &&
       document.workflow?.recordStatus === 'IN_TRANSIT';
@@ -591,7 +586,6 @@ export class DocumentWorkflowService {
         currentRouteStop &&
         dbUser.departmentId === currentRouteStop.departmentId
       ) {
-        
         if (
           dbUser.roles.some(
             (r: any) =>
@@ -602,7 +596,6 @@ export class DocumentWorkflowService {
         }
       }
 
-      
       if (
         !hasTransitAccess &&
         !this.accessControlService.checkPermission(dbUser, 'canManageDocuments')
@@ -617,8 +610,11 @@ export class DocumentWorkflowService {
       this.accessControlService.requirePermission(dbUser, 'canManageDocuments');
     }
 
-    
-    if (input.status === 'Approved') {
+    if (
+      input.status === 'Approved' ||
+      input.status === 'Noted' ||
+      input.status === 'Disapproved'
+    ) {
       const allowedFinalFormats = [
         'application/pdf',
         'image/jpeg',
@@ -626,7 +622,6 @@ export class DocumentWorkflowService {
         'image/tiff',
       ];
 
-      
       const latestVersion = await this.prisma.documentVersion.findFirst({
         where: { documentId: document.id },
         orderBy: { versionNumber: 'desc' },
@@ -637,7 +632,7 @@ export class DocumentWorkflowService {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message:
-            'Cannot approve an editable draft format. The final version must be uploaded as a PDF or image.',
+            'Cannot finalize an editable draft format. The final version must be uploaded as a PDF or image.',
         });
       }
     }
@@ -666,7 +661,11 @@ export class DocumentWorkflowService {
       },
     };
 
-    if (input.status === 'Approved') {
+    if (
+      input.status === 'Approved' ||
+      input.status === 'Noted' ||
+      input.status === 'Disapproved'
+    ) {
       updateData.workflow = {
         update: {
           status: input.status,
@@ -689,8 +688,7 @@ export class DocumentWorkflowService {
       }
     }
 
-    const isAdvancingRoute =
-      input.status === 'Noted' || input.status === 'For Endorsement';
+    const isAdvancingRoute = input.status === 'For Endorsement';
     let logActionString = `Reviewed Document (Status: ${input.status})`;
 
     if (isTransit) {
@@ -700,7 +698,6 @@ export class DocumentWorkflowService {
 
       if (currentRouteStop) {
         if (isAdvancingRoute) {
-          
           await this.prisma.documentTransitRoute.update({
             where: { id: currentRouteStop.id },
             data: {
@@ -711,7 +708,6 @@ export class DocumentWorkflowService {
             },
           });
 
-          
           const nextRouteStop = document.transitRoutes.find(
             (r) => r.sequenceOrder === currentRouteStop.sequenceOrder + 1,
           );
@@ -724,7 +720,6 @@ export class DocumentWorkflowService {
               },
             });
 
-            
             const nextDeptUsers = await this.prisma.user.findMany({
               where: {
                 departmentId: nextRouteStop.departmentId,
@@ -741,10 +736,6 @@ export class DocumentWorkflowService {
             });
 
             if (nextDeptUsers.length > 0) {
-              
-              
-
-              
               await this.prisma.documentDistribution.createMany({
                 data: nextDeptUsers.map((targetUser) => ({
                   documentId: document.id,
@@ -754,7 +745,6 @@ export class DocumentWorkflowService {
                 })),
               });
 
-              
               await this.createNotification(
                 nextDeptUsers.map((targetUser) => targetUser.id),
                 'Review Requested (In Transit)',
@@ -763,13 +753,15 @@ export class DocumentWorkflowService {
               );
             }
 
-            
             const currentDept = currentRouteStop.department;
             const nextDept = nextRouteStop.department;
             logActionString = `${currentDept?.name || 'An office'} has endorsed the document to ${nextDept?.name || 'the next office'}`;
           }
-        } else if (input.status === 'Approved') {
-          
+        } else if (
+          input.status === 'Approved' ||
+          input.status === 'Noted' ||
+          input.status === 'Disapproved'
+        ) {
           await this.prisma.documentTransitRoute.update({
             where: { id: currentRouteStop.id },
             data: {
@@ -780,7 +772,6 @@ export class DocumentWorkflowService {
             },
           });
         } else {
-          
           await this.prisma.documentTransitRoute.update({
             where: { id: currentRouteStop.id },
             data: {
@@ -789,6 +780,23 @@ export class DocumentWorkflowService {
           });
         }
       }
+    }
+
+    if (input.status === 'Disapproved') {
+      const allowedAccessors = [document.uploadedById];
+      if (document.originalSenderId)
+        allowedAccessors.push(document.originalSenderId);
+
+      await this.prisma.documentAccess.deleteMany({
+        where: {
+          documentId: input.documentId,
+          userId: { notIn: allowedAccessors },
+        },
+      });
+
+      await this.prisma.documentDistribution.deleteMany({
+        where: { documentId: input.documentId },
+      });
     }
 
     const updatedDocument = await this.prisma.document.update({
@@ -806,7 +814,6 @@ export class DocumentWorkflowService {
       dbUser.departmentId || undefined,
     );
 
-    
     if (document.workflow?.reviewRequesterId) {
       const reviewerName = `${dbUser.firstName} ${dbUser.lastName}`.trim();
       await this.createNotification(

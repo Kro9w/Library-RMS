@@ -73,19 +73,25 @@ export class DocumentTypesRouter {
         )
         .mutation(async ({ ctx, input }) => {
           const { roles, departmentId: userDeptId } = ctx.dbUser;
-          
+
           const highestRoleLevel = roles?.length
             ? Math.min(...roles.map((r) => r.level))
             : 4;
-          const canManageInstitution = roles?.some((r) => r.canManageInstitution) ?? false;
-          const canManageDocuments = roles?.some((r) => r.canManageDocuments) ?? false;
-          
+          const canManageInstitution =
+            roles?.some((r) => r.canManageInstitution) ?? false;
+          const canManageDocuments =
+            roles?.some((r) => r.canManageDocuments) ?? false;
+
           const isEligibleLevel = highestRoleLevel <= 1 && canManageDocuments;
-          
-          if (!canManageInstitution && (!isEligibleLevel || userDeptId !== input.departmentId)) {
+
+          if (
+            !canManageInstitution &&
+            (!isEligibleLevel || userDeptId !== input.departmentId)
+          ) {
             throw new TRPCError({
               code: 'FORBIDDEN',
-              message: 'You do not have permission to manage document types for this department.',
+              message:
+                'You do not have permission to manage document types for this department.',
             });
           }
 
@@ -98,9 +104,13 @@ export class DocumentTypesRouter {
             select: { id: true },
           });
 
-          const existingIds = existingTypes.map(t => t.id);
-          const toDisconnect = existingIds.filter(id => !input.documentTypeIds.includes(id));
-          const toConnect = input.documentTypeIds.filter(id => !existingIds.includes(id));
+          const existingIds = existingTypes.map((t) => t.id);
+          const toDisconnect = existingIds.filter(
+            (id) => !input.documentTypeIds.includes(id),
+          );
+          const toConnect = input.documentTypeIds.filter(
+            (id) => !existingIds.includes(id),
+          );
 
           return ctx.prisma.department.update({
             where: { id: input.departmentId },

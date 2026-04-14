@@ -28,7 +28,6 @@ export class DocumentsRouter {
         .input(z.object({ controlNumber: z.string() }))
         .output(z.any())
         .query(async ({ input }) => {
-
           const doc = await this.prisma.document.findFirst({
             where: {
               controlNumber: input.controlNumber,
@@ -329,7 +328,6 @@ export class DocumentsRouter {
             });
           }
 
-
           if (
             input.classification === 'INSTITUTIONAL' ||
             input.classification === 'INTERNAL'
@@ -594,7 +592,6 @@ export class DocumentsRouter {
           return this.prisma.user.findMany();
         }),
 
-
       getAll: protectedProcedure
         .meta({
           openapi: {
@@ -646,7 +643,7 @@ export class DocumentsRouter {
               },
             },
             uploadedById: true,
-            
+
             documentType: true,
             controlNumber: true,
             workflow: {
@@ -702,7 +699,6 @@ export class DocumentsRouter {
               totalCount,
             };
           }
-
 
           const whereClause: Prisma.DocumentWhereInput = {
             OR: [
@@ -810,18 +806,21 @@ export class DocumentsRouter {
             });
           }
 
-          const keysByBucket = doc.versions.reduce((acc, version) => {
-            if (version.s3Key && version.s3Bucket) {
-              if (!acc[version.s3Bucket]) {
-                acc[version.s3Bucket] = [];
+          const keysByBucket = doc.versions.reduce(
+            (acc, version) => {
+              if (version.s3Key && version.s3Bucket) {
+                if (!acc[version.s3Bucket]) {
+                  acc[version.s3Bucket] = [];
+                }
+                acc[version.s3Bucket].push(version.s3Key);
               }
-              acc[version.s3Bucket].push(version.s3Key);
-            }
-            return acc;
-          }, {} as Record<string, string[]>);
+              return acc;
+            },
+            {} as Record<string, string[]>,
+          );
 
           const bucketEntries = Object.entries(keysByBucket);
-          
+
           if (bucketEntries.length > 0) {
             const adminClient = this.supabase.getAdminClient();
             await Promise.all(
@@ -836,7 +835,7 @@ export class DocumentsRouter {
                     storageError,
                   );
                 }
-              })
+              }),
             );
           }
 
@@ -886,7 +885,6 @@ export class DocumentsRouter {
           let document;
           let senderId = '';
 
-
           if (input.distributionId) {
             const distribution =
               await this.prisma.documentDistribution.findUnique({
@@ -918,7 +916,6 @@ export class DocumentsRouter {
             document = distribution.document as any;
             senderId = distribution.senderId;
 
-
             await this.prisma.documentDistribution.update({
               where: { id: distribution.id },
               data: {
@@ -926,9 +923,7 @@ export class DocumentsRouter {
                 receivedAt: new Date(),
               },
             });
-          }
-
-          else if (input.controlNumber) {
+          } else if (input.controlNumber) {
             document = (await this.prisma.document.findFirst({
               where: {
                 controlNumber: input.controlNumber,
@@ -942,10 +937,8 @@ export class DocumentsRouter {
               });
             }
 
-
             senderId = document.uploadedById;
 
-            
             if (senderId === user.id) {
               throw new TRPCError({
                 code: 'BAD_REQUEST',
@@ -957,38 +950,41 @@ export class DocumentsRouter {
               if (!dbUser.departmentId) {
                 throw new TRPCError({
                   code: 'BAD_REQUEST',
-                  message: 'You cannot receive this document. You are not assigned to a department.',
+                  message:
+                    'You cannot receive this document. You are not assigned to a department.',
                 });
               }
 
-              const routeWithDepartment = await this.prisma.documentTransitRoute.findFirst({
-                where: {
-                  documentId: document.id,
-                  departmentId: dbUser.departmentId,
-                },
-              });
+              const routeWithDepartment =
+                await this.prisma.documentTransitRoute.findFirst({
+                  where: {
+                    documentId: document.id,
+                    departmentId: dbUser.departmentId,
+                  },
+                });
 
               if (!routeWithDepartment) {
                 throw new TRPCError({
                   code: 'BAD_REQUEST',
-                  message: 'You cannot receive this document. Your department is not part of the route. If you think this is a mistake, please contact the uploader of the document.',
+                  message:
+                    'You cannot receive this document. Your department is not part of the route. If you think this is a mistake, please contact the uploader of the document.',
                 });
               }
 
-
-              const precedingPendingStops = await this.prisma.documentTransitRoute.findMany({
-                where: {
-                  documentId: document.id,
-                  sequenceOrder: { lt: routeWithDepartment.sequenceOrder },
-                  status: { notIn: ['APPROVED', 'REJECTED'] },
-                },
-                include: {
-                  department: true,
-                },
-                orderBy: {
-                  sequenceOrder: 'asc',
-                },
-              });
+              const precedingPendingStops =
+                await this.prisma.documentTransitRoute.findMany({
+                  where: {
+                    documentId: document.id,
+                    sequenceOrder: { lt: routeWithDepartment.sequenceOrder },
+                    status: { notIn: ['APPROVED', 'REJECTED'] },
+                  },
+                  include: {
+                    department: true,
+                  },
+                  orderBy: {
+                    sequenceOrder: 'asc',
+                  },
+                });
 
               if (precedingPendingStops.length > 0) {
                 const pendingOfficesList = precedingPendingStops
@@ -1001,7 +997,6 @@ export class DocumentsRouter {
                 });
               }
             }
-
 
             const existingAccess = await this.prisma.documentAccess.findFirst({
               where: {
@@ -1016,7 +1011,6 @@ export class DocumentsRouter {
                 message: 'You already have access to this document.',
               });
             }
-
 
             const pendingDistribution =
               await this.prisma.documentDistribution.findFirst({
@@ -1036,7 +1030,6 @@ export class DocumentsRouter {
                 },
               });
             } else {
-
               await this.prisma.documentDistribution.create({
                 data: {
                   documentId: document.id,
@@ -1048,7 +1041,6 @@ export class DocumentsRouter {
               });
             }
           }
-
 
           await this.prisma.documentAccess.create({
             data: {
@@ -1066,7 +1058,6 @@ export class DocumentsRouter {
             dbUser.campusId || undefined,
             dbUser.departmentId || undefined,
           );
-
 
           await this.documentWorkflowService.createNotification(
             senderId,
@@ -1114,7 +1105,6 @@ export class DocumentsRouter {
       getDocumentDistributions: protectedProcedure
         .input(z.object({ documentId: z.string() }))
         .query(async ({ ctx, input }) => {
-
           const aclWhere = this.accessControlService.generateAclWhereClause(
             ctx.dbUser,
           );
@@ -1244,8 +1234,7 @@ export class DocumentsRouter {
             'canManageUsers',
           );
 
-          return this.prisma.user.findMany({
-          });
+          return this.prisma.user.findMany({});
         }),
 
       applyLegalHold: protectedProcedure
@@ -1332,7 +1321,6 @@ export class DocumentsRouter {
             'canManageDocuments',
           );
 
-          
           const isHighLevelAdmin = dbUser.roles.some(
             (r) =>
               r.canManageInstitution || (r.canManageDocuments && r.level <= 1),
@@ -1434,8 +1422,6 @@ export class DocumentsRouter {
             });
           }
 
-
-
           if (
             doc.lifecycle?.dispositionRequesterId &&
             user.id === doc.lifecycle?.dispositionRequesterId
@@ -1454,19 +1440,22 @@ export class DocumentsRouter {
               where: { documentId: doc.id },
             });
 
-            const keysByBucket = versions.reduce((acc, version) => {
-              if (
-                version.s3Key &&
-                version.s3Bucket &&
-                version.s3Key !== 'DESTROYED'
-              ) {
-                if (!acc[version.s3Bucket]) {
-                  acc[version.s3Bucket] = [];
+            const keysByBucket = versions.reduce(
+              (acc, version) => {
+                if (
+                  version.s3Key &&
+                  version.s3Bucket &&
+                  version.s3Key !== 'DESTROYED'
+                ) {
+                  if (!acc[version.s3Bucket]) {
+                    acc[version.s3Bucket] = [];
+                  }
+                  acc[version.s3Bucket].push(version.s3Key);
                 }
-                acc[version.s3Bucket].push(version.s3Key);
-              }
-              return acc;
-            }, {} as Record<string, string[]>);
+                return acc;
+              },
+              {} as Record<string, string[]>,
+            );
 
             const bucketEntries = Object.entries(keysByBucket);
 
@@ -1488,7 +1477,7 @@ export class DocumentsRouter {
                       message: 'Failed to delete physical file from storage.',
                     });
                   }
-                })
+                }),
               );
             }
 
@@ -1497,7 +1486,7 @@ export class DocumentsRouter {
                 (version) =>
                   version.s3Key &&
                   version.s3Bucket &&
-                  version.s3Key !== 'DESTROYED'
+                  version.s3Key !== 'DESTROYED',
               )
               .map((version) =>
                 this.prisma.documentVersion.update({
@@ -1506,7 +1495,7 @@ export class DocumentsRouter {
                     s3Key: `DESTROYED-${version.id}`,
                     fileSize: 0,
                   },
-                })
+                }),
               );
 
             if (updatePromises.length > 0) {
@@ -1564,7 +1553,6 @@ export class DocumentsRouter {
 
                 latestHash = 'omitted-for-memory-safety';
 
-
                 const { error: uploadError } = await adminClient.storage
                   .from(env.SUPABASE_ARCHIVE_BUCKET_NAME)
                   .upload(version.s3Key, fileData, {
@@ -1582,19 +1570,16 @@ export class DocumentsRouter {
                   });
                 }
 
-
                 await this.prisma.documentVersion.update({
                   where: { id: version.id },
                   data: { s3Bucket: env.SUPABASE_ARCHIVE_BUCKET_NAME },
                 });
-
 
                 await adminClient.storage
                   .from(version.s3Bucket)
                   .remove([version.s3Key]);
               }
             }
-
 
             const fullDoc = await this.prisma.document.findUnique({
               where: { id: doc.id },
@@ -1815,11 +1800,18 @@ export class DocumentsRouter {
                 ) {
                   hasWriteAccess = true;
                 }
-                
-                if (!hasWriteAccess && !this.accessControlService.checkPermission(dbUser, 'canManageDocuments')) {
+
+                if (
+                  !hasWriteAccess &&
+                  !this.accessControlService.checkPermission(
+                    dbUser,
+                    'canManageDocuments',
+                  )
+                ) {
                   throw new TRPCError({
                     code: 'FORBIDDEN',
-                    message: 'Only the originator can check out a returned or disapproved document.',
+                    message:
+                      'Only the originator can check out a returned or disapproved document.',
                   });
                 }
               } else {
@@ -1983,7 +1975,7 @@ export class DocumentsRouter {
             doc.classification === 'FOR_APPROVAL' &&
             doc.workflow?.recordStatus === 'IN_TRANSIT'
           ) {
-            isFinal = 'IN_TRANSIT'; 
+            isFinal = 'IN_TRANSIT';
           }
 
           const maxVersion = await this.prisma.documentVersion.aggregate({

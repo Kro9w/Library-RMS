@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 import {
   protectedProcedure,
@@ -388,10 +387,9 @@ export class UserRouter {
           return updatedUser;
         }),
 
-      getCampuses: protectedProcedure
-        .query(async ({ ctx }) => {
-          return ctx.prisma.campus.findMany();
-        }),
+      getCampuses: protectedProcedure.query(async ({ ctx }) => {
+        return ctx.prisma.campus.findMany();
+      }),
 
       getDepartments: protectedProcedure
         .input(z.object({ campusId: z.string().min(1) }))
