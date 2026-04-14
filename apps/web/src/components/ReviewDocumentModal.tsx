@@ -166,7 +166,7 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
     "For the review of the Executive Committee": {
       icon: "bi-people-fill",
       colorClass: "text-secondary",
-      btnLabel: "Send to Executive Committee",
+      btnLabel: "Inform the Proponent",
     },
     Disapproved: {
       icon: "bi-x-circle-fill",

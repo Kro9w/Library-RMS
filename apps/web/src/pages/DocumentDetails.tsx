@@ -854,8 +854,8 @@ export const DocumentDetails: React.FC = () => {
         <ForwardDocumentModal
           show={showResubmitModal}
           onClose={() => setShowResubmitModal(false)}
-          onSuccess={(title, message) => {
-            utils.documents.getById.invalidate({ id: document.id });
+          onSuccess={async (title, message) => {
+            await utils.documents.getById.invalidate({ id: document.id });
             setAlertConfig({ show: true, title, message });
           }}
           documentId={document.id}
@@ -874,8 +874,8 @@ export const DocumentDetails: React.FC = () => {
         <ReviewDocumentModal
           show={showReviewModal}
           onClose={() => setShowReviewModal(false)}
-          onSuccess={(title, message) => {
-            utils.documents.getById.invalidate({ id: document.id });
+          onSuccess={async (title, message) => {
+            await utils.documents.getById.invalidate({ id: document.id });
             setAlertConfig({ show: true, title, message });
           }}
           documentId={document.id}

@@ -89,7 +89,9 @@ const AdminRoute: React.FC<{ children: React.ReactElement }> = ({
   return children;
 };
 
-const AuthRedirectHandler: React.FC = () => {
+const AuthRedirectHandler: React.FC<{
+  setIsDbUserLoading: (loading: boolean) => void;
+}> = ({ setIsDbUserLoading }) => {
   const session = useSession();
   const navigate = useNavigate();
   const location = useLocation();
@@ -103,6 +105,10 @@ const AuthRedirectHandler: React.FC = () => {
     enabled: !!session,
     retry: 1,
   });
+
+  useEffect(() => {
+    setIsDbUserLoading(isLoadingDbUser);
+  }, [isLoadingDbUser, setIsDbUserLoading]);
 
   useEffect(() => {
     if (isError && error) {
@@ -147,6 +153,7 @@ const AppContent: React.FC = () => {
   const session = useSession();
   const { isLoading: isLoadingSession } = useSessionContext();
   const location = useLocation();
+  const [isDbUserLoading, setIsDbUserLoading] = useState(true);
 
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() => {
     const saved = localStorage.getItem("sidebarMode");
@@ -161,6 +168,10 @@ const AppContent: React.FC = () => {
     return null;
   }
 
+  if (session && isDbUserLoading) {
+    return <AuthRedirectHandler setIsDbUserLoading={setIsDbUserLoading} />;
+  }
+
   const showNavbar = session && location.pathname !== "/onboarding";
 
   const mainContentClass = showNavbar
@@ -169,7 +180,9 @@ const AppContent: React.FC = () => {
 
   return (
     <>
-      {session && <AuthRedirectHandler />}
+      {session && (
+        <AuthRedirectHandler setIsDbUserLoading={setIsDbUserLoading} />
+      )}
 
       {showNavbar && (
         <Navbar sidebarMode={sidebarMode} setSidebarMode={setSidebarMode} />

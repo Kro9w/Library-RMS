@@ -706,9 +706,12 @@ export const SendDocumentPage: React.FC = () => {
     setShowConfirmModal(true);
   };
 
-  const handleAlertClose = () => {
+  const utils = trpc.useUtils();
+
+  const handleAlertClose = async () => {
     setAlertConfig((prev) => ({ ...prev, show: false }));
     if (alertConfig.title === "Document Sent") {
+      if (id) await utils.documents.getById.invalidate({ id });
       navigate(`/documents/${id}`);
     }
   };

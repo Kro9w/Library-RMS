@@ -97,11 +97,11 @@ export function RetentionPolicyPanel() {
           <table className="table align-middle">
             <thead>
               <tr>
-                <th>Document Type</th>
-                <th style={{ width: "30%" }}>Active (Y/M/D)</th>
-                <th style={{ width: "30%" }}>Inactive (Y/M/D)</th>
+                <th style={{ width: "30%" }}>Document Type</th>
+                <th style={{ width: "20%" }}>Active (Y/M/D)</th>
+                <th style={{ width: "20%" }}>Inactive (Y/M/D)</th>
                 <th style={{ width: "15%" }}>Disposition</th>
-                <th style={{ width: "10%" }}>Actions</th>
+                <th style={{ width: "15%" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -111,7 +111,7 @@ export function RetentionPolicyPanel() {
                 return (
                   <tr key={type.id}>
                     <td>
-                      <div className="d-flex align-items-center">
+                      <div className="d-flex align-items-center gap-2">
                         <span
                           style={{
                             backgroundColor: `#${type.color}`,
