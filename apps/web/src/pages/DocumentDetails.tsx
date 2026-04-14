@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { trpc } from "../trpc";
 import { AlertModal } from "../components/AlertModal";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { LegalHoldModal } from "../components/LegalHoldModal";
 import "./DocumentDetails.css";
 
 import { formatUserName } from "../utils/user";
@@ -42,6 +43,7 @@ export const DocumentDetails: React.FC = () => {
   const [showReviewModal, setShowReviewModal] = React.useState(false);
   const [showCheckOutModal, setShowCheckOutModal] = React.useState(false);
   const [showCheckInModal, setShowCheckInModal] = React.useState(false);
+  const [showLegalHoldModal, setShowLegalHoldModal] = useState(false);
 
   const { data: user } = trpc.user.getMe.useQuery();
   const { canManageDocuments, canManageInstitution, highestRoleLevel } =
@@ -486,15 +488,7 @@ export const DocumentDetails: React.FC = () => {
                             },
                           });
                         } else {
-                          const reason = window.prompt(
-                            "Enter reason for Legal Hold:",
-                          );
-                          if (reason) {
-                            applyLegalHoldMutation.mutate({
-                              documentId: document.id,
-                              reason,
-                            });
-                          }
+                          setShowLegalHoldModal(true);
                         }
                       }}
                       disabled={
@@ -502,7 +496,7 @@ export const DocumentDetails: React.FC = () => {
                         removeLegalHoldMutation.isPending
                       }
                     >
-                      <i className="bi bi-shield-lock"></i>
+                      <i className="bi bi-shield-lock" />
                       {document.lifecycle?.isUnderLegalHold
                         ? "Remove Legal Hold"
                         : "Apply Legal Hold"}
@@ -897,6 +891,27 @@ export const DocumentDetails: React.FC = () => {
           documentId={document.id}
         />
       )}
+
+      <LegalHoldModal
+        show={showLegalHoldModal}
+        documentTitle={document.title}
+        isSubmitting={applyLegalHoldMutation.isPending}
+        onConfirm={(reason) => {
+          applyLegalHoldMutation.mutate(
+            { documentId: document.id, reason },
+            {
+              onSuccess: () => setShowLegalHoldModal(false),
+              onError: (err) =>
+                setAlertConfig({
+                  show: true,
+                  title: "Error",
+                  message: err.message,
+                }),
+            },
+          );
+        }}
+        onClose={() => setShowLegalHoldModal(false)}
+      />
 
       <AlertModal
         show={alertConfig.show}

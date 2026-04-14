@@ -3,11 +3,11 @@
 /* ── Design Tokens ── */
 :root {
   /* Brand */
-  --brand: #9b2335; /* maroon, toned down from #ba3b46 */
+  --brand: #9b2335;
   --brand-hover: #7d1c2a;
-  --brand-subtle: #f5e8ea; /* very light maroon tint */
-  --brand-muted: #d4828c; /* mid maroon for borders/accents */
-  --accent: #c97b2e; /* amber, toned from #ed9b40 */
+  --brand-subtle: #f5e8ea;
+  --brand-muted: #d4828c;
+  --accent: #c97b2e;
   --accent-subtle: #fdf3e7;
 
   /* Surface layers (light) */
@@ -41,8 +41,12 @@
   --warning-subtle: #fefce8;
   --danger: #dc2626;
   --danger-subtle: #fef2f2;
+  --alert: #ea580c;
+  --alert-subtle: #fff7ed;
   --info: #2563eb;
   --info-subtle: #eff6ff;
+  --critical: #7c3aed;
+  --critical-subtle: #f5f3ff;
 
   /* Elevation */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
