@@ -10,6 +10,17 @@ import "./Settings.css";
 
 type SettingsTab = "appearance" | "system" | "roles" | "documentTypes";
 
+interface NavSection {
+  label: string;
+  items: {
+    id: SettingsTab;
+    label: string;
+    icon: string;
+    requiresAdmin?: boolean;
+    requiresDocAdmin?: boolean;
+  }[];
+}
+
 export function Settings() {
   const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
@@ -19,10 +30,8 @@ export function Settings() {
 
   const canManageRoles =
     canManageInstitution ||
-    user?.roles.some(
-      (role: { canManageRoles: boolean }) => role.canManageRoles,
-    ) ||
-    false;
+    (user?.roles.some((r: { canManageRoles: boolean }) => r.canManageRoles) ??
+      false);
 
   const canManageDepartmentTypes =
     canManageInstitution ||
@@ -35,6 +44,45 @@ export function Settings() {
   useEffect(() => {
     document.body.setAttribute("data-bs-theme", theme);
   }, [theme]);
+
+  const navSections: NavSection[] = [
+    {
+      label: "System",
+      items: [
+        { id: "appearance", label: "Appearance", icon: "bi-palette" },
+        { id: "system", label: "System", icon: "bi-cpu" },
+      ],
+    },
+    ...(canManageRoles || canManageDepartmentTypes
+      ? [
+          {
+            label: "Administration",
+            items: [
+              ...(canManageRoles
+                ? [
+                    {
+                      id: "roles" as SettingsTab,
+                      label: "Roles",
+                      icon: "bi-shield",
+                      requiresAdmin: true,
+                    },
+                  ]
+                : []),
+              ...(canManageDepartmentTypes
+                ? [
+                    {
+                      id: "documentTypes" as SettingsTab,
+                      label: "Document Types",
+                      icon: "bi-file-earmark-text",
+                      requiresDocAdmin: true,
+                    },
+                  ]
+                : []),
+            ],
+          },
+        ]
+      : []),
+  ];
 
   const renderContent = () => {
     switch (activeTab) {
@@ -58,74 +106,58 @@ export function Settings() {
             You do not have permission to view this page.
           </div>
         );
-      default:
-        return null;
     }
   };
 
-  const hasAdminPermissions = canManageRoles || canManageDepartmentTypes;
+  const activeItem = navSections
+    .flatMap((s) => s.items)
+    .find((i) => i.id === activeTab);
 
   return (
-    <div className="container mt-4">
-      <div className="settings-container">
-        {/* Sidebar */}
-        <div className="settings-sidebar">
-          <div className="settings-category-header">System Settings</div>
-
-          <button
-            type="button"
-            className={`settings-nav-item ${
-              activeTab === "appearance" ? "active" : ""
-            }`}
-            onClick={() => setActiveTab("appearance")}
-          >
-            Appearance
-          </button>
-
-          <button
-            type="button"
-            className={`settings-nav-item ${
-              activeTab === "system" ? "active" : ""
-            }`}
-            onClick={() => setActiveTab("system")}
-          >
-            System
-          </button>
-
-          {hasAdminPermissions && (
-            <>
-              <div className="settings-category-header">Administration</div>
-
-              {canManageRoles && (
-                <button
-                  type="button"
-                  className={`settings-nav-item ${
-                    activeTab === "roles" ? "active" : ""
-                  }`}
-                  onClick={() => setActiveTab("roles")}
-                >
-                  Roles
-                </button>
-              )}
-
-              {canManageDepartmentTypes && (
-                <button
-                  type="button"
-                  className={`settings-nav-item ${
-                    activeTab === "documentTypes" ? "active" : ""
-                  }`}
-                  onClick={() => setActiveTab("documentTypes")}
-                >
-                  Document Types
-                </button>
-              )}
-            </>
-          )}
+    <div className="settings-layout">
+      {/* Sidebar */}
+      <aside className="settings-sidebar">
+        <div className="settings-sidebar__header">
+          <div className="settings-sidebar__label">Settings</div>
+          <div className="settings-sidebar__title">Preferences</div>
         </div>
 
-        {/* Content */}
-        <div className="settings-content">{renderContent()}</div>
-      </div>
+        <nav className="settings-sidebar__nav">
+          {navSections.map((section) => (
+            <div key={section.label} className="settings-sidebar__section">
+              <div className="settings-sidebar__section-label">
+                {section.label}
+              </div>
+              {section.items.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`settings-nav-item ${activeTab === item.id ? "active" : ""}`}
+                  onClick={() => setActiveTab(item.id)}
+                >
+                  <i className={`bi ${item.icon}`} />
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Content */}
+      <main className="settings-content">
+        {activeItem && (
+          <div className="settings-content__header">
+            <i
+              className={`bi ${activeItem.icon} settings-content__header-icon`}
+            />
+            <div>
+              <div className="settings-content__title">{activeItem.label}</div>
+            </div>
+          </div>
+        )}
+        <div className="settings-content__body">{renderContent()}</div>
+      </main>
     </div>
   );
 }
