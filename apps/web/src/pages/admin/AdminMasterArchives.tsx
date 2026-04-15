@@ -350,6 +350,7 @@ export default function AdminMasterArchives() {
             display: "flex",
             gap: "8px",
             flexWrap: "wrap",
+            flex: "1",
           }}
         >
           {/* Campus filter */}

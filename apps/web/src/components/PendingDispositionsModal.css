@@ -1,0 +1,37 @@
+.pending-disp-body {
+  max-height: 50vh;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.pending-disp-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pending-disp-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.pending-disp-group-header {
+  background-color: var(--bg-subtle);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pending-disp-list .list-group-item {
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
+}
+
+.pending-disp-list .list-group-item:last-child {
+  border-bottom: none;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}

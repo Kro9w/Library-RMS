@@ -12,11 +12,22 @@ export function useForwardDocument({
   const [selectedDeptId, setSelectedDeptId] = useState<string>("");
   const [recipientId, setRecipientId] = useState(initialRecipientId || "");
 
-  const { data: fetchedUsers } = trpc.documents.getAppUsers.useQuery(undefined, { enabled: !propUsers && show });
-  const { data: fetchedOrgHierarchy } = trpc.user.getInstitutionHierarchy.useQuery(undefined, { enabled: !propCampuses && show });
-  const { data: document } = trpc.documents.getById.useQuery({ id: documentId }, { enabled: !!documentId && show });
+  const { data: fetchedUsers } = trpc.documents.getAppUsers.useQuery(
+    undefined,
+    { enabled: !propUsers && show },
+  );
+  const { data: fetchedOrgHierarchy } =
+    trpc.user.getInstitutionHierarchy.useQuery(undefined, {
+      enabled: !propCampuses && show,
+    });
+  const { data: document } = trpc.documents.getById.useQuery(
+    { id: documentId },
+    { enabled: !!documentId && show },
+  );
 
-  const isTransitDocument = document?.workflow?.recordStatus === "IN_TRANSIT" && document?.classification === "FOR_APPROVAL";
+  const isTransitDocument =
+    document?.workflow?.recordStatus === "IN_TRANSIT" &&
+    document?.classification === "FOR_APPROVAL";
 
   const users = propUsers || fetchedUsers;
   const campuses = propCampuses || fetchedOrgHierarchy?.campuses || [];
@@ -27,19 +38,26 @@ export function useForwardDocument({
     if (!isTransitDocument || !document?.transitRoutes) return null;
 
     if (
-      document.workflow?.status === "Returned for Corrections/Revision/Clarification" ||
+      document.workflow?.status ===
+        "Returned for Corrections/Revision/Clarification" ||
       document.workflow?.status === "Disapproved"
     ) {
       return null;
     }
 
-    const currentUser = users?.find((u: any) => u.id === trpcCtx.user.getMe.getData()?.id);
-    const currentUserDept = currentUser?.departmentId || trpcCtx.user.getMe.getData()?.departmentId;
-    const currentStop = document.transitRoutes.find((r: any) => r.status === "CURRENT");
+    const currentUser = users?.find(
+      (u: any) => u.id === trpcCtx.user.getMe.getData()?.id,
+    );
+    const currentUserDept =
+      currentUser?.departmentId || trpcCtx.user.getMe.getData()?.departmentId;
+    const currentStop = document.transitRoutes.find(
+      (r: any) => r.status === "CURRENT",
+    );
 
     if (currentStop && currentUserDept === currentStop.departmentId) {
       const nextPending = document.transitRoutes.find(
-        (r: any) => r.status === "PENDING" && r.sequenceOrder > currentStop.sequenceOrder,
+        (r: any) =>
+          r.status === "PENDING" && r.sequenceOrder > currentStop.sequenceOrder,
       );
       if (nextPending) return nextPending;
     }
@@ -48,14 +66,18 @@ export function useForwardDocument({
       return currentStop;
     }
 
-    return document.transitRoutes.find((r: any) => r.status === "PENDING") || null;
+    return (
+      document.transitRoutes.find((r: any) => r.status === "PENDING") || null
+    );
   }, [document, isTransitDocument, users, trpcCtx]);
 
   const hasPrescribedRoute = !!nextRouteStop;
 
   const departments = useMemo(() => {
     if (!selectedCampusId) return [];
-    return campuses.find((c: any) => c.id === selectedCampusId)?.departments || [];
+    return (
+      campuses.find((c: any) => c.id === selectedCampusId)?.departments || []
+    );
   }, [selectedCampusId, campuses]);
 
   const filteredUsers = useMemo(() => {
@@ -83,7 +105,14 @@ export function useForwardDocument({
       return;
     }
 
-    if (show && !isInitializedRef.current && campuses && campuses.length > 0 && users && users.length > 0) {
+    if (
+      show &&
+      !isInitializedRef.current &&
+      campuses &&
+      campuses.length > 0 &&
+      users &&
+      users.length > 0
+    ) {
       if (hasPrescribedRoute && targetDeptId) {
         setSelectedDeptId(targetDeptId);
 
@@ -98,7 +127,9 @@ export function useForwardDocument({
         let found = false;
         for (const c of campuses) {
           for (const d of c.departments) {
-            const u = d.users?.find((u: any) => u.id === initialRecipientIdSafe);
+            const u = d.users?.find(
+              (u: any) => u.id === initialRecipientIdSafe,
+            );
             if (u) {
               setSelectedCampusId(c.id);
               setSelectedDeptId(d.id);
@@ -122,13 +153,23 @@ export function useForwardDocument({
       }
       isInitializedRef.current = true;
     }
-  }, [show, initialRecipientIdSafe, hasPrescribedRoute, targetDeptId, campuses, users]);
+  }, [
+    show,
+    initialRecipientIdSafe,
+    hasPrescribedRoute,
+    targetDeptId,
+    campuses,
+    users,
+  ]);
 
   return {
     state: {
-      selectedCampusId, setSelectedCampusId,
-      selectedDeptId, setSelectedDeptId,
-      recipientId, setRecipientId,
+      selectedCampusId,
+      setSelectedCampusId,
+      selectedDeptId,
+      setSelectedDeptId,
+      recipientId,
+      setRecipientId,
     },
     computed: {
       campuses,
@@ -138,6 +179,6 @@ export function useForwardDocument({
     },
     mutations: {
       forwardDocumentMutation,
-    }
+    },
   };
 }

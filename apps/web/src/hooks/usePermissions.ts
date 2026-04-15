@@ -36,7 +36,7 @@ export const usePermissions = () => {
       if (!user || !uploaderId) return false;
       return user.id === uploaderId;
     },
-    [user]
+    [user],
   );
 
   return {

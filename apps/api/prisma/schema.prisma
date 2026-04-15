@@ -163,15 +163,15 @@ model RecordsSeries {
   name                    String      @unique
   documentTypes           DocumentType[]
   
-  activeRetentionDuration Int         @default(0) // In Years
-  activeRetentionMonths   Int         @default(0) // In Months
-  activeRetentionDays     Int         @default(0) // In Days
+  activeRetentionDuration Int?        @default(0) // In Years
+  activeRetentionMonths   Int?        @default(0) // In Months
+  activeRetentionDays     Int?        @default(0) // In Days
   
-  inactiveRetentionDuration Int       @default(0) // In Years
-  inactiveRetentionMonths   Int       @default(0) // In Months
-  inactiveRetentionDays     Int       @default(0) // In Days
+  inactiveRetentionDuration Int?      @default(0) // In Years
+  inactiveRetentionMonths   Int?      @default(0) // In Months
+  inactiveRetentionDays     Int?      @default(0) // In Days
   
-  dispositionAction       DispositionAction @default(ARCHIVE)
+  dispositionAction       DispositionAction? @default(ARCHIVE)
 }
 
 model Document {

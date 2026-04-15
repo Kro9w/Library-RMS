@@ -12,6 +12,8 @@ import { useForm } from "react-hook-form";
 import { UploadModal } from "../components/UploadModal";
 import { ForwardDocumentModal } from "../components/ForwardDocumentModal";
 import { ReceiveDocumentModal } from "../components/ReceiveDocumentModal";
+import { PendingDispositionsModal } from "../components/PendingDispositionsModal";
+import { DocumentsToReviewList } from "../components/DocumentsToReviewList";
 
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
@@ -25,6 +27,17 @@ export function Dashboard() {
   const { data, isLoading, isError, error } = trpc.getDashboardStats.useQuery();
   const { data: user } = trpc.user.getMe.useQuery();
 
+  const isLevel0Or1 = useMemo(() => {
+    return user?.roles?.some((r) => r.level === 0 || r.level === 1) || false;
+  }, [user]);
+
+  const { data: pendingDispositionsData } =
+    trpc.documents.getPendingDispositions.useQuery(undefined, {
+      enabled: isLevel0Or1,
+    });
+
+  const pendingDispositionsCount = pendingDispositionsData?.length || 0;
+
   useForm<{
     controlNumber: string;
     email: string;
@@ -33,6 +46,8 @@ export function Dashboard() {
   const [showSendModal, setShowSendModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showReceiveModal, setShowReceiveModal] = useState(false);
+  const [showPendingDispositionsModal, setShowPendingDispositionsModal] =
+    useState(false);
   const [selectedDocId, _setSelectedDocId] = useState<string | null>(null);
 
   const { data: pendingDistributions } =
@@ -98,6 +113,22 @@ export function Dashboard() {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1>{greeting}</h1>
         <div className="d-flex gap-2 align-items-center">
+          {isLevel0Or1 && pendingDispositionsCount > 0 && (
+            <button
+              onClick={() => setShowPendingDispositionsModal(true)}
+              className="btn btn-outline-danger position-relative"
+              style={{ fontWeight: "500" }}
+            >
+              <i className="bi bi-exclamation-circle me-2"></i>Action Needed
+              <span
+                className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                style={{ fontSize: "0.6rem", padding: "0.25em 0.5em" }}
+              >
+                {pendingDispositionsCount}
+                <span className="visually-hidden">pending dispositions</span>
+              </span>
+            </button>
+          )}
           <button
             onClick={() => setShowReceiveModal(true)}
             className="btn btn-outline-primary position-relative"
@@ -194,137 +225,151 @@ export function Dashboard() {
               </div>
             </div>
 
-            {/* --- Right Column (Updated to contain Document Types and Status) --- */}
+            {/* --- Right Column --- */}
             <div className="col-lg-4">
-              <h5>
-                <i className="bi bi-graph-up-arrow me-2"></i>Analytics
-              </h5>
-              <div className="card mini-stat-card mb-3">
-                <div className="card-body d-flex flex-column align-items-center">
-                  <h5 className="card-title mb-3">Documents by Type</h5>
-                  {stats.docsByType.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={200}>
-                      <PieChart>
-                        <Pie
-                          data={stats.docsByType}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={50}
-                          outerRadius={80}
-                          labelLine={false}
-                          fill="#8884d8"
-                          dataKey="value"
-                          nameKey="name"
-                        >
-                          {stats.docsByType.map(
-                            (entry: DocTypeStat, index: number) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={
-                                  entry.color ||
-                                  PIE_CHART_COLORS[
-                                    index % PIE_CHART_COLORS.length
-                                  ]
-                                }
-                              />
-                            ),
-                          )}
-                        </Pie>
-                        <Tooltip
-                          cursor={{ fill: "transparent" }}
-                          content={({ payload }) => {
-                            if (!payload || payload.length === 0) return null;
-                            const { name, value } = payload[0].payload;
-                            const percentage = (
-                              (value / stats.totalDocuments) *
-                              100
-                            ).toFixed(2);
-                            return (
-                              <div
-                                style={{
-                                  backgroundColor: "rgba(0, 0, 0, 0.8)",
-                                  color: "#fff",
-                                  borderRadius: "5px",
-                                  padding: "6px 10px",
-                                  fontSize: "0.85rem",
-                                }}
-                              >
-                                <strong>{name}</strong>: {percentage}%
-                              </div>
-                            );
-                          }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <p className="card-text text-muted mt-4">
-                      No documents found to generate stats.
-                    </p>
-                  )}
+              {isLevel0Or1 ? (
+                <>
+                  <h5>
+                    <i className="bi bi-journal-check me-2"></i>Documents to
+                    Review
+                  </h5>
+                  <DocumentsToReviewList />
+                </>
+              ) : (
+                <>
+                  <h5>
+                    <i className="bi bi-graph-up-arrow me-2"></i>Analytics
+                  </h5>
+                  <div className="card mini-stat-card mb-3">
+                    <div className="card-body d-flex flex-column align-items-center">
+                      <h5 className="card-title mb-3">Documents by Type</h5>
+                      {stats.docsByType.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={200}>
+                          <PieChart>
+                            <Pie
+                              data={stats.docsByType}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={50}
+                              outerRadius={80}
+                              labelLine={false}
+                              fill="#8884d8"
+                              dataKey="value"
+                              nameKey="name"
+                            >
+                              {stats.docsByType.map(
+                                (entry: DocTypeStat, index: number) => (
+                                  <Cell
+                                    key={`cell-${index}`}
+                                    fill={
+                                      entry.color ||
+                                      PIE_CHART_COLORS[
+                                        index % PIE_CHART_COLORS.length
+                                      ]
+                                    }
+                                  />
+                                ),
+                              )}
+                            </Pie>
+                            <Tooltip
+                              cursor={{ fill: "transparent" }}
+                              content={({ payload }) => {
+                                if (!payload || payload.length === 0)
+                                  return null;
+                                const { name, value } = payload[0].payload;
+                                const percentage = (
+                                  (value / stats.totalDocuments) *
+                                  100
+                                ).toFixed(2);
+                                return (
+                                  <div
+                                    style={{
+                                      backgroundColor: "rgba(0, 0, 0, 0.8)",
+                                      color: "#fff",
+                                      borderRadius: "5px",
+                                      padding: "6px 10px",
+                                      fontSize: "0.85rem",
+                                    }}
+                                  >
+                                    <strong>{name}</strong>: {percentage}%
+                                  </div>
+                                );
+                              }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <p className="card-text text-muted mt-4">
+                          No documents found to generate stats.
+                        </p>
+                      )}
 
-                  <hr className="w-100 my-4" />
+                      <hr className="w-100 my-4" />
 
-                  <h5 className="card-title mb-3">Documents by Status</h5>
-                  {stats.docsByStatus.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={200}>
-                      <PieChart>
-                        <Pie
-                          data={stats.docsByStatus}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={50}
-                          outerRadius={80}
-                          labelLine={false}
-                          fill="#82ca9d"
-                          dataKey="value"
-                          nameKey="name"
-                        >
-                          {stats.docsByStatus.map(
-                            (_entry: DocStatusStat, index: number) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={
-                                  PIE_CHART_COLORS[
-                                    (index + 2) % PIE_CHART_COLORS.length
-                                  ]
-                                }
-                              />
-                            ),
-                          )}
-                        </Pie>
-                        <Tooltip
-                          cursor={{ fill: "transparent" }}
-                          content={({ payload }) => {
-                            if (!payload || payload.length === 0) return null;
-                            const { name, value } = payload[0].payload;
-                            const percentage = (
-                              (value / stats.totalDocuments) *
-                              100
-                            ).toFixed(2);
-                            return (
-                              <div
-                                style={{
-                                  backgroundColor: "rgba(0, 0, 0, 0.8)",
-                                  color: "#fff",
-                                  borderRadius: "5px",
-                                  padding: "6px 10px",
-                                  fontSize: "0.85rem",
-                                }}
-                              >
-                                <strong>{name}</strong>: {percentage}%
-                              </div>
-                            );
-                          }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <p className="card-text text-muted mt-4">
-                      No status data available.
-                    </p>
-                  )}
-                </div>
-              </div>
+                      <h5 className="card-title mb-3">Documents by Status</h5>
+                      {stats.docsByStatus.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={200}>
+                          <PieChart>
+                            <Pie
+                              data={stats.docsByStatus}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={50}
+                              outerRadius={80}
+                              labelLine={false}
+                              fill="#82ca9d"
+                              dataKey="value"
+                              nameKey="name"
+                            >
+                              {stats.docsByStatus.map(
+                                (_entry: DocStatusStat, index: number) => (
+                                  <Cell
+                                    key={`cell-${index}`}
+                                    fill={
+                                      PIE_CHART_COLORS[
+                                        (index + 2) % PIE_CHART_COLORS.length
+                                      ]
+                                    }
+                                  />
+                                ),
+                              )}
+                            </Pie>
+                            <Tooltip
+                              cursor={{ fill: "transparent" }}
+                              content={({ payload }) => {
+                                if (!payload || payload.length === 0)
+                                  return null;
+                                const { name, value } = payload[0].payload;
+                                const percentage = (
+                                  (value / stats.totalDocuments) *
+                                  100
+                                ).toFixed(2);
+                                return (
+                                  <div
+                                    style={{
+                                      backgroundColor: "rgba(0, 0, 0, 0.8)",
+                                      color: "#fff",
+                                      borderRadius: "5px",
+                                      padding: "6px 10px",
+                                      fontSize: "0.85rem",
+                                    }}
+                                  >
+                                    <strong>{name}</strong>: {percentage}%
+                                  </div>
+                                );
+                              }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <p className="card-text text-muted mt-4">
+                          No status data available.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -346,6 +391,11 @@ export function Dashboard() {
       <ReceiveDocumentModal
         show={showReceiveModal}
         onClose={() => setShowReceiveModal(false)}
+      />
+
+      <PendingDispositionsModal
+        show={showPendingDispositionsModal}
+        onClose={() => setShowPendingDispositionsModal(false)}
       />
     </div>
   );

@@ -389,8 +389,14 @@ const Documents: React.FC = () => {
     (isLoading && !data) ||
     (isLoadingRecent && !recentData) ||
     isLoadingTypes
-  )
-    return null;
+  ) {
+    return (
+      <div className="page-loading">
+        <div className="page-spinner" />
+        <span>Loading documents...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="container mt-4">

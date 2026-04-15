@@ -64,25 +64,37 @@ function RetentionFormModal({
   onSave: (data: any) => void;
   isPending: boolean;
 }) {
-  const [activeY, setActiveY] = useState(initial?.activeRetentionDuration ?? 0);
-  const [activeM, setActiveM] = useState(initial?.activeRetentionMonths ?? 0);
-  const [activeD, setActiveD] = useState(initial?.activeRetentionDays ?? 0);
-  const [inactiveY, setInactiveY] = useState(
-    initial?.inactiveRetentionDuration ?? 0,
+  const [activeY, setActiveY] = useState<number | null>(
+    initial?.activeRetentionDuration ?? null,
   );
-  const [inactiveM, setInactiveM] = useState(
-    initial?.inactiveRetentionMonths ?? 0,
+  const [activeM, setActiveM] = useState<number | null>(
+    initial?.activeRetentionMonths ?? null,
   );
-  const [inactiveD, setInactiveD] = useState(
-    initial?.inactiveRetentionDays ?? 0,
+  const [activeD, setActiveD] = useState<number | null>(
+    initial?.activeRetentionDays ?? null,
+  );
+  const [inactiveY, setInactiveY] = useState<number | null>(
+    initial?.inactiveRetentionDuration ?? null,
+  );
+  const [inactiveM, setInactiveM] = useState<number | null>(
+    initial?.inactiveRetentionMonths ?? null,
+  );
+  const [inactiveD, setInactiveD] = useState<number | null>(
+    initial?.inactiveRetentionDays ?? null,
   );
   const [disposition, setDisposition] = useState<"ARCHIVE" | "DESTROY">(
     initial?.dispositionAction ?? "ARCHIVE",
   );
-
   const handleNumChange =
-    (setter: React.Dispatch<React.SetStateAction<number>>, maxVal: number) =>
+    (
+      setter: React.Dispatch<React.SetStateAction<number | null>>,
+      maxVal: number,
+    ) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.value === "") {
+        setter(null);
+        return;
+      }
       let val = e.target.value.replace(/\D/g, "");
       if (val.length > 2) val = val.slice(0, 2);
       let num = parseInt(val, 10);
@@ -95,6 +107,14 @@ function RetentionFormModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const isPerpetual =
+      activeY === null &&
+      activeM === null &&
+      activeD === null &&
+      inactiveY === null &&
+      inactiveM === null &&
+      inactiveD === null;
+
     onSave({
       name: initial?.name,
       color: initial?.color,
@@ -104,7 +124,7 @@ function RetentionFormModal({
       inactiveRetentionDuration: inactiveY,
       inactiveRetentionMonths: inactiveM,
       inactiveRetentionDays: inactiveD,
-      dispositionAction: disposition,
+      dispositionAction: isPerpetual ? null : disposition,
     });
   };
 
@@ -148,7 +168,7 @@ function RetentionFormModal({
                       max={99}
                       className="form-control form-control-sm"
                       onChange={handleNumChange(setActiveY, 99)}
-                      value={activeY === 0 ? "" : activeY}
+                      value={activeY ?? ""}
                     />
                   </div>
                   <div>
@@ -156,10 +176,10 @@ function RetentionFormModal({
                     <input
                       type="number"
                       min={0}
-                      max={12}
+                      max={11}
                       className="form-control form-control-sm"
-                      onChange={handleNumChange(setActiveM, 12)}
-                      value={activeM === 0 ? "" : activeM}
+                      onChange={handleNumChange(setActiveM, 11)}
+                      value={activeM ?? ""}
                     />
                   </div>
                   <div>
@@ -167,10 +187,10 @@ function RetentionFormModal({
                     <input
                       type="number"
                       min={0}
-                      max={31}
+                      max={30}
                       className="form-control form-control-sm"
-                      onChange={handleNumChange(setActiveD, 31)}
-                      value={activeD === 0 ? "" : activeD}
+                      onChange={handleNumChange(setActiveD, 30)}
+                      value={activeD ?? ""}
                     />
                   </div>
                 </div>
@@ -189,7 +209,7 @@ function RetentionFormModal({
                       max={99}
                       className="form-control form-control-sm"
                       onChange={handleNumChange(setInactiveY, 99)}
-                      value={inactiveY === 0 ? "" : inactiveY}
+                      value={inactiveY ?? ""}
                     />
                   </div>
                   <div>
@@ -200,7 +220,7 @@ function RetentionFormModal({
                       max={12}
                       className="form-control form-control-sm"
                       onChange={handleNumChange(setInactiveM, 12)}
-                      value={inactiveM === 0 ? "" : inactiveM}
+                      value={inactiveM ?? ""}
                     />
                   </div>
                   <div>
@@ -211,7 +231,7 @@ function RetentionFormModal({
                       max={31}
                       className="form-control form-control-sm"
                       onChange={handleNumChange(setInactiveD, 31)}
-                      value={inactiveD === 0 ? "" : inactiveD}
+                      value={inactiveD ?? ""}
                     />
                   </div>
                 </div>
@@ -253,8 +273,11 @@ function RetentionFormModal({
             <div className="standard-modal-notice standard-modal-notice-info mt-2">
               <i className="bi bi-info-circle"></i>
               <p>
-                Setting all retention fields to 0 means "No schedule". For
-                document types, setting fields to 0 acts as a local override.
+                Setting all retention fields to <strong>0</strong> executes
+                disposition immediately. Leaving all fields completely{" "}
+                <strong>blank</strong> sets the record as a perpetual/permanent
+                record. For document types, setting fields to <strong>0</strong>{" "}
+                acts as a local override.
               </p>
             </div>
           </div>
@@ -301,29 +324,40 @@ function RetentionRow({
 }: {
   name: string;
   color?: string;
-  activeY: number;
-  activeM: number;
-  activeD: number;
-  inactiveY: number;
-  inactiveM: number;
-  inactiveD: number;
-  dispositionAction: string;
+  activeY: number | null;
+  activeM: number | null;
+  activeD: number | null;
+  inactiveY: number | null;
+  inactiveM: number | null;
+  inactiveD: number | null;
+  dispositionAction: string | null;
   isOverride?: boolean;
   isSeriesRow?: boolean;
   totalTypes?: number;
   onEdit: () => void;
 }) {
-  const fmtDuration = (y: number, m: number, d: number) => {
+  const fmtDuration = (
+    y: number | null,
+    m: number | null,
+    d: number | null,
+  ) => {
+    if (y === null && m === null && d === null)
+      return <span className="badge bg-secondary">Permanent</span>;
     const parts: string[] = [];
     if (y) parts.push(`${y}y`);
     if (m) parts.push(`${m}m`);
     if (d) parts.push(`${d}d`);
-    return parts.length ? parts.join(" ") : "—";
+    return parts.length ? parts.join(" ") : "0y 0m 0d";
   };
 
-  const totalYears = activeY + inactiveY;
+  const isPerpetualActive =
+    activeY === null && activeM === null && activeD === null;
+  const isPerpetualInactive =
+    inactiveY === null && inactiveM === null && inactiveD === null;
+
+  const totalYears = (activeY ?? 0) + (inactiveY ?? 0);
   const activePct =
-    totalYears > 0 ? Math.round((activeY / totalYears) * 100) : 0;
+    totalYears > 0 ? Math.round(((activeY ?? 0) / totalYears) * 100) : 0;
 
   return (
     <div
@@ -366,33 +400,43 @@ function RetentionRow({
       </div>
 
       <div className="retention-row__bar">
-        {totalYears > 0 ? (
+        {isPerpetualActive && isPerpetualInactive ? (
+          <span className="retention-row__no-schedule">
+            Perpetual / Permanent
+          </span>
+        ) : totalYears > 0 ? (
           <div className="retention-mini-bar">
             <div
               className="retention-mini-bar__active"
               style={{ width: `${activePct}%` }}
-              title={`Active: ${activeY}y`}
+              title={`Active: ${activeY ?? 0}y`}
             />
             <div
               className="retention-mini-bar__inactive"
               style={{ width: `${100 - activePct}%` }}
-              title={`Inactive: ${inactiveY}y`}
+              title={`Inactive: ${inactiveY ?? 0}y`}
             />
           </div>
         ) : (
-          <span className="retention-row__no-schedule">No schedule</span>
+          <span className="retention-row__no-schedule text-danger fw-bold">
+            Immediate Disposition
+          </span>
         )}
       </div>
 
       <div className="retention-row__disposition">
-        <span
-          className={`retention-row__action-badge ${dispositionAction === "DESTROY" ? "retention-row__action-badge--destroy" : "retention-row__action-badge--archive"}`}
-        >
-          <i
-            className={`bi ${dispositionAction === "DESTROY" ? "bi-trash3" : "bi-archive"}`}
-          />
-          {dispositionAction}
-        </span>
+        {dispositionAction ? (
+          <span
+            className={`retention-row__action-badge ${dispositionAction === "DESTROY" ? "retention-row__action-badge--destroy" : "retention-row__action-badge--archive"}`}
+          >
+            <i
+              className={`bi ${dispositionAction === "DESTROY" ? "bi-trash3" : "bi-archive"}`}
+            />
+            {dispositionAction}
+          </span>
+        ) : (
+          <span className="text-muted small">—</span>
+        )}
       </div>
 
       <div className="retention-row__actions">
@@ -449,6 +493,9 @@ export default function AdminRetentionPolicies() {
             refetchSeries();
             setEditingItem(null);
           },
+          onError: (error) => {
+            alert(`Failed to save Records Series: ${error.message}`);
+          },
         },
       );
     } else {
@@ -458,6 +505,9 @@ export default function AdminRetentionPolicies() {
           onSuccess: () => {
             refetchTypes();
             setEditingItem(null);
+          },
+          onError: (error) => {
+            alert(`Failed to save Document Type: ${error.message}`);
           },
         },
       );

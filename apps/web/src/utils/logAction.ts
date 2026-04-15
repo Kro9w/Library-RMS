@@ -4,7 +4,10 @@ export const getActionDetails = (action: string) => {
   if (lowerCaseAction.includes("create") || lowerCaseAction.includes("add")) {
     return { label: "Created", badgeClass: "bg-success" };
   }
-  if (lowerCaseAction.includes("delete") || lowerCaseAction.includes("destroy")) {
+  if (
+    lowerCaseAction.includes("delete") ||
+    lowerCaseAction.includes("destroy")
+  ) {
     return { label: "Deleted", badgeClass: "bg-danger" };
   }
   if (lowerCaseAction.includes("sent")) {
@@ -19,7 +22,11 @@ export const getActionDetails = (action: string) => {
   if (lowerCaseAction.includes("assign")) {
     return { label: "Assigned", badgeClass: "bg-success" };
   }
-  if (lowerCaseAction.includes("remove") || lowerCaseAction.includes("unassign") || lowerCaseAction.includes("discard")) {
+  if (
+    lowerCaseAction.includes("remove") ||
+    lowerCaseAction.includes("unassign") ||
+    lowerCaseAction.includes("discard")
+  ) {
     return { label: "Removed", badgeClass: "bg-danger" };
   }
   if (lowerCaseAction.includes("check")) {

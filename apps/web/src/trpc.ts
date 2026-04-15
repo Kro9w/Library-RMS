@@ -1,15 +1,15 @@
-import { createTRPCReact } from '@trpc/react-query';
-import { AppRouter } from '../../api/src/trpc/trpc.router';
-import { httpBatchLink } from '@trpc/client';
-import { supabase } from './supabase';
+import { createTRPCReact } from "@trpc/react-query";
+import { AppRouter } from "../../api/src/trpc/trpc.router";
+import { httpBatchLink } from "@trpc/client";
+import { supabase } from "./supabase";
 
 export const trpc = createTRPCReact<AppRouter>();
 
 const getBaseUrl = () => {
-  if (typeof window !== 'undefined') {
-    return import.meta.env.VITE_API_URL ?? 'http://localhost:2000';
+  if (typeof window !== "undefined") {
+    return import.meta.env.VITE_API_URL ?? "http://localhost:2000";
   }
-  return 'http://localhost:2000';
+  return "http://localhost:2000";
 };
 
 export const trpcClient = trpc.createClient({

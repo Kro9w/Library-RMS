@@ -72,7 +72,6 @@ const LogsPage: React.FC = () => {
           </div>
         )}
       </div>
-
       <div className="card shadow-sm border-0 mb-4 p-3 bg-white rounded">
         <h6 className="mb-3 text-muted fw-semibold">Filters</h6>
         <div className="row g-3">
@@ -138,14 +137,16 @@ const LogsPage: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {isLoading && null}
+      {isLoading && (
+        <div className="page-loading">
+          <div className="page-spinner" />
+          <span>Loading logs...</span>
+        </div>
+      )}{" "}
       {isError && <p className="text-danger">Error loading logs.</p>}
-
       {!isLoading && !isError && data?.logs.length === 0 && (
         <p className="text-muted">No audit logs found.</p>
       )}
-
       {!isLoading && !isError && data && data.logs.length > 0 && (
         <div className="document-table-card">
           <table className="table mb-0">

@@ -106,7 +106,14 @@ export function Users() {
     }
   };
 
-  if (isLoading) return null;
+  if (isLoading) {
+    return (
+      <div className="page-loading">
+        <div className="page-spinner" />
+        <span>Loading users...</span>
+      </div>
+    );
+  }
   if (isError)
     return (
       <div className="container mt-4 alert alert-danger">

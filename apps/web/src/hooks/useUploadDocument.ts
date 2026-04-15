@@ -8,10 +8,17 @@ export function useUploadDocument(onClose: () => void) {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedDocumentType, setSelectedDocumentType] = useState<string | undefined>();
+  const [selectedDocumentType, setSelectedDocumentType] = useState<
+    string | undefined
+  >();
   const [controlNumber, setControlNumber] = useState<string | null>(null);
   const [classification, setClassification] = useState<
-    "INSTITUTIONAL" | "INTERNAL" | "DEPARTMENTAL" | "RESTRICTED" | "FOR_APPROVAL" | "EXTERNAL"
+    | "INSTITUTIONAL"
+    | "INTERNAL"
+    | "DEPARTMENTAL"
+    | "RESTRICTED"
+    | "FOR_APPROVAL"
+    | "EXTERNAL"
   >("RESTRICTED");
   const [transitRoute, setTransitRoute] = useState<string[]>([]);
   const [isScanning, setIsScanning] = useState(false);
@@ -30,11 +37,16 @@ export function useUploadDocument(onClose: () => void) {
 
   const highestRoleLevel =
     me?.roles && me.roles.length > 0
-      ? me.roles.reduce((min: number, role: any) => Math.min(min, role.level), Infinity)
+      ? me.roles.reduce(
+          (min: number, role: any) => Math.min(min, role.level),
+          Infinity,
+        )
       : 4;
 
-  const canManageDocs = me?.roles?.some((r: any) => r.canManageDocuments) ?? false;
-  const canManageInstitution = me?.roles?.some((r: any) => r.canManageInstitution) ?? false;
+  const canManageDocs =
+    me?.roles?.some((r: any) => r.canManageDocuments) ?? false;
+  const canManageInstitution =
+    me?.roles?.some((r: any) => r.canManageInstitution) ?? false;
 
   const scanForControlNumber = async (f: File) => {
     setIsScanning(true);
@@ -47,7 +59,9 @@ export function useUploadDocument(onClose: () => void) {
         if (arrayBuffer instanceof ArrayBuffer) {
           try {
             const result = await mammoth.extractRawText({ arrayBuffer });
-            const match = result.value.match(/CSU-([\s\S]*?)([a-zA-Z0-9-]+)\s*-FL/);
+            const match = result.value.match(
+              /CSU-([\s\S]*?)([a-zA-Z0-9-]+)\s*-FL/,
+            );
             setControlNumber(match?.[0]?.trim() ?? null);
           } catch {
             setControlNumber(null);
@@ -112,7 +126,8 @@ export function useUploadDocument(onClose: () => void) {
         fileSize: file.size,
         classification,
         controlNumber: controlNumber ?? null,
-        transitRoute: classification === "FOR_APPROVAL" ? transitRoute : undefined,
+        transitRoute:
+          classification === "FOR_APPROVAL" ? transitRoute : undefined,
       });
 
       setFile(null);
@@ -131,13 +146,19 @@ export function useUploadDocument(onClose: () => void) {
 
   return {
     state: {
-      file, setFile,
+      file,
+      setFile,
       uploading,
-      error, setError,
-      selectedDocumentType, setSelectedDocumentType,
-      controlNumber, setControlNumber,
-      classification, setClassification,
-      transitRoute, setTransitRoute,
+      error,
+      setError,
+      selectedDocumentType,
+      setSelectedDocumentType,
+      controlNumber,
+      setControlNumber,
+      classification,
+      setClassification,
+      transitRoute,
+      setTransitRoute,
       isScanning,
     },
     data: {
@@ -153,6 +174,6 @@ export function useUploadDocument(onClose: () => void) {
     actions: {
       scanForControlNumber,
       handleUpload,
-    }
+    },
   };
 }

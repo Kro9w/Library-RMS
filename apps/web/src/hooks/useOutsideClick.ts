@@ -4,16 +4,16 @@ type Event = MouseEvent | TouchEvent;
 
 export function useOutsideClick(
   refs: RefObject<HTMLElement | null> | RefObject<HTMLElement | null>[],
-  handler: (event: Event) => void
+  handler: (event: Event) => void,
 ) {
   useEffect(() => {
     const listener = (event: Event) => {
       const target = event.target as Node;
-      
+
       const refList = Array.isArray(refs) ? refs : [refs];
 
       const isInside = refList.some(
-        (ref) => ref.current && ref.current.contains(target)
+        (ref) => ref.current && ref.current.contains(target),
       );
 
       if (isInside) {

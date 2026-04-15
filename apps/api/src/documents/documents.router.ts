@@ -149,8 +149,8 @@ export class DocumentsRouter {
               createdAt: true,
               documentType: {
                 include: {
-                  recordsSeries: true
-                }
+                  recordsSeries: true,
+                },
               },
               workflow: {
                 select: {
@@ -403,18 +403,39 @@ export class DocumentsRouter {
           if (input.documentTypeId) {
             const docType = await this.prisma.documentType.findUnique({
               where: { id: input.documentTypeId },
-              include: { recordsSeries: true }
+              include: { recordsSeries: true },
             });
             if (docType) {
               const series = docType.recordsSeries;
               retentionSnapshot = {
-                activeRetentionSnapshot: docType.activeRetentionDuration ?? series?.activeRetentionDuration ?? 0,
-                activeRetentionMonthsSnapshot: docType.activeRetentionMonths ?? series?.activeRetentionMonths ?? 0,
-                activeRetentionDaysSnapshot: docType.activeRetentionDays ?? series?.activeRetentionDays ?? 0,
-                inactiveRetentionSnapshot: docType.inactiveRetentionDuration ?? series?.inactiveRetentionDuration ?? 0,
-                inactiveRetentionMonthsSnapshot: docType.inactiveRetentionMonths ?? series?.inactiveRetentionMonths ?? 0,
-                inactiveRetentionDaysSnapshot: docType.inactiveRetentionDays ?? series?.inactiveRetentionDays ?? 0,
-                dispositionActionSnapshot: docType.dispositionAction ?? series?.dispositionAction ?? 'ARCHIVE',
+                activeRetentionSnapshot:
+                  docType.activeRetentionDuration ??
+                  series?.activeRetentionDuration ??
+                  0,
+                activeRetentionMonthsSnapshot:
+                  docType.activeRetentionMonths ??
+                  series?.activeRetentionMonths ??
+                  0,
+                activeRetentionDaysSnapshot:
+                  docType.activeRetentionDays ??
+                  series?.activeRetentionDays ??
+                  0,
+                inactiveRetentionSnapshot:
+                  docType.inactiveRetentionDuration ??
+                  series?.inactiveRetentionDuration ??
+                  0,
+                inactiveRetentionMonthsSnapshot:
+                  docType.inactiveRetentionMonths ??
+                  series?.inactiveRetentionMonths ??
+                  0,
+                inactiveRetentionDaysSnapshot:
+                  docType.inactiveRetentionDays ??
+                  series?.inactiveRetentionDays ??
+                  0,
+                dispositionActionSnapshot:
+                  docType.dispositionAction ??
+                  series?.dispositionAction ??
+                  'ARCHIVE',
               };
             }
           }
@@ -580,6 +601,253 @@ export class DocumentsRouter {
             });
           }
           return { signedUrl: data.signedUrl };
+        }),
+
+      getPendingDispositions: protectedProcedure.query(async ({ ctx }) => {
+        this.accessControlService.requirePermission(
+          ctx.dbUser,
+          'canManageDocuments',
+        );
+
+        const isHighLevelAdmin = ctx.dbUser.roles.some(
+          (r) =>
+            r.canManageInstitution || (r.canManageDocuments && r.level <= 1),
+        );
+
+        if (!isHighLevelAdmin) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message:
+              'You must be at least a Level 1 Administrator to view pending dispositions.',
+          });
+        }
+
+        const docs = await ctx.prisma.document.findMany({
+          where: {
+            lifecycle: {
+              dispositionStatus: 'PENDING_DISPOSITION',
+            },
+          },
+          include: {
+            documentType: {
+              include: {
+                recordsSeries: true,
+              },
+            },
+            lifecycle: true,
+          },
+        });
+
+        return docs;
+      }),
+
+      getDocumentsToReview: protectedProcedure.query(async ({ ctx }) => {
+        const { dbUser } = ctx;
+
+        if (!dbUser.departmentId) {
+          return [];
+        }
+
+        const documents = await ctx.prisma.document.findMany({
+          where: {
+            classification: 'FOR_APPROVAL',
+            workflow: {
+              recordStatus: 'IN_TRANSIT',
+            },
+            distributions: {
+              some: {
+                recipient: {
+                  departmentId: dbUser.departmentId,
+                },
+                status: 'RECEIVED',
+              },
+            },
+          },
+          include: {
+            uploadedBy: {
+              select: {
+                id: true,
+                firstName: true,
+                middleName: true,
+                lastName: true,
+                department: {
+                  select: { name: true },
+                },
+              },
+            },
+            transitRoutes: {
+              orderBy: {
+                sequenceOrder: 'asc',
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        });
+
+        return documents.map((doc) => {
+          const currentRoute = doc.transitRoutes.find(
+            (route) => route.departmentId === dbUser.departmentId,
+          );
+
+          const isReviewed = currentRoute ? !!currentRoute.decision : false;
+
+          return {
+            ...doc,
+            isReviewed,
+          };
+        });
+      }),
+
+      approveManyDispositions: protectedProcedure
+        .input(z.object({ documentIds: z.array(z.string()) }))
+        .mutation(async ({ ctx, input }) => {
+          const { user, dbUser } = ctx;
+
+          this.accessControlService.requirePermission(
+            dbUser,
+            'canManageDocuments',
+          );
+
+          const isHighLevelAdmin = dbUser.roles.some(
+            (r) =>
+              r.canManageInstitution || (r.canManageDocuments && r.level <= 1),
+          );
+
+          if (!isHighLevelAdmin) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message:
+                'You must be at least a Level 1 Administrator to execute or approve dispositions.',
+            });
+          }
+
+          const docs = await ctx.prisma.document.findMany({
+            where: { id: { in: input.documentIds } },
+            include: { lifecycle: true },
+          });
+
+          if (docs.length !== input.documentIds.length) {
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'One or more documents not found.',
+            });
+          }
+
+          for (const doc of docs) {
+            if (doc.lifecycle?.isUnderLegalHold) {
+              throw new TRPCError({
+                code: 'FORBIDDEN',
+                message: `Document ${doc.controlNumber || doc.title} is under legal hold`,
+              });
+            }
+
+            if (
+              doc.lifecycle?.dispositionStatus === 'ARCHIVED' ||
+              doc.lifecycle?.dispositionStatus === 'DESTROYED'
+            ) {
+              throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: `Document ${doc.controlNumber || doc.title} has already been disposed.`,
+              });
+            }
+
+            if (
+              doc.lifecycle?.dispositionRequesterId &&
+              user.id === doc.lifecycle?.dispositionRequesterId
+            ) {
+              throw new TRPCError({
+                code: 'FORBIDDEN',
+                message: `You cannot approve your own disposition request for document ${doc.controlNumber || doc.title}.`,
+              });
+            }
+          }
+
+          const updatedDocs = await ctx.prisma.$transaction(async (tx) => {
+            const results: any[] = [];
+            for (const doc of docs) {
+              const action = doc.lifecycle?.dispositionActionSnapshot;
+
+              const result = await tx.document.update({
+                where: { id: doc.id },
+                data: {
+                  lifecycle: {
+                    update: {
+                      dispositionStatus: action,
+                      dispositionDate: new Date(),
+                    },
+                  },
+                },
+                include: { lifecycle: true, documentType: true },
+              });
+              results.push(result);
+            }
+            return results;
+          });
+
+          for (const doc of updatedDocs) {
+            const action = doc.lifecycle?.dispositionActionSnapshot;
+            if (action === 'ARCHIVE') {
+              const targetVersion = await ctx.prisma.documentVersion.findFirst({
+                where: { documentId: doc.id },
+                orderBy: { versionNumber: 'desc' },
+              });
+
+              if (targetVersion) {
+                const adminClient = this.supabase.getAdminClient();
+
+                const { data: fileData, error: downloadError } =
+                  await adminClient.storage
+                    .from(targetVersion.s3Bucket)
+                    .download(targetVersion.s3Key);
+
+                if (!downloadError && fileData) {
+                  const archiveBucketName =
+                    process.env.SUPABASE_ARCHIVE_BUCKET_NAME || 'csu-archives';
+                  const archiveKey = `archives/${doc.documentType?.name || 'Unknown'}/${doc.id}/${targetVersion.s3Key.split('/').pop()}`;
+
+                  const { error: uploadError } = await adminClient.storage
+                    .from(archiveBucketName)
+                    .upload(archiveKey, fileData, {
+                      contentType:
+                        targetVersion.fileType || 'application/octet-stream',
+                      upsert: true,
+                    });
+
+                  if (!uploadError) {
+                    await ctx.prisma.documentLifecycle.update({
+                      where: { documentId: doc.id },
+                      data: { archiveManifestUrl: archiveKey },
+                    });
+                  }
+                }
+              }
+            } else if (action === 'DESTROY') {
+              const versions = await ctx.prisma.documentVersion.findMany({
+                where: { documentId: doc.id },
+              });
+
+              const adminClient = this.supabase.getAdminClient();
+
+              for (const version of versions) {
+                await adminClient.storage
+                  .from(version.s3Bucket)
+                  .remove([version.s3Key]);
+              }
+            }
+
+            await this.logService.logAction(
+              user.id,
+              `Disposition Executed: ${action}`,
+              dbUser.roles.map((r) => r.name),
+              doc.title,
+              dbUser.campusId || undefined,
+              dbUser.departmentId || undefined,
+            );
+          }
+
+          return updatedDocs;
         }),
 
       getAppUsers: protectedProcedure
@@ -1325,19 +1593,6 @@ export class DocumentsRouter {
             dbUser,
             'canManageDocuments',
           );
-
-          const isHighLevelAdmin = dbUser.roles.some(
-            (r) =>
-              r.canManageInstitution || (r.canManageDocuments && r.level <= 1),
-          );
-
-          if (!isHighLevelAdmin) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message:
-                'You must be at least a Level 1 Administrator to execute or approve dispositions.',
-            });
-          }
 
           const doc = await ctx.prisma.document.findUnique({
             where: { id: input.documentId },
