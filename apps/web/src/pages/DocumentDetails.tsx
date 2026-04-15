@@ -331,7 +331,7 @@ export const DocumentDetails: React.FC = () => {
                 <span>{getLocation()}</span>
               </div>
               <div className="detail-row">
-                <strong>Owner</strong>
+                <strong>Uploaded by</strong>
                 <span>{formatUserName(document.uploadedBy)}</span>
               </div>
               <div className="detail-row">
@@ -340,8 +340,8 @@ export const DocumentDetails: React.FC = () => {
               </div>
               {document.documentType?.recordsSeries && (
                 <div className="detail-row">
-                  <strong>Records Series</strong>
-                  <span className="badge bg-secondary text-wrap text-start">
+                  <strong>Series</strong>
+                  <span>
                     {(document.documentType.recordsSeries as any).name}
                   </span>
                 </div>
@@ -587,7 +587,7 @@ export const DocumentDetails: React.FC = () => {
                               <i className="bi bi-send" />
                               {requestDispositionMutation.isPending
                                 ? "Requesting…"
-                                : "Request Disposition Approval"}
+                                : "Request Approval"}
                             </button>
                             {(canManageInstitution ||
                               (canManageDocuments &&

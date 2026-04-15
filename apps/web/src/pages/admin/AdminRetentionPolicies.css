@@ -149,7 +149,7 @@
 
 .rp-table-head {
   display: grid;
-  grid-template-columns: 1fr 80px 80px 180px 100px;
+  grid-template-columns: 4.5fr 1fr 1fr 1fr 1fr;
   padding: 10px 18px;
   background: var(--bg-subtle);
   border-bottom: 1px solid var(--border);
@@ -208,7 +208,7 @@
 
 .retention-row {
   display: grid;
-  grid-template-columns: 1fr 80px 80px 180px 100px;
+  grid-template-columns: 4.5fr 2fr 1fr 1fr 2fr 1fr;
   align-items: center;
   gap: 12px;
   padding: 12px 18px;
@@ -445,4 +445,115 @@
   color: var(--text-muted);
   margin: 0;
   max-width: 360px;
+}
+
+/* Custom additions for Retention Modal styling */
+.retention-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 14px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+@media (max-width: 900px) {
+  .retention-modal-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.retention-modal-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.retention-modal-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.retention-modal-label i {
+  font-size: 11px;
+  color: var(--brand);
+  opacity: 0.7;
+}
+.retention-modal-ymd {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+.retention-modal-ymd label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+.retention-modal-disposition {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.retention-disp-option {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 100ms ease;
+  user-select: none;
+}
+.retention-disp-option input {
+  display: none;
+}
+.retention-disp-option:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+.retention-disp-option.active {
+  border-color: #93c5fd;
+  background: var(--info-subtle);
+  color: var(--info);
+}
+.retention-disp-option--destroy.active--destroy {
+  border-color: #fca5a5;
+  background: var(--danger-subtle);
+  color: var(--danger);
+}
+
+.retention-row__actions {
+  display: flex;
+  justify-content: flex-start;
+  opacity: 0;
+  transition: opacity 100ms ease;
+}
+.retention-row:hover .retention-row__actions {
+  opacity: 1;
+}
+
+/* Force aspect ratio to prevent oblongs */
+.retention-row__color-dot {
+  aspect-ratio: 1 / 1;
+}
+
+.retention-row__color-dot {
+  aspect-ratio: 1 / 1 !important;
+  min-width: 8px;
+  min-height: 8px;
+}
+
+/* Hide up/down arrows from number inputs */
+.retention-modal-ymd input[type="number"]::-webkit-inner-spin-button,
+.retention-modal-ymd input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }

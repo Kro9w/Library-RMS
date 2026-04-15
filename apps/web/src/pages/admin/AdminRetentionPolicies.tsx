@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { trpc } from "../../trpc";
+import "../../components/StandardModal.css";
 import "./AdminRetentionPolicies.css";
 
-function LifecycleBar({
+export function LifecycleBar({
   active,
   inactive,
 }: {
@@ -46,6 +47,226 @@ function LifecycleBar({
   );
 }
 
+// Form Component for Editing Retention
+function RetentionFormModal({
+  show,
+  onClose,
+  title,
+  initial,
+  onSave,
+  isPending,
+}: {
+  show: boolean;
+  onClose: () => void;
+  title: string;
+  initial: any;
+  onSave: (data: any) => void;
+  isPending: boolean;
+}) {
+  const [activeY, setActiveY] = useState(initial?.activeRetentionDuration ?? 0);
+  const [activeM, setActiveM] = useState(initial?.activeRetentionMonths ?? 0);
+  const [activeD, setActiveD] = useState(initial?.activeRetentionDays ?? 0);
+  const [inactiveY, setInactiveY] = useState(
+    initial?.inactiveRetentionDuration ?? 0,
+  );
+  const [inactiveM, setInactiveM] = useState(
+    initial?.inactiveRetentionMonths ?? 0,
+  );
+  const [inactiveD, setInactiveD] = useState(
+    initial?.inactiveRetentionDays ?? 0,
+  );
+  const [disposition, setDisposition] = useState<"ARCHIVE" | "DESTROY">(
+    initial?.dispositionAction ?? "ARCHIVE",
+  );
+
+  const handleNumChange =
+    (setter: React.Dispatch<React.SetStateAction<number>>, maxVal: number) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      let val = e.target.value.replace(/\D/g, "");
+      if (val.length > 2) val = val.slice(0, 2);
+      let num = parseInt(val, 10);
+      if (isNaN(num)) num = 0;
+      if (num > maxVal) num = maxVal;
+      setter(num);
+    };
+
+  if (!show) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      activeRetentionDuration: activeY,
+      activeRetentionMonths: activeM,
+      activeRetentionDays: activeD,
+      inactiveRetentionDuration: inactiveY,
+      inactiveRetentionMonths: inactiveM,
+      inactiveRetentionDays: inactiveD,
+      dispositionAction: disposition,
+    });
+  };
+
+  return (
+    <div className="standard-modal-backdrop" onClick={onClose}>
+      <div
+        className="standard-modal-dialog"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: 500 }}
+      >
+        <div className="standard-modal-header">
+          <div className="standard-modal-icon">
+            <i className="bi bi-clock-history"></i>
+          </div>
+          <div className="standard-modal-header-text">
+            <h5 className="standard-modal-title">Edit Retention</h5>
+            <p className="standard-modal-subtitle">{title}</p>
+          </div>
+          <button
+            type="button"
+            className="standard-modal-close"
+            onClick={onClose}
+          >
+            <i className="bi bi-x"></i>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="standard-modal-body">
+            <div className="retention-modal-grid">
+              <div className="retention-modal-col">
+                <div className="retention-modal-label">
+                  <i className="bi bi-hourglass-split" /> Active Retention
+                </div>
+                <div className="retention-modal-ymd">
+                  <div>
+                    <label className="form-label">Years</label>
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      onChange={handleNumChange(setActiveY, 99)}
+                      value={activeY || ""}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Months</label>
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      onChange={handleNumChange(setActiveM, 12)}
+                      value={activeM || ""}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Days</label>
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      onChange={handleNumChange(setActiveD, 31)}
+                      value={activeD || ""}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="retention-modal-col">
+                <div className="retention-modal-label">
+                  <i className="bi bi-archive" /> Inactive Retention
+                </div>
+                <div className="retention-modal-ymd">
+                  <div>
+                    <label className="form-label">Years</label>
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      onChange={handleNumChange(setInactiveY, 99)}
+                      value={inactiveY || ""}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Months</label>
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      onChange={handleNumChange(setInactiveM, 12)}
+                      value={inactiveM || ""}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Days</label>
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      onChange={handleNumChange(setInactiveD, 31)}
+                      value={inactiveD || ""}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="retention-modal-col">
+                <div className="retention-modal-label">
+                  <i className="bi bi-lightning-charge" /> Disposition
+                </div>
+                <div className="retention-modal-disposition">
+                  <label
+                    className={`retention-disp-option ${disposition === "ARCHIVE" ? "active" : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      name="disposition"
+                      value="ARCHIVE"
+                      checked={disposition === "ARCHIVE"}
+                      onChange={() => setDisposition("ARCHIVE")}
+                    />
+                    <i className="bi bi-archive" /> Archive
+                  </label>
+                  <label
+                    className={`retention-disp-option retention-disp-option--destroy ${disposition === "DESTROY" ? "active active--destroy" : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      name="disposition"
+                      value="DESTROY"
+                      checked={disposition === "DESTROY"}
+                      onChange={() => setDisposition("DESTROY")}
+                    />
+                    <i className="bi bi-trash3" /> Destroy
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="standard-modal-notice standard-modal-notice-info mt-2">
+              <i className="bi bi-info-circle"></i>
+              <p>
+                Setting all retention fields to 0 means "No schedule". For
+                document types, setting fields to 0 acts as a local override.
+              </p>
+            </div>
+          </div>
+
+          <div className="standard-modal-footer">
+            <button
+              type="button"
+              className="standard-modal-btn standard-modal-btn-ghost"
+              onClick={onClose}
+              disabled={isPending}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="standard-modal-btn standard-modal-btn-confirm"
+              disabled={isPending}
+            >
+              {isPending ? "Saving..." : "Save Retention"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // Retention Row
 
 function RetentionRow({
@@ -61,6 +282,7 @@ function RetentionRow({
   isOverride,
   isSeriesRow,
   totalTypes,
+  onEdit,
 }: {
   name: string;
   color?: string;
@@ -74,6 +296,7 @@ function RetentionRow({
   isOverride?: boolean;
   isSeriesRow?: boolean;
   totalTypes?: number;
+  onEdit: () => void;
 }) {
   const fmtDuration = (y: number, m: number, d: number) => {
     const parts: string[] = [];
@@ -120,6 +343,19 @@ function RetentionRow({
         )}
       </div>
 
+      <div className="retention-row__actions">
+        <button
+          className="btn-icon"
+          title="Edit retention"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+        >
+          <i className="bi bi-pencil" />
+        </button>
+      </div>
+
       <div className="retention-row__active">
         {fmtDuration(activeY, activeM, activeD)}
       </div>
@@ -160,18 +396,55 @@ function RetentionRow({
   );
 }
 
-// ── Main Page ────────────────────────────────────────────────────────────
+// Main Page
 
 export default function AdminRetentionPolicies() {
-  const { data: allSeries } = trpc.recordsSeries.getAll.useQuery();
-  const { data: allDocTypes } = trpc.documentTypes.getAllUnfiltered.useQuery();
+  const { data: allSeries, refetch: refetchSeries } =
+    trpc.recordsSeries.getAll.useQuery();
+  const { data: allDocTypes, refetch: refetchTypes } =
+    trpc.documentTypes.getAllUnfiltered.useQuery();
+
+  const updateSeries = trpc.recordsSeries.update.useMutation();
+  const updateDocType = trpc.documentTypes.update.useMutation();
 
   const [expandedSeries, setExpandedSeries] = useState<Record<string, boolean>>(
     {},
   );
 
+  const [editingItem, setEditingItem] = useState<{
+    type: "SERIES" | "DOCTYPE";
+    id: string;
+    name: string;
+    initialData: any;
+  } | null>(null);
+
   const toggleSeries = (id: string) => {
     setExpandedSeries((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleSaveRetention = (data: any) => {
+    if (!editingItem) return;
+    if (editingItem.type === "SERIES") {
+      updateSeries.mutate(
+        { id: editingItem.id, ...data },
+        {
+          onSuccess: () => {
+            refetchSeries();
+            setEditingItem(null);
+          },
+        },
+      );
+    } else {
+      updateDocType.mutate(
+        { id: editingItem.id, ...data },
+        {
+          onSuccess: () => {
+            refetchTypes();
+            setEditingItem(null);
+          },
+        },
+      );
+    }
   };
 
   if (!allSeries?.length) {
@@ -223,14 +496,8 @@ export default function AdminRetentionPolicies() {
           <h2 className="admin-page-title">Records Retention Policies</h2>
           <p className="admin-page-desc">
             Lifecycle schedules inherited from Records Series and optionally
-            overridden per Document Type. Edit schedules in{" "}
-            <a
-              href="/admin/document-types"
-              style={{ color: "var(--brand)", fontWeight: 500 }}
-            >
-              Records Classification
-            </a>
-            .
+            overridden per Document Type. Click the edit icon to change
+            retention settings.
           </p>
         </div>
       </div>
@@ -310,6 +577,7 @@ export default function AdminRetentionPolicies() {
           <span>Inactive</span>
           <span>Proportion</span>
           <span>Disposition</span>
+          <span style={{ width: 40 }}></span>
         </div>
 
         {allSeries.map((series: any) => {
@@ -321,10 +589,11 @@ export default function AdminRetentionPolicies() {
           return (
             <div key={series.id} className="rp-series-block">
               {/* Series row */}
-              <button
+              <div
                 className="rp-series-toggle"
                 onClick={() => toggleSeries(series.id)}
                 title={isExpanded ? "Collapse types" : "Expand types"}
+                style={{ cursor: "pointer" }}
               >
                 <RetentionRow
                   name={series.name}
@@ -337,11 +606,19 @@ export default function AdminRetentionPolicies() {
                   dispositionAction={series.dispositionAction ?? "ARCHIVE"}
                   isSeriesRow
                   totalTypes={types.length}
+                  onEdit={() => {
+                    setEditingItem({
+                      type: "SERIES",
+                      id: series.id,
+                      name: series.name,
+                      initialData: series,
+                    });
+                  }}
                 />
                 <i
                   className={`bi bi-chevron-${isExpanded ? "up" : "down"} rp-series-toggle__icon`}
                 />
-              </button>
+              </div>
 
               {/* Document type rows */}
               {isExpanded && types.length > 0 && (
@@ -363,6 +640,24 @@ export default function AdminRetentionPolicies() {
                         inactiveD={src.inactiveRetentionDays ?? 0}
                         dispositionAction={src.dispositionAction ?? "ARCHIVE"}
                         isOverride={isOverride}
+                        onEdit={() => {
+                          setEditingItem({
+                            type: "DOCTYPE",
+                            id: docType.id,
+                            name: docType.name,
+                            initialData: isOverride
+                              ? docType
+                              : {
+                                  activeRetentionDuration: 0,
+                                  activeRetentionMonths: 0,
+                                  activeRetentionDays: 0,
+                                  inactiveRetentionDuration: 0,
+                                  inactiveRetentionMonths: 0,
+                                  inactiveRetentionDays: 0,
+                                  dispositionAction: "ARCHIVE",
+                                },
+                          });
+                        }}
                       />
                     );
                   })}
@@ -386,7 +681,7 @@ export default function AdminRetentionPolicies() {
       </div>
 
       {/* Prospective note */}
-      <div className="rp-prospective-note">
+      <div className="rp-prospective-note mt-3">
         <i className="bi bi-info-circle" />
         <span>
           Retention schedules are{" "}
@@ -394,6 +689,16 @@ export default function AdminRetentionPolicies() {
           to new documents only and will not affect existing records.
         </span>
       </div>
+
+      <RetentionFormModal
+        key={editingItem ? editingItem.id : "new"}
+        show={editingItem !== null}
+        onClose={() => setEditingItem(null)}
+        title={editingItem?.name ?? ""}
+        initial={editingItem?.initialData}
+        onSave={handleSaveRetention}
+        isPending={updateSeries.isPending || updateDocType.isPending}
+      />
     </div>
   );
 }

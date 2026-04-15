@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { trpc } from "../../trpc";
 import { ConfirmModal } from "../../components/ConfirmModal";
+import "../../components/StandardModal.css";
 import "./AdminDocumentTypes.css";
 
 const presetColors = [
@@ -10,215 +11,120 @@ const presetColors = [
   "5aa96d",
   "3b7bb9",
   "8c3bb9",
+  "383838",
 ];
 
-// Series Form
+// Series Form Modal
 
-function SeriesForm({
+function SeriesFormModal({
+  show,
   initial,
   onSave,
   onCancel,
   isPending,
 }: {
+  show: boolean;
   initial?: any;
   onSave: (data: any) => void;
   onCancel: () => void;
   isPending: boolean;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
-  const [activeY, setActiveY] = useState(initial?.activeRetentionDuration ?? 0);
-  const [activeM, setActiveM] = useState(initial?.activeRetentionMonths ?? 0);
-  const [activeD, setActiveD] = useState(initial?.activeRetentionDays ?? 0);
-  const [inactiveY, setInactiveY] = useState(
-    initial?.inactiveRetentionDuration ?? 0,
-  );
-  const [inactiveM, setInactiveM] = useState(
-    initial?.inactiveRetentionMonths ?? 0,
-  );
-  const [inactiveD, setInactiveD] = useState(
-    initial?.inactiveRetentionDays ?? 0,
-  );
-  const [disposition, setDisposition] = useState<"ARCHIVE" | "DESTROY">(
-    initial?.dispositionAction ?? "ARCHIVE",
-  );
+
+  if (!show) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
-      name,
-      activeRetentionDuration: activeY,
-      activeRetentionMonths: activeM,
-      activeRetentionDays: activeD,
-      inactiveRetentionDuration: inactiveY,
-      inactiveRetentionMonths: inactiveM,
-      inactiveRetentionDays: inactiveD,
-      dispositionAction: disposition,
-    });
+    onSave({ name });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="series-form">
-      <div className="series-form__field series-form__field--wide">
-        <label className="form-label">Series Name</label>
-        <input
-          type="text"
-          className="form-control"
-          placeholder="e.g. Communication Letters, Financial Records"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-      </div>
-
-      <div className="series-form__retention-grid">
-        <div className="series-form__retention-col">
-          <div className="series-form__retention-label">
-            <i className="bi bi-hourglass-split" />
-            Active Retention
+    <div className="standard-modal-backdrop" onClick={onCancel}>
+      <div
+        className="standard-modal-dialog"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: 400 }}
+      >
+        <div className="standard-modal-header">
+          <div className="standard-modal-icon">
+            <i className="bi bi-collection"></i>
           </div>
-          <div className="series-form__ymd">
-            <div>
-              <label className="form-label">Years</label>
-              <input
-                type="number"
-                min="0"
-                className="form-control"
-                value={activeY}
-                onChange={(e) => setActiveY(+e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="form-label">Months</label>
-              <input
-                type="number"
-                min="0"
-                max="11"
-                className="form-control"
-                value={activeM}
-                onChange={(e) => setActiveM(+e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="form-label">Days</label>
-              <input
-                type="number"
-                min="0"
-                max="30"
-                className="form-control"
-                value={activeD}
-                onChange={(e) => setActiveD(+e.target.value)}
-              />
-            </div>
+          <div className="standard-modal-header-text">
+            <h5 className="standard-modal-title">
+              {initial ? "Edit Records Series" : "New Records Series"}
+            </h5>
+            <p className="standard-modal-subtitle">
+              Top-level groupings for document types
+            </p>
           </div>
+          <button
+            type="button"
+            className="standard-modal-close"
+            onClick={onCancel}
+          >
+            <i className="bi bi-x"></i>
+          </button>
         </div>
 
-        <div className="series-form__retention-col">
-          <div className="series-form__retention-label">
-            <i className="bi bi-archive" />
-            Inactive Retention
-          </div>
-          <div className="series-form__ymd">
-            <div>
-              <label className="form-label">Years</label>
+        <form onSubmit={handleSubmit}>
+          <div className="standard-modal-body">
+            <div className="series-form__field series-form__field--wide">
+              <label className="form-label">Series Name</label>
               <input
-                type="number"
-                min="0"
+                type="text"
                 className="form-control"
-                value={inactiveY}
-                onChange={(e) => setInactiveY(+e.target.value)}
+                placeholder="e.g. Communication Letters, Financial Records"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
               />
             </div>
-            <div>
-              <label className="form-label">Months</label>
-              <input
-                type="number"
-                min="0"
-                max="11"
-                className="form-control"
-                value={inactiveM}
-                onChange={(e) => setInactiveM(+e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="form-label">Days</label>
-              <input
-                type="number"
-                min="0"
-                max="30"
-                className="form-control"
-                value={inactiveD}
-                onChange={(e) => setInactiveD(+e.target.value)}
-              />
+            <div className="standard-modal-notice standard-modal-notice-info mt-3">
+              <i className="bi bi-info-circle"></i>
+              <p>
+                Retention schedule configuration has been moved to the Records
+                Retention page.
+              </p>
             </div>
           </div>
-        </div>
-
-        <div className="series-form__retention-col series-form__retention-col--disposition">
-          <div className="series-form__retention-label">
-            <i className="bi bi-lightning-charge" />
-            Disposition
-          </div>
-          <div className="series-form__disposition-options">
-            <label
-              className={`series-form__disposition-option ${disposition === "ARCHIVE" ? "active" : ""}`}
+          <div className="standard-modal-footer">
+            <button
+              type="button"
+              className="standard-modal-btn standard-modal-btn-ghost"
+              onClick={onCancel}
+              disabled={isPending}
             >
-              <input
-                type="radio"
-                name="disposition"
-                value="ARCHIVE"
-                checked={disposition === "ARCHIVE"}
-                onChange={() => setDisposition("ARCHIVE")}
-              />
-              <i className="bi bi-archive" />
-              Archive
-            </label>
-            <label
-              className={`series-form__disposition-option series-form__disposition-option--destroy ${disposition === "DESTROY" ? "active active--destroy" : ""}`}
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="standard-modal-btn standard-modal-btn-confirm"
+              disabled={!name.trim() || isPending}
             >
-              <input
-                type="radio"
-                name="disposition"
-                value="DESTROY"
-                checked={disposition === "DESTROY"}
-                onChange={() => setDisposition("DESTROY")}
-              />
-              <i className="bi bi-trash3" />
-              Destroy
-            </label>
+              {isPending
+                ? "Saving…"
+                : initial
+                  ? "Update Series"
+                  : "Create Series"}
+            </button>
           </div>
-        </div>
+        </form>
       </div>
-
-      <div className="series-form__actions">
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={onCancel}
-          disabled={isPending}
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="btn btn-primary"
-          disabled={!name.trim() || isPending}
-        >
-          {isPending ? "Saving…" : initial ? "Update Series" : "Create Series"}
-        </button>
-      </div>
-    </form>
+    </div>
   );
 }
 
-// Document Type Form
+// Document Type Form Modal
 
-function DocumentTypeForm({
+function DocumentTypeFormModal({
+  show,
   seriesId,
   initial,
   onSave,
   onCancel,
   isPending,
 }: {
+  show: boolean;
   seriesId: string;
   initial?: any;
   onSave: (data: any) => void;
@@ -233,24 +139,8 @@ function DocumentTypeForm({
         : `#${initial.color}`
       : `#${presetColors[0]}`,
   );
-  const [isOverriding, setIsOverriding] = useState(
-    initial ? initial.activeRetentionDuration !== null : false,
-  );
-  const [activeY, setActiveY] = useState(initial?.activeRetentionDuration ?? 0);
-  const [activeM, setActiveM] = useState(initial?.activeRetentionMonths ?? 0);
-  const [activeD, setActiveD] = useState(initial?.activeRetentionDays ?? 0);
-  const [inactiveY, setInactiveY] = useState(
-    initial?.inactiveRetentionDuration ?? 0,
-  );
-  const [inactiveM, setInactiveM] = useState(
-    initial?.inactiveRetentionMonths ?? 0,
-  );
-  const [inactiveD, setInactiveD] = useState(
-    initial?.inactiveRetentionDays ?? 0,
-  );
-  const [disposition, setDisposition] = useState<"ARCHIVE" | "DESTROY" | null>(
-    initial?.dispositionAction ?? null,
-  );
+
+  if (!show) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -259,234 +149,132 @@ function DocumentTypeForm({
       name,
       color: cleanColor,
       recordsSeriesId: seriesId,
-      activeRetentionDuration: isOverriding ? activeY : null,
-      activeRetentionMonths: isOverriding ? activeM : null,
-      activeRetentionDays: isOverriding ? activeD : null,
-      inactiveRetentionDuration: isOverriding ? inactiveY : null,
-      inactiveRetentionMonths: isOverriding ? inactiveM : null,
-      inactiveRetentionDays: isOverriding ? inactiveD : null,
-      dispositionAction: isOverriding ? disposition : null,
     });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="doctype-form">
-      <div className="doctype-form__top">
-        <div className="doctype-form__name-field">
-          <label className="form-label">Type Name</label>
-          <input
-            type="text"
-            className="form-control"
-            placeholder="e.g. Office Order, Memorandum"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
+    <div className="standard-modal-backdrop" onClick={onCancel}>
+      <div
+        className="standard-modal-dialog"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: 440 }}
+      >
+        <div className="standard-modal-header">
+          <div className="standard-modal-icon">
+            <i className="bi bi-file-earmark"></i>
+          </div>
+          <div className="standard-modal-header-text">
+            <h5 className="standard-modal-title">
+              {initial ? "Edit Document Type" : "New Document Type"}
+            </h5>
+            <p className="standard-modal-subtitle">
+              Configure name and color for categorization
+            </p>
+          </div>
+          <button
+            type="button"
+            className="standard-modal-close"
+            onClick={onCancel}
+          >
+            <i className="bi bi-x"></i>
+          </button>
         </div>
-        <div className="doctype-form__color-field">
-          <label className="form-label">Color</label>
-          <div className="doctype-form__color-row">
-            <input
-              type="color"
-              className="form-control form-control-color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              style={{ width: 38, height: 38, padding: 4 }}
-            />
-            <input
-              type="text"
-              className="form-control"
-              value={color}
-              onChange={(e) =>
-                setColor(
-                  e.target.value.startsWith("#")
-                    ? e.target.value
-                    : `#${e.target.value}`,
-                )
-              }
-              style={{
-                width: 90,
-                fontFamily: "var(--font-mono)",
-                fontSize: 12,
-              }}
-            />
-            <div className="doctype-form__presets">
-              {presetColors.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(`#${c}`)}
+
+        <form onSubmit={handleSubmit}>
+          <div className="standard-modal-body">
+            <div className="doctype-form__name-field mb-3">
+              <label className="form-label">Type Name</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="e.g. Office Order, Memorandum"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="doctype-form__color-field">
+              <label className="form-label">Color</label>
+              <div className="doctype-form__color-row">
+                <input
+                  type="color"
+                  className="form-control form-control-color"
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  style={{ width: 38, height: 38, padding: 4 }}
+                />
+                <input
+                  type="text"
+                  className="form-control"
+                  value={color}
+                  onChange={(e) =>
+                    setColor(
+                      e.target.value.startsWith("#")
+                        ? e.target.value
+                        : `#${e.target.value}`,
+                    )
+                  }
                   style={{
-                    backgroundColor: `#${c}`,
-                    width: 20,
-                    height: 20,
-                    borderRadius: "50%",
-                    border: "none",
-                    cursor: "pointer",
-                    boxShadow:
-                      color === `#${c}`
-                        ? `0 0 0 2px #fff, 0 0 0 4px #${c}`
-                        : "none",
-                    flexShrink: 0,
+                    width: 90,
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 12,
                   }}
                 />
-              ))}
+                <div className="doctype-form__presets">
+                  {presetColors.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setColor(`#${c}`)}
+                      style={{
+                        backgroundColor: `#${c}`,
+                        width: 30,
+                        height: 30,
+                        borderRadius: "50%",
+                        border: "none",
+                        cursor: "pointer",
+                        boxShadow:
+                          color === `#${c}`
+                            ? `0 0 0 2px #fff, 0 0 0 4px #${c}`
+                            : "none",
+                        flexShrink: 0,
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="standard-modal-notice standard-modal-notice-info mt-3">
+              <i className="bi bi-info-circle"></i>
+              <p>
+                Retention schedule overrides have been moved to the Records
+                Retention page.
+              </p>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="doctype-form__override-toggle">
-        <label className="doctype-form__toggle-label">
-          <input
-            type="checkbox"
-            className="form-check-input"
-            checked={isOverriding}
-            onChange={(e) => setIsOverriding(e.target.checked)}
-          />
-          Override series retention schedule for this type
-        </label>
-      </div>
-
-      {isOverriding && (
-        <div className="doctype-form__override-fields">
-          <div className="series-form__retention-grid">
-            <div className="series-form__retention-col">
-              <div className="series-form__retention-label">
-                <i className="bi bi-hourglass-split" />
-                Active Retention
-              </div>
-              <div className="series-form__ymd">
-                <div>
-                  <label className="form-label">Years</label>
-                  <input
-                    type="number"
-                    min="0"
-                    className="form-control"
-                    value={activeY}
-                    onChange={(e) => setActiveY(+e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="form-label">Months</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="11"
-                    className="form-control"
-                    value={activeM}
-                    onChange={(e) => setActiveM(+e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="form-label">Days</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="30"
-                    className="form-control"
-                    value={activeD}
-                    onChange={(e) => setActiveD(+e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="series-form__retention-col">
-              <div className="series-form__retention-label">
-                <i className="bi bi-archive" />
-                Inactive Retention
-              </div>
-              <div className="series-form__ymd">
-                <div>
-                  <label className="form-label">Years</label>
-                  <input
-                    type="number"
-                    min="0"
-                    className="form-control"
-                    value={inactiveY}
-                    onChange={(e) => setInactiveY(+e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="form-label">Months</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="11"
-                    className="form-control"
-                    value={inactiveM}
-                    onChange={(e) => setInactiveM(+e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="form-label">Days</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="30"
-                    className="form-control"
-                    value={inactiveD}
-                    onChange={(e) => setInactiveD(+e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="series-form__retention-col series-form__retention-col--disposition">
-              <div className="series-form__retention-label">
-                <i className="bi bi-lightning-charge" />
-                Disposition
-              </div>
-              <div className="series-form__disposition-options">
-                <label
-                  className={`series-form__disposition-option ${disposition === "ARCHIVE" ? "active" : ""}`}
-                >
-                  <input
-                    type="radio"
-                    name="doctype-disposition"
-                    value="ARCHIVE"
-                    checked={disposition === "ARCHIVE"}
-                    onChange={() => setDisposition("ARCHIVE")}
-                  />
-                  <i className="bi bi-archive" />
-                  Archive
-                </label>
-                <label
-                  className={`series-form__disposition-option series-form__disposition-option--destroy ${disposition === "DESTROY" ? "active active--destroy" : ""}`}
-                >
-                  <input
-                    type="radio"
-                    name="doctype-disposition"
-                    value="DESTROY"
-                    checked={disposition === "DESTROY"}
-                    onChange={() => setDisposition("DESTROY")}
-                  />
-                  <i className="bi bi-trash3" />
-                  Destroy
-                </label>
-              </div>
-            </div>
+          <div className="standard-modal-footer">
+            <button
+              type="button"
+              className="standard-modal-btn standard-modal-btn-ghost"
+              onClick={onCancel}
+              disabled={isPending}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="standard-modal-btn standard-modal-btn-confirm"
+              disabled={!name.trim() || isPending}
+            >
+              {isPending ? "Saving…" : initial ? "Update Type" : "Add Type"}
+            </button>
           </div>
-        </div>
-      )}
-
-      <div className="series-form__actions">
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={onCancel}
-          disabled={isPending}
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="btn btn-primary"
-          disabled={!name.trim() || isPending}
-        >
-          {isPending ? "Saving…" : initial ? "Update Type" : "Add Type"}
-        </button>
+        </form>
       </div>
-    </form>
+    </div>
   );
 }
 
@@ -505,12 +293,6 @@ function SeriesCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const totalYears =
-    (series.activeRetentionDuration ?? 0) +
-    (series.inactiveRetentionDuration ?? 0);
-  const totalMonths =
-    (series.activeRetentionMonths ?? 0) + (series.inactiveRetentionMonths ?? 0);
-
   return (
     <div
       className={`series-card ${isSelected ? "series-card--selected" : ""}`}
@@ -522,22 +304,6 @@ function SeriesCard({
           <span className="series-card__badge">
             <i className="bi bi-file-earmark" />
             {series._count?.documentTypes ?? 0} types
-          </span>
-          <span className="series-card__badge">
-            <i className="bi bi-clock" />
-            {totalYears > 0
-              ? `${totalYears}y`
-              : totalMonths > 0
-                ? `${totalMonths}m`
-                : "No retention"}
-          </span>
-          <span
-            className={`series-card__badge series-card__badge--disposition ${series.dispositionAction === "DESTROY" ? "series-card__badge--destroy" : "series-card__badge--archive"}`}
-          >
-            <i
-              className={`bi ${series.dispositionAction === "DESTROY" ? "bi-trash3" : "bi-archive"}`}
-            />
-            {series.dispositionAction}
           </span>
         </div>
       </div>
@@ -567,59 +333,6 @@ function SeriesCard({
   );
 }
 
-// Retention Display
-
-function RetentionDisplay({ docType, series }: { docType: any; series: any }) {
-  const isOverridden = docType.activeRetentionDuration !== null;
-  const src = isOverridden ? docType : series;
-
-  const formatYMD = (y: number, m: number, d: number) => {
-    const parts = [];
-    if (y) parts.push(`${y}y`);
-    if (m) parts.push(`${m}m`);
-    if (d) parts.push(`${d}d`);
-    return parts.length ? parts.join(" ") : "0";
-  };
-
-  const activeStr = formatYMD(
-    src.activeRetentionDuration ?? 0,
-    src.activeRetentionMonths ?? 0,
-    src.activeRetentionDays ?? 0,
-  );
-  const inactiveStr = formatYMD(
-    src.inactiveRetentionDuration ?? 0,
-    src.inactiveRetentionMonths ?? 0,
-    src.inactiveRetentionDays ?? 0,
-  );
-  const action = src.dispositionAction ?? "ARCHIVE";
-
-  return (
-    <div className="retention-display">
-      <div className="retention-display__phase">
-        <span className="retention-display__phase-label">Active</span>
-        <span className="retention-display__phase-value">{activeStr}</span>
-      </div>
-      <div className="retention-display__divider">→</div>
-      <div className="retention-display__phase">
-        <span className="retention-display__phase-label">Inactive</span>
-        <span className="retention-display__phase-value">{inactiveStr}</span>
-      </div>
-      <div className="retention-display__divider">→</div>
-      <span
-        className={`retention-display__action ${action === "DESTROY" ? "retention-display__action--destroy" : "retention-display__action--archive"}`}
-      >
-        <i
-          className={`bi ${action === "DESTROY" ? "bi-trash3" : "bi-archive"}`}
-        />
-        {action}
-      </span>
-      {isOverridden && (
-        <span className="retention-display__override-badge">Override</span>
-      )}
-    </div>
-  );
-}
-
 // Main Page
 
 export default function AdminDocumentTypes() {
@@ -636,6 +349,7 @@ export default function AdminDocumentTypes() {
   const deleteDocType = trpc.documentTypes.delete.useMutation();
 
   const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
+
   const [showSeriesForm, setShowSeriesForm] = useState(false);
   const [editingSeries, setEditingSeries] = useState<any | null>(null);
   const [seriesToDelete, setSeriesToDelete] = useState<any | null>(null);
@@ -734,49 +448,31 @@ export default function AdminDocumentTypes() {
           <div>
             <div className="rc-col__title">Records Series</div>
             <div className="rc-col__desc">
-              Top-level groupings with default retention
+              Top-level groupings for document types
             </div>
           </div>
-          {!showSeriesForm && (
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => {
-                setShowSeriesForm(true);
-                setEditingSeries(null);
-              }}
-            >
-              <i className="bi bi-plus-lg" /> New Series
-            </button>
-          )}
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={() => {
+              setEditingSeries(null);
+              setShowSeriesForm(true);
+            }}
+          >
+            <i className="bi bi-plus-lg" /> New Series
+          </button>
         </div>
 
-        {(showSeriesForm || editingSeries) && (
-          <div className="rc-inline-form">
-            <div className="rc-inline-form__label">
-              {editingSeries
-                ? `Editing: ${editingSeries.name}`
-                : "New Records Series"}
-            </div>
-            <SeriesForm
-              initial={editingSeries}
-              onSave={handleSaveSeries}
-              onCancel={() => {
-                setShowSeriesForm(false);
-                setEditingSeries(null);
-              }}
-              isPending={isSeriesFormPending}
-            />
-          </div>
-        )}
-
         <div className="rc-series-list">
-          {!allSeries?.length && !showSeriesForm && (
+          {!allSeries?.length && (
             <div className="rc-empty">
               <i className="bi bi-collection" />
               <p>No records series yet.</p>
               <button
                 className="btn btn-sm btn-outline-primary"
-                onClick={() => setShowSeriesForm(true)}
+                onClick={() => {
+                  setEditingSeries(null);
+                  setShowSeriesForm(true);
+                }}
               >
                 Create the first series
               </button>
@@ -825,46 +521,30 @@ export default function AdminDocumentTypes() {
                   </span>
                 </div>
                 <div className="rc-col__desc">
-                  Each type can optionally override the series retention
+                  Types define visual classification colors
                 </div>
               </div>
-              {!showTypeForm && !editingType && (
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() => setShowTypeForm(true)}
-                >
-                  <i className="bi bi-plus-lg" /> Add Type
-                </button>
-              )}
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => {
+                  setEditingType(null);
+                  setShowTypeForm(true);
+                }}
+              >
+                <i className="bi bi-plus-lg" /> Add Type
+              </button>
             </div>
 
-            {(showTypeForm || editingType) && (
-              <div className="rc-inline-form">
-                <div className="rc-inline-form__label">
-                  {editingType
-                    ? `Editing: ${editingType.name}`
-                    : "New Document Type"}
-                </div>
-                <DocumentTypeForm
-                  seriesId={selectedSeriesId}
-                  initial={editingType}
-                  onSave={handleSaveDocType}
-                  onCancel={() => {
-                    setShowTypeForm(false);
-                    setEditingType(null);
-                  }}
-                  isPending={isTypeFormPending}
-                />
-              </div>
-            )}
-
-            {!seriesDocTypes.length && !showTypeForm ? (
+            {!seriesDocTypes.length ? (
               <div className="rc-empty">
                 <i className="bi bi-file-earmark-plus" />
                 <p>No document types in this series.</p>
                 <button
                   className="btn btn-sm btn-outline-primary"
-                  onClick={() => setShowTypeForm(true)}
+                  onClick={() => {
+                    setEditingType(null);
+                    setShowTypeForm(true);
+                  }}
                 >
                   Add the first type
                 </button>
@@ -873,7 +553,6 @@ export default function AdminDocumentTypes() {
               <div className="rc-types-table">
                 <div className="rc-types-table__head">
                   <span>Type</span>
-                  <span>Retention Schedule</span>
                   <span />
                 </div>
                 {seriesDocTypes.map((docType: any) => {
@@ -885,27 +564,24 @@ export default function AdminDocumentTypes() {
                       <div className="rc-types-table__name">
                         <span
                           style={{
-                            width: 10,
-                            height: 10,
+                            width: 12,
+                            height: 12,
                             borderRadius: "50%",
                             backgroundColor: color,
                             flexShrink: 0,
                             display: "inline-block",
+                            aspectRatio: "1 / 1",
                           }}
                         />
                         {docType.name}
                       </div>
-                      <RetentionDisplay
-                        docType={docType}
-                        series={selectedSeries}
-                      />
                       <div className="rc-types-table__actions">
                         <button
                           className="btn-icon"
                           title="Edit type"
                           onClick={() => {
                             setEditingType(docType);
-                            setShowTypeForm(false);
+                            setShowTypeForm(true);
                           }}
                         >
                           <i
@@ -932,6 +608,37 @@ export default function AdminDocumentTypes() {
           </>
         )}
       </div>
+
+      {/* Series Modal */}
+      {showSeriesForm && (
+        <SeriesFormModal
+          key={editingSeries ? editingSeries.id : "new"}
+          show={showSeriesForm}
+          initial={editingSeries}
+          onSave={handleSaveSeries}
+          onCancel={() => {
+            setShowSeriesForm(false);
+            setEditingSeries(null);
+          }}
+          isPending={isSeriesFormPending}
+        />
+      )}
+
+      {/* DocType Modal */}
+      {showTypeForm && (
+        <DocumentTypeFormModal
+          key={editingType ? editingType.id : "new"}
+          show={showTypeForm}
+          seriesId={selectedSeriesId!}
+          initial={editingType}
+          onSave={handleSaveDocType}
+          onCancel={() => {
+            setShowTypeForm(false);
+            setEditingType(null);
+          }}
+          isPending={isTypeFormPending}
+        />
+      )}
 
       {/* Confirm Modals */}
       <ConfirmModal
