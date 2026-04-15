@@ -451,15 +451,6 @@ export default function AdminDocumentTypes() {
               Top-level groupings for document types
             </div>
           </div>
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={() => {
-              setEditingSeries(null);
-              setShowSeriesForm(true);
-            }}
-          >
-            <i className="bi bi-plus-lg" /> New Series
-          </button>
         </div>
 
         <div className="rc-series-list">
@@ -498,6 +489,15 @@ export default function AdminDocumentTypes() {
               onDelete={() => setSeriesToDelete(series)}
             />
           ))}
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={() => {
+              setEditingSeries(null);
+              setShowSeriesForm(true);
+            }}
+          >
+            <i className="bi bi-plus-lg" /> New Series
+          </button>
         </div>
       </div>
 

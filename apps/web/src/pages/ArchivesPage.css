@@ -7,13 +7,6 @@
   flex-wrap: wrap;
 }
 
-.archives-page-header h2 {
-  margin: 0 0 4px;
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-}
-
 .archives-tab-strip {
   display: flex;
   align-items: center;

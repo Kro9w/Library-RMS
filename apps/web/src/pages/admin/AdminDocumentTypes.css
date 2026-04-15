@@ -82,6 +82,11 @@
   gap: 4px;
 }
 
+.rc-series-list button {
+  width: 50%;
+  align-self: center;
+}
+
 /* Series Card */
 
 .series-card {

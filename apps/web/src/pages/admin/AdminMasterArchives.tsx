@@ -253,7 +253,7 @@ export default function AdminMasterArchives() {
       {/* ── Page header ── */}
       <div className="archives-page-header" style={{ marginBottom: "20px" }}>
         <div>
-          <h2 className="admin-page-title">Master Archives Register</h2>
+          <h2 style={{ color: "var(--brand)" }}>Master Archives Register</h2>
           <p className="admin-page-desc" style={{ marginBottom: 0 }}>
             Institution-wide view of all archived and destroyed records across
             every campus and office.

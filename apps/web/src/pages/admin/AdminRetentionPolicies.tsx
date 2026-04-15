@@ -2,6 +2,7 @@ import { useState } from "react";
 import { trpc } from "../../trpc";
 import "../../components/StandardModal.css";
 import "./AdminRetentionPolicies.css";
+import { RetentionHelpModal } from "../../components/Retention/RetentionHelpModal";
 
 export function LifecycleBar({
   active,
@@ -95,6 +96,8 @@ function RetentionFormModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
+      name: initial?.name,
+      color: initial?.color,
       activeRetentionDuration: activeY,
       activeRetentionMonths: activeM,
       activeRetentionDays: activeD,
@@ -140,28 +143,34 @@ function RetentionFormModal({
                   <div>
                     <label className="form-label">Years</label>
                     <input
-                      type="text"
+                      type="number"
+                      min={0}
+                      max={99}
                       className="form-control form-control-sm"
                       onChange={handleNumChange(setActiveY, 99)}
-                      value={activeY || ""}
+                      value={activeY === 0 ? "" : activeY}
                     />
                   </div>
                   <div>
                     <label className="form-label">Months</label>
                     <input
-                      type="text"
+                      type="number"
+                      min={0}
+                      max={12}
                       className="form-control form-control-sm"
                       onChange={handleNumChange(setActiveM, 12)}
-                      value={activeM || ""}
+                      value={activeM === 0 ? "" : activeM}
                     />
                   </div>
                   <div>
                     <label className="form-label">Days</label>
                     <input
-                      type="text"
+                      type="number"
+                      min={0}
+                      max={31}
                       className="form-control form-control-sm"
                       onChange={handleNumChange(setActiveD, 31)}
-                      value={activeD || ""}
+                      value={activeD === 0 ? "" : activeD}
                     />
                   </div>
                 </div>
@@ -175,28 +184,34 @@ function RetentionFormModal({
                   <div>
                     <label className="form-label">Years</label>
                     <input
-                      type="text"
+                      type="number"
+                      min={0}
+                      max={99}
                       className="form-control form-control-sm"
                       onChange={handleNumChange(setInactiveY, 99)}
-                      value={inactiveY || ""}
+                      value={inactiveY === 0 ? "" : inactiveY}
                     />
                   </div>
                   <div>
                     <label className="form-label">Months</label>
                     <input
-                      type="text"
+                      type="number"
+                      min={0}
+                      max={12}
                       className="form-control form-control-sm"
                       onChange={handleNumChange(setInactiveM, 12)}
-                      value={inactiveM || ""}
+                      value={inactiveM === 0 ? "" : inactiveM}
                     />
                   </div>
                   <div>
                     <label className="form-label">Days</label>
                     <input
-                      type="text"
+                      type="number"
+                      min={0}
+                      max={31}
                       className="form-control form-control-sm"
                       onChange={handleNumChange(setInactiveD, 31)}
-                      value={inactiveD || ""}
+                      value={inactiveD === 0 ? "" : inactiveD}
                     />
                   </div>
                 </div>
@@ -343,19 +358,6 @@ function RetentionRow({
         )}
       </div>
 
-      <div className="retention-row__actions">
-        <button
-          className="btn-icon"
-          title="Edit retention"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
-        >
-          <i className="bi bi-pencil" />
-        </button>
-      </div>
-
       <div className="retention-row__active">
         {fmtDuration(activeY, activeM, activeD)}
       </div>
@@ -392,6 +394,19 @@ function RetentionRow({
           {dispositionAction}
         </span>
       </div>
+
+      <div className="retention-row__actions">
+        <button
+          className="btn-icon"
+          title="Edit retention"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+        >
+          <i className="bi bi-pencil" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -417,6 +432,8 @@ export default function AdminRetentionPolicies() {
     name: string;
     initialData: any;
   } | null>(null);
+
+  const [showHelp, setShowHelp] = useState(false);
 
   const toggleSeries = (id: string) => {
     setExpandedSeries((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -452,7 +469,9 @@ export default function AdminRetentionPolicies() {
       <div className="rp-page">
         <div className="rp-header">
           <div>
-            <h2 className="admin-page-title">Records Retention Policies</h2>
+            <h2 style={{ color: "var(--brand)" }}>
+              Records Retention Policies
+            </h2>
             <p className="admin-page-desc">
               Lifecycle schedules inherited from Records Series and optionally
               overridden per Document Type.
@@ -493,7 +512,7 @@ export default function AdminRetentionPolicies() {
     <div className="rp-page">
       <div className="rp-header">
         <div>
-          <h2 className="admin-page-title">Records Retention Policies</h2>
+          <h2 style={{ color: "var(--brand)" }}>Records Retention Policies</h2>{" "}
           <p className="admin-page-desc">
             Lifecycle schedules inherited from Records Series and optionally
             overridden per Document Type. Click the edit icon to change
@@ -686,9 +705,24 @@ export default function AdminRetentionPolicies() {
         <span>
           Retention schedules are{" "}
           <strong>snapshotted at document creation</strong>. Changes here apply
-          to new documents only and will not affect existing records.
+          to new documents only and will not affect existing records.{" "}
+          <button
+            onClick={() => setShowHelp(true)}
+            className="btn-link"
+            style={{
+              padding: 0,
+              border: "none",
+              background: "none",
+              color: "var(--brand)",
+              fontWeight: 600,
+            }}
+          >
+            Learn more...
+          </button>
         </span>
       </div>
+
+      <RetentionHelpModal show={showHelp} onClose={() => setShowHelp(false)} />
 
       <RetentionFormModal
         key={editingItem ? editingItem.id : "new"}

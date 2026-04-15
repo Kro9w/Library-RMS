@@ -27,6 +27,7 @@
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
+  flex: 1;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -149,8 +150,8 @@
 
 .rp-table-head {
   display: grid;
-  grid-template-columns: 4.5fr 1fr 1fr 1fr 1fr;
-  padding: 10px 18px;
+  grid-template-columns: minmax(200px, 4.5fr) 105px 105px 2fr 90px 40px;
+  padding: 10px 50px 10px 18px;
   background: var(--bg-subtle);
   border-bottom: 1px solid var(--border);
   font-size: 10px;
@@ -163,7 +164,7 @@
 
 @media (max-width: 900px) {
   .rp-table-head {
-    grid-template-columns: 1fr 60px 60px 1fr 80px;
+    grid-template-columns: minmax(120px, 1fr) 50px 50px 1fr 80px 30px;
   }
 }
 
@@ -208,16 +209,16 @@
 
 .retention-row {
   display: grid;
-  grid-template-columns: 4.5fr 2fr 1fr 1fr 2fr 1fr;
+  grid-template-columns: minmax(200px, 4.5fr) 105px 105px 2fr 90px 40px;
   align-items: center;
   gap: 12px;
-  padding: 12px 18px;
+  padding: 12px 50px 12px 18px;
   width: 100%;
 }
 
 @media (max-width: 900px) {
   .retention-row {
-    grid-template-columns: 1fr 60px 60px 1fr 80px;
+    grid-template-columns: minmax(120px, 1fr) 50px 50px 1fr 80px 30px;
   }
 }
 
