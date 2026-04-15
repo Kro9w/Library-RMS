@@ -89,13 +89,55 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
 
           {/* Fields */}
           <div className="upload-fields">
+            {/* Records Series & Document Type */}
+            <div style={{ display: "flex", gap: "12px" }}>
+              <div className="upload-field" style={{ flex: 1 }}>
+                <label className="form-label">Records series</label>
+                <select
+                  className="form-control form-select"
+                  value={state.selectedRecordsSeries ?? ""}
+                  onChange={(e) => {
+                    state.setSelectedRecordsSeries(e.target.value || undefined);
+                    state.setSelectedDocumentType(undefined);
+                  }}
+                >
+                  <option value="">Select a records series</option>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {data.recordsSeriesList.map((series: any) => (
+                    <option key={series.id} value={series.id}>
+                      {series.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="upload-field" style={{ flex: 1 }}>
+                <label className="form-label">Document type</label>
+                <select
+                  className="form-control form-select"
+                  value={state.selectedDocumentType ?? ""}
+                  onChange={(e) =>
+                    state.setSelectedDocumentType(e.target.value || undefined)
+                  }
+                  disabled={!state.selectedRecordsSeries}
+                >
+                  <option value="">Select a document type</option>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {data.filteredDocumentTypes.map((type: any) => (
+                    <option key={type.id} value={type.id}>
+                      {type.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             {/* Classification */}
             <div className="upload-field">
               <label className="form-label">Classification</label>
               <select
                 className="form-control form-select"
                 value={state.classification}
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 onChange={(e) => {
                   state.setClassification(e.target.value as any);
                   if (e.target.value !== "FOR_APPROVAL") {
@@ -138,29 +180,6 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
               />
             )}
 
-            {/* Document type */}
-            <div className="upload-field">
-              <label className="form-label">
-                Document type{" "}
-                <span className="upload-field-optional">optional</span>
-              </label>
-              <select
-                className="form-control form-select"
-                value={state.selectedDocumentType ?? ""}
-                onChange={(e) =>
-                  state.setSelectedDocumentType(e.target.value || undefined)
-                }
-              >
-                <option value="">No type</option>
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                {data.documentTypes?.map((type: any) => (
-                  <option key={type.id} value={type.id}>
-                    {type.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             {/* Control number */}
             {state.file && (
               <div className="upload-field">
@@ -202,7 +221,13 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
           <button
             className="standard-modal-btn standard-modal-btn-confirm"
             onClick={() => actions.handleUpload(user?.id)}
-            disabled={!state.file || state.uploading || !data.bucketName}
+            disabled={
+              !state.file ||
+              state.uploading ||
+              !data.bucketName ||
+              !state.selectedRecordsSeries ||
+              !state.selectedDocumentType
+            }
           >
             {state.uploading ? (
               <>
@@ -218,6 +243,65 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
           </button>
         </div>
       </div>
+
+      {state.showControlNumberWarning && (
+        <div className="standard-modal-backdrop" style={{ zIndex: 9999 }}>
+          <div
+            className="standard-modal-dialog"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "400px" }}
+          >
+            <div className="standard-modal-header">
+              <div
+                className="standard-modal-icon"
+                style={{
+                  background: "var(--color-warning-subtle)",
+                  color: "var(--color-warning)",
+                }}
+              >
+                <i className="bi bi-exclamation-triangle"></i>
+              </div>
+              <div className="standard-modal-header-text">
+                <h5 className="standard-modal-title">Missing Control Number</h5>
+              </div>
+              <button
+                type="button"
+                className="standard-modal-close"
+                onClick={() => state.setShowControlNumberWarning(false)}
+              >
+                <i className="bi bi-x"></i>
+              </button>
+            </div>
+            <div className="standard-modal-body">
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "var(--color-text-secondary)",
+                  margin: 0,
+                }}
+              >
+                You’re about to upload a document without its control number.
+                This number is essential for tracking and searching. Continue
+                anyway?
+              </p>
+            </div>
+            <div className="standard-modal-footer">
+              <button
+                className="standard-modal-btn standard-modal-btn-ghost"
+                onClick={() => state.setShowControlNumberWarning(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="standard-modal-btn standard-modal-btn-confirm"
+                onClick={() => actions.forceUpload(user?.id)}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

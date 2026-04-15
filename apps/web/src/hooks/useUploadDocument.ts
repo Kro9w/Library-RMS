@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { supabase } from "../supabase";
 import { trpc } from "../trpc";
 import { v4 as uuidv4 } from "uuid";
@@ -8,10 +8,14 @@ export function useUploadDocument(onClose: () => void) {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedRecordsSeries, setSelectedRecordsSeries] = useState<
+    string | undefined
+  >();
   const [selectedDocumentType, setSelectedDocumentType] = useState<
     string | undefined
   >();
   const [controlNumber, setControlNumber] = useState<string | null>(null);
+  const [showControlNumberWarning, setShowControlNumberWarning] = useState(false);
   const [classification, setClassification] = useState<
     | "INSTITUTIONAL"
     | "INTERNAL"
@@ -28,6 +32,28 @@ export function useUploadDocument(onClose: () => void) {
   const createDocMutation = trpc.documents.createDocumentRecord.useMutation();
   const { data: documentTypes } = trpc.documentTypes.getAll.useQuery();
   const { data: storageConfig } = trpc.documents.getStorageConfig.useQuery();
+
+  const recordsSeriesList = useMemo(() => {
+    if (!documentTypes) return [];
+    const seriesMap = new Map();
+    documentTypes.forEach((docType: any) => {
+      if (docType.recordsSeries) {
+        if (!seriesMap.has(docType.recordsSeries.id)) {
+          seriesMap.set(docType.recordsSeries.id, docType.recordsSeries);
+        }
+      }
+    });
+    return Array.from(seriesMap.values()).sort((a: any, b: any) =>
+      a.name.localeCompare(b.name)
+    );
+  }, [documentTypes]);
+
+  const filteredDocumentTypes = useMemo(() => {
+    if (!documentTypes || !selectedRecordsSeries) return [];
+    return documentTypes.filter(
+      (docType: any) => docType.recordsSeriesId === selectedRecordsSeries
+    );
+  }, [documentTypes, selectedRecordsSeries]);
   const { data: departmentsResponse } = trpc.user.getDepartments.useQuery(
     { campusId: me?.campusId as string },
     { enabled: !!me?.campusId },
@@ -99,7 +125,7 @@ export function useUploadDocument(onClose: () => void) {
     }
   };
 
-  const handleUpload = async (userId: string | undefined) => {
+  const executeUpload = async (userId: string | undefined) => {
     if (!file || !userId || !bucketName) {
       setError("Missing required information.");
       return;
@@ -134,6 +160,9 @@ export function useUploadDocument(onClose: () => void) {
       setControlNumber(null);
       setTransitRoute([]);
       setClassification("RESTRICTED");
+      setSelectedRecordsSeries(undefined);
+      setSelectedDocumentType(undefined);
+      setShowControlNumberWarning(false);
       onClose();
       await utils.documents.invalidate();
       await utils.getDashboardStats.invalidate();
@@ -144,6 +173,19 @@ export function useUploadDocument(onClose: () => void) {
     }
   };
 
+  const handleUpload = async (userId: string | undefined) => {
+    if (!controlNumber || controlNumber.trim() === "") {
+      setShowControlNumberWarning(true);
+      return;
+    }
+    await executeUpload(userId);
+  };
+
+  const forceUpload = async (userId: string | undefined) => {
+    setShowControlNumberWarning(false);
+    await executeUpload(userId);
+  };
+
   return {
     state: {
       file,
@@ -151,6 +193,8 @@ export function useUploadDocument(onClose: () => void) {
       uploading,
       error,
       setError,
+      selectedRecordsSeries,
+      setSelectedRecordsSeries,
       selectedDocumentType,
       setSelectedDocumentType,
       controlNumber,
@@ -160,9 +204,13 @@ export function useUploadDocument(onClose: () => void) {
       transitRoute,
       setTransitRoute,
       isScanning,
+      showControlNumberWarning,
+      setShowControlNumberWarning,
     },
     data: {
       documentTypes,
+      recordsSeriesList,
+      filteredDocumentTypes,
       departmentsResponse,
       bucketName,
     },
@@ -174,6 +222,7 @@ export function useUploadDocument(onClose: () => void) {
     actions: {
       scanForControlNumber,
       handleUpload,
+      forceUpload,
     },
   };
 }

@@ -19,15 +19,14 @@ export class RecordsSeriesRouter {
         .input(
           z.object({
             name: z.string().min(1),
-            activeRetentionDuration: z.number().min(0).nullable().default(0),
-            activeRetentionMonths: z.number().min(0).nullable().default(0),
-            activeRetentionDays: z.number().min(0).nullable().default(0),
-            inactiveRetentionDuration: z.number().min(0).nullable().default(0),
-            inactiveRetentionMonths: z.number().min(0).nullable().default(0),
-            inactiveRetentionDays: z.number().min(0).nullable().default(0),
+            activeRetentionDuration: z.number().min(0).default(0),
+            activeRetentionMonths: z.number().min(0).default(0),
+            activeRetentionDays: z.number().min(0).default(0),
+            inactiveRetentionDuration: z.number().min(0).default(0),
+            inactiveRetentionMonths: z.number().min(0).default(0),
+            inactiveRetentionDays: z.number().min(0).default(0),
             dispositionAction: z
               .nativeEnum(DispositionAction)
-              .nullable()
               .default(DispositionAction.ARCHIVE),
           }),
         )
@@ -59,15 +58,14 @@ export class RecordsSeriesRouter {
           z.object({
             id: z.string(),
             name: z.string().min(1),
-            activeRetentionDuration: z.number().min(0).nullable().optional(),
-            activeRetentionMonths: z.number().min(0).nullable().optional(),
-            activeRetentionDays: z.number().min(0).nullable().optional(),
-            inactiveRetentionDuration: z.number().min(0).nullable().optional(),
-            inactiveRetentionMonths: z.number().min(0).nullable().optional(),
-            inactiveRetentionDays: z.number().min(0).nullable().optional(),
+            activeRetentionDuration: z.number().min(0).optional(),
+            activeRetentionMonths: z.number().min(0).optional(),
+            activeRetentionDays: z.number().min(0).optional(),
+            inactiveRetentionDuration: z.number().min(0).optional(),
+            inactiveRetentionMonths: z.number().min(0).optional(),
+            inactiveRetentionDays: z.number().min(0).optional(),
             dispositionAction: z
               .nativeEnum(DispositionAction)
-              .nullable()
               .optional(),
           }),
         )

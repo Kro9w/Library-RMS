@@ -59,7 +59,7 @@ describe('DocumentLifecycleService', () => {
       expect(result).toBe('Destroyed');
     });
 
-    it('should return Active if no retention schedule exists', () => {
+    it('should return Ready if no retention schedule exists (meaning 0 duration)', () => {
       const result = service.computeLifecycleStatus({
         createdAt: new Date(),
         lifecycle: {
@@ -69,7 +69,7 @@ describe('DocumentLifecycleService', () => {
           isUnderLegalHold: false,
         },
       });
-      expect(result).toBe('Active');
+      expect(result).toBe('Ready');
     });
 
     it('should return Ready if current date is past active and inactive retention periods', () => {

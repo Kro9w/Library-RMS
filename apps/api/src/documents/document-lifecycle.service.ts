@@ -33,19 +33,12 @@ export class DocumentLifecycleService {
     if (doc.lifecycle.dispositionStatus === 'DESTROYED') return 'Destroyed';
     if (doc.lifecycle.dispositionStatus === 'ARCHIVED') return 'Archived';
 
-    if (
-      doc.lifecycle.activeRetentionSnapshot === null ||
-      doc.lifecycle.activeRetentionSnapshot === undefined
-    ) {
-      return 'Active';
-    }
-
     const now = new Date();
     const created = new Date(doc.createdAt);
 
     const activeUntil = new Date(created);
     activeUntil.setFullYear(
-      activeUntil.getFullYear() + doc.lifecycle.activeRetentionSnapshot,
+      activeUntil.getFullYear() + (doc.lifecycle.activeRetentionSnapshot ?? 0),
     );
     activeUntil.setMonth(
       activeUntil.getMonth() +
@@ -90,7 +83,6 @@ export class DocumentLifecycleService {
     const lifecycleWhereClause: Prisma.DocumentWhereInput = {
       lifecycle: {
         dispositionStatus: { notIn: ['DESTROYED', 'ARCHIVED'] },
-        activeRetentionSnapshot: { not: null },
       },
       AND: [aclWhere],
     };
@@ -111,14 +103,13 @@ export class DocumentLifecycleService {
       FROM "Document" d
       INNER JOIN "DocumentLifecycle" l ON d.id = l."documentId"
       WHERE (l."dispositionStatus" NOT IN ('DESTROYED', 'ARCHIVED') OR l."dispositionStatus" IS NULL)
-        AND l."activeRetentionSnapshot" IS NOT NULL
         AND l."isUnderLegalHold" = false
         AND (d."createdAt" + 
-             make_interval(years => l."activeRetentionSnapshot") + 
+             make_interval(years => COALESCE(l."activeRetentionSnapshot", 0)) + 
              make_interval(months => COALESCE(l."activeRetentionMonthsSnapshot", 0)) + 
              make_interval(days => COALESCE(l."activeRetentionDaysSnapshot", 0))) <= NOW()
         AND (d."createdAt" + 
-             make_interval(years => l."activeRetentionSnapshot") + 
+             make_interval(years => COALESCE(l."activeRetentionSnapshot", 0)) + 
              make_interval(months => COALESCE(l."activeRetentionMonthsSnapshot", 0)) + 
              make_interval(days => COALESCE(l."activeRetentionDaysSnapshot", 0)) + 
              make_interval(years => COALESCE(l."inactiveRetentionSnapshot", 0)) +

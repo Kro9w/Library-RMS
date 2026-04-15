@@ -107,24 +107,17 @@ function RetentionFormModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const isPerpetual =
-      activeY === null &&
-      activeM === null &&
-      activeD === null &&
-      inactiveY === null &&
-      inactiveM === null &&
-      inactiveD === null;
 
     onSave({
       name: initial?.name,
       color: initial?.color,
-      activeRetentionDuration: activeY,
-      activeRetentionMonths: activeM,
-      activeRetentionDays: activeD,
-      inactiveRetentionDuration: inactiveY,
-      inactiveRetentionMonths: inactiveM,
-      inactiveRetentionDays: inactiveD,
-      dispositionAction: isPerpetual ? null : disposition,
+      activeRetentionDuration: activeY ?? 0,
+      activeRetentionMonths: activeM ?? 0,
+      activeRetentionDays: activeD ?? 0,
+      inactiveRetentionDuration: inactiveY ?? 0,
+      inactiveRetentionMonths: inactiveM ?? 0,
+      inactiveRetentionDays: inactiveD ?? 0,
+      dispositionAction: disposition,
     });
   };
 
@@ -273,11 +266,10 @@ function RetentionFormModal({
             <div className="standard-modal-notice standard-modal-notice-info mt-2">
               <i className="bi bi-info-circle"></i>
               <p>
-                Setting all retention fields to <strong>0</strong> executes
-                disposition immediately. Leaving all fields completely{" "}
-                <strong>blank</strong> sets the record as a perpetual/permanent
-                record. For document types, setting fields to <strong>0</strong>{" "}
-                acts as a local override.
+                Setting all retention fields to <strong>0</strong> or leaving
+                them completely <strong>blank</strong> executes disposition
+                immediately. For document types, setting fields to{" "}
+                <strong>0</strong> acts as a local override.
               </p>
             </div>
           </div>
@@ -341,19 +333,12 @@ function RetentionRow({
     m: number | null,
     d: number | null,
   ) => {
-    if (y === null && m === null && d === null)
-      return <span className="badge bg-secondary">Permanent</span>;
     const parts: string[] = [];
     if (y) parts.push(`${y}y`);
     if (m) parts.push(`${m}m`);
     if (d) parts.push(`${d}d`);
     return parts.length ? parts.join(" ") : "0y 0m 0d";
   };
-
-  const isPerpetualActive =
-    activeY === null && activeM === null && activeD === null;
-  const isPerpetualInactive =
-    inactiveY === null && inactiveM === null && inactiveD === null;
 
   const totalYears = (activeY ?? 0) + (inactiveY ?? 0);
   const activePct =
@@ -400,11 +385,7 @@ function RetentionRow({
       </div>
 
       <div className="retention-row__bar">
-        {isPerpetualActive && isPerpetualInactive ? (
-          <span className="retention-row__no-schedule">
-            Perpetual / Permanent
-          </span>
-        ) : totalYears > 0 ? (
+        {totalYears > 0 ? (
           <div className="retention-mini-bar">
             <div
               className="retention-mini-bar__active"

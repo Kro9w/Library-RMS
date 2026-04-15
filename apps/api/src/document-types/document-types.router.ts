@@ -18,6 +18,7 @@ export class DocumentTypesRouter {
         if (!departmentId) {
           return ctx.prisma.documentType.findMany({
             orderBy: { name: 'asc' },
+            include: { recordsSeries: true },
           });
         }
 
@@ -36,12 +37,14 @@ export class DocumentTypesRouter {
               },
             },
             orderBy: { name: 'asc' },
+            include: { recordsSeries: true },
           });
         }
 
         // If no types are linked to the department, return all.
         return ctx.prisma.documentType.findMany({
           orderBy: { name: 'asc' },
+          include: { recordsSeries: true },
         });
       }),
 
@@ -137,7 +140,10 @@ export class DocumentTypesRouter {
             inactiveRetentionDuration: z.number().min(0).nullable().optional(),
             inactiveRetentionMonths: z.number().min(0).nullable().optional(),
             inactiveRetentionDays: z.number().min(0).nullable().optional(),
-            dispositionAction: z.nativeEnum(DispositionAction).nullable().optional(),
+            dispositionAction: z
+              .nativeEnum(DispositionAction)
+              .nullable()
+              .optional(),
           }),
         )
         .mutation(async ({ ctx, input }) => {
@@ -189,7 +195,10 @@ export class DocumentTypesRouter {
             inactiveRetentionDuration: z.number().min(0).nullable().optional(),
             inactiveRetentionMonths: z.number().min(0).nullable().optional(),
             inactiveRetentionDays: z.number().min(0).nullable().optional(),
-            dispositionAction: z.nativeEnum(DispositionAction).nullable().optional(),
+            dispositionAction: z
+              .nativeEnum(DispositionAction)
+              .nullable()
+              .optional(),
           }),
         )
         .mutation(async ({ ctx, input }) => {
@@ -206,7 +215,9 @@ export class DocumentTypesRouter {
             data: {
               name: input.name,
               color: input.color,
-              ...(input.recordsSeriesId ? { recordsSeriesId: input.recordsSeriesId } : {}),
+              ...(input.recordsSeriesId
+                ? { recordsSeriesId: input.recordsSeriesId }
+                : {}),
               activeRetentionDuration: input.activeRetentionDuration,
               activeRetentionMonths: input.activeRetentionMonths,
               activeRetentionDays: input.activeRetentionDays,
