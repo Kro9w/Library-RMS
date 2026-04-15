@@ -11,6 +11,7 @@ import { LogRouter } from '../log/log.router';
 import { NotificationsRouter } from '../notifications/notifications.router';
 import { AccessControlService } from '../documents/access-control.service';
 import { ArchivesRouter } from '../archives/archives.router';
+import { RecordsSeriesRouter } from '../records-series/records-series.router';
 
 @Injectable()
 export class TrpcRouter {
@@ -23,6 +24,7 @@ export class TrpcRouter {
     private readonly notificationsRouter: NotificationsRouter,
     private readonly accessControlService: AccessControlService,
     private readonly archivesRouter: ArchivesRouter,
+    private readonly recordsSeriesRouter: RecordsSeriesRouter,
   ) {}
 
   get appRouter() {
@@ -161,6 +163,7 @@ export class TrpcRouter {
       user: this.userRouter.createRouter(),
       roles: this.rolesRouter.createRouter(),
       documentTypes: this.documentTypesRouter.createRouter(),
+      recordsSeries: this.recordsSeriesRouter.createRouter(),
       logs: this.logRouter.createRouter(),
       notifications: this.notificationsRouter.createRouter(),
       archives: this.archivesRouter.createRouter(),

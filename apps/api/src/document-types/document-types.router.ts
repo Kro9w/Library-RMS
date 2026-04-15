@@ -48,6 +48,7 @@ export class DocumentTypesRouter {
       getAllUnfiltered: protectedProcedure.query(async ({ ctx }) => {
         return ctx.prisma.documentType.findMany({
           orderBy: { name: 'asc' },
+          include: { recordsSeries: true },
         });
       }),
 
@@ -61,6 +62,7 @@ export class DocumentTypesRouter {
               },
             },
             orderBy: { name: 'asc' },
+            include: { recordsSeries: true },
           });
         }),
 
@@ -128,15 +130,14 @@ export class DocumentTypesRouter {
           z.object({
             name: z.string().min(1),
             color: z.string().min(1),
-            activeRetentionDuration: z.number().min(0).default(0),
-            activeRetentionMonths: z.number().min(0).default(0),
-            activeRetentionDays: z.number().min(0).default(0),
-            inactiveRetentionDuration: z.number().min(0).default(0),
-            inactiveRetentionMonths: z.number().min(0).default(0),
-            inactiveRetentionDays: z.number().min(0).default(0),
-            dispositionAction: z
-              .nativeEnum(DispositionAction)
-              .default(DispositionAction.ARCHIVE),
+            recordsSeriesId: z.string().min(1),
+            activeRetentionDuration: z.number().min(0).nullable().optional(),
+            activeRetentionMonths: z.number().min(0).nullable().optional(),
+            activeRetentionDays: z.number().min(0).nullable().optional(),
+            inactiveRetentionDuration: z.number().min(0).nullable().optional(),
+            inactiveRetentionMonths: z.number().min(0).nullable().optional(),
+            inactiveRetentionDays: z.number().min(0).nullable().optional(),
+            dispositionAction: z.nativeEnum(DispositionAction).nullable().optional(),
           }),
         )
         .mutation(async ({ ctx, input }) => {
@@ -152,6 +153,7 @@ export class DocumentTypesRouter {
             data: {
               name: input.name,
               color: input.color,
+              recordsSeriesId: input.recordsSeriesId,
               activeRetentionDuration: input.activeRetentionDuration,
               activeRetentionMonths: input.activeRetentionMonths,
               activeRetentionDays: input.activeRetentionDays,
@@ -180,13 +182,14 @@ export class DocumentTypesRouter {
             id: z.string(),
             name: z.string().min(1),
             color: z.string().min(1),
-            activeRetentionDuration: z.number().min(0).optional(),
-            activeRetentionMonths: z.number().min(0).optional(),
-            activeRetentionDays: z.number().min(0).optional(),
-            inactiveRetentionDuration: z.number().min(0).optional(),
-            inactiveRetentionMonths: z.number().min(0).optional(),
-            inactiveRetentionDays: z.number().min(0).optional(),
-            dispositionAction: z.nativeEnum(DispositionAction).optional(),
+            recordsSeriesId: z.string().min(1).optional(),
+            activeRetentionDuration: z.number().min(0).nullable().optional(),
+            activeRetentionMonths: z.number().min(0).nullable().optional(),
+            activeRetentionDays: z.number().min(0).nullable().optional(),
+            inactiveRetentionDuration: z.number().min(0).nullable().optional(),
+            inactiveRetentionMonths: z.number().min(0).nullable().optional(),
+            inactiveRetentionDays: z.number().min(0).nullable().optional(),
+            dispositionAction: z.nativeEnum(DispositionAction).nullable().optional(),
           }),
         )
         .mutation(async ({ ctx, input }) => {
@@ -203,6 +206,7 @@ export class DocumentTypesRouter {
             data: {
               name: input.name,
               color: input.color,
+              ...(input.recordsSeriesId ? { recordsSeriesId: input.recordsSeriesId } : {}),
               activeRetentionDuration: input.activeRetentionDuration,
               activeRetentionMonths: input.activeRetentionMonths,
               activeRetentionDays: input.activeRetentionDays,

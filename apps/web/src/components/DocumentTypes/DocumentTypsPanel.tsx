@@ -10,7 +10,11 @@ const presetColors = [
   "8c3bb9",
 ];
 
-export function DocumentTypesPanel() {
+export function DocumentTypesPanel({
+  selectedSeriesId,
+}: {
+  selectedSeriesId?: string | null;
+}) {
   const { data: documentTypes, refetch } =
     trpc.documentTypes.getAllUnfiltered.useQuery();
   const createMutation = trpc.documentTypes.create.useMutation();
@@ -22,13 +26,18 @@ export function DocumentTypesPanel() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const handleSave = () => {
-    if (!name.trim()) return;
+    if (!name.trim() || !selectedSeriesId) return;
 
     const cleanColor = color.startsWith("#") ? color.slice(1) : color;
 
     if (editingId) {
       updateMutation.mutate(
-        { id: editingId, name, color: cleanColor },
+        {
+          id: editingId,
+          name,
+          color: cleanColor,
+          recordsSeriesId: selectedSeriesId,
+        },
         {
           onSuccess: () => {
             refetch();
@@ -38,7 +47,7 @@ export function DocumentTypesPanel() {
       );
     } else {
       createMutation.mutate(
-        { name, color: cleanColor },
+        { name, color: cleanColor, recordsSeriesId: selectedSeriesId },
         {
           onSuccess: () => {
             refetch();
@@ -49,7 +58,12 @@ export function DocumentTypesPanel() {
     }
   };
 
-  const handleEdit = (type: { id: string; name: string; color: string }) => {
+  const handleEdit = (type: {
+    id: string;
+    name: string;
+    color: string;
+    recordsSeriesId: string;
+  }) => {
     setEditingId(type.id);
     setName(type.name);
     setColor(
@@ -71,11 +85,25 @@ export function DocumentTypesPanel() {
     setEditingId(null);
   };
 
+  const filteredTypes = documentTypes?.filter(
+    (type: any) => type.recordsSeriesId === selectedSeriesId,
+  );
+
+  if (!selectedSeriesId) return null;
+
   return (
     <div>
-      <div className="card mt-4">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h5 className="mb-0" style={{ color: "var(--brand)" }}>
+          Document Types in Series
+        </h5>
+      </div>
+
+      <div className="card">
         <div className="card-header">
-          {editingId ? "Edit Document Type" : "Create New Document Type"}
+          {editingId
+            ? "Edit Document Type"
+            : "Create New Document Type in Series"}
         </div>
         <div className="card-body">
           <div className="d-flex flex-wrap gap-3 align-items-end">
@@ -196,8 +224,13 @@ export function DocumentTypesPanel() {
               </tr>
             </thead>
             <tbody>
-              {documentTypes?.map(
-                (type: { id: string; name: string; color: string }) => (
+              {filteredTypes?.map(
+                (type: {
+                  id: string;
+                  name: string;
+                  color: string;
+                  recordsSeriesId: string;
+                }) => (
                   <tr key={type.id} className="align-middle">
                     <td className="px-3 text-center">
                       <div
@@ -232,10 +265,10 @@ export function DocumentTypesPanel() {
                   </tr>
                 ),
               )}
-              {documentTypes?.length === 0 && (
+              {filteredTypes?.length === 0 && (
                 <tr>
                   <td colSpan={3} className="text-center py-4 text-muted">
-                    No document types found.
+                    No document types found in this series.
                   </td>
                 </tr>
               )}

@@ -40,29 +40,34 @@ const steps = [
     ),
   },
   {
-    title: "Retention Periods",
+    title: "Retention Periods & Inheritance",
     content: (
       <>
         <p>
-          Retention periods can be precisely defined in{" "}
-          <strong>Years, Months, and Days</strong> and are configured per
-          Document Type.
+          Retention periods are defined in{" "}
+          <strong>Years, Months, and Days</strong>. They are configured at the{" "}
+          <strong>Records Series</strong> level and inherited by all Document
+          Types within that series.
         </p>
         <div className="info-block">
-          <h6>Active Duration</h6>
-          <p>How long a document stays in the "Active" phase after creation.</p>
-        </div>
-        <div className="info-block">
-          <h6>Inactive Duration</h6>
+          <h6>Active & Inactive Duration</h6>
           <p>
-            How long a document stays in the "Inactive" phase after the Active
-            period expires.
+            The "Active" phase begins at creation. The "Inactive" phase begins
+            once the Active period expires.
           </p>
         </div>
-        <p className="text-muted mt-3">
+        <div className="info-block mt-3">
+          <h6>Overrides</h6>
+          <p>
+            While Document Types inherit their schedule from their parent Series
+            by default, you can toggle an <strong>Override</strong> to set a
+            specific, granular schedule for a single Document Type.
+          </p>
+        </div>
+        <p className="text-muted mt-3 mb-0" style={{ fontSize: "0.85rem" }}>
           <em>Example:</em> A contract might be Active for 3 years, then
-          Inactive for 7 years and 6 months, for a total retention of 10 years
-          and 6 months.
+          Inactive for 7 years and 6 months, for a total retention of 10.5
+          years.
         </p>
       </>
     ),

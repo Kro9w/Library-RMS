@@ -45,7 +45,7 @@ const links = [
     ),
   },
   {
-    label: "Document Types",
+    label: "Records Classification",
     path: "/admin/document-types",
     icon: (
       <svg

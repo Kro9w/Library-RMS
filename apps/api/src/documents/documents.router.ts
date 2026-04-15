@@ -147,7 +147,11 @@ export class DocumentsRouter {
               id: true,
               title: true,
               createdAt: true,
-              documentType: true,
+              documentType: {
+                include: {
+                  recordsSeries: true
+                }
+              },
               workflow: {
                 select: {
                   recordStatus: true,
@@ -399,17 +403,18 @@ export class DocumentsRouter {
           if (input.documentTypeId) {
             const docType = await this.prisma.documentType.findUnique({
               where: { id: input.documentTypeId },
+              include: { recordsSeries: true }
             });
             if (docType) {
+              const series = docType.recordsSeries;
               retentionSnapshot = {
-                activeRetentionSnapshot: docType.activeRetentionDuration,
-                activeRetentionMonthsSnapshot: docType.activeRetentionMonths,
-                activeRetentionDaysSnapshot: docType.activeRetentionDays,
-                inactiveRetentionSnapshot: docType.inactiveRetentionDuration,
-                inactiveRetentionMonthsSnapshot:
-                  docType.inactiveRetentionMonths,
-                inactiveRetentionDaysSnapshot: docType.inactiveRetentionDays,
-                dispositionActionSnapshot: docType.dispositionAction,
+                activeRetentionSnapshot: docType.activeRetentionDuration ?? series?.activeRetentionDuration ?? 0,
+                activeRetentionMonthsSnapshot: docType.activeRetentionMonths ?? series?.activeRetentionMonths ?? 0,
+                activeRetentionDaysSnapshot: docType.activeRetentionDays ?? series?.activeRetentionDays ?? 0,
+                inactiveRetentionSnapshot: docType.inactiveRetentionDuration ?? series?.inactiveRetentionDuration ?? 0,
+                inactiveRetentionMonthsSnapshot: docType.inactiveRetentionMonths ?? series?.inactiveRetentionMonths ?? 0,
+                inactiveRetentionDaysSnapshot: docType.inactiveRetentionDays ?? series?.inactiveRetentionDays ?? 0,
+                dispositionActionSnapshot: docType.dispositionAction ?? series?.dispositionAction ?? 'ARCHIVE',
               };
             }
           }

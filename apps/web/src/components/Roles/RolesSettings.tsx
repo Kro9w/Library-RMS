@@ -21,7 +21,7 @@ const LEVEL_LABELS: Record<
     border: "var(--brand-muted)",
   },
   1: {
-    label: "Leader",
+    label: "Head",
     color: "#854d0e",
     bg: "var(--warning-subtle)",
     border: "#fde047",

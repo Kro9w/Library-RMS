@@ -143,15 +143,35 @@ model DocumentType {
   name                    String      @unique
   color                   String
   documents               Document[]
+  
+  activeRetentionDuration Int?        // In Years
+  activeRetentionMonths   Int?        // In Months
+  activeRetentionDays     Int?        // In Days
+
+  inactiveRetentionDuration Int? // In Years
+  inactiveRetentionMonths   Int? // In Months
+  inactiveRetentionDays     Int? // In Days
+
+  dispositionAction DispositionAction?
+
+  recordsSeriesId String
+  recordsSeries   RecordsSeries @relation(fields: [recordsSeriesId], references: [id])
+}
+
+model RecordsSeries {
+  id                      String      @id @default(cuid())
+  name                    String      @unique
+  documentTypes           DocumentType[]
+  
   activeRetentionDuration Int         @default(0) // In Years
   activeRetentionMonths   Int         @default(0) // In Months
   activeRetentionDays     Int         @default(0) // In Days
-
-  inactiveRetentionDuration Int @default(0) // In Years
-  inactiveRetentionMonths   Int @default(0) // In Months
-  inactiveRetentionDays     Int @default(0) // In Days
-
-  dispositionAction DispositionAction @default(ARCHIVE)
+  
+  inactiveRetentionDuration Int       @default(0) // In Years
+  inactiveRetentionMonths   Int       @default(0) // In Months
+  inactiveRetentionDays     Int       @default(0) // In Days
+  
+  dispositionAction       DispositionAction @default(ARCHIVE)
 }
 
 model Document {

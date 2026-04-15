@@ -338,6 +338,14 @@ export const DocumentDetails: React.FC = () => {
                 <strong>Created</strong>
                 <span>{new Date(document.createdAt).toLocaleDateString()}</span>
               </div>
+              {document.documentType?.recordsSeries && (
+                <div className="detail-row">
+                  <strong>Records Series</strong>
+                  <span className="badge bg-secondary text-wrap text-start">
+                    {(document.documentType.recordsSeries as any).name}
+                  </span>
+                </div>
+              )}
               <div className="detail-row">
                 <strong>Status</strong>
                 <span

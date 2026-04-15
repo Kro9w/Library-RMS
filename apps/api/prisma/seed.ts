@@ -157,6 +157,23 @@ const CAMPUS_DATA = [
 async function main() {
   console.log('Start seeding ...');
 
+  // 0. Seed Default Records Series
+  const generalSeries = await prisma.recordsSeries.upsert({
+    where: { name: 'General Series' },
+    update: {},
+    create: {
+      name: 'General Series',
+      activeRetentionDuration: 0,
+      inactiveRetentionDuration: 0,
+    },
+  });
+
+  // 0.5. Fix existing Document Types that might lack a series
+  await prisma.documentType.updateMany({
+    where: { recordsSeriesId: { equals: '' } }, // Depending on DB state, might just want to set for all or update if missing. But Prisma throws error if we don't handle it gracefully.
+    data: { recordsSeriesId: generalSeries.id },
+  }).catch(() => {}); // Catch error if column doesn't exist yet (before push)
+
   // 1. Batch Seed Campuses
   const existingCampuses = await prisma.campus.findMany();
   

@@ -11,6 +11,7 @@ import { LogModule } from '../log/log.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AccessControlService } from '../documents/access-control.service';
 import { ArchivesModule } from '../archives/archives.module';
+import { RecordsSeriesModule } from '../records-series/records-series.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ArchivesModule } from '../archives/archives.module';
     SupabaseModule,
     RolesModule,
     DocumentTypesModule,
+    RecordsSeriesModule,
     LogModule,
     NotificationsModule,
     ArchivesModule,
