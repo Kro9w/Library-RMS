@@ -698,6 +698,8 @@ export default function AdminRetentionPolicies() {
                             initialData: isOverride
                               ? docType
                               : {
+                                  name: docType.name,
+                                  color: docType.color,
                                   activeRetentionDuration: 0,
                                   activeRetentionMonths: 0,
                                   activeRetentionDays: 0,
@@ -737,19 +739,18 @@ export default function AdminRetentionPolicies() {
           Retention schedules are{" "}
           <strong>snapshotted at document creation</strong>. Changes here apply
           to new documents only and will not affect existing records.{" "}
-          <button
+          <a
             onClick={() => setShowHelp(true)}
             className="btn-link"
             style={{
-              padding: 0,
-              border: "none",
-              background: "none",
               color: "var(--brand)",
-              fontWeight: 600,
+              cursor: "pointer",
+              fontWeight: "400",
+              fontStyle: "italic",
             }}
           >
             Learn more...
-          </button>
+          </a>
         </span>
       </div>
 

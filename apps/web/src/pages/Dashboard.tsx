@@ -24,14 +24,21 @@ import { DocumentsToReviewList } from "../components/DocumentsToReviewList";
 
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
-const PIE_CHART_COLORS = ["#BA3B46", "#ED9B40", "#AAB8C2", "#E1E8ED"];
+const RETENTION_COLORS: Record<string, string> = {
+  Active: "#28a745",
+  Inactive: "#ffc107",
+  "Ready for Disposition": "#dc3545",
+};
 
 const EMPTY_PIE_DATA = [{ name: "No data", value: 1 }];
 const EMPTY_PIE_COLOR = ["#e4e4e7"];
 
 type RecentFile = AppRouterOutputs["getDashboardStats"]["recentFiles"][0];
-type DocTypeStat = AppRouterOutputs["getDashboardStats"]["docsByType"][0];
-type DocStatusStat = AppRouterOutputs["getDashboardStats"]["docsByStatus"][0];
+type DocTypeStat =
+  AppRouterOutputs["getDashboardStats"]["overallStats"]["docsByType"][0];
+type DocRetentionStat =
+  AppRouterOutputs["getDashboardStats"]["overallStats"]["docsByRetention"][0];
+type SeriesStat = AppRouterOutputs["getDashboardStats"]["seriesStats"][0];
 
 const EmptyChartLabel = ({ label }: { label: string }) => (
   <text
@@ -77,6 +84,7 @@ export function Dashboard() {
   const { data: pendingDistributions } =
     trpc.documents.getMyPendingDistributions.useQuery();
 
+  const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
@@ -120,43 +128,97 @@ export function Dashboard() {
     totalDocuments: 0,
     recentUploadsCount: 0,
     totalUsers: 0,
-    docsByType: [],
-    docsByStatus: [],
+    seriesStats: [],
+    overallStats: {
+      docsByType: [],
+      docsByRetention: [],
+    },
   };
 
-  const hasTypeData = stats.docsByType.length > 0;
-  const hasStatusData = stats.docsByStatus.length > 0;
+  const selectedSeries = stats.seriesStats.find(
+    (s: SeriesStat) => s.id === selectedSeriesId,
+  );
+  const activeStats = selectedSeries || stats.overallStats;
+  const activeTotalDocs = selectedSeries
+    ? selectedSeries.totalDocs
+    : stats.totalDocuments;
 
-  const typeChartData = hasTypeData ? stats.docsByType : EMPTY_PIE_DATA;
-  const typeChartColors = hasTypeData ? PIE_CHART_COLORS : EMPTY_PIE_COLOR;
-  const statusChartData = hasStatusData ? stats.docsByStatus : EMPTY_PIE_DATA;
-  const statusChartColors = hasStatusData ? PIE_CHART_COLORS : EMPTY_PIE_COLOR;
+  const typeChartData: DocTypeStat[] = activeStats.docsByType || [];
+  const hasTypeData = typeChartData.length > 0;
+  const retentionChartData: DocRetentionStat[] =
+    activeStats.docsByRetention || [];
+  const hasRetentionData = retentionChartData.length > 0;
 
   const renderAnalyticsCharts = () => (
-    <div className="card-body d-flex flex-column align-items-center w-100">
-      <div className="w-100 d-flex flex-column flex-md-row justify-content-around">
-        <div className="flex-grow-1 text-center">
+    <div className="card-body d-flex flex-column w-100">
+      <div className="row g-4 w-100">
+        <div className="col-md-4">
+          <h5 className="card-title mb-3">Series Statistics</h5>
+          <div className="list-group">
+            <button
+              className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${!selectedSeriesId ? "active" : ""}`}
+              onClick={() => setSelectedSeriesId(null)}
+            >
+              <div>
+                <strong>All Series</strong>
+              </div>
+              <span className="badge bg-primary rounded-pill">
+                {stats.totalDocuments}
+              </span>
+            </button>
+            {stats.seriesStats.map((series: SeriesStat) => (
+              <button
+                key={series.id}
+                className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${selectedSeriesId === series.id ? "active" : ""}`}
+                onClick={() => setSelectedSeriesId(series.id)}
+              >
+                <div>
+                  <strong>{series.name}</strong>
+                  <div className="text-muted" style={{ fontSize: "0.8rem" }}>
+                    {series.docsByType.length} Types
+                  </div>
+                </div>
+                <span className="badge bg-primary rounded-pill">
+                  {series.totalDocs}
+                </span>
+              </button>
+            ))}
+            {stats.seriesStats.length === 0 && (
+              <div
+                className="text-muted"
+                style={{ fontSize: "0.85rem", padding: "1rem" }}
+              >
+                No series data available.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="col-md-4 text-center border-start border-end">
           <h5 className="card-title mb-3">Documents by Type</h5>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
-                data={typeChartData}
+                data={hasTypeData ? typeChartData : EMPTY_PIE_DATA}
                 cx="50%"
                 cy="50%"
-                innerRadius={50}
-                outerRadius={80}
+                innerRadius={60}
+                outerRadius={90}
                 labelLine={false}
-                fill="#8884d8"
                 dataKey="value"
                 nameKey="name"
                 isAnimationActive={hasTypeData}
               >
-                {typeChartData.map((_entry: any, index: number) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={typeChartColors[index % typeChartColors.length]}
-                  />
-                ))}
+                {hasTypeData ? (
+                  typeChartData.map((entry: DocTypeStat, index: number) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.color || EMPTY_PIE_COLOR[0]}
+                    />
+                  ))
+                ) : (
+                  <Cell fill={EMPTY_PIE_COLOR[0]} />
+                )}
                 {!hasTypeData && <EmptyChartLabel label="No data yet" />}
               </Pie>
               {hasTypeData && (
@@ -166,7 +228,7 @@ export function Dashboard() {
                     if (!payload || payload.length === 0) return null;
                     const { name, value } = payload[0].payload;
                     const percentage = (
-                      (value / stats.totalDocuments) *
+                      (value / activeTotalDocs) *
                       100
                     ).toFixed(2);
                     return (
@@ -177,6 +239,7 @@ export function Dashboard() {
                   }}
                 />
               )}
+              {hasTypeData && <Legend verticalAlign="bottom" height={36} />}
             </PieChart>
           </ResponsiveContainer>
           {!hasTypeData && (
@@ -186,40 +249,43 @@ export function Dashboard() {
           )}
         </div>
 
-        <div className="flex-grow-1 text-center">
-          <h5 className="card-title mb-3 mt-4 mt-md-0">Documents by Status</h5>
-          <ResponsiveContainer width="100%" height={200}>
+        <div className="col-md-4 text-center">
+          <h5 className="card-title mb-3 mt-4 mt-md-0">Retention Status</h5>
+          <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
-                data={statusChartData}
+                data={hasRetentionData ? retentionChartData : EMPTY_PIE_DATA}
                 cx="50%"
                 cy="50%"
-                innerRadius={50}
-                outerRadius={80}
+                innerRadius={0}
+                outerRadius={90}
                 labelLine={false}
-                fill="#82ca9d"
                 dataKey="value"
                 nameKey="name"
-                isAnimationActive={hasStatusData}
+                isAnimationActive={hasRetentionData}
               >
-                {statusChartData.map((_entry: any, index: number) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={
-                      statusChartColors[(index + 2) % statusChartColors.length]
-                    }
-                  />
-                ))}
-                {!hasStatusData && <EmptyChartLabel label="No data yet" />}
+                {hasRetentionData ? (
+                  retentionChartData.map(
+                    (entry: DocRetentionStat, index: number) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={RETENTION_COLORS[entry.name] || "#6c757d"}
+                      />
+                    ),
+                  )
+                ) : (
+                  <Cell fill={EMPTY_PIE_COLOR[0]} />
+                )}
+                {!hasRetentionData && <EmptyChartLabel label="No data yet" />}
               </Pie>
-              {hasStatusData && (
+              {hasRetentionData && (
                 <Tooltip
                   cursor={{ fill: "transparent" }}
                   content={({ payload }) => {
                     if (!payload || payload.length === 0) return null;
                     const { name, value } = payload[0].payload;
                     const percentage = (
-                      (value / stats.totalDocuments) *
+                      (value / activeTotalDocs) *
                       100
                     ).toFixed(2);
                     return (
@@ -230,9 +296,12 @@ export function Dashboard() {
                   }}
                 />
               )}
+              {hasRetentionData && (
+                <Legend verticalAlign="bottom" height={36} />
+              )}
             </PieChart>
           </ResponsiveContainer>
-          {!hasStatusData && (
+          {!hasRetentionData && (
             <p className="card-text text-muted" style={{ fontSize: "12px" }}>
               Status breakdown will appear here once documents are reviewed.
             </p>
@@ -325,7 +394,7 @@ export function Dashboard() {
       <div className="document-table-card mt-3">
         <div className="p-4">
           <div className="row">
-            <div className="col-lg-8">
+            <div className={isLevel0Or1 ? "col-lg-8" : "col-lg-12"}>
               <h5>
                 <i className="bi bi-list-check me-2"></i>Recent Uploads
               </h5>
@@ -358,24 +427,15 @@ export function Dashboard() {
               </div>
             </div>
 
-            <div className="col-lg-4">
-              {isLevel0Or1 ? (
-                <>
-                  <h5>
-                    <i className="bi bi-journal-check me-2"></i>Documents to
-                    Review
-                  </h5>
-                  <DocumentsToReviewList />
-                </>
-              ) : (
-                <>
-                  <h5>
-                    <i className="bi bi-graph-up-arrow me-2"></i>Analytics
-                  </h5>
-                  {renderAnalyticsCharts()}
-                </>
-              )}
-            </div>
+            {isLevel0Or1 && (
+              <div className="col-lg-4">
+                <h5>
+                  <i className="bi bi-journal-check me-2"></i>Documents to
+                  Review
+                </h5>
+                <DocumentsToReviewList />
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -47,8 +47,11 @@ export class TrpcRouter {
             recentUploadsCount: 0,
             recentFiles: [],
             totalUsers: 0,
-            docsByType: [],
-            docsByStatus: [],
+            seriesStats: [],
+            overallStats: {
+              docsByType: [],
+              docsByRetention: [],
+            },
           };
         }
 
@@ -60,29 +63,12 @@ export class TrpcRouter {
           AND: [aclWhere],
         };
 
-        const docsByTypeQuery = ctx.prisma.document.groupBy({
-          by: ['documentTypeId'],
-          _count: {
-            documentTypeId: true,
-          },
-          where: documentWhere,
-        });
-
-        const docsByStatusQuery = ctx.prisma.documentWorkflow.groupBy({
-          by: ['status'],
-          _count: {
-            status: true,
-          },
-          where: { document: documentWhere },
-        });
-
         const [
           totalDocuments,
           recentUploadsCount,
           recentFiles,
           totalUsers,
-          docsByStatusRaw,
-          docsByTypeRaw,
+          docsRaw,
         ] = await Promise.all([
           ctx.prisma.document.count({ where: documentWhere }),
           ctx.prisma.document.count({
@@ -104,39 +90,155 @@ export class TrpcRouter {
             },
           }),
           ctx.prisma.user.count({ where: { departmentId } }),
-          docsByStatusQuery,
-          docsByTypeQuery,
+          ctx.prisma.document.findMany({
+            where: documentWhere,
+            select: {
+              documentTypeId: true,
+              createdAt: true,
+              lifecycle: {
+                select: {
+                  activeRetentionSnapshot: true,
+                  activeRetentionMonthsSnapshot: true,
+                  activeRetentionDaysSnapshot: true,
+                  inactiveRetentionSnapshot: true,
+                  inactiveRetentionMonthsSnapshot: true,
+                  inactiveRetentionDaysSnapshot: true,
+                  dispositionStatus: true,
+                  isUnderLegalHold: true,
+                },
+              },
+            },
+          }),
         ]);
 
-        const documentTypeIds = docsByTypeRaw
-          .map((group) => group.documentTypeId)
-          .filter((id): id is string => id !== null);
-
+        const documentTypeIds = Array.from(new Set(docsRaw.map(d => d.documentTypeId).filter((id): id is string => id !== null)));
+        
         const documentTypes = await ctx.prisma.documentType.findMany({
           where: {
             id: { in: documentTypeIds },
           },
-        });
-
-        const docsByType = docsByTypeRaw.map((group) => {
-          const docType = documentTypes.find(
-            (t) => t.id === group.documentTypeId,
-          );
-          let color = docType?.color || '#AAB8C2';
-          if (color && !color.startsWith('#')) {
-            color = `#${color}`;
+          include: {
+            recordsSeries: true,
           }
-          return {
-            name: docType?.name || 'Uncategorized',
-            value: group._count.documentTypeId,
-            color,
-          };
         });
 
-        const docsByStatus = docsByStatusRaw.map((group) => ({
-          name: group.status || 'Uncategorized',
-          value: group._count.status,
+        const seriesMap = new Map<
+          string,
+          {
+            id: string;
+            name: string;
+            totalDocs: number;
+            docsByTypeMap: Map<string, { name: string; value: number; color: string }>;
+            retentionMap: Map<string, number>;
+          }
+        >();
+
+        const overallDocsByTypeMap = new Map<string, { name: string; value: number; color: string }>();
+        const overallRetentionMap = new Map<string, number>();
+
+        const now = new Date();
+
+        for (const doc of docsRaw) {
+          const docType = documentTypes.find(t => t.id === doc.documentTypeId);
+          const typeId = docType?.id || 'uncategorized';
+          const typeName = docType?.name || 'Uncategorized';
+          let typeColor = docType?.color || '#AAB8C2';
+          if (typeColor && !typeColor.startsWith('#')) {
+            typeColor = `#${typeColor}`;
+          }
+
+          const seriesId = docType?.recordsSeriesId || 'unassigned';
+          const seriesName = docType?.recordsSeries?.name || 'Unassigned';
+
+          // Inline lifecycle computation to avoid service injection overhead
+          let lifecycleStatus = 'Active';
+          if (doc.lifecycle) {
+            if (doc.lifecycle.isUnderLegalHold) {
+               lifecycleStatus = 'Legal Hold';
+            } else if (doc.lifecycle.dispositionStatus === 'DESTROYED') {
+               lifecycleStatus = 'Destroyed';
+            } else if (doc.lifecycle.dispositionStatus === 'ARCHIVED') {
+               lifecycleStatus = 'Archived';
+            } else {
+               const created = new Date(doc.createdAt);
+               const activeUntil = new Date(created);
+               activeUntil.setFullYear(activeUntil.getFullYear() + (doc.lifecycle.activeRetentionSnapshot ?? 0));
+               activeUntil.setMonth(activeUntil.getMonth() + (doc.lifecycle.activeRetentionMonthsSnapshot ?? 0));
+               activeUntil.setDate(activeUntil.getDate() + (doc.lifecycle.activeRetentionDaysSnapshot ?? 0));
+
+               if (now < activeUntil) {
+                 lifecycleStatus = 'Active';
+               } else {
+                 const inactiveUntil = new Date(activeUntil);
+                 inactiveUntil.setFullYear(inactiveUntil.getFullYear() + (doc.lifecycle.inactiveRetentionSnapshot ?? 0));
+                 inactiveUntil.setMonth(inactiveUntil.getMonth() + (doc.lifecycle.inactiveRetentionMonthsSnapshot ?? 0));
+                 inactiveUntil.setDate(inactiveUntil.getDate() + (doc.lifecycle.inactiveRetentionDaysSnapshot ?? 0));
+
+                 if (now < inactiveUntil) {
+                   lifecycleStatus = 'Inactive';
+                 } else {
+                   lifecycleStatus = 'Ready for Disposition';
+                 }
+               }
+            }
+          }
+
+          if (lifecycleStatus === 'Archived' || lifecycleStatus === 'Destroyed' || lifecycleStatus === 'Legal Hold') {
+             // Exclude from retention pie chart
+          } else {
+            overallRetentionMap.set(
+              lifecycleStatus,
+              (overallRetentionMap.get(lifecycleStatus) || 0) + 1,
+            );
+          }
+
+          if (!overallDocsByTypeMap.has(typeId)) {
+            overallDocsByTypeMap.set(typeId, { name: typeName, value: 0, color: typeColor });
+          }
+          overallDocsByTypeMap.get(typeId)!.value += 1;
+
+          if (!seriesMap.has(seriesId)) {
+            seriesMap.set(seriesId, {
+              id: seriesId,
+              name: seriesName,
+              totalDocs: 0,
+              docsByTypeMap: new Map(),
+              retentionMap: new Map(),
+            });
+          }
+
+          const seriesData = seriesMap.get(seriesId)!;
+          seriesData.totalDocs += 1;
+
+          if (!seriesData.docsByTypeMap.has(typeId)) {
+            seriesData.docsByTypeMap.set(typeId, { name: typeName, value: 0, color: typeColor });
+          }
+          seriesData.docsByTypeMap.get(typeId)!.value += 1;
+
+          if (lifecycleStatus !== 'Archived' && lifecycleStatus !== 'Destroyed' && lifecycleStatus !== 'Legal Hold') {
+             seriesData.retentionMap.set(
+               lifecycleStatus,
+               (seriesData.retentionMap.get(lifecycleStatus) || 0) + 1,
+             );
+          }
+        }
+
+        const seriesStats = Array.from(seriesMap.values()).map((series) => ({
+          id: series.id,
+          name: series.name,
+          totalDocs: series.totalDocs,
+          docsByType: Array.from(series.docsByTypeMap.values()),
+          docsByRetention: Array.from(series.retentionMap.entries()).map(
+            ([name, value]) => ({ name, value }),
+          ),
         }));
+
+        const overallStats = {
+          docsByType: Array.from(overallDocsByTypeMap.values()),
+          docsByRetention: Array.from(overallRetentionMap.entries()).map(
+            ([name, value]) => ({ name, value }),
+          ),
+        };
 
         return {
           totalDocuments,
@@ -154,8 +256,8 @@ export class TrpcRouter {
             };
           }),
           totalUsers,
-          docsByType,
-          docsByStatus,
+          seriesStats,
+          overallStats,
         };
       }),
 
