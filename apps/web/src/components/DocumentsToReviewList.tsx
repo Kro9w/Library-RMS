@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { trpc } from "../trpc";
-import { UserAvatar } from "./UserAvatar";
+import { UserInitialsAvatar } from "./UserInitialsAvatar";
 import "./DocumentsToReviewList.css";
 
 export const DocumentsToReviewList: React.FC = () => {
@@ -29,7 +29,6 @@ export const DocumentsToReviewList: React.FC = () => {
   }
 
   const sortedDocs = [...(documents || [])].sort((a, b) => {
-    // Unchecked (not reviewed) items first
     if (a.isReviewed === b.isReviewed) {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     }
@@ -64,16 +63,20 @@ export const DocumentsToReviewList: React.FC = () => {
 
           <div className="docs-review-originator position-relative">
             <div className="reviewer-avatar-wrapper">
-              <UserAvatar
-                user={doc.uploadedBy as any}
-                className="reviewer-avatar"
+              <UserInitialsAvatar
+                firstName={doc.uploadedBy.firstName}
+                lastName={doc.uploadedBy.lastName}
+                imageUrl={(doc.uploadedBy as any).imageUrl}
                 size={36}
+                className="reviewer-avatar"
               />
               <div className="originator-dialog-box">
                 <strong>
                   {doc.uploadedBy.firstName} {doc.uploadedBy.lastName}
                 </strong>
                 <br />
+                <small>{doc.uploadedBy.roles[0]?.name || "No Role"}</small>
+                {" | "}
                 <small>
                   {doc.uploadedBy.department?.name || "Unknown Department"}
                 </small>

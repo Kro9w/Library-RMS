@@ -7,7 +7,14 @@ import { LoadingAnimation } from "../components/ui/LoadingAnimation";
 import "./Documents.css";
 import "./Dashboard.css";
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from "recharts";
 
 import { UploadModal } from "../components/UploadModal";
 import { ForwardDocumentModal } from "../components/ForwardDocumentModal";
@@ -19,17 +26,37 @@ import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
 const PIE_CHART_COLORS = ["#BA3B46", "#ED9B40", "#AAB8C2", "#E1E8ED"];
 
+const EMPTY_PIE_DATA = [{ name: "No data", value: 1 }];
+const EMPTY_PIE_COLOR = ["#e4e4e7"];
+
 type RecentFile = AppRouterOutputs["getDashboardStats"]["recentFiles"][0];
 type DocTypeStat = AppRouterOutputs["getDashboardStats"]["docsByType"][0];
 type DocStatusStat = AppRouterOutputs["getDashboardStats"]["docsByStatus"][0];
+
+const EmptyChartLabel = ({ label }: { label: string }) => (
+  <text
+    x="50%"
+    y="50%"
+    textAnchor="middle"
+    dominantBaseline="middle"
+    style={{
+      fontSize: "12px",
+      fill: "var(--text-muted)",
+      fontFamily: "var(--font-sans)",
+    }}
+  >
+    {label}
+  </text>
+);
 
 export function Dashboard() {
   const { data, isLoading, isError, error } = trpc.getDashboardStats.useQuery();
   const { data: user } = trpc.user.getMe.useQuery();
 
-  const isLevel0Or1 = useMemo(() => {
-    return user?.roles?.some((r) => r.level === 0 || r.level === 1) || false;
-  }, [user]);
+  const isLevel0Or1 = useMemo(
+    () => user?.roles?.some((r) => r.level === 0 || r.level === 1) || false,
+    [user],
+  );
 
   const { data: pendingDispositionsData } =
     trpc.documents.getPendingDispositions.useQuery(undefined, {
@@ -38,10 +65,7 @@ export function Dashboard() {
 
   const pendingDispositionsCount = pendingDispositionsData?.length || 0;
 
-  useForm<{
-    controlNumber: string;
-    email: string;
-  }>();
+  useForm<{ controlNumber: string; email: string }>();
 
   const [showSendModal, setShowSendModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -71,14 +95,9 @@ export function Dashboard() {
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     let timeGreeting = "Good morning";
-    if (hour >= 12 && hour < 18) {
-      timeGreeting = "Good afternoon";
-    } else if (hour >= 18) {
-      timeGreeting = "Good evening";
-    }
-
-    const name = user?.firstName || "User";
-    return `${timeGreeting}, ${name}`;
+    if (hour >= 12 && hour < 18) timeGreeting = "Good afternoon";
+    else if (hour >= 18) timeGreeting = "Good evening";
+    return `${timeGreeting}, ${user?.firstName || "User"}`;
   }, [user]);
 
   if (isLoading) {
@@ -105,34 +124,42 @@ export function Dashboard() {
     docsByStatus: [],
   };
 
+  const hasTypeData = stats.docsByType.length > 0;
+  const hasStatusData = stats.docsByStatus.length > 0;
+
+  const typeChartData = hasTypeData ? stats.docsByType : EMPTY_PIE_DATA;
+  const typeChartColors = hasTypeData ? PIE_CHART_COLORS : EMPTY_PIE_COLOR;
+  const statusChartData = hasStatusData ? stats.docsByStatus : EMPTY_PIE_DATA;
+  const statusChartColors = hasStatusData ? PIE_CHART_COLORS : EMPTY_PIE_COLOR;
+
   const renderAnalyticsCharts = () => (
     <div className="card-body d-flex flex-column align-items-center w-100">
       <div className="w-100 d-flex flex-column flex-md-row justify-content-around">
         <div className="flex-grow-1 text-center">
           <h5 className="card-title mb-3">Documents by Type</h5>
-          {stats.docsByType.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie
-                  data={stats.docsByType}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                  labelLine={false}
-                  fill="#8884d8"
-                  dataKey="value"
-                  nameKey="name"
-                >
-                  {stats.docsByType.map(
-                    (_entry: DocTypeStat, index: number) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={PIE_CHART_COLORS[index % PIE_CHART_COLORS.length]}
-                      />
-                    ),
-                  )}
-                </Pie>
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart>
+              <Pie
+                data={typeChartData}
+                cx="50%"
+                cy="50%"
+                innerRadius={50}
+                outerRadius={80}
+                labelLine={false}
+                fill="#8884d8"
+                dataKey="value"
+                nameKey="name"
+                isAnimationActive={hasTypeData}
+              >
+                {typeChartData.map((_entry: any, index: number) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={typeChartColors[index % typeChartColors.length]}
+                  />
+                ))}
+                {!hasTypeData && <EmptyChartLabel label="No data yet" />}
+              </Pie>
+              {hasTypeData && (
                 <Tooltip
                   cursor={{ fill: "transparent" }}
                   content={({ payload }) => {
@@ -143,58 +170,49 @@ export function Dashboard() {
                       100
                     ).toFixed(2);
                     return (
-                      <div
-                        style={{
-                          backgroundColor: "rgba(0, 0, 0, 0.8)",
-                          color: "#fff",
-                          borderRadius: "5px",
-                          padding: "6px 10px",
-                          fontSize: "0.85rem",
-                        }}
-                      >
+                      <div className="custom-tooltip">
                         <strong>{name}</strong>: {percentage}%
                       </div>
                     );
                   }}
                 />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="card-text text-muted mt-4">
-              No documents found to generate stats.
+              )}
+            </PieChart>
+          </ResponsiveContainer>
+          {!hasTypeData && (
+            <p className="card-text text-muted" style={{ fontSize: "12px" }}>
+              Documents will appear here once uploaded.
             </p>
           )}
         </div>
 
         <div className="flex-grow-1 text-center">
           <h5 className="card-title mb-3 mt-4 mt-md-0">Documents by Status</h5>
-          {stats.docsByStatus.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie
-                  data={stats.docsByStatus}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                  labelLine={false}
-                  fill="#82ca9d"
-                  dataKey="value"
-                  nameKey="name"
-                >
-                  {stats.docsByStatus.map(
-                    (_entry: DocStatusStat, index: number) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={
-                          PIE_CHART_COLORS[
-                            (index + 2) % PIE_CHART_COLORS.length
-                          ]
-                        }
-                      />
-                    ),
-                  )}
-                </Pie>
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart>
+              <Pie
+                data={statusChartData}
+                cx="50%"
+                cy="50%"
+                innerRadius={50}
+                outerRadius={80}
+                labelLine={false}
+                fill="#82ca9d"
+                dataKey="value"
+                nameKey="name"
+                isAnimationActive={hasStatusData}
+              >
+                {statusChartData.map((_entry: any, index: number) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={
+                      statusChartColors[(index + 2) % statusChartColors.length]
+                    }
+                  />
+                ))}
+                {!hasStatusData && <EmptyChartLabel label="No data yet" />}
+              </Pie>
+              {hasStatusData && (
                 <Tooltip
                   cursor={{ fill: "transparent" }}
                   content={({ payload }) => {
@@ -205,25 +223,18 @@ export function Dashboard() {
                       100
                     ).toFixed(2);
                     return (
-                      <div
-                        style={{
-                          backgroundColor: "rgba(0, 0, 0, 0.8)",
-                          color: "#fff",
-                          borderRadius: "5px",
-                          padding: "6px 10px",
-                          fontSize: "0.85rem",
-                        }}
-                      >
+                      <div className="custom-tooltip">
                         <strong>{name}</strong>: {percentage}%
                       </div>
                     );
                   }}
                 />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="card-text text-muted mt-4">
-              No status data available.
+              )}
+            </PieChart>
+          </ResponsiveContainer>
+          {!hasStatusData && (
+            <p className="card-text text-muted" style={{ fontSize: "12px" }}>
+              Status breakdown will appear here once documents are reviewed.
             </p>
           )}
         </div>
@@ -235,7 +246,6 @@ export function Dashboard() {
 
   return (
     <div className="container mt-4">
-      {/* --- Page Header (Updated with Greeting) --- */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1>{greeting}</h1>
         <div className="d-flex gap-2 align-items-center">
@@ -279,7 +289,6 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* --- Top row of stats (Unchanged) --- */}
       <div className="row">
         <div className="col-md-4">
           <div className="card stat-card stat-card-primary mb-3 h-100">
@@ -313,11 +322,9 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* --- Lower Section Wrapper (Unchanged) --- */}
       <div className="document-table-card mt-3">
         <div className="p-4">
           <div className="row">
-            {/* --- Left Column (Unchanged) --- */}
             <div className="col-lg-8">
               <h5>
                 <i className="bi bi-list-check me-2"></i>Recent Uploads
@@ -351,7 +358,6 @@ export function Dashboard() {
               </div>
             </div>
 
-            {/* --- Right Column --- */}
             <div className="col-lg-4">
               {isLevel0Or1 ? (
                 <>

@@ -3,7 +3,7 @@ import { trpc } from "../trpc";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 import "../components/Roles/RolesSettings.css";
 import { ConfirmModal } from "../components/ConfirmModal";
-
+import { UserInitialsAvatar } from "../components/UserInitialsAvatar";
 import { formatUserName, formatUserNameLastFirst } from "../utils/user";
 
 type User = AppRouterOutputs["user"]["getUsersWithRoles"][0];
@@ -16,7 +16,7 @@ export function Users() {
     isError,
     error,
   } = trpc.user.getUsersWithRoles.useQuery(undefined, {
-    enabled: !!currentUser, // Prevent fetching until current user is loaded
+    enabled: !!currentUser,
   });
 
   const removeUserFromInstitution =
@@ -24,7 +24,6 @@ export function Users() {
   const utils = trpc.useUtils();
 
   const [userToRemove, setUserToRemove] = useState<User | null>(null);
-
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>(
     {},
   );
@@ -39,9 +38,7 @@ export function Users() {
     const groups: Record<string, User[]> = {};
     users.forEach((user) => {
       const deptName = user.department?.name || "Unassigned";
-      if (!groups[deptName]) {
-        groups[deptName] = [];
-      }
+      if (!groups[deptName]) groups[deptName] = [];
       groups[deptName].push(user);
     });
 
@@ -49,9 +46,7 @@ export function Users() {
       groups[dept].sort((a, b) => {
         const levelA = getUserLevel(a);
         const levelB = getUserLevel(b);
-        if (levelA !== levelB) {
-          return levelA - levelB; // Ascending: 1 is top
-        }
+        if (levelA !== levelB) return levelA - levelB;
         return formatUserNameLastFirst(a).localeCompare(
           formatUserNameLastFirst(b),
         );
@@ -61,9 +56,10 @@ export function Users() {
     return groups;
   }, [users]);
 
-  const sortedDepts = useMemo(() => {
-    return Object.keys(groupedUsers).sort((a, b) => a.localeCompare(b));
-  }, [groupedUsers]);
+  const sortedDepts = useMemo(
+    () => Object.keys(groupedUsers).sort((a, b) => a.localeCompare(b)),
+    [groupedUsers],
+  );
 
   useEffect(() => {
     if (currentUser?.department?.name && sortedDepts.length > 0) {
@@ -77,10 +73,7 @@ export function Users() {
   }, [currentUser, sortedDepts]);
 
   const toggleDept = (deptName: string) => {
-    setExpandedDepts((prev) => ({
-      ...prev,
-      [deptName]: !prev[deptName],
-    }));
+    setExpandedDepts((prev) => ({ ...prev, [deptName]: !prev[deptName] }));
   };
 
   const currentUserLevel = currentUser
@@ -177,35 +170,27 @@ export function Users() {
                                 return (
                                   <tr key={user.id}>
                                     <td>
-                                      <div className="d-flex align-items-center">
-                                        <div className="position-relative me-3">
-                                          <img
-                                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                              formatUserName(user),
-                                            )}&background=ED9B40&color=fff`}
-                                            alt={formatUserName(user)}
-                                            className="rounded-circle"
-                                            style={{
-                                              width: "48px",
-                                              height: "48px",
-                                              objectFit: "cover",
-                                            }}
+                                      <div className="d-flex align-items-center gap-3">
+                                        <div className="position-relative">
+                                          <UserInitialsAvatar
+                                            firstName={user.firstName}
+                                            lastName={user.lastName}
+                                            imageUrl={(user as any).imageUrl}
+                                            size={44}
                                           />
-
-                                          {/* Badge logic: Bottom-Left */}
                                           {level === 1 && (
                                             <div
                                               className="position-absolute bottom-0 start-0 translate-middle rounded-circle bg-white shadow-sm d-flex align-items-center justify-content-center"
                                               style={{
-                                                width: "22px",
-                                                height: "22px",
+                                                width: "20px",
+                                                height: "20px",
                                                 border: "1px solid #dee2e6",
                                               }}
                                               title="Department Head"
                                             >
                                               <i
                                                 className="bi bi-star-fill text-warning"
-                                                style={{ fontSize: "11px" }}
+                                                style={{ fontSize: "10px" }}
                                               ></i>
                                             </div>
                                           )}
@@ -213,21 +198,24 @@ export function Users() {
                                             <div
                                               className="position-absolute bottom-0 start-0 translate-middle rounded-circle bg-white shadow-sm d-flex align-items-center justify-content-center"
                                               style={{
-                                                width: "22px",
-                                                height: "22px",
+                                                width: "20px",
+                                                height: "20px",
                                                 border: "1px solid #dee2e6",
                                               }}
                                               title="Officer"
                                             >
                                               <i
                                                 className="bi bi-award-fill text-primary"
-                                                style={{ fontSize: "12px" }}
+                                                style={{ fontSize: "11px" }}
                                               ></i>
                                             </div>
                                           )}
                                         </div>
                                         <div>
-                                          <h6 className="fw-bold mb-0">
+                                          <h6
+                                            className="fw-bold mb-0"
+                                            style={{ fontSize: "13px" }}
+                                          >
                                             {formatUserNameLastFirst(user)}
                                           </h6>
                                           <small className="text-muted">
@@ -241,7 +229,7 @@ export function Users() {
                                         {user.roles.map((role: any) => (
                                           <div
                                             key={role.id}
-                                            className="role-pill" // Removed bg-warning logic
+                                            className="role-pill"
                                             data-role-name={role.name}
                                           >
                                             <span className="role-dot"></span>
@@ -251,22 +239,18 @@ export function Users() {
                                       </div>
                                     </td>
                                     <td>
-                                      <div className="d-flex gap-2">
-                                        {canManageUsers &&
-                                          level > currentUserLevel && (
-                                            <>
-                                              <button
-                                                className="btn btn-sm btn-outline-danger border-0"
-                                                onClick={() =>
-                                                  setUserToRemove(user)
-                                                }
-                                                title="Remove User"
-                                              >
-                                                <i className="bi bi-trash fs-5"></i>
-                                              </button>
-                                            </>
-                                          )}
-                                      </div>
+                                      {canManageUsers &&
+                                        level > currentUserLevel && (
+                                          <button
+                                            className="btn btn-sm btn-outline-danger border-0"
+                                            onClick={() =>
+                                              setUserToRemove(user)
+                                            }
+                                            title="Remove User"
+                                          >
+                                            <i className="bi bi-trash fs-5"></i>
+                                          </button>
+                                        )}
                                     </td>
                                   </tr>
                                 );

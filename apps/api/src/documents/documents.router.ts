@@ -670,6 +670,9 @@ export class DocumentsRouter {
                 firstName: true,
                 middleName: true,
                 lastName: true,
+                roles: {
+                  select: { id: true, name: true, level: true },
+                },
                 department: {
                   select: { name: true },
                 },
