@@ -12,10 +12,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import { useDebounce } from "../hooks/useDebounce";
 import { DocumentTypePill } from "./DocumentTypePill";
 import { DocumentActionsMenu } from "./DocumentActionsMenu";
-import {
-  ClassificationBadge,
-  ClassificationType,
-} from "../components/ClassificationBadge";
+import { CategoryBadge, CategoryType } from "../components/CategoryBadge";
 
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
@@ -76,18 +73,16 @@ const DocRow: React.FC<DocRowProps> = ({
     <tr>
       <td style={{ width: showTypePill ? "auto" : "36%" }}>
         {showTypePill ? (
-          /* Recent docs: original layout with file icon + type pill + classification */
+          /* Recent docs: original layout with file icon + type pill + category */
           <div className="d-flex align-items-center gap-2">
             <FileIcon fileType={doc.fileType} fileName={doc.title} />
             <div className="d-flex flex-column gap-1 align-items-start">
               <DocumentTypePill documentType={doc.documentType} />
-              <ClassificationBadge
-                classification={doc.classification as ClassificationType}
-              />
+              <CategoryBadge category={doc.category as CategoryType} />
             </div>
           </div>
         ) : (
-          /* Grouped docs: type dot + title stacked with classification below */
+          /* Grouped docs: type dot + title stacked with category below */
           <div
             className="d-flex align-items-center gap-2"
             style={{ minWidth: 0 }}
@@ -98,9 +93,7 @@ const DocRow: React.FC<DocRowProps> = ({
                 {doc.title}
               </Link>
               <div className="doc-title-sub">
-                <ClassificationBadge
-                  classification={doc.classification as ClassificationType}
-                />
+                <CategoryBadge category={doc.category as CategoryType} />
                 {doc.isCheckedOut && (
                   <i
                     className="bi bi-lock-fill text-danger"

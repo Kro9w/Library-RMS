@@ -17,12 +17,12 @@ const Upload: React.FC = () => {
   const createDocMutation = trpc.documents.createDocumentRecord.useMutation();
   const bucketName = import.meta.env.VITE_SUPABASE_BUCKET_NAME;
 
-  const [classification, setClassification] = useState<
+  const [category, setCategory] = useState<
     "INSTITUTIONAL" | "INTERNAL" | "DEPARTMENTAL" | "RESTRICTED" | "EXTERNAL"
   >("RESTRICTED");
 
   const acceptedTypes: Record<string, string[]> =
-    classification === "INSTITUTIONAL" || classification === "INTERNAL"
+    category === "INSTITUTIONAL" || category === "INTERNAL"
       ? {
           "application/pdf": [".pdf"],
           "image/jpeg": [".jpeg", ".jpg"],
@@ -76,7 +76,7 @@ const Upload: React.FC = () => {
         title: file.name,
         storageKey: uploadData.path,
         storageBucket: bucketName, // Use the correct variable here
-        classification,
+        category,
         fileType: file.type,
       });
 
@@ -98,15 +98,15 @@ const Upload: React.FC = () => {
       <h2>Upload Documents</h2>
 
       <div style={{ marginBottom: "20px" }}>
-        <label htmlFor="classification">
-          <strong>Visibility / Classification:</strong>
+        <label htmlFor="category">
+          <strong>Visibility / Category:</strong>
         </label>
         <select
-          id="classification"
-          value={classification}
+          id="category"
+          value={category}
           onChange={(e) => {
-            setClassification(e.target.value as any);
-            setFiles([]); // Clear files when changing classification to prevent invalid uploads
+            setCategory(e.target.value as any);
+            setFiles([]); // Clear files when changing category to prevent invalid uploads
           }}
           style={{ marginLeft: "10px", padding: "5px" }}
         >
@@ -119,7 +119,7 @@ const Upload: React.FC = () => {
           </option>
         </select>
         <p style={{ fontSize: "0.85em", color: "#666", marginTop: "5px" }}>
-          {classification === "INSTITUTIONAL" || classification === "INTERNAL"
+          {category === "INSTITUTIONAL" || category === "INTERNAL"
             ? "Note: Internal and Institutional broadcasts require finalized formats (PDF, JPEG, PNG, TIFF)."
             : "Note: You can upload editable drafts (DOCX, Excel) for Departmental or Restricted items."}
         </p>

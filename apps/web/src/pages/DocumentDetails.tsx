@@ -7,10 +7,7 @@ import { LegalHoldModal } from "../components/LegalHoldModal";
 import "./DocumentDetails.css";
 
 import { formatUserName } from "../utils/user";
-import {
-  ClassificationBadge,
-  ClassificationType,
-} from "../components/ClassificationBadge";
+import { CategoryBadge, CategoryType } from "../components/CategoryBadge";
 
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 type Document = AppRouterOutputs["documents"]["getById"];
@@ -118,7 +115,7 @@ export const DocumentDetails: React.FC = () => {
   }
 
   const isTransit =
-    document.classification === "FOR_APPROVAL" &&
+    document.category === "FOR_APPROVAL" &&
     document.workflow?.recordStatus === "IN_TRANSIT";
 
   const currentTransitStop = isTransit
@@ -144,7 +141,7 @@ export const DocumentDetails: React.FC = () => {
 
   const isReviewDocument =
     document.workflow?.recordStatus === "IN_TRANSIT" &&
-    document.classification === "FOR_APPROVAL";
+    document.category === "FOR_APPROVAL";
 
   const canReview =
     ((isCurrentTransitOffice && canManageDocuments && isReviewDocument) ||
@@ -160,24 +157,24 @@ export const DocumentDetails: React.FC = () => {
 
   const canBroadcastDocument = (() => {
     if (
-      document.classification === "FOR_APPROVAL" ||
+      document.category === "FOR_APPROVAL" ||
       document.workflow?.recordStatus === "IN_TRANSIT"
     ) {
       return false; // Routed/In-transit documents cannot be broadcast directly
     }
     if (
-      document.classification === "RESTRICTED" ||
-      document.classification === "EXTERNAL"
+      document.category === "RESTRICTED" ||
+      document.category === "EXTERNAL"
     ) {
       return isOriginator || canManageInstitution;
     }
     if (
-      document.classification === "INSTITUTIONAL" ||
-      document.classification === "INTERNAL"
+      document.category === "INSTITUTIONAL" ||
+      document.category === "INTERNAL"
     ) {
       return isOriginator || canManageInstitution || highestRoleLevel <= 1;
     }
-    if (document.classification === "DEPARTMENTAL") {
+    if (document.category === "DEPARTMENTAL") {
       return isOriginator || canManageDocuments || highestRoleLevel <= 2;
     }
     return false;
@@ -240,9 +237,7 @@ export const DocumentDetails: React.FC = () => {
         <div>
           <h2 className="mb-2 d-flex align-items-center flex-wrap gap-2">
             {document.title}
-            <ClassificationBadge
-              classification={document.classification as ClassificationType}
-            />
+            <CategoryBadge category={document.category as CategoryType} />
           </h2>
 
           {/* Received-from note */}
@@ -403,7 +398,7 @@ export const DocumentDetails: React.FC = () => {
                         )}
 
                       {canSendOrResubmit &&
-                        document.classification === "FOR_APPROVAL" && (
+                        document.category === "FOR_APPROVAL" && (
                           <button
                             className={`doc-action-btn ${!isSendDisabled ? "doc-action-btn-primary" : ""}`}
                             onClick={() => setShowResubmitModal(true)}

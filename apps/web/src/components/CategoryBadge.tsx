@@ -1,19 +1,17 @@
 import React from "react";
-import "./ClassificationBadge.css";
-export type ClassificationType =
+import "./CategoryBadge.css";
+export type CategoryType =
   | "DEPARTMENTAL"
   | "INSTITUTIONAL"
   | "INTERNAL"
   | "RESTRICTED"
   | "FOR_APPROVAL"
   | "EXTERNAL";
-interface ClassificationBadgeProps {
-  classification?: ClassificationType | null;
+interface CategoryBadgeProps {
+  category?: CategoryType | null;
 }
-export const ClassificationBadge: React.FC<ClassificationBadgeProps> = ({
-  classification,
-}) => {
-  if (!classification) {
+export const CategoryBadge: React.FC<CategoryBadgeProps> = ({ category }) => {
+  if (!category) {
     return null;
   }
   const badgeProps: Record<
@@ -22,42 +20,42 @@ export const ClassificationBadge: React.FC<ClassificationBadgeProps> = ({
   > = {
     INSTITUTIONAL: {
       label: "Institutional",
-      className: "classification-badge-public",
+      className: "category-badge-public",
       icon: "bi-globe",
     },
     INTERNAL: {
       label: "Internal",
-      className: "classification-badge-campus",
+      className: "category-badge-campus",
       icon: "bi-building",
     },
     DEPARTMENTAL: {
       label: "Departmental",
-      className: "classification-badge-internal",
+      className: "category-badge-internal",
       icon: "bi-people-fill",
     },
     RESTRICTED: {
       label: "Restricted",
-      className: "classification-badge-restricted",
+      className: "category-badge-restricted",
       icon: "bi-file-earmark-minus",
     },
     FOR_APPROVAL: {
       label: "For Approval",
-      className: "classification-badge-approval",
+      className: "category-badge-approval",
       icon: "bi-file-earmark-check-fill",
     },
     EXTERNAL: {
       label: "External",
-      className: "classification-badge-external",
+      className: "category-badge-external",
       icon: "bi-box-arrow-up-right",
     },
   };
-  const badgeConfig = badgeProps[classification];
+  const badgeConfig = badgeProps[category];
   if (!badgeConfig) {
     return null;
   }
   const { label, className, icon } = badgeConfig;
   return (
-    <span className={`classification-badge ${className}`}>
+    <span className={`category-badge ${className}`}>
       <i className={`bi ${icon}`}></i>
       {label}
     </span>

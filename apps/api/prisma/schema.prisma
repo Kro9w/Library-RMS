@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
 }
 
 enum DispositionAction {
@@ -11,7 +11,7 @@ enum DispositionAction {
   DESTROY
 }
 
-enum Classification {
+enum Category {
   DEPARTMENTAL
   INSTITUTIONAL
   INTERNAL
@@ -125,28 +125,28 @@ model Department {
 }
 
 model Log {
-  id            String      @id @default(cuid())
-  user          User        @relation(fields: [userId], references: [id])
-  userId        String
-  action        String
-  campus        Campus?     @relation(fields: [campusId], references: [id])
-  campusId      String?
-  department    Department? @relation(fields: [departmentId], references: [id])
-  departmentId  String?
-  userRole      String
-  createdAt     DateTime    @default(now())
+  id           String      @id @default(cuid())
+  user         User        @relation(fields: [userId], references: [id])
+  userId       String
+  action       String
+  campus       Campus?     @relation(fields: [campusId], references: [id])
+  campusId     String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  departmentId String?
+  userRole     String
+  createdAt    DateTime    @default(now())
 }
 
 model DocumentType {
-  departments             Department[]
-  id                      String      @id @default(cuid())
-  name                    String      @unique
-  color                   String
-  documents               Document[]
-  
-  activeRetentionDuration Int?        // In Years
-  activeRetentionMonths   Int?        // In Months
-  activeRetentionDays     Int?        // In Days
+  departments Department[]
+  id          String       @id @default(cuid())
+  name        String       @unique
+  color       String
+  documents   Document[]
+
+  activeRetentionDuration Int? // In Years
+  activeRetentionMonths   Int? // In Months
+  activeRetentionDays     Int? // In Days
 
   inactiveRetentionDuration Int? // In Years
   inactiveRetentionMonths   Int? // In Months
@@ -159,19 +159,19 @@ model DocumentType {
 }
 
 model RecordsSeries {
-  id                      String      @id @default(cuid())
-  name                    String      @unique
-  documentTypes           DocumentType[]
-  
-  activeRetentionDuration Int?        @default(0) // In Years
-  activeRetentionMonths   Int?        @default(0) // In Months
-  activeRetentionDays     Int?        @default(0) // In Days
-  
-  inactiveRetentionDuration Int?      @default(0) // In Years
-  inactiveRetentionMonths   Int?      @default(0) // In Months
-  inactiveRetentionDays     Int?      @default(0) // In Days
-  
-  dispositionAction       DispositionAction? @default(ARCHIVE)
+  id            String         @id @default(cuid())
+  name          String         @unique
+  documentTypes DocumentType[]
+
+  activeRetentionDuration Int? @default(0) // In Years
+  activeRetentionMonths   Int? @default(0) // In Months
+  activeRetentionDays     Int? @default(0) // In Days
+
+  inactiveRetentionDuration Int? @default(0) // In Years
+  inactiveRetentionMonths   Int? @default(0) // In Months
+  inactiveRetentionDays     Int? @default(0) // In Days
+
+  dispositionAction DispositionAction? @default(ARCHIVE)
 }
 
 model Document {
@@ -185,7 +185,7 @@ model Document {
   uploadedBy       User                   @relation("uploadedBy", fields: [uploadedById], references: [id])
   uploadedById     String
   originalSenderId String?
-  classification   Classification         @default(INTERNAL)
+  category         Category               @default(INTERNAL)
   // Optional relations to quickly filter by campus or department
   campus           Campus?                @relation(fields: [campusId], references: [id])
   campusId         String?
@@ -206,7 +206,7 @@ model Document {
 
   @@index([uploadedById])
   @@index([documentTypeId])
-  @@index([classification])
+  @@index([category])
   @@index([originalSenderId])
   @@index([campusId])
   @@index([departmentId])
@@ -283,19 +283,19 @@ model Remark {
 }
 
 model DocumentAccess {
-  id            String          @id @default(cuid())
-  document      Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  documentId    String
+  id           String          @id @default(cuid())
+  document     Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId   String
   // Can be granted to a specific user, role, department, campus, or institution
-  userId        String?
-  user          User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  roleId        String?
-  role          Role?           @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  departmentId  String?
-  department    Department?     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  campusId      String?
-  campus        Campus?         @relation(fields: [campusId], references: [id], onDelete: Cascade)
-  permission    PermissionLevel @default(READ)
+  userId       String?
+  user         User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId       String?
+  role         Role?           @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  departmentId String?
+  department   Department?     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  campusId     String?
+  campus       Campus?         @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  permission   PermissionLevel @default(READ)
 
   @@index([documentId])
   @@index([userId])

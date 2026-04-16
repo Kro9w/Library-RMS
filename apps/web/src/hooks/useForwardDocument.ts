@@ -27,7 +27,7 @@ export function useForwardDocument({
 
   const isTransitDocument =
     document?.workflow?.recordStatus === "IN_TRANSIT" &&
-    document?.classification === "FOR_APPROVAL";
+    document?.category === "FOR_APPROVAL";
 
   const users = propUsers || fetchedUsers;
   const campuses = propCampuses || fetchedOrgHierarchy?.campuses || [];

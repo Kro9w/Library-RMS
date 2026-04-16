@@ -68,7 +68,7 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
   }, [isOpen]);
 
   const isTransit =
-    doc.classification === "FOR_APPROVAL" &&
+    doc.category === "FOR_APPROVAL" &&
     doc.workflow?.recordStatus === "IN_TRANSIT";
 
   const currentTransitStop = isTransit
@@ -135,7 +135,7 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
               zIndex: 1050, // Higher than most modals/tables
             }}
           >
-            {doc.classification !== "FOR_APPROVAL" &&
+            {doc.category !== "FOR_APPROVAL" &&
               doc.workflow?.recordStatus !== "IN_TRANSIT" &&
               !doc.workflow?.isCheckedOut &&
               onSendClick && (
@@ -151,7 +151,7 @@ export const DocumentActionsMenu: React.FC<DocumentActionsMenuProps> = ({
                 </button>
               )}
 
-            {doc.classification === "FOR_APPROVAL" &&
+            {doc.category === "FOR_APPROVAL" &&
               (!isTransit || isOriginatorForwardingInTransit) &&
               !doc.workflow?.isCheckedOut && (
                 <button

@@ -454,8 +454,8 @@ body[data-bs-theme="dark"] .faq-badge-warning {
   color: var(--text-muted);
 }
 
-/* ── Classification list ── */
-.faq-classification-list {
+/* ── Category list ── */
+.faq-category-list {
   display: flex;
   flex-direction: column;
   gap: 10px;

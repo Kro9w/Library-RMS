@@ -15,8 +15,9 @@ export function useUploadDocument(onClose: () => void) {
     string | undefined
   >();
   const [controlNumber, setControlNumber] = useState<string | null>(null);
-  const [showControlNumberWarning, setShowControlNumberWarning] = useState(false);
-  const [classification, setClassification] = useState<
+  const [showControlNumberWarning, setShowControlNumberWarning] =
+    useState(false);
+  const [category, setCategory] = useState<
     | "INSTITUTIONAL"
     | "INTERNAL"
     | "DEPARTMENTAL"
@@ -44,14 +45,14 @@ export function useUploadDocument(onClose: () => void) {
       }
     });
     return Array.from(seriesMap.values()).sort((a: any, b: any) =>
-      a.name.localeCompare(b.name)
+      a.name.localeCompare(b.name),
     );
   }, [documentTypes]);
 
   const filteredDocumentTypes = useMemo(() => {
     if (!documentTypes || !selectedRecordsSeries) return [];
     return documentTypes.filter(
-      (docType: any) => docType.recordsSeriesId === selectedRecordsSeries
+      (docType: any) => docType.recordsSeriesId === selectedRecordsSeries,
     );
   }, [documentTypes, selectedRecordsSeries]);
   const { data: departmentsResponse } = trpc.user.getDepartments.useQuery(
@@ -150,16 +151,15 @@ export function useUploadDocument(onClose: () => void) {
         documentTypeId: selectedDocumentType,
         fileType: file.type,
         fileSize: file.size,
-        classification,
+        category,
         controlNumber: controlNumber ?? null,
-        transitRoute:
-          classification === "FOR_APPROVAL" ? transitRoute : undefined,
+        transitRoute: category === "FOR_APPROVAL" ? transitRoute : undefined,
       });
 
       setFile(null);
       setControlNumber(null);
       setTransitRoute([]);
-      setClassification("RESTRICTED");
+      setCategory("RESTRICTED");
       setSelectedRecordsSeries(undefined);
       setSelectedDocumentType(undefined);
       setShowControlNumberWarning(false);
@@ -199,8 +199,8 @@ export function useUploadDocument(onClose: () => void) {
       setSelectedDocumentType,
       controlNumber,
       setControlNumber,
-      classification,
-      setClassification,
+      category,
+      setCategory,
       transitRoute,
       setTransitRoute,
       isScanning,

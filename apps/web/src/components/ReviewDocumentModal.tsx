@@ -36,7 +36,7 @@ export const ReviewDocumentModal: React.FC<ReviewDocumentModalProps> = ({
   const { data: user } = trpc.user.getMe.useQuery();
 
   const isTransit =
-    document?.classification === "FOR_APPROVAL" &&
+    document?.category === "FOR_APPROVAL" &&
     document?.workflow?.recordStatus === "IN_TRANSIT";
 
   const isFinalStop = React.useMemo(() => {

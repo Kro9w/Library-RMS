@@ -33,7 +33,7 @@ export class DocumentsRouter {
               controlNumber: input.controlNumber,
               OR: [
                 { workflow: { recordStatus: 'IN_TRANSIT' } },
-                { classification: 'FOR_APPROVAL' },
+                { category: 'FOR_APPROVAL' },
                 { workflow: { status: { not: null } } },
               ],
             },
@@ -47,7 +47,7 @@ export class DocumentsRouter {
                   status: true,
                 },
               },
-              classification: true,
+              category: true,
               createdAt: true,
               transitRoutes: {
                 orderBy: { sequenceOrder: 'asc' },
@@ -236,7 +236,7 @@ export class DocumentsRouter {
                   dispositionRequesterId: true,
                 },
               },
-              classification: true,
+              category: true,
               originalSenderId: true,
               uploadedById: true,
               transitRoutes: {
@@ -290,7 +290,7 @@ export class DocumentsRouter {
             fileSize: z.number().optional(),
             documentTypeId: z.string().optional(),
             controlNumber: z.string().optional().nullable(),
-            classification: z
+            category: z
               .enum([
                 'INSTITUTIONAL',
                 'INTERNAL',
@@ -322,7 +322,7 @@ export class DocumentsRouter {
           );
 
           if (
-            input.classification === 'FOR_APPROVAL' &&
+            input.category === 'FOR_APPROVAL' &&
             (!input.transitRoute || input.transitRoute.length === 0)
           ) {
             throw new TRPCError({
@@ -333,8 +333,8 @@ export class DocumentsRouter {
           }
 
           if (
-            input.classification === 'INSTITUTIONAL' ||
-            input.classification === 'INTERNAL'
+            input.category === 'INSTITUTIONAL' ||
+            input.category === 'INTERNAL'
           ) {
             if (highestRoleLevel > 1 && !canManageDocs) {
               throw new TRPCError({
@@ -345,7 +345,7 @@ export class DocumentsRouter {
             }
           }
 
-          if (input.classification === 'DEPARTMENTAL') {
+          if (input.category === 'DEPARTMENTAL') {
             if (highestRoleLevel > 2 && !canManageDocs) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
@@ -370,8 +370,8 @@ export class DocumentsRouter {
           }
 
           if (
-            input.classification === 'INSTITUTIONAL' ||
-            input.classification === 'INTERNAL'
+            input.category === 'INSTITUTIONAL' ||
+            input.category === 'INTERNAL'
           ) {
             const allowedFormats = [
               'application/pdf',
@@ -441,7 +441,7 @@ export class DocumentsRouter {
           }
 
           let finalRecordStatus = isFinal;
-          if (input.classification === 'FOR_APPROVAL') {
+          if (input.category === 'FOR_APPROVAL') {
             finalRecordStatus = 'IN_TRANSIT';
           }
 
@@ -456,7 +456,7 @@ export class DocumentsRouter {
               departmentId: dbUser.departmentId,
               documentTypeId: input.documentTypeId,
               controlNumber: input.controlNumber,
-              classification: input.classification as any,
+              category: input.category as any,
               metadata: input.metadata
                 ? (input.metadata as Prisma.InputJsonValue)
                 : Prisma.JsonNull,
@@ -484,7 +484,7 @@ export class DocumentsRouter {
           });
 
           if (
-            input.classification === 'FOR_APPROVAL' &&
+            input.category === 'FOR_APPROVAL' &&
             input.transitRoute &&
             input.transitRoute.length > 0
           ) {
@@ -549,7 +549,7 @@ export class DocumentsRouter {
               AND: [aclWhere],
             },
             select: {
-              classification: true,
+              category: true,
               uploadedById: true,
               originalSenderId: true,
               lifecycle: {
@@ -650,7 +650,7 @@ export class DocumentsRouter {
 
         const documents = await ctx.prisma.document.findMany({
           where: {
-            classification: 'FOR_APPROVAL',
+            category: 'FOR_APPROVAL',
             workflow: {
               recordStatus: 'IN_TRANSIT',
             },
@@ -945,7 +945,7 @@ export class DocumentsRouter {
                 dispositionRequesterId: true,
               },
             },
-            classification: true,
+            category: true,
             originalSenderId: true,
           };
 
@@ -1219,7 +1219,7 @@ export class DocumentsRouter {
               });
             }
 
-            if (document.classification === 'FOR_APPROVAL') {
+            if (document.category === 'FOR_APPROVAL') {
               if (!dbUser.departmentId) {
                 throw new TRPCError({
                   code: 'BAD_REQUEST',
@@ -1354,7 +1354,7 @@ export class DocumentsRouter {
                 id: true,
                 title: true,
                 controlNumber: true,
-                classification: true,
+                category: true,
               },
             },
             sender: {
@@ -1863,7 +1863,7 @@ export class DocumentsRouter {
               documentId: fullDoc?.id,
               title: fullDoc?.title,
               controlNumber: fullDoc?.controlNumber,
-              classification: fullDoc?.classification,
+              category: fullDoc?.category,
               createdAt: fullDoc?.createdAt,
               archivedAt: new Date(),
               fileHash: latestHash,
@@ -2232,7 +2232,7 @@ export class DocumentsRouter {
               : 'DRAFT';
 
           if (
-            doc.classification === 'FOR_APPROVAL' &&
+            doc.category === 'FOR_APPROVAL' &&
             doc.workflow?.recordStatus === 'IN_TRANSIT'
           ) {
             isFinal = 'IN_TRANSIT';

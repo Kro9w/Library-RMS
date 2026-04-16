@@ -1,4 +1,4 @@
-.classification-badge {
+.category-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -14,77 +14,77 @@
   border: 1px solid;
 }
 
-.classification-badge i {
+.category-badge i {
   font-size: 9px;
 }
 
 /* INSTITUTIONAL — green family */
-.classification-badge-public {
+.category-badge-public {
   background-color: #f0fdf4;
   color: #166534;
   border-color: #86efac;
 }
-body[data-bs-theme="dark"] .classification-badge-public {
+body[data-bs-theme="dark"] .category-badge-public {
   background-color: #052e16;
   color: #4ade80;
   border-color: #166534;
 }
 
 /* CAMPUS — blue family */
-.classification-badge-campus {
+.category-badge-campus {
   background-color: #eff6ff;
   color: #1e40af;
   border-color: #93c5fd;
 }
-body[data-bs-theme="dark"] .classification-badge-campus {
+body[data-bs-theme="dark"] .category-badge-campus {
   background-color: #0c1a3d;
   color: #60a5fa;
   border-color: #1e3a8a;
 }
 
 /* INTERNAL — amber family */
-.classification-badge-internal {
+.category-badge-internal {
   background-color: #fefce8;
   color: #854d0e;
   border-color: #fde047;
 }
-body[data-bs-theme="dark"] .classification-badge-internal {
+body[data-bs-theme="dark"] .category-badge-internal {
   background-color: #1a1300;
   color: #fbbf24;
   border-color: #78350f;
 }
 
 /* RESTRICTED — maroon/red family */
-.classification-badge-restricted {
+.category-badge-restricted {
   background-color: #fff1f2;
   color: #9f1239;
   border-color: #fda4af;
 }
-body[data-bs-theme="dark"] .classification-badge-restricted {
+body[data-bs-theme="dark"] .category-badge-restricted {
   background-color: #1a0a0f;
   color: #fb7185;
   border-color: #881337;
 }
 
 /* FOR_APPROVAL — purple family */
-.classification-badge-approval {
+.category-badge-approval {
   background-color: #faf5ff;
   color: #6b21a8;
   border-color: #d8b4fe;
 }
-body[data-bs-theme="dark"] .classification-badge-approval {
+body[data-bs-theme="dark"] .category-badge-approval {
   background-color: #1f102a;
   color: #c084fc;
   border-color: #581c87;
 }
 
 /* EXTERNAL — teal/cyan family */
-.classification-badge-external {
+.category-badge-external {
   background-color: #f0fdfa;
   color: #0f766e;
   border-color: #5eead4;
 }
-body[data-bs-theme="dark"] .classification-badge-external {
+body[data-bs-theme="dark"] .category-badge-external {
   background-color: #042f2e;
   color: #2dd4bf;
   border-color: #134e4a;

@@ -134,7 +134,7 @@ const FAQ_CATEGORIES: FAQCategory[] = [
                 <strong>PDF, DOCX, PNG, JPG, and TIFF</strong>.
               </li>
               <li>
-                Select the <strong>classification level</strong> (see below for
+                Select the <strong>category level</strong> (see below for
                 guidance).
               </li>
               <li>
@@ -155,14 +155,13 @@ const FAQ_CATEGORIES: FAQCategory[] = [
       },
       {
         id: "doc-2",
-        question: "What are the document classification levels?",
+        question: "What are the document category levels?",
         answer: (
           <>
             <p>
-              Classification controls who can see a document across the
-              institution:
+              Category controls who can see a document across the institution:
             </p>
-            <div className="faq-classification-list">
+            <div className="faq-category-list">
               <div className="faq-class-item">
                 <span className="faq-class-badge faq-class-institutional">
                   <i className="bi bi-globe" /> Institutional
@@ -254,13 +253,12 @@ const FAQ_CATEGORIES: FAQCategory[] = [
           <>
             <p>
               Restricted documents can be routed for formal review by setting
-              the classification to <em>For Approval</em> when sending:
+              the category to <em>For Approval</em> when sending:
             </p>
             <ol>
               <li>
-                The <strong>sender</strong> uploads a document with the
-                classification <em>For Approval</em> and sends it to the
-                reviewing office.
+                The <strong>sender</strong> uploads a document with the category{" "}
+                <em>For Approval</em> and sends it to the reviewing office.
               </li>
               <li>
                 The <strong>recipient</strong> (must have document management
@@ -309,7 +307,7 @@ const FAQ_CATEGORIES: FAQCategory[] = [
               When reviewing a document, intermediate offices have different
               options than the final destination office:
             </p>
-            <div className="faq-classification-list mt-3">
+            <div className="faq-category-list mt-3">
               <div className="faq-class-item">
                 <span className="badge bg-primary text-light me-2 px-2 py-1">
                   <i className="bi bi-forward-fill me-1" /> Endorsed / Noted
@@ -384,7 +382,7 @@ const FAQ_CATEGORIES: FAQCategory[] = [
             When the final office in the prescribed route selects{" "}
             <strong>Approved</strong>, the document's transit lifecycle ends.
             Its record status is automatically finalized as{" "}
-            <strong>FINAL</strong>, and its classification reverts to{" "}
+            <strong>FINAL</strong>, and its category reverts to{" "}
             <strong>RESTRICTED</strong>. This secures the document, locking it
             from further edits, and gives the original owner the ability to
             broadcast the final approved document depending on their standard
@@ -501,13 +499,13 @@ const FAQ_CATEGORIES: FAQCategory[] = [
     items: [
       {
         id: "snd-1",
-        question: "How does document classification affect the Send wizard?",
+        question: "How does document category affect the Send wizard?",
         answer: (
           <>
             <p>
               When sending a document, the wizard intelligently adjusts its
               steps and limits the available recipients based on the document's
-              classification:
+              category:
             </p>
             <ul>
               <li>
@@ -698,13 +696,12 @@ const FAQ_CATEGORIES: FAQCategory[] = [
       },
       {
         id: "ac-2",
-        question:
-          "Why am I unable to send a document with a certain classification?",
+        question: "Why am I unable to send a document with a certain category?",
         answer: (
           <p>
-            Uploading and sending documents with broad classifications
-            (Institutional or Campus) requires <strong>Level 1 role</strong> or
-            document management permission. Internal documents require{" "}
+            Uploading and sending documents with broad categorys (Institutional
+            or Campus) requires <strong>Level 1 role</strong> or document
+            management permission. Internal documents require{" "}
             <strong>Level 2 or higher</strong>. If you need to broadcast a
             document widely, contact your department head or administrator to
             either elevate your role or upload on your behalf.
@@ -966,8 +963,8 @@ const FAQ_CATEGORIES: FAQCategory[] = [
             appear, verify that your filter is set to{" "}
             <em>All Institution Documents</em> (or <em>My Documents</em> if you
             want only your own uploads). The document may also be under a
-            classification that restricts visibility to certain users. Check the
-            uploaded document's classification on its detail page.
+            category that restricts visibility to certain users. Check the
+            uploaded document's category on its detail page.
           </p>
         ),
       },

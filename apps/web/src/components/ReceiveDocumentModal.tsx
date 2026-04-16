@@ -211,12 +211,12 @@ export const ReceiveDocumentModal: React.FC<ReceiveDocumentModalProps> = ({
                         >
                           {dist.document.title}
                         </Link>
-                        {dist.document.classification && (
+                        {dist.document.category && (
                           <span
                             className="badge bg-secondary ms-2"
                             style={{ fontSize: "0.65rem" }}
                           >
-                            {dist.document.classification}
+                            {dist.document.category}
                           </span>
                         )}
                       </h6>

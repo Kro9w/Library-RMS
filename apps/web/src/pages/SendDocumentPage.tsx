@@ -3,8 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { trpc } from "../trpc";
 import { AlertModal } from "../components/AlertModal";
 import { formatUserName } from "../utils/user";
-import type { ClassificationType } from "../components/ClassificationBadge";
-import { ClassificationBadge } from "../components/ClassificationBadge";
+import type { CategoryType } from "../components/CategoryBadge";
+import { CategoryBadge } from "../components/CategoryBadge";
 import { useUser } from "../contexts/SessionContext";
 import "./SendDocumentPage.css";
 
@@ -25,8 +25,8 @@ const ALL_STEPS: StepDef[] = [
   { id: "confirm", label: "Confirm", icon: "bi-send-check" },
 ];
 
-function getStepsForClassification(classification: string): StepDef[] {
-  switch (classification) {
+function getStepsForCategory(category: string): StepDef[] {
+  switch (category) {
     case "INSTITUTIONAL":
       return ALL_STEPS;
     case "INTERNAL":
@@ -476,15 +476,11 @@ export const SendDocumentPage: React.FC = () => {
 
   const sendMutation = trpc.documents.sendDocument.useMutation();
 
-  const classification = (document?.classification ?? "RESTRICTED") as string;
+  const category = (document?.category ?? "RESTRICTED") as string;
 
-  const isInstitutionWide =
-    classification === "INSTITUTIONAL" && institutionSelected;
+  const isInstitutionWide = category === "INSTITUTIONAL" && institutionSelected;
 
-  const baseSteps = useMemo(
-    () => getStepsForClassification(classification),
-    [classification],
-  );
+  const baseSteps = useMemo(() => getStepsForCategory(category), [category]);
 
   const steps = useMemo(() => {
     if (isInstitutionWide) {
@@ -502,14 +498,14 @@ export const SendDocumentPage: React.FC = () => {
   );
 
   const relevantDepts = useMemo(() => {
-    if (classification === "DEPARTMENTAL") {
+    if (category === "DEPARTMENTAL") {
       if (!dbUser?.departmentId) return [];
       const userDept = allCampuses
         .flatMap((c: any) => c.departments)
         .find((d: any) => d.id === dbUser.departmentId);
       return userDept ? [userDept] : [];
     }
-    if (classification === "INTERNAL") {
+    if (category === "INTERNAL") {
       if (!dbUser?.campusId) return [];
       const userCampus = allCampuses.find((c: any) => c.id === dbUser.campusId);
       return userCampus
@@ -519,7 +515,7 @@ export const SendDocumentPage: React.FC = () => {
           }))
         : [];
     }
-    if (classification === "RESTRICTED" || classification === "EXTERNAL") {
+    if (category === "RESTRICTED" || category === "EXTERNAL") {
       if (!dbUser?.campusId) return [];
       const userCampus = allCampuses.find((c: any) => c.id === dbUser.campusId);
       return userCampus
@@ -539,7 +535,7 @@ export const SendDocumentPage: React.FC = () => {
       .flatMap((c: any) =>
         c.departments.map((d: any) => ({ ...d, campusName: c.name })),
       );
-  }, [allCampuses, selectedCampuses, classification, dbUser]);
+  }, [allCampuses, selectedCampuses, category, dbUser]);
 
   const allUsers = useMemo(() => {
     let users = allCampuses.flatMap((c: any) =>
@@ -554,22 +550,19 @@ export const SendDocumentPage: React.FC = () => {
       ),
     );
 
-    if (classification === "DEPARTMENTAL") {
+    if (category === "DEPARTMENTAL") {
       if (dbUser?.departmentId) {
         users = users.filter((u: any) => u.deptId === dbUser.departmentId);
       }
-    } else if (classification === "INTERNAL") {
+    } else if (category === "INTERNAL") {
       if (dbUser?.campusId) {
         users = users.filter((u: any) => u.campusId === dbUser.campusId);
       }
-    } else if (
-      classification === "RESTRICTED" ||
-      classification === "EXTERNAL"
-    ) {
+    } else if (category === "RESTRICTED" || category === "EXTERNAL") {
       if (dbUser?.campusId) {
         users = users.filter((u: any) => u.campusId === dbUser.campusId);
       }
-    } else if (classification === "INSTITUTIONAL") {
+    } else if (category === "INSTITUTIONAL") {
       if (selectedDepts.size > 0) {
         users = users.filter((u: any) => selectedDepts.has(u.deptId));
       } else if (selectedCampuses.size > 0) {
@@ -578,7 +571,7 @@ export const SendDocumentPage: React.FC = () => {
     }
 
     return users;
-  }, [allCampuses, classification, dbUser, selectedCampuses, selectedDepts]);
+  }, [allCampuses, category, dbUser, selectedCampuses, selectedDepts]);
 
   const campusItems = allCampuses.map((c: any) => ({
     id: c.id,
@@ -669,11 +662,11 @@ export const SendDocumentPage: React.FC = () => {
       let implicitCampusIds = Array.from(selectedCampuses);
       let implicitDepartmentIds = Array.from(selectedDepts);
 
-      if (classification === "INTERNAL" && dbUser?.campusId) {
+      if (category === "INTERNAL" && dbUser?.campusId) {
         implicitCampusIds = [dbUser.campusId];
       }
       if (
-        classification === "DEPARTMENTAL" &&
+        category === "DEPARTMENTAL" &&
         dbUser?.departmentId &&
         dbUser?.campusId
       ) {
@@ -772,9 +765,7 @@ export const SendDocumentPage: React.FC = () => {
             <div className="send-page__subtitle">
               <i className="bi bi-file-earmark-text" />
               <span>{document.title}</span>
-              <ClassificationBadge
-                classification={document.classification as ClassificationType}
-              />
+              <CategoryBadge category={document.category as CategoryType} />
             </div>
           </div>
         </div>
@@ -939,7 +930,7 @@ export const SendDocumentPage: React.FC = () => {
                     <i className="bi bi-buildings" />
                     <p>
                       {selectedCampuses.size === 0 &&
-                      classification === "INSTITUTIONAL"
+                      category === "INSTITUTIONAL"
                         ? "Select at least one campus first to see its departments."
                         : "No departments found."}
                     </p>

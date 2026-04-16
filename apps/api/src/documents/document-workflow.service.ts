@@ -88,7 +88,7 @@ export class DocumentWorkflowService {
     });
 
     if (
-      document.classification === 'FOR_APPROVAL' ||
+      document.category === 'FOR_APPROVAL' ||
       docWorkflow?.recordStatus === 'IN_TRANSIT'
     ) {
       throw new TRPCError({
@@ -101,8 +101,8 @@ export class DocumentWorkflowService {
     const _isOriginator = await isOriginator(input.documentId);
 
     if (
-      document.classification === 'RESTRICTED' ||
-      document.classification === 'EXTERNAL'
+      document.category === 'RESTRICTED' ||
+      document.category === 'EXTERNAL'
     ) {
       if (!_isOriginator && !canManageInstitution) {
         throw new TRPCError({
@@ -149,8 +149,8 @@ export class DocumentWorkflowService {
         }
       }
     } else if (
-      document.classification === 'INSTITUTIONAL' ||
-      document.classification === 'INTERNAL'
+      document.category === 'INSTITUTIONAL' ||
+      document.category === 'INTERNAL'
     ) {
       if (!_isOriginator && highestRoleLevel > 1 && !canManageInstitution) {
         throw new TRPCError({
@@ -159,7 +159,7 @@ export class DocumentWorkflowService {
             'Only Executives, Level 1 users, Originators, or Admins can cascade/send Institutional or Internal documents.',
         });
       }
-    } else if (document.classification === 'DEPARTMENTAL') {
+    } else if (document.category === 'DEPARTMENTAL') {
       if (!_isOriginator && highestRoleLevel > 2 && !canManageDocs) {
         throw new TRPCError({
           code: 'FORBIDDEN',
@@ -172,8 +172,8 @@ export class DocumentWorkflowService {
     const accessesToCreate: any[] = [];
 
     if (
-      document.classification === 'INSTITUTIONAL' ||
-      document.classification === 'INTERNAL'
+      document.category === 'INSTITUTIONAL' ||
+      document.category === 'INTERNAL'
     ) {
       for (const id of input.campusIds)
         accessesToCreate.push({
@@ -183,9 +183,9 @@ export class DocumentWorkflowService {
         });
     }
     if (
-      document.classification === 'INSTITUTIONAL' ||
-      document.classification === 'INTERNAL' ||
-      document.classification === 'DEPARTMENTAL'
+      document.category === 'INSTITUTIONAL' ||
+      document.category === 'INTERNAL' ||
+      document.category === 'DEPARTMENTAL'
     ) {
       for (const id of input.departmentIds)
         accessesToCreate.push({
@@ -364,7 +364,7 @@ export class DocumentWorkflowService {
     }
 
     if (
-      documents[0].classification === 'FOR_APPROVAL' &&
+      documents[0].category === 'FOR_APPROVAL' &&
       (user.id === documents[0].uploadedById ||
         user.id === documents[0].originalSenderId)
     ) {
@@ -398,7 +398,7 @@ export class DocumentWorkflowService {
 
     if (
       documents[0].workflow?.recordStatus === 'IN_TRANSIT' &&
-      documents[0].classification === 'FOR_APPROVAL' &&
+      documents[0].category === 'FOR_APPROVAL' &&
       documents[0].uploadedById !== recipient.id &&
       documents[0].originalSenderId !== recipient.id
     ) {
@@ -410,7 +410,7 @@ export class DocumentWorkflowService {
       documents[0].originalSenderId === recipient.id;
     const isOriginatorResubmitting =
       documents[0].workflow?.recordStatus === 'IN_TRANSIT' &&
-      documents[0].classification === 'FOR_APPROVAL' &&
+      documents[0].category === 'FOR_APPROVAL' &&
       (user.id === documents[0].uploadedById ||
         user.id === documents[0].originalSenderId) &&
       (documents[0].workflow?.status ===
@@ -449,7 +449,7 @@ export class DocumentWorkflowService {
 
     if (
       documents[0].workflow?.recordStatus === 'IN_TRANSIT' &&
-      documents[0].classification === 'FOR_APPROVAL' &&
+      documents[0].category === 'FOR_APPROVAL' &&
       (user.id === documents[0].uploadedById ||
         user.id === documents[0].originalSenderId) &&
       (documents[0].workflow?.status ===
@@ -496,7 +496,7 @@ export class DocumentWorkflowService {
     const senderName = `${dbUser.firstName} ${dbUser.lastName}`.trim();
     const isTransit =
       updatedDocument.workflow?.recordStatus === 'IN_TRANSIT' &&
-      updatedDocument.classification === 'FOR_APPROVAL';
+      updatedDocument.category === 'FOR_APPROVAL';
 
     if (isReturningToOriginator) {
       await this.createNotification(
@@ -573,7 +573,7 @@ export class DocumentWorkflowService {
     }
 
     const isTransit =
-      document.classification === 'FOR_APPROVAL' &&
+      document.category === 'FOR_APPROVAL' &&
       document.workflow?.recordStatus === 'IN_TRANSIT';
 
     if (isTransit) {
@@ -672,7 +672,7 @@ export class DocumentWorkflowService {
           recordStatus: 'FINAL',
         },
       };
-      updateData.classification = 'RESTRICTED';
+      updateData.category = 'RESTRICTED';
 
       if (input.finalStorageKey) {
         updateData.versions = {

@@ -131,7 +131,7 @@ export const ForwardDocumentModal: React.FC<ForwardDocumentModalProps> = ({
   };
 
   const isTransit =
-    document?.classification === "FOR_APPROVAL" &&
+    document?.category === "FOR_APPROVAL" &&
     document?.workflow?.recordStatus === "IN_TRANSIT";
 
   const renderRoutingProgress = () => {

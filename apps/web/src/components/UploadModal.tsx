@@ -132,14 +132,14 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
               </div>
             </div>
 
-            {/* Classification */}
+            {/* Category */}
             <div className="upload-field">
-              <label className="form-label">Classification</label>
+              <label className="form-label">Category</label>
               <select
                 className="form-control form-select"
-                value={state.classification}
+                value={state.category}
                 onChange={(e) => {
-                  state.setClassification(e.target.value as any);
+                  state.setCategory(e.target.value as any);
                   if (e.target.value !== "FOR_APPROVAL") {
                     state.setTransitRoute([]);
                   } else {
@@ -172,7 +172,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
             </div>
 
             {/* Transit Route Builder */}
-            {state.classification === "FOR_APPROVAL" && (
+            {state.category === "FOR_APPROVAL" && (
               <TransitRouteBuilder
                 transitRoute={state.transitRoute}
                 setTransitRoute={state.setTransitRoute}

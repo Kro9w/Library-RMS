@@ -521,7 +521,7 @@ export default function AdminDocumentTypes() {
                   </span>
                 </div>
                 <div className="rc-col__desc">
-                  Types define visual classification colors
+                  Types define visual category colors
                 </div>
               </div>
               <button
