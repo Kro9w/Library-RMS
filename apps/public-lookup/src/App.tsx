@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { trpc } from "./trpc";
 import "./App.css";
+import { UserInitialsAvatar } from "./UserInitialsAvatar";
 
 function App() {
   const [controlNumber, setControlNumber] = useState("");
@@ -202,9 +203,13 @@ function App() {
                     <div key={remark.id} className="lookup-remark">
                       <div className="lookup-remark-header">
                         <div className="lookup-remark-author">
-                          <div className="lookup-remark-avatar">
-                            {remark.author?.firstName?.charAt(0) || "?"}
-                          </div>
+                          <UserInitialsAvatar
+                            firstName={remark.author?.firstName}
+                            lastName={remark.author?.lastName}
+                            imageUrl={remark.author?.imageUrl}
+                            size={32}
+                            className="lookup-remark-avatar"
+                          />
                           <div>
                             <p className="lookup-remark-name">
                               {remark.author?.firstName}{" "}

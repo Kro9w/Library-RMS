@@ -35,11 +35,11 @@
 }
 
 .account-avatar-img {
-  width: 64px;
-  height: 64px;
+  width: 64px !important;
+  height: 64px !important;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid var(--bg-surface);
+  border: 3px solid var(--bg-surface) !important;
   box-shadow: var(--shadow-sm);
 }
 

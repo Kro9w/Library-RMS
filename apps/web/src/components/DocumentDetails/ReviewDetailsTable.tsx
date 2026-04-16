@@ -1,6 +1,7 @@
 import React from "react";
 import { formatUserName } from "../../utils/user";
 import RolePill from "../Roles/RolePill";
+import { UserInitialsAvatar } from "../UserInitialsAvatar";
 
 const getDepartmentAcronym = (name: string | null | undefined): string => {
   if (!name) return "N/A";
@@ -174,9 +175,13 @@ export const ReviewDetailsTable: React.FC<{
                   <tr key={remark.id}>
                     <td>
                       <div className="d-flex align-items-center gap-2">
-                        <div className="reviewer-avatar">
-                          {remark.author?.firstName?.charAt(0) || "?"}
-                        </div>
+                        <UserInitialsAvatar
+                          firstName={remark.author?.firstName}
+                          lastName={remark.author?.lastName}
+                          imageUrl={remark.author?.imageUrl}
+                          size={32}
+                          className="reviewer-avatar"
+                        />
                         <div>
                           <p
                             className="mb-0 fw-semibold"

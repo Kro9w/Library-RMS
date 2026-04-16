@@ -8,6 +8,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "../supabase.ts";
 import { AlertModal } from "../components/AlertModal";
+import { UserInitialsAvatar } from "../components/UserInitialsAvatar";
 import "./Account.css";
 
 import { formatUserName } from "../utils/user";
@@ -37,7 +38,7 @@ const Account: React.FC = () => {
       onSuccess: () => {
         trpcCtx.user.getMe.invalidate();
       },
-      onError: (error: { message: any }) =>
+      onError: (error: { message: string }) =>
         setAlertConfig({
           show: true,
           title: "Error",
@@ -47,6 +48,7 @@ const Account: React.FC = () => {
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const { register, handleSubmit, setValue } = useForm<ProfileFormData>();
 
@@ -67,11 +69,17 @@ const Account: React.FC = () => {
   }, [avatarFile]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: (files) => {
-      if (files[0]) setAvatarFile(files[0]);
+    onDrop: (acceptedFiles, fileRejections) => {
+      setAvatarError(null);
+      if (fileRejections.length > 0) {
+        setAvatarError("File is too large. Max size is 5MB.");
+        return;
+      }
+      if (acceptedFiles[0]) setAvatarFile(acceptedFiles[0]);
     },
     accept: { "image/jpeg": [], "image/png": [] },
     multiple: false,
+    maxSize: 5 * 1024 * 1024,
   });
 
   const onSubmit = async (data: ProfileFormData) => {
@@ -110,11 +118,8 @@ const Account: React.FC = () => {
   if (!authUser || !dbUser) return <Navigate to="/login" replace />;
 
   const displayName = formatUserName(dbUser);
-  const currentAvatar =
-    avatarPreview ||
-    dbUser.imageUrl ||
-    authUser.user_metadata?.avatar_url ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=9B2335&color=fff&size=128`;
+  const currentAvatarUrl =
+    avatarPreview || dbUser.imageUrl || authUser.user_metadata?.avatar_url;
 
   return (
     <div className="container mt-2 account-page">
@@ -127,9 +132,11 @@ const Account: React.FC = () => {
         <div className="account-profile-banner">
           <div className="account-profile-avatar-wrap">
             <div className="account-avatar-uploader">
-              <img
-                src={currentAvatar}
-                alt="avatar"
+              <UserInitialsAvatar
+                firstName={dbUser.firstName}
+                lastName={dbUser.lastName}
+                imageUrl={currentAvatarUrl}
+                size={64}
                 className="account-avatar-img"
               />
               <div
@@ -143,6 +150,11 @@ const Account: React.FC = () => {
             </div>
           </div>
         </div>
+        {avatarError && (
+          <div className="text-danger text-center mt-2 small">
+            {avatarError}
+          </div>
+        )}
         <div className="account-profile-body">
           <div className="account-profile-name">{displayName}</div>
           <div className="account-profile-role">

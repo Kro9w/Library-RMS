@@ -4,9 +4,7 @@
   --topbar-h: 52px;
 }
 
-/* ═══════════════════════════════════════
-   LEFT SIDEBAR
-═══════════════════════════════════════ */
+/* Left Sidebar */
 
 .sidebar {
   position: fixed;
@@ -169,9 +167,7 @@ body[data-bs-theme="dark"] .sidebar-toggle-btn.active {
   justify-content: flex-end;
 }
 
-/* ═══════════════════════════════════════
-   TOP BAR
-═══════════════════════════════════════ */
+/* Top Bar */
 
 .topbar {
   position: fixed;
@@ -411,7 +407,7 @@ body[data-bs-theme="dark"] .sidebar-toggle-btn.active {
   border-radius: 50%;
 }
 
-/* ── Account dropdown ── */
+/* Account dropdown */
 .account-dropdown {
   background-color: var(--bg-overlay);
   border: 1px solid var(--border);
@@ -522,9 +518,7 @@ body[data-bs-theme="dark"] .sidebar-toggle-btn.active {
   color: var(--danger);
 }
 
-/* ═══════════════════════════════════════
-   MAIN CONTENT OFFSET
-═══════════════════════════════════════ */
+/* Main Content Offset */
 
 .main-content {
   transition: margin-left 220ms cubic-bezier(0.4, 0, 0.2, 1);

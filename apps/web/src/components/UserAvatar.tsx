@@ -1,27 +1,20 @@
-import { UserNameFields, formatUserName } from "../utils/user";
+import { UserNameFields } from "../utils/user";
+import { UserInitialsAvatar } from "./UserInitialsAvatar";
 
 type Props = {
-  user: UserNameFields;
+  user: UserNameFields & { imageUrl?: string | null };
   size?: number;
   className?: string;
 };
 
 export function UserAvatar({ user, size = 48, className }: Props) {
-  const displayName = formatUserName(user);
-  const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-    displayName,
-  )}&background=ED9B40&color=fff&size=${size * 2}`; // Request higher-res for retina
-
   return (
-    <img
-      src={avatarUrl}
-      alt={`${displayName}'s Avatar`}
+    <UserInitialsAvatar
+      firstName={user.firstName}
+      lastName={user.lastName}
+      imageUrl={user.imageUrl}
+      size={size}
       className={`rounded-circle ${className || ""}`}
-      style={{
-        width: `${size}px`,
-        height: `${size}px`,
-        objectFit: "cover",
-      }}
     />
   );
 }

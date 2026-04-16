@@ -17,6 +17,7 @@ import { useGlobalLoading } from "../hooks/useGlobalLoading";
 import "./Navbar.css";
 import { formatUserName } from "../utils/user";
 import { NotificationsDropdown } from "./NotificationsDropdown";
+import { UserInitialsAvatar } from "./UserInitialsAvatar";
 import type { SidebarMode } from "../App";
 
 const UploadModal = React.lazy(() =>
@@ -117,10 +118,7 @@ export function Navbar({ sidebarMode, setSidebarMode }: NavbarProps) {
 
   const displayName = dbUser ? formatUserName(dbUser) : user?.email || "User";
 
-  const avatarUrl =
-    dbUser?.imageUrl ||
-    user?.user_metadata?.avatar_url ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=9B2335&color=fff&size=128`;
+  const avatarUrl = dbUser?.imageUrl || user?.user_metadata?.avatar_url;
 
   let campusName;
   if (dbUser?.campus?.name != "University Administration") {
@@ -133,7 +131,13 @@ export function Navbar({ sidebarMode, setSidebarMode }: NavbarProps) {
   const accountDropdown = (
     <div className="account-dropdown" ref={dropdownRef} style={menuStyle}>
       <div className="account-dropdown-header">
-        <img src={avatarUrl} alt="avatar" className="account-dropdown-avatar" />
+        <UserInitialsAvatar
+          firstName={dbUser?.firstName}
+          lastName={dbUser?.lastName}
+          imageUrl={avatarUrl}
+          size={48}
+          className="account-dropdown-avatar"
+        />
         <div className="account-dropdown-info">
           <span className="account-dropdown-name">{displayName}</span>
           <span className="account-dropdown-email">{dbUser?.email}</span>
@@ -408,7 +412,13 @@ export function Navbar({ sidebarMode, setSidebarMode }: NavbarProps) {
             onClick={() => setAccountMenuOpen(!isAccountMenuOpen)}
             title="Account"
           >
-            <img src={avatarUrl} alt="avatar" className="topbar-avatar" />
+            <UserInitialsAvatar
+              firstName={dbUser?.firstName}
+              lastName={dbUser?.lastName}
+              imageUrl={avatarUrl}
+              size={36}
+              className="topbar-avatar"
+            />
           </button>
         </div>
       </header>
