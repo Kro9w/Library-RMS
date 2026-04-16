@@ -708,27 +708,13 @@ export class DocumentsRouter {
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
 
-          this.accessControlService.requirePermission(
-            dbUser,
-            'canManageDocuments',
+          const isGlobalAdmin = dbUser.roles.some(
+            (r) => r.canManageInstitution,
           );
-
-          const isHighLevelAdmin = dbUser.roles.some(
-            (r) =>
-              r.canManageInstitution || (r.canManageDocuments && r.level <= 1),
-          );
-
-          if (!isHighLevelAdmin) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message:
-                'You must be at least a Level 1 Administrator to execute or approve dispositions.',
-            });
-          }
 
           const docs = await ctx.prisma.document.findMany({
             where: { id: { in: input.documentIds } },
-            include: { lifecycle: true },
+            include: { lifecycle: true, workflow: true },
           });
 
           if (docs.length !== input.documentIds.length) {
@@ -739,6 +725,26 @@ export class DocumentsRouter {
           }
 
           for (const doc of docs) {
+            if (
+              doc.workflow?.recordStatus === 'IN_TRANSIT' ||
+              doc.workflow?.recordStatus === 'DRAFT'
+            ) {
+              throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: `Disposition cannot be approved for active document ${doc.controlNumber || doc.title}.`,
+              });
+            }
+
+            const isOriginator =
+              doc.uploadedById === user.id || doc.originalSenderId === user.id;
+
+            if (!isOriginator && !isGlobalAdmin) {
+              throw new TRPCError({
+                code: 'FORBIDDEN',
+                message: `You do not have permission to execute disposition for document ${doc.controlNumber || doc.title}.`,
+              });
+            }
+
             if (doc.lifecycle?.isUnderLegalHold) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
@@ -1592,20 +1598,40 @@ export class DocumentsRouter {
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
 
-          this.accessControlService.requirePermission(
-            dbUser,
-            'canManageDocuments',
-          );
-
           const doc = await ctx.prisma.document.findUnique({
             where: { id: input.documentId },
-            include: { lifecycle: true },
+            include: { lifecycle: true, workflow: true },
           });
 
           if (!doc) {
             throw new TRPCError({
               code: 'NOT_FOUND',
               message: 'Document not found',
+            });
+          }
+
+          if (
+            doc.workflow?.recordStatus === 'IN_TRANSIT' ||
+            doc.workflow?.recordStatus === 'DRAFT'
+          ) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message:
+                'Disposition cannot be requested while the document is active or in transit.',
+            });
+          }
+
+          const isOriginator =
+            doc.uploadedById === user.id || doc.originalSenderId === user.id;
+          const isGlobalAdmin = dbUser.roles.some(
+            (r) => r.canManageInstitution,
+          );
+
+          if (!isOriginator && !isGlobalAdmin) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message:
+                'Only the originator or a global administrator can request disposition for this document.',
             });
           }
 
@@ -1656,17 +1682,37 @@ export class DocumentsRouter {
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
 
-          this.accessControlService.requirePermission(
-            dbUser,
-            'canManageDocuments',
-          );
-
           const doc = await ctx.prisma.document.findUnique({
             where: { id: input.documentId },
-            include: { lifecycle: true },
+            include: { lifecycle: true, workflow: true },
           });
 
           if (!doc) throw new TRPCError({ code: 'NOT_FOUND' });
+
+          if (
+            doc.workflow?.recordStatus === 'IN_TRANSIT' ||
+            doc.workflow?.recordStatus === 'DRAFT'
+          ) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message:
+                'Disposition cannot be approved while the document is active or in transit.',
+            });
+          }
+
+          const isOriginator =
+            doc.uploadedById === user.id || doc.originalSenderId === user.id;
+          const isGlobalAdmin = dbUser.roles.some(
+            (r) => r.canManageInstitution,
+          );
+
+          if (!isOriginator && !isGlobalAdmin) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message:
+                'Only the originator or a global administrator can approve disposition for this document.',
+            });
+          }
 
           if (doc.lifecycle?.isUnderLegalHold) {
             throw new TRPCError({
@@ -1941,17 +1987,37 @@ export class DocumentsRouter {
         .mutation(async ({ ctx, input }) => {
           const { user, dbUser } = ctx;
 
-          this.accessControlService.requirePermission(
-            dbUser,
-            'canManageDocuments',
-          );
-
           const doc = await ctx.prisma.document.findUnique({
             where: { id: input.documentId },
-            include: { lifecycle: true },
+            include: { lifecycle: true, workflow: true },
           });
 
           if (!doc) throw new TRPCError({ code: 'NOT_FOUND' });
+
+          if (
+            doc.workflow?.recordStatus === 'IN_TRANSIT' ||
+            doc.workflow?.recordStatus === 'DRAFT'
+          ) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message:
+                'Disposition cannot be rejected while the document is active or in transit.',
+            });
+          }
+
+          const isOriginator =
+            doc.uploadedById === user.id || doc.originalSenderId === user.id;
+          const isGlobalAdmin = dbUser.roles.some(
+            (r) => r.canManageInstitution,
+          );
+
+          if (!isOriginator && !isGlobalAdmin) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message:
+                'Only the originator or a global administrator can reject disposition for this document.',
+            });
+          }
 
           if (doc.lifecycle?.dispositionStatus !== 'PENDING_DISPOSITION') {
             throw new TRPCError({

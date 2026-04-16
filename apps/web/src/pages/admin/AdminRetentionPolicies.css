@@ -112,12 +112,12 @@
 }
 
 .rp-legend__dot--active {
-  background: var(--success);
+  background: #16a34a;
   opacity: 0.7;
 }
 
 .rp-legend__dot--inactive {
-  background: var(--text-muted);
+  background: #a1a1aa;
   opacity: 0.5;
 }
 

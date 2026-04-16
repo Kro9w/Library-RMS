@@ -7,14 +7,7 @@ import { LoadingAnimation } from "../components/ui/LoadingAnimation";
 import "./Documents.css";
 import "./Dashboard.css";
 
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  Legend,
-} from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 import { UploadModal } from "../components/UploadModal";
 import { ForwardDocumentModal } from "../components/ForwardDocumentModal";
@@ -25,9 +18,9 @@ import { DocumentsToReviewList } from "../components/DocumentsToReviewList";
 import type { AppRouterOutputs } from "../../../api/src/trpc/trpc.router";
 
 const RETENTION_COLORS: Record<string, string> = {
-  Active: "#28a745",
-  Inactive: "#ffc107",
-  "Ready for Disposition": "#dc3545",
+  Active: "#16a34a",
+  Inactive: "#a1a1aa",
+  "Ready for Disposition": "#ca8a04",
 };
 
 const EMPTY_PIE_DATA = [{ name: "No data", value: 1 }];
@@ -55,6 +48,72 @@ const EmptyChartLabel = ({ label }: { label: string }) => (
     {label}
   </text>
 );
+
+function ChartLegend({
+  items,
+}: {
+  items: { name: string; color: string; value: number; pct: string }[];
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "5px",
+        padding: "0 4px",
+        maxHeight: "120px",
+        overflowY: "auto",
+        scrollbarWidth: "thin",
+      }}
+    >
+      {items.map((item) => (
+        <div
+          key={item.name}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "7px",
+            fontSize: "12px",
+            lineHeight: "1.4",
+          }}
+        >
+          <span
+            style={{
+              width: "7px",
+              height: "7px",
+              borderRadius: "50%",
+              backgroundColor: item.color,
+              flexShrink: 0,
+            }}
+          />
+          <span
+            style={{
+              flex: 1,
+              color: "var(--text-secondary)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              minWidth: 0,
+            }}
+            title={item.name}
+          >
+            {item.name}
+          </span>
+          <span
+            style={{
+              color: "var(--text-muted)",
+              fontFamily: "var(--font-mono)",
+              fontSize: "11px",
+              flexShrink: 0,
+            }}
+          >
+            {item.pct}%
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function Dashboard() {
   const { data, isLoading, isError, error } = trpc.getDashboardStats.useQuery();
@@ -149,65 +208,220 @@ export function Dashboard() {
     activeStats.docsByRetention || [];
   const hasRetentionData = retentionChartData.length > 0;
 
+  const typeLegendItems = hasTypeData
+    ? typeChartData.map((entry) => ({
+        name: entry.name,
+        color: entry.color || EMPTY_PIE_COLOR[0],
+        value: entry.value,
+        pct:
+          activeTotalDocs > 0
+            ? ((entry.value / activeTotalDocs) * 100).toFixed(1)
+            : "0",
+      }))
+    : [];
+
+  const retentionLegendItems = hasRetentionData
+    ? retentionChartData.map((entry) => ({
+        name: entry.name,
+        color: RETENTION_COLORS[entry.name] || "#6c757d",
+        value: entry.value,
+        pct:
+          activeTotalDocs > 0
+            ? ((entry.value / activeTotalDocs) * 100).toFixed(1)
+            : "0",
+      }))
+    : [];
+
   const renderAnalyticsCharts = () => (
-    <div className="card-body d-flex flex-column w-100">
-      <div className="row g-4 w-100">
-        <div className="col-md-4">
-          <h5 className="card-title mb-3">Series Statistics</h5>
-          <div className="list-group">
+    <div style={{ width: "100%", padding: "20px" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "200px 1fr 1fr",
+          gap: "24px",
+          alignItems: "start",
+        }}
+      >
+        {/* Series selector */}
+        <div>
+          <p
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.07em",
+              color: "var(--text-muted)",
+              margin: "0 0 10px",
+            }}
+          >
+            Records Series
+          </p>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "2px",
+            }}
+          >
             <button
-              className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${!selectedSeriesId ? "active" : ""}`}
               onClick={() => setSelectedSeriesId(null)}
+              style={{
+                width: "100%",
+                textAlign: "left",
+                padding: "7px 10px",
+                borderRadius: "var(--radius-md)",
+                border: "1px solid",
+                fontSize: "13px",
+                fontWeight: !selectedSeriesId ? 600 : 400,
+                cursor: "pointer",
+                background: !selectedSeriesId
+                  ? "var(--brand-subtle)"
+                  : "transparent",
+                borderColor: !selectedSeriesId
+                  ? "var(--brand-muted)"
+                  : "transparent",
+                color: !selectedSeriesId
+                  ? "var(--brand)"
+                  : "var(--text-secondary)",
+                transition: "all 100ms ease",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "8px",
+              }}
             >
-              <div>
-                <strong>All Series</strong>
-              </div>
-              <span className="badge bg-primary rounded-pill">
+              <span
+                style={{
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  minWidth: 0,
+                }}
+              >
+                All Series
+              </span>
+              <span
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 500,
+                  color: "var(--text-muted)",
+                  background: "var(--bg-subtle)",
+                  border: "1px solid var(--border)",
+                  padding: "1px 6px",
+                  borderRadius: "var(--radius-full)",
+                  flexShrink: 0,
+                }}
+              >
                 {stats.totalDocuments}
               </span>
             </button>
             {stats.seriesStats.map((series: SeriesStat) => (
               <button
                 key={series.id}
-                className={`list-group-item list-group-item-action d-flex justify-content-between align-items-center ${selectedSeriesId === series.id ? "active" : ""}`}
                 onClick={() => setSelectedSeriesId(series.id)}
+                style={{
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "7px 10px",
+                  borderRadius: "var(--radius-md)",
+                  border: "1px solid",
+                  fontSize: "13px",
+                  fontWeight: selectedSeriesId === series.id ? 600 : 400,
+                  cursor: "pointer",
+                  background:
+                    selectedSeriesId === series.id
+                      ? "var(--brand-subtle)"
+                      : "transparent",
+                  borderColor:
+                    selectedSeriesId === series.id
+                      ? "var(--brand-muted)"
+                      : "transparent",
+                  color:
+                    selectedSeriesId === series.id
+                      ? "var(--brand)"
+                      : "var(--text-secondary)",
+                  transition: "all 100ms ease",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "8px",
+                }}
               >
-                <div>
-                  <strong>{series.name}</strong>
-                  <div className="text-muted" style={{ fontSize: "0.8rem" }}>
-                    {series.docsByType.length} Types
-                  </div>
-                </div>
-                <span className="badge bg-primary rounded-pill">
+                <span
+                  style={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    minWidth: 0,
+                  }}
+                >
+                  {series.name}
+                </span>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 500,
+                    color: "var(--text-muted)",
+                    background: "var(--bg-subtle)",
+                    border: "1px solid var(--border)",
+                    padding: "1px 6px",
+                    borderRadius: "var(--radius-full)",
+                    flexShrink: 0,
+                  }}
+                >
                   {series.totalDocs}
                 </span>
               </button>
             ))}
             {stats.seriesStats.length === 0 && (
-              <div
-                className="text-muted"
-                style={{ fontSize: "0.85rem", padding: "1rem" }}
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: "var(--text-muted)",
+                  margin: "8px 0 0",
+                  padding: "0 4px",
+                }}
               >
-                No series data available.
-              </div>
+                No series yet.
+              </p>
             )}
           </div>
         </div>
 
-        <div className="col-md-4 text-center border-start border-end">
-          <h5 className="card-title mb-3">Documents by Type</h5>
-          <ResponsiveContainer width="100%" height={250}>
+        {/* Documents by Type */}
+        <div
+          style={{
+            borderLeft: "1px solid var(--border)",
+            paddingLeft: "24px",
+            height: "auto",
+            minHeight: "100%",
+          }}
+        >
+          <p
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.07em",
+              color: "var(--text-muted)",
+              margin: "0 0 12px",
+            }}
+          >
+            By Document Type
+          </p>
+          <ResponsiveContainer width="100%" height={160}>
             <PieChart>
               <Pie
                 data={hasTypeData ? typeChartData : EMPTY_PIE_DATA}
                 cx="50%"
                 cy="50%"
-                innerRadius={60}
-                outerRadius={90}
+                innerRadius={46}
+                outerRadius={72}
                 labelLine={false}
                 dataKey="value"
                 nameKey="name"
                 isAnimationActive={hasTypeData}
+                strokeWidth={0}
               >
                 {hasTypeData ? (
                   typeChartData.map((entry: DocTypeStat, index: number) => (
@@ -227,42 +441,72 @@ export function Dashboard() {
                   content={({ payload }) => {
                     if (!payload || payload.length === 0) return null;
                     const { name, value } = payload[0].payload;
-                    const percentage = (
-                      (value / activeTotalDocs) *
-                      100
-                    ).toFixed(2);
+                    const pct =
+                      activeTotalDocs > 0
+                        ? ((value / activeTotalDocs) * 100).toFixed(1)
+                        : "0";
                     return (
                       <div className="custom-tooltip">
-                        <strong>{name}</strong>: {percentage}%
+                        <strong>{name}</strong>: {pct}%
                       </div>
                     );
                   }}
                 />
               )}
-              {hasTypeData && <Legend verticalAlign="bottom" height={36} />}
             </PieChart>
           </ResponsiveContainer>
-          {!hasTypeData && (
-            <p className="card-text text-muted" style={{ fontSize: "12px" }}>
+          {hasTypeData ? (
+            <div style={{ marginTop: "12px" }}>
+              <ChartLegend items={typeLegendItems} />
+            </div>
+          ) : (
+            <p
+              style={{
+                fontSize: "12px",
+                color: "var(--text-muted)",
+                margin: "8px 0 0",
+                textAlign: "center",
+              }}
+            >
               Documents will appear here once uploaded.
             </p>
           )}
         </div>
 
-        <div className="col-md-4 text-center">
-          <h5 className="card-title mb-3 mt-4 mt-md-0">Retention Status</h5>
-          <ResponsiveContainer width="100%" height={250}>
+        {/* Retention Status */}
+        <div
+          style={{
+            borderLeft: "1px solid var(--border)",
+            paddingLeft: "24px",
+            height: "auto",
+            minHeight: "100%",
+          }}
+        >
+          <p
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.07em",
+              color: "var(--text-muted)",
+              margin: "0 0 12px",
+            }}
+          >
+            Retention Status
+          </p>
+          <ResponsiveContainer width="100%" height={160}>
             <PieChart>
               <Pie
                 data={hasRetentionData ? retentionChartData : EMPTY_PIE_DATA}
                 cx="50%"
                 cy="50%"
                 innerRadius={0}
-                outerRadius={90}
+                outerRadius={72}
                 labelLine={false}
                 dataKey="value"
                 nameKey="name"
                 isAnimationActive={hasRetentionData}
+                strokeWidth={0}
               >
                 {hasRetentionData ? (
                   retentionChartData.map(
@@ -284,26 +528,34 @@ export function Dashboard() {
                   content={({ payload }) => {
                     if (!payload || payload.length === 0) return null;
                     const { name, value } = payload[0].payload;
-                    const percentage = (
-                      (value / activeTotalDocs) *
-                      100
-                    ).toFixed(2);
+                    const pct =
+                      activeTotalDocs > 0
+                        ? ((value / activeTotalDocs) * 100).toFixed(1)
+                        : "0";
                     return (
                       <div className="custom-tooltip">
-                        <strong>{name}</strong>: {percentage}%
+                        <strong>{name}</strong>: {pct}%
                       </div>
                     );
                   }}
                 />
               )}
-              {hasRetentionData && (
-                <Legend verticalAlign="bottom" height={36} />
-              )}
             </PieChart>
           </ResponsiveContainer>
-          {!hasRetentionData && (
-            <p className="card-text text-muted" style={{ fontSize: "12px" }}>
-              Status breakdown will appear here once documents are reviewed.
+          {hasRetentionData ? (
+            <div style={{ marginTop: "12px" }}>
+              <ChartLegend items={retentionLegendItems} />
+            </div>
+          ) : (
+            <p
+              style={{
+                fontSize: "12px",
+                color: "var(--text-muted)",
+                margin: "8px 0 0",
+                textAlign: "center",
+              }}
+            >
+              Status breakdown will appear once documents are reviewed.
             </p>
           )}
         </div>
@@ -442,14 +694,17 @@ export function Dashboard() {
 
       {isLevel0Or1 && (
         <div className="document-table-card mt-3">
-          <div className="p-4">
-            <h5>
+          <div
+            style={{
+              padding: "18px 20px",
+              borderBottom: "1px solid var(--border)",
+            }}
+          >
+            <h5 style={{ margin: 0 }}>
               <i className="bi bi-graph-up-arrow me-2"></i>Analytics
             </h5>
-            <div className="card mini-stat-card mb-3 flex-row justify-content-around">
-              {renderAnalyticsCharts()}
-            </div>
           </div>
+          {renderAnalyticsCharts()}
         </div>
       )}
 
