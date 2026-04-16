@@ -1,3 +1,4 @@
+import { useForm } from "react-hook-form";
 import { useState, useMemo, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { trpc } from "../trpc";
@@ -7,7 +8,6 @@ import "./Documents.css";
 import "./Dashboard.css";
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { useForm } from "react-hook-form";
 
 import { UploadModal } from "../components/UploadModal";
 import { ForwardDocumentModal } from "../components/ForwardDocumentModal";
@@ -104,6 +104,132 @@ export function Dashboard() {
     docsByType: [],
     docsByStatus: [],
   };
+
+  const renderAnalyticsCharts = () => (
+    <div className="card-body d-flex flex-column align-items-center w-100">
+      <div className="w-100 d-flex flex-column flex-md-row justify-content-around">
+        <div className="flex-grow-1 text-center">
+          <h5 className="card-title mb-3">Documents by Type</h5>
+          {stats.docsByType.length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie
+                  data={stats.docsByType}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={80}
+                  labelLine={false}
+                  fill="#8884d8"
+                  dataKey="value"
+                  nameKey="name"
+                >
+                  {stats.docsByType.map(
+                    (_entry: DocTypeStat, index: number) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={PIE_CHART_COLORS[index % PIE_CHART_COLORS.length]}
+                      />
+                    ),
+                  )}
+                </Pie>
+                <Tooltip
+                  cursor={{ fill: "transparent" }}
+                  content={({ payload }) => {
+                    if (!payload || payload.length === 0) return null;
+                    const { name, value } = payload[0].payload;
+                    const percentage = (
+                      (value / stats.totalDocuments) *
+                      100
+                    ).toFixed(2);
+                    return (
+                      <div
+                        style={{
+                          backgroundColor: "rgba(0, 0, 0, 0.8)",
+                          color: "#fff",
+                          borderRadius: "5px",
+                          padding: "6px 10px",
+                          fontSize: "0.85rem",
+                        }}
+                      >
+                        <strong>{name}</strong>: {percentage}%
+                      </div>
+                    );
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="card-text text-muted mt-4">
+              No documents found to generate stats.
+            </p>
+          )}
+        </div>
+
+        <div className="flex-grow-1 text-center">
+          <h5 className="card-title mb-3 mt-4 mt-md-0">Documents by Status</h5>
+          {stats.docsByStatus.length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie
+                  data={stats.docsByStatus}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={80}
+                  labelLine={false}
+                  fill="#82ca9d"
+                  dataKey="value"
+                  nameKey="name"
+                >
+                  {stats.docsByStatus.map(
+                    (_entry: DocStatusStat, index: number) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={
+                          PIE_CHART_COLORS[
+                            (index + 2) % PIE_CHART_COLORS.length
+                          ]
+                        }
+                      />
+                    ),
+                  )}
+                </Pie>
+                <Tooltip
+                  cursor={{ fill: "transparent" }}
+                  content={({ payload }) => {
+                    if (!payload || payload.length === 0) return null;
+                    const { name, value } = payload[0].payload;
+                    const percentage = (
+                      (value / stats.totalDocuments) *
+                      100
+                    ).toFixed(2);
+                    return (
+                      <div
+                        style={{
+                          backgroundColor: "rgba(0, 0, 0, 0.8)",
+                          color: "#fff",
+                          borderRadius: "5px",
+                          padding: "6px 10px",
+                          fontSize: "0.85rem",
+                        }}
+                      >
+                        <strong>{name}</strong>: {percentage}%
+                      </div>
+                    );
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="card-text text-muted mt-4">
+              No status data available.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 
   const recentFiles = data?.recentFiles || [];
 
@@ -240,140 +366,26 @@ export function Dashboard() {
                   <h5>
                     <i className="bi bi-graph-up-arrow me-2"></i>Analytics
                   </h5>
-                  <div className="card mini-stat-card mb-3">
-                    <div className="card-body d-flex flex-column align-items-center">
-                      <h5 className="card-title mb-3">Documents by Type</h5>
-                      {stats.docsByType.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={200}>
-                          <PieChart>
-                            <Pie
-                              data={stats.docsByType}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={50}
-                              outerRadius={80}
-                              labelLine={false}
-                              fill="#8884d8"
-                              dataKey="value"
-                              nameKey="name"
-                            >
-                              {stats.docsByType.map(
-                                (entry: DocTypeStat, index: number) => (
-                                  <Cell
-                                    key={`cell-${index}`}
-                                    fill={
-                                      entry.color ||
-                                      PIE_CHART_COLORS[
-                                        index % PIE_CHART_COLORS.length
-                                      ]
-                                    }
-                                  />
-                                ),
-                              )}
-                            </Pie>
-                            <Tooltip
-                              cursor={{ fill: "transparent" }}
-                              content={({ payload }) => {
-                                if (!payload || payload.length === 0)
-                                  return null;
-                                const { name, value } = payload[0].payload;
-                                const percentage = (
-                                  (value / stats.totalDocuments) *
-                                  100
-                                ).toFixed(2);
-                                return (
-                                  <div
-                                    style={{
-                                      backgroundColor: "rgba(0, 0, 0, 0.8)",
-                                      color: "#fff",
-                                      borderRadius: "5px",
-                                      padding: "6px 10px",
-                                      fontSize: "0.85rem",
-                                    }}
-                                  >
-                                    <strong>{name}</strong>: {percentage}%
-                                  </div>
-                                );
-                              }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <p className="card-text text-muted mt-4">
-                          No documents found to generate stats.
-                        </p>
-                      )}
-
-                      <hr className="w-100 my-4" />
-
-                      <h5 className="card-title mb-3">Documents by Status</h5>
-                      {stats.docsByStatus.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={200}>
-                          <PieChart>
-                            <Pie
-                              data={stats.docsByStatus}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={50}
-                              outerRadius={80}
-                              labelLine={false}
-                              fill="#82ca9d"
-                              dataKey="value"
-                              nameKey="name"
-                            >
-                              {stats.docsByStatus.map(
-                                (_entry: DocStatusStat, index: number) => (
-                                  <Cell
-                                    key={`cell-${index}`}
-                                    fill={
-                                      PIE_CHART_COLORS[
-                                        (index + 2) % PIE_CHART_COLORS.length
-                                      ]
-                                    }
-                                  />
-                                ),
-                              )}
-                            </Pie>
-                            <Tooltip
-                              cursor={{ fill: "transparent" }}
-                              content={({ payload }) => {
-                                if (!payload || payload.length === 0)
-                                  return null;
-                                const { name, value } = payload[0].payload;
-                                const percentage = (
-                                  (value / stats.totalDocuments) *
-                                  100
-                                ).toFixed(2);
-                                return (
-                                  <div
-                                    style={{
-                                      backgroundColor: "rgba(0, 0, 0, 0.8)",
-                                      color: "#fff",
-                                      borderRadius: "5px",
-                                      padding: "6px 10px",
-                                      fontSize: "0.85rem",
-                                    }}
-                                  >
-                                    <strong>{name}</strong>: {percentage}%
-                                  </div>
-                                );
-                              }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <p className="card-text text-muted mt-4">
-                          No status data available.
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                  {renderAnalyticsCharts()}
                 </>
               )}
             </div>
           </div>
         </div>
       </div>
+
+      {isLevel0Or1 && (
+        <div className="document-table-card mt-3">
+          <div className="p-4">
+            <h5>
+              <i className="bi bi-graph-up-arrow me-2"></i>Analytics
+            </h5>
+            <div className="card mini-stat-card mb-3 flex-row justify-content-around">
+              {renderAnalyticsCharts()}
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedDocId && (
         <ForwardDocumentModal

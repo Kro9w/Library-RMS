@@ -13,7 +13,7 @@ async function main() {
     select: {
       id: true,
       uploadedById: true,
-      classification: true,
+      category: true,
       campusId: true,
       departmentId: true,
       documentAccesses: true,
@@ -41,22 +41,22 @@ async function main() {
       });
     }
 
-    // 2. Map classification to broad access
-    if (doc.classification === 'INSTITUTIONAL') {
+    // 2. Map category to broad access
+    if (doc.category === 'INSTITUTIONAL') {
       // Handled implicitly by RBAC now.
-    } else if (doc.classification === 'INTERNAL' as any && doc.campusId) {
+    } else if (doc.category === 'INTERNAL' as any && doc.campusId) {
       accessesToCreate.push({
         documentId: doc.id,
         campusId: doc.campusId,
         permission: PermissionLevel.READ,
       });
-    } else if (doc.classification === 'DEPARTMENTAL' as any && doc.departmentId) {
+    } else if (doc.category === 'DEPARTMENTAL' as any && doc.departmentId) {
       accessesToCreate.push({
         documentId: doc.id,
         departmentId: doc.departmentId,
         permission: PermissionLevel.READ,
       });
-    } else if (doc.classification === 'RESTRICTED') {
+    } else if (doc.category === 'RESTRICTED') {
       // No broad access, only the owner has access (already added above)
     }
 
