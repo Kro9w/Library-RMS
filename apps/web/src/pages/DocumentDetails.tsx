@@ -559,47 +559,27 @@ export const DocumentDetails: React.FC = () => {
                               </strong>
                             </p>
                             <div className="disposition-block-actions">
-                              <button
-                                className="disposition-action-btn"
-                                onClick={() => {
-                                  setConfirmConfig({
-                                    show: true,
-                                    title: "Request Disposition",
-                                    message:
-                                      "Request approval to execute disposition?",
-                                    onConfirm: () => {
-                                      requestDispositionMutation.mutate({
-                                        documentId: document.id,
-                                      });
-                                      setConfirmConfig(
-                                        (prev: typeof confirmConfig) => ({
-                                          ...prev,
-                                          show: false,
-                                        }),
-                                      );
-                                    },
-                                  });
-                                }}
-                                disabled={requestDispositionMutation.isPending}
-                              >
-                                <i className="bi bi-send" />
-                                {requestDispositionMutation.isPending
-                                  ? "Requesting…"
-                                  : "Request Approval"}
-                              </button>
-                              {(canManageInstitution ||
-                                (canManageDocuments &&
-                                  highestRoleLevel <= 1)) && (
+                              {canManageInstitution ||
+                              (canManageDocuments && highestRoleLevel <= 1) ? (
                                 <button
                                   className="disposition-action-btn btn-approve"
+                                  disabled={true}
+                                  title="Must be requested first"
+                                >
+                                  <i className="bi bi-lightning-charge" />
+                                  Execute Directly
+                                </button>
+                              ) : (
+                                <button
+                                  className="disposition-action-btn"
                                   onClick={() => {
                                     setConfirmConfig({
                                       show: true,
-                                      title: "Execute Disposition Directly",
+                                      title: "Request Disposition",
                                       message:
-                                        "Execute disposition? This is irreversible.",
+                                        "Request approval to execute disposition?",
                                       onConfirm: () => {
-                                        approveDispositionMutation.mutate({
+                                        requestDispositionMutation.mutate({
                                           documentId: document.id,
                                         });
                                         setConfirmConfig(
@@ -612,13 +592,13 @@ export const DocumentDetails: React.FC = () => {
                                     });
                                   }}
                                   disabled={
-                                    approveDispositionMutation.isPending
+                                    requestDispositionMutation.isPending
                                   }
                                 >
-                                  <i className="bi bi-lightning-charge" />
-                                  {approveDispositionMutation.isPending
-                                    ? "Executing…"
-                                    : "Execute Directly"}
+                                  <i className="bi bi-send" />
+                                  {requestDispositionMutation.isPending
+                                    ? "Requesting…"
+                                    : "Request Approval"}
                                 </button>
                               )}
                             </div>

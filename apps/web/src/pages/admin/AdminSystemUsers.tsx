@@ -207,7 +207,7 @@ export default function AdminSystemUsers() {
 
   return (
     <div>
-      <h2 style={{ color: "var(--brand)" }}>Manage Campuses</h2>
+      <h2 style={{ color: "var(--brand)" }}>Manage System Users</h2>
       <p className="admin-page-desc">
         Super admin bird's-eye view of all users in the system, organized by
         campus and department.

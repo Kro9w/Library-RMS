@@ -56,7 +56,7 @@ export default function AdminMasterLogs() {
   return (
     <div className="admin-page w-100">
       <div className="admin-page-header">
-        <h2 style={{ color: "var(--brand)" }}>Manage Campuses</h2>
+        <h2 style={{ color: "var(--brand)" }}>Master Audit Logs</h2>
         <p className="admin-page-desc text-muted mb-4">
           View system-wide activity across all campuses and departments.
         </p>

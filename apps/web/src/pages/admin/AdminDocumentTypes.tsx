@@ -82,8 +82,8 @@ function SeriesFormModal({
             <div className="standard-modal-notice standard-modal-notice-info mt-3">
               <i className="bi bi-info-circle"></i>
               <p>
-                Retention schedule configuration has been moved to the Records
-                Retention page.
+                Records series groups document types with similar
+                characteristics.
               </p>
             </div>
           </div>
@@ -244,14 +244,6 @@ function DocumentTypeFormModal({
                   ))}
                 </div>
               </div>
-            </div>
-
-            <div className="standard-modal-notice standard-modal-notice-info mt-3">
-              <i className="bi bi-info-circle"></i>
-              <p>
-                Retention schedule overrides have been moved to the Records
-                Retention page.
-              </p>
             </div>
           </div>
 

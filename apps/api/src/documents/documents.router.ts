@@ -752,13 +752,10 @@ export class DocumentsRouter {
               });
             }
 
-            if (
-              doc.lifecycle?.dispositionStatus === 'ARCHIVED' ||
-              doc.lifecycle?.dispositionStatus === 'DESTROYED'
-            ) {
+            if (doc.lifecycle?.dispositionStatus !== 'PENDING_DISPOSITION') {
               throw new TRPCError({
                 code: 'BAD_REQUEST',
-                message: `Document ${doc.controlNumber || doc.title} has already been disposed.`,
+                message: `Document ${doc.controlNumber || doc.title} disposition must be requested before it can be executed.`,
               });
             }
 
@@ -1714,20 +1711,17 @@ export class DocumentsRouter {
             });
           }
 
+          if (doc.lifecycle?.dispositionStatus !== 'PENDING_DISPOSITION') {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Disposition must be requested before it can be executed',
+            });
+          }
+
           if (doc.lifecycle?.isUnderLegalHold) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message: 'Document is under legal hold',
-            });
-          }
-
-          if (
-            doc.lifecycle?.dispositionStatus === 'ARCHIVED' ||
-            doc.lifecycle?.dispositionStatus === 'DESTROYED'
-          ) {
-            throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: 'Document has already been disposed.',
             });
           }
 
