@@ -72,7 +72,7 @@ const LogsPage: React.FC = () => {
           </div>
         )}
       </div>
-      <div className="card shadow-sm border-0 mb-4 p-3 bg-white rounded">
+      <div className="card shadow-sm border-0 mb-4 p-3  rounded">
         <h6 className="mb-3 text-muted fw-semibold">Filters</h6>
         <div className="row g-3">
           <div className="col-12 col-md-3">
@@ -166,7 +166,7 @@ const LogsPage: React.FC = () => {
                   <tr key={log.id}>
                     <td>
                       <div className="d-flex flex-column">
-                        <span className="fw-medium text-dark">
+                        <span className="fw-medium">
                           {formatUserName(log.user)}
                         </span>
                         <span

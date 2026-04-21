@@ -11,7 +11,7 @@ export const getActionDetails = (action: string) => {
     return { label: "Deleted", badgeClass: "bg-danger" };
   }
   if (lowerCaseAction.includes("sent")) {
-    return { label: "Sent", badgeClass: "bg-info text-dark" };
+    return { label: "Sent", badgeClass: "bg-info " };
   }
   if (lowerCaseAction.includes("receive")) {
     return { label: "Received", badgeClass: "bg-primary" };
@@ -30,13 +30,13 @@ export const getActionDetails = (action: string) => {
     return { label: "Removed", badgeClass: "bg-danger" };
   }
   if (lowerCaseAction.includes("check")) {
-    return { label: "Checked", badgeClass: "bg-warning text-dark" };
+    return { label: "Checked", badgeClass: "bg-warning " };
   }
   if (lowerCaseAction.includes("disposition")) {
     return { label: "Disposition", badgeClass: "bg-dark text-white" };
   }
   if (lowerCaseAction.includes("legal hold")) {
-    return { label: "Legal Hold", badgeClass: "bg-warning text-dark" };
+    return { label: "Legal Hold", badgeClass: "bg-warning " };
   }
 
   return { label: "Updated", badgeClass: "bg-secondary" };

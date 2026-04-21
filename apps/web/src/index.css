@@ -451,7 +451,7 @@ button:focus-visible,
 /* Outline primary */
 .btn-outline-primary {
   --bs-btn-color: var(--brand);
-  --bs-btn-border-color: var(--brand-muted);
+  --bs-btn-border-color: var(--brand);
   --bs-btn-hover-color: var(--brand);
   --bs-btn-hover-bg: var(--brand-subtle);
   --bs-btn-hover-border-color: var(--brand);
@@ -461,7 +461,7 @@ button:focus-visible,
   --bs-btn-active-border-color: var(--brand);
   background-color: transparent;
   color: var(--brand);
-  border-color: var(--brand-muted);
+  border-color: var(--brand);
 }
 .btn-outline-primary:hover,
 .btn-outline-primary:active,

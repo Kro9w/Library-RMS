@@ -62,7 +62,7 @@ export default function AdminMasterLogs() {
         </p>
       </div>
 
-      <div className="card shadow-sm border-0 mb-4 p-3 bg-white rounded">
+      <div className="card shadow-sm border-0 mb-4 p-3  rounded">
         <h6 className="mb-3 text-muted fw-semibold">Filters</h6>
         <div className="row g-3">
           <div className="col-12 col-md-3">
@@ -170,7 +170,7 @@ export default function AdminMasterLogs() {
         </div>
       </div>
 
-      <div className="admin-table-card card border-0 shadow-sm bg-white rounded">
+      <div className="admin-table-card card border-0 shadow-sm  rounded">
         {isLoading && <div className="p-4 text-center">Loading logs...</div>}
         {isError && (
           <div className="p-4 text-center text-danger">Error loading logs.</div>
@@ -182,7 +182,7 @@ export default function AdminMasterLogs() {
 
         {!isLoading && !isError && data && data.logs.length > 0 && (
           <table className="admin-table table table-hover mb-0">
-            <thead className="table-light">
+            <thead className="">
               <tr>
                 <th>User</th>
                 <th>Role</th>
@@ -199,7 +199,7 @@ export default function AdminMasterLogs() {
                   <tr key={log.id}>
                     <td>
                       <div className="d-flex flex-column">
-                        <span className="fw-medium text-dark">
+                        <span className="fw-medium">
                           {formatUserName(log.user)}
                         </span>
                         <span
@@ -216,9 +216,7 @@ export default function AdminMasterLogs() {
                     <td>
                       <div className="d-flex flex-column">
                         {log.campus ? (
-                          <span className="text-dark fw-medium">
-                            {log.campus.name}
-                          </span>
+                          <span className="fw-medium">{log.campus.name}</span>
                         ) : (
                           <span className="text-muted fst-italic">Global</span>
                         )}

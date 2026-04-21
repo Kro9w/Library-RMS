@@ -198,11 +198,11 @@ const RECENT_TABLE_HEADERS = (
 const Documents: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const [searchType, setSearchType] = useState<
+    "name" | "owner" | "controlNumber"
+  >("name");
+  const [documentTypeId, setDocumentTypeId] = useState<string>("all");
 
-  const [filter, setFilter] = useState<"all" | "mine">("all");
-  const [lifecycleFilter, setLifecycleFilter] = useState<"all" | "ready">(
-    "all",
-  );
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -220,11 +220,11 @@ const Documents: React.FC = () => {
   const { canManageDocuments, isUploader } = usePermissions();
 
   const queryInput = {
-    filter,
     page: currentPage,
     perPage: itemsPerPage,
     search: debouncedSearchTerm || undefined,
-    lifecycleFilter: lifecycleFilter === "all" ? undefined : lifecycleFilter,
+    searchType,
+    documentTypeId: documentTypeId === "all" ? undefined : documentTypeId,
   };
 
   const { data, isLoading } = trpc.documents.getAll.useQuery(queryInput, {
@@ -233,11 +233,11 @@ const Documents: React.FC = () => {
   });
 
   const recentQueryInput = {
-    filter,
     page: 1,
     perPage: 5,
     search: undefined,
-    lifecycleFilter: lifecycleFilter === "all" ? undefined : lifecycleFilter,
+    searchType,
+    documentTypeId: documentTypeId === "all" ? undefined : documentTypeId,
   };
 
   const { data: recentData, isLoading: isLoadingRecent } =
@@ -246,12 +246,10 @@ const Documents: React.FC = () => {
       placeholderData: keepPreviousData,
     });
 
-  const { isLoading: isLoadingTypes } = trpc.documentTypes.getAll.useQuery(
-    undefined,
-    {
+  const { data: documentTypes, isLoading: isLoadingTypes } =
+    trpc.documentTypes.getAll.useQuery(undefined, {
       staleTime: 30000,
-    },
-  );
+    });
 
   const documents = useMemo(() => data?.documents || [], [data?.documents]);
 
@@ -396,26 +394,6 @@ const Documents: React.FC = () => {
       <div className="page-header">
         <h2>Documents</h2>
         <div className="header-actions">
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as "all" | "mine")}
-            className="filter-dropdown"
-          >
-            <option value="all">All Institution Documents</option>
-            <option value="mine">My Documents</option>
-          </select>
-          {canManageDocuments && (
-            <select
-              value={lifecycleFilter}
-              onChange={(e) =>
-                setLifecycleFilter(e.target.value as "all" | "ready")
-              }
-              className="filter-dropdown ms-2"
-            >
-              <option value="all">All Statuses</option>
-              <option value="ready">Ready for Disposition</option>
-            </select>
-          )}
           <input
             type="text"
             placeholder="Search documents..."
@@ -423,6 +401,31 @@ const Documents: React.FC = () => {
             onChange={handleSearch}
             className="search-bar"
           />
+          <select
+            value={searchType}
+            onChange={(e) =>
+              setSearchType(
+                e.target.value as "name" | "owner" | "controlNumber",
+              )
+            }
+            className="filter-dropdown ms-2"
+          >
+            <option value="name">Name</option>
+            <option value="owner">Owner</option>
+            <option value="controlNumber">Control Number</option>
+          </select>
+          <select
+            value={documentTypeId}
+            onChange={(e) => setDocumentTypeId(e.target.value)}
+            className="filter-dropdown ms-2"
+          >
+            <option value="all">All Document Types</option>
+            {documentTypes?.map((type) => (
+              <option key={type.id} value={type.id}>
+                {type.name}
+              </option>
+            ))}
+          </select>
           <button
             className="btn btn-primary"
             onClick={() => setShowUploadModal(true)}

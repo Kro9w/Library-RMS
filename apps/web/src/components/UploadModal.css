@@ -17,7 +17,6 @@
     border-color 150ms ease,
     background-color 150ms ease;
   background-color: var(--bg-subtle);
-  overflow: hidden;
 }
 
 .upload-dropzone:not(.has-file):hover,

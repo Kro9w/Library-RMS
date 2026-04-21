@@ -882,11 +882,11 @@ export class DocumentsRouter {
         })
         .input(
           z.object({
-            filter: z.enum(['mine', 'all']).optional(),
             page: z.number().min(1).default(1),
             perPage: z.number().min(1).max(100).default(25),
             search: z.string().optional(),
-            lifecycleFilter: z.enum(['all', 'ready']).optional(),
+            searchType: z.enum(['name', 'owner', 'controlNumber']).default('name'),
+            documentTypeId: z.string().optional(),
           }),
         )
         .output(
@@ -896,7 +896,7 @@ export class DocumentsRouter {
           }),
         )
         .query(async ({ ctx, input }) => {
-          const { page, perPage, search, filter, lifecycleFilter } = input;
+          const { page, perPage, search, searchType, documentTypeId } = input;
           const skip = (page - 1) * perPage;
 
           const mapDocuments = (documents: any[]) => {
@@ -955,31 +955,14 @@ export class DocumentsRouter {
             originalSenderId: true,
           };
 
-          if (lifecycleFilter === 'ready') {
-            const aclWhere = this.accessControlService.generateAclWhereClause(
-              ctx.dbUser,
-            );
+          const andConditions: Prisma.DocumentWhereInput[] = [];
 
-            const { totalCount, documents } =
-              await this.documentLifecycleService.getReadyForDispositionDocuments(
-                ctx.user.id,
-                aclWhere,
-                {
-                  filter,
-                  search,
-                  skip,
-                  take: perPage,
-                  selectFields,
-                },
-              );
+          const aclWhere = this.accessControlService.generateAclWhereClause(
+            ctx.dbUser,
+          );
+          andConditions.push(aclWhere);
 
-            return {
-              documents: mapDocuments(documents),
-              totalCount,
-            };
-          }
-
-          const whereClause: Prisma.DocumentWhereInput = {
+          andConditions.push({
             OR: [
               { lifecycle: { dispositionStatus: null } },
               {
@@ -989,38 +972,40 @@ export class DocumentsRouter {
               },
               { lifecycle: null },
             ],
-          };
-
-          if (filter === 'mine') {
-            whereClause.uploadedById = ctx.user.id;
-          }
+          });
 
           if (search) {
-            whereClause.title = {
-              contains: search,
-              mode: 'insensitive',
-            };
+            if (searchType === 'name') {
+              andConditions.push({
+                OR: [
+                  { title: { contains: search, mode: 'insensitive' } },
+                  { fileName: { contains: search, mode: 'insensitive' } },
+                ],
+              });
+            } else if (searchType === 'owner') {
+              andConditions.push({
+                uploadedBy: {
+                  OR: [
+                    { firstName: { contains: search, mode: 'insensitive' } },
+                    { middleName: { contains: search, mode: 'insensitive' } },
+                    { lastName: { contains: search, mode: 'insensitive' } },
+                  ],
+                },
+              });
+            } else if (searchType === 'controlNumber') {
+              andConditions.push({
+                controlNumber: { contains: search, mode: 'insensitive' },
+              });
+            }
           }
 
-          const aclWhere = this.accessControlService.generateAclWhereClause(
-            ctx.dbUser,
-          );
+          if (documentTypeId) {
+            andConditions.push({ documentTypeId });
+          }
 
-          whereClause.AND = [
-            aclWhere,
-            {
-              OR: [
-                { lifecycle: { dispositionStatus: null } },
-                {
-                  lifecycle: {
-                    dispositionStatus: { notIn: ['ARCHIVED', 'DESTROYED'] },
-                  },
-                },
-                { lifecycle: null },
-              ],
-            },
-          ];
-          delete whereClause.OR;
+          const whereClause: Prisma.DocumentWhereInput = {
+            AND: andConditions,
+          };
 
           const [totalCount, documents] = await this.prisma.$transaction([
             this.prisma.document.count({ where: whereClause }),
