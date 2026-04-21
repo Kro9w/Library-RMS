@@ -714,7 +714,22 @@ export class DocumentsRouter {
 
           const docs = await ctx.prisma.document.findMany({
             where: { id: { in: input.documentIds } },
-            include: { lifecycle: true, workflow: true },
+            include: {
+              lifecycle: true,
+              workflow: true,
+              versions: true,
+              documentType: true,
+              uploadedBy: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+              campus: true,
+              department: true,
+            },
           });
 
           if (docs.length !== input.documentIds.length) {
@@ -723,6 +738,9 @@ export class DocumentsRouter {
               message: 'One or more documents not found.',
             });
           }
+
+          const docsToDestroy: typeof docs = [];
+          const docsToArchive: typeof docs = [];
 
           for (const doc of docs) {
             if (
@@ -768,92 +786,238 @@ export class DocumentsRouter {
                 message: `You cannot approve your own disposition request for document ${doc.controlNumber || doc.title}.`,
               });
             }
+
+            const action = doc.lifecycle?.dispositionActionSnapshot;
+            if (action === 'DESTROY') {
+              docsToDestroy.push(doc);
+            } else if (action === 'ARCHIVE') {
+              docsToArchive.push(doc);
+            }
           }
 
-          const updatedDocs = await ctx.prisma.$transaction(async (tx) => {
-            const results: any[] = [];
-            for (const doc of docs) {
-              const action = doc.lifecycle?.dispositionActionSnapshot;
+          const adminClient = this.supabase.getAdminClient();
 
-              const result = await tx.document.update({
+          // Process DESTROY Documents
+          if (docsToDestroy.length > 0) {
+            const allVersionsToDestroy = docsToDestroy.flatMap(
+              (doc) => doc.versions,
+            );
+
+            const keysByBucket = allVersionsToDestroy.reduce(
+              (acc, version) => {
+                if (
+                  version.s3Key &&
+                  version.s3Bucket &&
+                  version.s3Key !== 'DESTROYED'
+                ) {
+                  if (!acc[version.s3Bucket]) {
+                    acc[version.s3Bucket] = [];
+                  }
+                  acc[version.s3Bucket].push(version.s3Key);
+                }
+                return acc;
+              },
+              {} as Record<string, string[]>,
+            );
+
+            const bucketEntries = Object.entries(keysByBucket);
+
+            if (bucketEntries.length > 0) {
+              await Promise.all(
+                bucketEntries.map(async ([bucket, keys]) => {
+                  const { error: storageError } = await adminClient.storage
+                    .from(bucket)
+                    .remove(keys);
+
+                  if (storageError) {
+                    this.logService.logError(
+                      `Failed to batch delete files from storage bucket ${bucket} during multi-disposition:`,
+                      storageError,
+                    );
+                  }
+                }),
+              );
+            }
+
+            const updatePromises = allVersionsToDestroy
+              .filter(
+                (version) =>
+                  version.s3Key &&
+                  version.s3Bucket &&
+                  version.s3Key !== 'DESTROYED',
+              )
+              .map((version) =>
+                ctx.prisma.documentVersion.update({
+                  where: { id: version.id },
+                  data: {
+                    s3Key: `DESTROYED-${version.id}`,
+                    fileSize: 0,
+                  },
+                }),
+              );
+
+            const documentUpdates = docsToDestroy.map((doc) =>
+              ctx.prisma.document.update({
                 where: { id: doc.id },
                 data: {
                   lifecycle: {
                     update: {
-                      dispositionStatus: action,
+                      dispositionStatus: 'DESTROYED',
                       dispositionDate: new Date(),
                     },
                   },
                 },
-                include: { lifecycle: true, documentType: true },
-              });
-              results.push(result);
+              }),
+            );
+
+            if (updatePromises.length > 0 || documentUpdates.length > 0) {
+              await ctx.prisma.$transaction([
+                ...updatePromises,
+                ...documentUpdates,
+              ]);
             }
-            return results;
-          });
 
-          for (const doc of updatedDocs) {
-            const action = doc.lifecycle?.dispositionActionSnapshot;
-            if (action === 'ARCHIVE') {
-              const targetVersion = await ctx.prisma.documentVersion.findFirst({
-                where: { documentId: doc.id },
-                orderBy: { versionNumber: 'desc' },
-              });
+            for (const doc of docsToDestroy) {
+              await this.logService.logAction(
+                user.id,
+                'Approved and Executed Disposition (DESTROY)',
+                dbUser.roles.map((r) => r.name),
+                doc.title,
+                dbUser.campusId || undefined,
+                dbUser.departmentId || undefined,
+              );
+            }
+          }
 
-              if (targetVersion) {
-                const adminClient = this.supabase.getAdminClient();
+          // Process ARCHIVE Documents
+          if (docsToArchive.length > 0) {
+            for (const doc of docsToArchive) {
+              const versions = doc.versions || [];
+              const sortedVersions = versions.sort(
+                (a, b) => b.versionNumber - a.versionNumber,
+              );
+              const latestVersion = sortedVersions[0];
+              let latestHash: string | null = null;
 
-                const { data: fileData, error: downloadError } =
-                  await adminClient.storage
-                    .from(targetVersion.s3Bucket)
-                    .download(targetVersion.s3Key);
+              for (const version of versions) {
+                if (version.s3Key && version.s3Bucket) {
+                  const { data: fileData, error: downloadError } =
+                    await adminClient.storage
+                      .from(version.s3Bucket)
+                      .download(version.s3Key);
 
-                if (!downloadError && fileData) {
+                  if (downloadError || !fileData) {
+                    console.error(
+                      'Failed to download from active bucket during multi-disposition:',
+                      downloadError,
+                    );
+                    continue; // Skip version if download fails
+                  }
+
                   const archiveBucketName =
                     process.env.SUPABASE_ARCHIVE_BUCKET_NAME || 'csu-archives';
-                  const archiveKey = `archives/${doc.documentType?.name || 'Unknown'}/${doc.id}/${targetVersion.s3Key.split('/').pop()}`;
 
                   const { error: uploadError } = await adminClient.storage
                     .from(archiveBucketName)
-                    .upload(archiveKey, fileData, {
-                      contentType:
-                        targetVersion.fileType || 'application/octet-stream',
+                    .upload(version.s3Key, fileData, {
+                      contentType: fileData.type,
                       upsert: true,
                     });
 
-                  if (!uploadError) {
-                    await ctx.prisma.documentLifecycle.update({
-                      where: { documentId: doc.id },
-                      data: { archiveManifestUrl: archiveKey },
-                    });
+                  if (uploadError) {
+                    console.error(
+                      'Failed to upload to archive bucket during multi-disposition:',
+                      uploadError,
+                    );
+                    continue; // Skip if upload fails
                   }
+
+                  await ctx.prisma.documentVersion.update({
+                    where: { id: version.id },
+                    data: { s3Bucket: archiveBucketName },
+                  });
+
+                  await adminClient.storage
+                    .from(version.s3Bucket)
+                    .remove([version.s3Key]);
                 }
               }
-            } else if (action === 'DESTROY') {
-              const versions = await ctx.prisma.documentVersion.findMany({
-                where: { documentId: doc.id },
+
+              const manifest = {
+                documentId: doc.id,
+                title: doc.title,
+                controlNumber: doc.controlNumber,
+                category: doc.category,
+                createdAt: doc.createdAt,
+                archivedAt: new Date(),
+                fileHash: latestHash,
+                creator: doc.uploadedBy
+                  ? `${doc.uploadedBy.firstName} ${doc.uploadedBy.lastName}`
+                  : null,
+                campus: doc.campus?.name,
+                department: doc.department?.name,
+                documentType: doc.documentType?.name,
+                versions: doc.versions?.map((v) => ({
+                  version: v.versionNumber,
+                  fileType: v.fileType,
+                  fileSize: v.fileSize,
+                })),
+              };
+
+              const manifestBuffer = Buffer.from(
+                JSON.stringify(manifest, null, 2),
+                'utf-8',
+              );
+              const manifestKey = `manifests/${doc.id}-manifest.json`;
+              const archiveBucketName =
+                process.env.SUPABASE_ARCHIVE_BUCKET_NAME || 'csu-archives';
+
+              const { error: manifestUploadError } = await adminClient.storage
+                .from(archiveBucketName)
+                .upload(manifestKey, manifestBuffer, {
+                  contentType: 'application/json',
+                  upsert: true,
+                });
+
+              if (manifestUploadError) {
+                console.error(
+                  'Failed to upload archive manifest during multi-disposition:',
+                  manifestUploadError,
+                );
+              }
+
+              await ctx.prisma.document.update({
+                where: { id: doc.id },
+                data: {
+                  lifecycle: {
+                    update: {
+                      dispositionStatus: 'ARCHIVED',
+                      dispositionDate: new Date(),
+                      archiveManifestUrl: manifestKey,
+                      archiveHash: latestHash,
+                    },
+                  },
+                },
               });
 
-              const adminClient = this.supabase.getAdminClient();
-
-              for (const version of versions) {
-                await adminClient.storage
-                  .from(version.s3Bucket)
-                  .remove([version.s3Key]);
-              }
+              await this.logService.logAction(
+                user.id,
+                'Approved and Executed Disposition (ARCHIVE)',
+                dbUser.roles.map((r) => r.name),
+                doc.title,
+                dbUser.campusId || undefined,
+                dbUser.departmentId || undefined,
+              );
             }
-
-            await this.logService.logAction(
-              user.id,
-              `Disposition Executed: ${action}`,
-              dbUser.roles.map((r) => r.name),
-              doc.title,
-              dbUser.campusId || undefined,
-              dbUser.departmentId || undefined,
-            );
           }
 
-          return updatedDocs;
+          // Fetch the updated docs to return
+          const finalUpdatedDocs = await ctx.prisma.document.findMany({
+            where: { id: { in: input.documentIds } },
+            include: { lifecycle: true, documentType: true },
+          });
+
+          return finalUpdatedDocs;
         }),
 
       getAppUsers: protectedProcedure
@@ -885,7 +1049,9 @@ export class DocumentsRouter {
             page: z.number().min(1).default(1),
             perPage: z.number().min(1).max(100).default(25),
             search: z.string().optional(),
-            searchType: z.enum(['name', 'owner', 'controlNumber']).default('name'),
+            searchType: z
+              .enum(['name', 'owner', 'controlNumber'])
+              .default('name'),
             documentTypeId: z.string().optional(),
           }),
         )
@@ -1699,7 +1865,8 @@ export class DocumentsRouter {
           if (doc.lifecycle?.dispositionStatus !== 'PENDING_DISPOSITION') {
             throw new TRPCError({
               code: 'BAD_REQUEST',
-              message: 'Disposition must be requested before it can be executed',
+              message:
+                'Disposition must be requested before it can be executed',
             });
           }
 

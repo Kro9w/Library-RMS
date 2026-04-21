@@ -64,9 +64,7 @@ export class RecordsSeriesRouter {
             inactiveRetentionDuration: z.number().min(0).optional(),
             inactiveRetentionMonths: z.number().min(0).optional(),
             inactiveRetentionDays: z.number().min(0).optional(),
-            dispositionAction: z
-              .nativeEnum(DispositionAction)
-              .optional(),
+            dispositionAction: z.nativeEnum(DispositionAction).optional(),
           }),
         )
         .mutation(async ({ ctx, input }) => {

@@ -111,15 +111,21 @@ export class TrpcRouter {
           }),
         ]);
 
-        const documentTypeIds = Array.from(new Set(docsRaw.map(d => d.documentTypeId).filter((id): id is string => id !== null)));
-        
+        const documentTypeIds = Array.from(
+          new Set(
+            docsRaw
+              .map((d) => d.documentTypeId)
+              .filter((id): id is string => id !== null),
+          ),
+        );
+
         const documentTypes = await ctx.prisma.documentType.findMany({
           where: {
             id: { in: documentTypeIds },
           },
           include: {
             recordsSeries: true,
-          }
+          },
         });
 
         const seriesMap = new Map<
@@ -128,18 +134,26 @@ export class TrpcRouter {
             id: string;
             name: string;
             totalDocs: number;
-            docsByTypeMap: Map<string, { name: string; value: number; color: string }>;
+            docsByTypeMap: Map<
+              string,
+              { name: string; value: number; color: string }
+            >;
             retentionMap: Map<string, number>;
           }
         >();
 
-        const overallDocsByTypeMap = new Map<string, { name: string; value: number; color: string }>();
+        const overallDocsByTypeMap = new Map<
+          string,
+          { name: string; value: number; color: string }
+        >();
         const overallRetentionMap = new Map<string, number>();
 
         const now = new Date();
 
         for (const doc of docsRaw) {
-          const docType = documentTypes.find(t => t.id === doc.documentTypeId);
+          const docType = documentTypes.find(
+            (t) => t.id === doc.documentTypeId,
+          );
           const typeId = docType?.id || 'uncategorized';
           const typeName = docType?.name || 'Uncategorized';
           let typeColor = docType?.color || '#AAB8C2';
@@ -154,37 +168,59 @@ export class TrpcRouter {
           let lifecycleStatus = 'Active';
           if (doc.lifecycle) {
             if (doc.lifecycle.isUnderLegalHold) {
-               lifecycleStatus = 'Legal Hold';
+              lifecycleStatus = 'Legal Hold';
             } else if (doc.lifecycle.dispositionStatus === 'DESTROYED') {
-               lifecycleStatus = 'Destroyed';
+              lifecycleStatus = 'Destroyed';
             } else if (doc.lifecycle.dispositionStatus === 'ARCHIVED') {
-               lifecycleStatus = 'Archived';
+              lifecycleStatus = 'Archived';
             } else {
-               const created = new Date(doc.createdAt);
-               const activeUntil = new Date(created);
-               activeUntil.setFullYear(activeUntil.getFullYear() + (doc.lifecycle.activeRetentionSnapshot ?? 0));
-               activeUntil.setMonth(activeUntil.getMonth() + (doc.lifecycle.activeRetentionMonthsSnapshot ?? 0));
-               activeUntil.setDate(activeUntil.getDate() + (doc.lifecycle.activeRetentionDaysSnapshot ?? 0));
+              const created = new Date(doc.createdAt);
+              const activeUntil = new Date(created);
+              activeUntil.setFullYear(
+                activeUntil.getFullYear() +
+                  (doc.lifecycle.activeRetentionSnapshot ?? 0),
+              );
+              activeUntil.setMonth(
+                activeUntil.getMonth() +
+                  (doc.lifecycle.activeRetentionMonthsSnapshot ?? 0),
+              );
+              activeUntil.setDate(
+                activeUntil.getDate() +
+                  (doc.lifecycle.activeRetentionDaysSnapshot ?? 0),
+              );
 
-               if (now < activeUntil) {
-                 lifecycleStatus = 'Active';
-               } else {
-                 const inactiveUntil = new Date(activeUntil);
-                 inactiveUntil.setFullYear(inactiveUntil.getFullYear() + (doc.lifecycle.inactiveRetentionSnapshot ?? 0));
-                 inactiveUntil.setMonth(inactiveUntil.getMonth() + (doc.lifecycle.inactiveRetentionMonthsSnapshot ?? 0));
-                 inactiveUntil.setDate(inactiveUntil.getDate() + (doc.lifecycle.inactiveRetentionDaysSnapshot ?? 0));
+              if (now < activeUntil) {
+                lifecycleStatus = 'Active';
+              } else {
+                const inactiveUntil = new Date(activeUntil);
+                inactiveUntil.setFullYear(
+                  inactiveUntil.getFullYear() +
+                    (doc.lifecycle.inactiveRetentionSnapshot ?? 0),
+                );
+                inactiveUntil.setMonth(
+                  inactiveUntil.getMonth() +
+                    (doc.lifecycle.inactiveRetentionMonthsSnapshot ?? 0),
+                );
+                inactiveUntil.setDate(
+                  inactiveUntil.getDate() +
+                    (doc.lifecycle.inactiveRetentionDaysSnapshot ?? 0),
+                );
 
-                 if (now < inactiveUntil) {
-                   lifecycleStatus = 'Inactive';
-                 } else {
-                   lifecycleStatus = 'Ready for Disposition';
-                 }
-               }
+                if (now < inactiveUntil) {
+                  lifecycleStatus = 'Inactive';
+                } else {
+                  lifecycleStatus = 'Ready for Disposition';
+                }
+              }
             }
           }
 
-          if (lifecycleStatus === 'Archived' || lifecycleStatus === 'Destroyed' || lifecycleStatus === 'Legal Hold') {
-             // Exclude from retention pie chart
+          if (
+            lifecycleStatus === 'Archived' ||
+            lifecycleStatus === 'Destroyed' ||
+            lifecycleStatus === 'Legal Hold'
+          ) {
+            // Exclude from retention pie chart
           } else {
             overallRetentionMap.set(
               lifecycleStatus,
@@ -193,7 +229,11 @@ export class TrpcRouter {
           }
 
           if (!overallDocsByTypeMap.has(typeId)) {
-            overallDocsByTypeMap.set(typeId, { name: typeName, value: 0, color: typeColor });
+            overallDocsByTypeMap.set(typeId, {
+              name: typeName,
+              value: 0,
+              color: typeColor,
+            });
           }
           overallDocsByTypeMap.get(typeId)!.value += 1;
 
@@ -211,15 +251,23 @@ export class TrpcRouter {
           seriesData.totalDocs += 1;
 
           if (!seriesData.docsByTypeMap.has(typeId)) {
-            seriesData.docsByTypeMap.set(typeId, { name: typeName, value: 0, color: typeColor });
+            seriesData.docsByTypeMap.set(typeId, {
+              name: typeName,
+              value: 0,
+              color: typeColor,
+            });
           }
           seriesData.docsByTypeMap.get(typeId)!.value += 1;
 
-          if (lifecycleStatus !== 'Archived' && lifecycleStatus !== 'Destroyed' && lifecycleStatus !== 'Legal Hold') {
-             seriesData.retentionMap.set(
-               lifecycleStatus,
-               (seriesData.retentionMap.get(lifecycleStatus) || 0) + 1,
-             );
+          if (
+            lifecycleStatus !== 'Archived' &&
+            lifecycleStatus !== 'Destroyed' &&
+            lifecycleStatus !== 'Legal Hold'
+          ) {
+            seriesData.retentionMap.set(
+              lifecycleStatus,
+              (seriesData.retentionMap.get(lifecycleStatus) || 0) + 1,
+            );
           }
         }
 
