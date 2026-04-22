@@ -1140,12 +1140,13 @@ export class DocumentsRouter {
             ],
           });
 
-          if (search) {
+          if (search && search.trim() !== '') {
             if (searchType === 'name') {
+              const parsedSearch = search.trim().split(/\s+/).join(' & ');
               andConditions.push({
                 OR: [
-                  { title: { contains: search, mode: 'insensitive' } },
-                  { fileName: { contains: search, mode: 'insensitive' } },
+                  { title: { search: parsedSearch } },
+                  { fileName: { search: parsedSearch } },
                 ],
               });
             } else if (searchType === 'owner') {

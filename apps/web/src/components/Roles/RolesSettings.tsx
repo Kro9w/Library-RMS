@@ -187,10 +187,6 @@ function RoleForm({
     setPerms(LEVEL_DEFAULT_PERMS[newLevel] ?? LEVEL_DEFAULT_PERMS[4]);
   };
 
-  const togglePerm = (key: PermKeys) => {
-    setPerms((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
@@ -249,7 +245,7 @@ function RoleForm({
                 alignItems: "center",
                 gap: "10px",
                 padding: "10px 12px",
-                cursor: isExecutive ? "default" : "pointer",
+                cursor: "default",
                 background: perms[key]
                   ? "var(--success-subtle)"
                   : "var(--bg-surface)",
@@ -257,24 +253,13 @@ function RoleForm({
                 transition: "background 120ms ease",
                 userSelect: "none",
               }}
-              onMouseEnter={(e) => {
-                if (!isExecutive)
-                  e.currentTarget.style.background = perms[key]
-                    ? "var(--success-subtle)"
-                    : "var(--bg-hover)";
-              }}
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.background = perms[key]
-                  ? "var(--success-subtle)"
-                  : "var(--bg-surface)")
-              }
             >
               <input
                 type="checkbox"
                 className="form-check-input"
                 checked={perms[key]}
-                onChange={() => togglePerm(key)}
-                disabled={isExecutive}
+                disabled={true}
+                readOnly
                 style={{
                   margin: 0,
                   width: "15px",
