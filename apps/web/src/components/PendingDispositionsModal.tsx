@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { trpc } from "../trpc";
 import "./StandardModal.css";
 import "./PendingDispositionsModal.css";
@@ -24,7 +25,7 @@ export const PendingDispositionsModal: React.FC<
       refetch();
       onClose();
     },
-    onError: (error) => {
+    onError: (error: { message: string }) => {
       alert(`Failed to approve dispositions: ${error.message}`);
     },
   });
@@ -149,9 +150,13 @@ export const PendingDispositionsModal: React.FC<
                               onChange={() => handleSelect(doc.id)}
                             />
                             <div className="text-truncate">
-                              <span className="fw-medium">
+                              <Link
+                                to={`/documents/${doc.id}`}
+                                className="fw-medium text-decoration-none text-body"
+                                onClick={onClose}
+                              >
                                 {doc.controlNumber || doc.title}
-                              </span>
+                              </Link>
                               <br />
                               <small className="text-muted">
                                 Action:{" "}

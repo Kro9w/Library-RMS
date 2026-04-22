@@ -1,7 +1,6 @@
 .pending-disp-body {
   max-height: 50vh;
   overflow-y: auto;
-  padding-right: 10px;
 }
 
 .pending-disp-groups {

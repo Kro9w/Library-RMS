@@ -136,6 +136,9 @@ export const DocumentDetails: React.FC = () => {
   const isOriginator =
     user?.id === document.uploadedById ||
     user?.id === document.originalSenderId;
+  const isOriginatingOffice =
+    user?.departmentId === document.uploadedBy?.department?.id &&
+    highestRoleLevel <= 1;
 
   const hasBeenSent = distributions && distributions.length > 0;
 
@@ -537,7 +540,9 @@ export const DocumentDetails: React.FC = () => {
               {canManageDocuments &&
                 !document.lifecycle?.isUnderLegalHold &&
                 document.workflow?.recordStatus === "FINAL" &&
-                (isOriginator || canManageInstitution) && (
+                (isOriginator ||
+                  isOriginatingOffice ||
+                  canManageInstitution) && (
                   <>
                     {document.lifecycleStatus === "Ready" &&
                       document.lifecycle?.dispositionStatus !==

@@ -197,7 +197,11 @@ export class DocumentsRouter {
                   middleName: true,
                   lastName: true,
                   department: {
-                    select: { name: true, campus: { select: { name: true } } },
+                    select: {
+                      id: true,
+                      name: true,
+                      campus: { select: { name: true } },
+                    },
                   },
                 },
               },
@@ -399,7 +403,9 @@ export class DocumentsRouter {
               ? 'FINAL'
               : 'DRAFT';
 
-          let retentionSnapshot: Prisma.DocumentLifecycleCreateWithoutDocumentInput | undefined = undefined;
+          let retentionSnapshot:
+            | Prisma.DocumentLifecycleCreateWithoutDocumentInput
+            | undefined = undefined;
           if (input.documentTypeId) {
             const docType = await this.prisma.documentType.findUnique({
               where: { id: input.documentTypeId },
@@ -480,12 +486,14 @@ export class DocumentsRouter {
               metadata: input.metadata
                 ? (input.metadata as Prisma.InputJsonValue)
                 : Prisma.JsonNull,
-              lifecycle: retentionSnapshot ? {
-                create: {
-                  ...retentionSnapshot,
-                  dispositionMaturityDate: maturityDate,
-                },
-              } : undefined,
+              lifecycle: retentionSnapshot
+                ? {
+                    create: {
+                      ...retentionSnapshot,
+                      dispositionMaturityDate: maturityDate,
+                    },
+                  }
+                : undefined,
               workflow: {
                 create: {
                   recordStatus: finalRecordStatus as any,
@@ -746,6 +754,7 @@ export class DocumentsRouter {
                   firstName: true,
                   lastName: true,
                   email: true,
+                  departmentId: true,
                 },
               },
               campus: true,
@@ -776,8 +785,11 @@ export class DocumentsRouter {
 
             const isOriginator =
               doc.uploadedById === user.id || doc.originalSenderId === user.id;
+            const isOriginatingOffice =
+              dbUser.departmentId === doc.uploadedBy?.departmentId &&
+              dbUser.roles.some((r) => r.level <= 1);
 
-            if (!isOriginator && !isGlobalAdmin) {
+            if (!isOriginator && !isOriginatingOffice && !isGlobalAdmin) {
               throw new TRPCError({
                 code: 'FORBIDDEN',
                 message: `You do not have permission to execute disposition for document ${doc.controlNumber || doc.title}.`,
@@ -1854,7 +1866,15 @@ export class DocumentsRouter {
 
           const doc = await ctx.prisma.document.findUnique({
             where: { id: input.documentId },
-            include: { lifecycle: true, workflow: true },
+            include: {
+              lifecycle: true,
+              workflow: true,
+              uploadedBy: {
+                select: {
+                  departmentId: true,
+                },
+              },
+            },
           });
 
           if (!doc) throw new TRPCError({ code: 'NOT_FOUND' });
@@ -1872,15 +1892,18 @@ export class DocumentsRouter {
 
           const isOriginator =
             doc.uploadedById === user.id || doc.originalSenderId === user.id;
+          const isOriginatingOffice =
+            dbUser.departmentId === doc.uploadedBy?.departmentId &&
+            dbUser.roles.some((r) => r.level <= 1);
           const isGlobalAdmin = dbUser.roles.some(
             (r) => r.canManageInstitution,
           );
 
-          if (!isOriginator && !isGlobalAdmin) {
+          if (!isOriginator && !isOriginatingOffice && !isGlobalAdmin) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message:
-                'Only the originator or a global administrator can approve disposition for this document.',
+                'Only the originator, office head, or a global administrator can approve disposition for this document.',
             });
           }
 
@@ -2157,7 +2180,15 @@ export class DocumentsRouter {
 
           const doc = await ctx.prisma.document.findUnique({
             where: { id: input.documentId },
-            include: { lifecycle: true, workflow: true },
+            include: {
+              lifecycle: true,
+              workflow: true,
+              uploadedBy: {
+                select: {
+                  departmentId: true,
+                },
+              },
+            },
           });
 
           if (!doc) throw new TRPCError({ code: 'NOT_FOUND' });
@@ -2175,15 +2206,18 @@ export class DocumentsRouter {
 
           const isOriginator =
             doc.uploadedById === user.id || doc.originalSenderId === user.id;
+          const isOriginatingOffice =
+            dbUser.departmentId === doc.uploadedBy?.departmentId &&
+            dbUser.roles.some((r) => r.level <= 1);
           const isGlobalAdmin = dbUser.roles.some(
             (r) => r.canManageInstitution,
           );
 
-          if (!isOriginator && !isGlobalAdmin) {
+          if (!isOriginator && !isOriginatingOffice && !isGlobalAdmin) {
             throw new TRPCError({
               code: 'FORBIDDEN',
               message:
-                'Only the originator or a global administrator can reject disposition for this document.',
+                'Only the originator, office head, or a global administrator can reject disposition for this document.',
             });
           }
 
