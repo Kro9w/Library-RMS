@@ -106,8 +106,11 @@ describe('DocumentLifecycleService', () => {
   });
 
   describe('getReadyForDispositionDocuments', () => {
-    it('should return early if no documents match the raw query', async () => {
-      (prisma.$queryRaw as jest.Mock).mockResolvedValue([]);
+    it('should return early if no documents match the query', async () => {
+      (prisma.$transaction as jest.Mock).mockResolvedValue([
+        0,
+        [],
+      ]);
 
       const result = await service.getReadyForDispositionDocuments(
         'user-id',
@@ -120,11 +123,10 @@ describe('DocumentLifecycleService', () => {
       );
 
       expect(result).toEqual({ totalCount: 0, documents: [] });
-      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.$transaction).toHaveBeenCalled();
     });
 
     it('should query and return documents correctly', async () => {
-      (prisma.$queryRaw as jest.Mock).mockResolvedValue([{ id: 'doc-1' }]);
       (prisma.$transaction as jest.Mock).mockResolvedValue([
         1,
         [{ id: 'doc-1', title: 'Test Doc' }],

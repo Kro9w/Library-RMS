@@ -82,7 +82,13 @@ export class DocumentLifecycleService {
   ) {
     const lifecycleWhereClause: Prisma.DocumentWhereInput = {
       lifecycle: {
-        dispositionStatus: { notIn: ['DESTROYED', 'ARCHIVED'] },
+        is: {
+          dispositionStatus: { notIn: ['DESTROYED', 'ARCHIVED'] },
+          isUnderLegalHold: false,
+          dispositionMaturityDate: {
+            lte: new Date(),
+          },
+        },
       },
       AND: [aclWhere],
     };
@@ -97,34 +103,6 @@ export class DocumentLifecycleService {
         mode: 'insensitive',
       };
     }
-
-    const rawQuery = Prisma.sql`
-      SELECT d.id
-      FROM "Document" d
-      INNER JOIN "DocumentLifecycle" l ON d.id = l."documentId"
-      WHERE (l."dispositionStatus" NOT IN ('DESTROYED', 'ARCHIVED') OR l."dispositionStatus" IS NULL)
-        AND l."isUnderLegalHold" = false
-        AND (d."createdAt" + 
-             make_interval(years => COALESCE(l."activeRetentionSnapshot", 0)) + 
-             make_interval(months => COALESCE(l."activeRetentionMonthsSnapshot", 0)) + 
-             make_interval(days => COALESCE(l."activeRetentionDaysSnapshot", 0))) <= NOW()
-        AND (d."createdAt" + 
-             make_interval(years => COALESCE(l."activeRetentionSnapshot", 0)) + 
-             make_interval(months => COALESCE(l."activeRetentionMonthsSnapshot", 0)) + 
-             make_interval(days => COALESCE(l."activeRetentionDaysSnapshot", 0)) + 
-             make_interval(years => COALESCE(l."inactiveRetentionSnapshot", 0)) +
-             make_interval(months => COALESCE(l."inactiveRetentionMonthsSnapshot", 0)) +
-             make_interval(days => COALESCE(l."inactiveRetentionDaysSnapshot", 0))) <= NOW()
-    `;
-
-    const rawResults = await this.prisma.$queryRaw<{ id: string }[]>(rawQuery);
-    const matchingLifecycleIds = rawResults.map((r) => r.id);
-
-    if (matchingLifecycleIds.length === 0) {
-      return { documents: [], totalCount: 0 };
-    }
-
-    lifecycleWhereClause.id = { in: matchingLifecycleIds };
 
     const [totalCount, documents] = await this.prisma.$transaction([
       this.prisma.document.count({ where: lifecycleWhereClause }),

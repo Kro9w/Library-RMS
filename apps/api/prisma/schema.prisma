@@ -234,6 +234,7 @@ model DocumentLifecycle {
   dispositionActionSnapshot DispositionAction?
   dispositionStatus         String? // 'ARCHIVED', 'DESTROYED', 'PENDING_DISPOSITION'
   dispositionDate           DateTime? // The exact date the disposition was executed
+  dispositionMaturityDate   DateTime? // The scheduled date when the document is ready for disposition
   archiveManifestUrl        String?
   archiveHash               String?
 
@@ -242,6 +243,8 @@ model DocumentLifecycle {
 
   dispositionRequesterId String?
   dispositionRequester   User?   @relation("dispositionRequester", fields: [dispositionRequesterId], references: [id])
+
+  @@index([dispositionMaturityDate])
 }
 
 model DocumentWorkflow {

@@ -399,7 +399,7 @@ export class DocumentsRouter {
               ? 'FINAL'
               : 'DRAFT';
 
-          let retentionSnapshot = {};
+          let retentionSnapshot: Prisma.DocumentLifecycleCreateWithoutDocumentInput | undefined = undefined;
           if (input.documentTypeId) {
             const docType = await this.prisma.documentType.findUnique({
               where: { id: input.documentTypeId },
@@ -445,6 +445,26 @@ export class DocumentsRouter {
             finalRecordStatus = 'IN_TRANSIT';
           }
 
+          const now = new Date();
+          const maturityDate = new Date(now);
+          if (retentionSnapshot) {
+            maturityDate.setFullYear(
+              maturityDate.getFullYear() +
+                (retentionSnapshot.activeRetentionSnapshot ?? 0) +
+                (retentionSnapshot.inactiveRetentionSnapshot ?? 0),
+            );
+            maturityDate.setMonth(
+              maturityDate.getMonth() +
+                (retentionSnapshot.activeRetentionMonthsSnapshot ?? 0) +
+                (retentionSnapshot.inactiveRetentionMonthsSnapshot ?? 0),
+            );
+            maturityDate.setDate(
+              maturityDate.getDate() +
+                (retentionSnapshot.activeRetentionDaysSnapshot ?? 0) +
+                (retentionSnapshot.inactiveRetentionDaysSnapshot ?? 0),
+            );
+          }
+
           const document = await this.prisma.document.create({
             data: {
               title: input.title,
@@ -460,11 +480,12 @@ export class DocumentsRouter {
               metadata: input.metadata
                 ? (input.metadata as Prisma.InputJsonValue)
                 : Prisma.JsonNull,
-              lifecycle: {
+              lifecycle: retentionSnapshot ? {
                 create: {
                   ...retentionSnapshot,
+                  dispositionMaturityDate: maturityDate,
                 },
-              },
+              } : undefined,
               workflow: {
                 create: {
                   recordStatus: finalRecordStatus as any,
