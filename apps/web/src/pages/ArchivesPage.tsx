@@ -362,7 +362,11 @@ export const ArchivesPage: React.FC = () => {
             })
             .map(([groupName, { docs: groupDocs, color }]) => {
               const isOpen = openAccordions[groupName];
-              const dotColor = color ? `#${color}` : "var(--text-muted)";
+              const dotColor = color
+                ? color.startsWith("#")
+                  ? color
+                  : `#${color}`
+                : "var(--text-muted)";
 
               return (
                 <div className="archives-group" key={groupName}>

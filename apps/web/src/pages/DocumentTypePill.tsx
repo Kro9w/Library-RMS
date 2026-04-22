@@ -36,14 +36,18 @@ export const DocumentTypePill: React.FC<DocumentTypePillProps> = ({
     );
   }
 
+  const validColor = documentType.color.startsWith("#")
+    ? documentType.color
+    : `#${documentType.color}`;
+
   return (
     <span
       className="doc-type-pill"
       style={
         {
-          "--type-color": `#${documentType.color}`,
-          backgroundColor: `#${documentType.color}33`,
-          color: `#${documentType.color}`,
+          "--type-color": validColor,
+          backgroundColor: `${validColor}33`,
+          color: validColor,
         } as React.CSSProperties
       }
     >
