@@ -276,6 +276,18 @@ export class DocumentsRouter {
           };
         }),
 
+      checkDuplicateControlNumber: protectedProcedure
+        .input(z.object({ controlNumber: z.string() }))
+        .output(z.boolean())
+        .mutation(async ({ input }) => {
+          if (!input.controlNumber) return false;
+          const existingDoc = await this.prisma.document.findFirst({
+            where: { controlNumber: input.controlNumber },
+            select: { id: true },
+          });
+          return !!existingDoc;
+        }),
+
       createDocumentRecord: protectedProcedure
         .meta({
           openapi: {
@@ -469,6 +481,19 @@ export class DocumentsRouter {
                 (retentionSnapshot.activeRetentionDaysSnapshot ?? 0) +
                 (retentionSnapshot.inactiveRetentionDaysSnapshot ?? 0),
             );
+          }
+
+          if (input.controlNumber) {
+            const existingDoc = await this.prisma.document.findFirst({
+              where: { controlNumber: input.controlNumber },
+              select: { id: true },
+            });
+            if (existingDoc) {
+              throw new TRPCError({
+                code: 'CONFLICT',
+                message: `A document with control number ${input.controlNumber} already exists.`,
+              });
+            }
           }
 
           const document = await this.prisma.document.create({
@@ -926,10 +951,8 @@ export class DocumentsRouter {
           if (docsToArchive.length > 0) {
             for (const doc of docsToArchive) {
               const versions = doc.versions || [];
-              const sortedVersions = versions.sort(
-                (a, b) => b.versionNumber - a.versionNumber,
-              );
-              const latestVersion = sortedVersions[0];
+              // We sort to ensure `versions[0]` is the latest, but we don't declare unused `latestVersion`
+              versions.sort((a, b) => b.versionNumber - a.versionNumber);
               let latestHash: string | null = null;
 
               for (const version of versions) {

@@ -76,10 +76,6 @@
   width: 14px;
 }
 
-.faq-sidebar-item span:last-child {
-  flex: 1;
-}
-
 .faq-sidebar-item:hover {
   background-color: var(--bg-hover);
   color: var(--text-primary);

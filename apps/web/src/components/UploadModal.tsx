@@ -199,11 +199,22 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
                       ? "Scanning..."
                       : (state.controlNumber ?? "")
                   }
-                  onChange={(e) => state.setControlNumber(e.target.value)}
+                  onChange={(e) =>
+                    actions.handleManualControlNumberChange(e.target.value)
+                  }
                   disabled={state.isScanning}
                   placeholder="e.g. CSU-12345-A-FL"
                   style={{ fontFamily: "var(--font-mono)", fontSize: "12px" }}
                 />
+                {state.duplicateWarning && (
+                  <div
+                    className="text-danger mt-1"
+                    style={{ fontSize: "0.875rem" }}
+                  >
+                    <i className="bi bi-exclamation-triangle-fill me-1" />
+                    {state.duplicateWarning}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -226,7 +237,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({ show, onClose }) => {
               state.uploading ||
               !data.bucketName ||
               !state.selectedRecordsSeries ||
-              !state.selectedDocumentType
+              !state.selectedDocumentType ||
+              !!state.duplicateWarning
             }
           >
             {state.uploading ? (

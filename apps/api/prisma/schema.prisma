@@ -215,6 +215,7 @@ model Document {
   @@index([campusId])
   @@index([departmentId])
   @@index([campusId, departmentId])
+  @@index([controlNumber], map: "Document_controlNumber_btree_idx")
   @@index([controlNumber(ops: raw("gin_trgm_ops"))], type: Gin)
 }
 

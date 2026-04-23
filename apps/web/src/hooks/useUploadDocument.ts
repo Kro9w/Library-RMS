@@ -1,8 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { supabase } from "../supabase";
 import { trpc } from "../trpc";
 import { v4 as uuidv4 } from "uuid";
 import mammoth from "mammoth";
+import { useDebounce } from "./useDebounce";
 
 export function useUploadDocument(onClose: () => void) {
   const [file, setFile] = useState<File | null>(null);
@@ -27,12 +28,17 @@ export function useUploadDocument(onClose: () => void) {
   >("RESTRICTED");
   const [transitRoute, setTransitRoute] = useState<string[]>([]);
   const [isScanning, setIsScanning] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  const debouncedControlNumber = useDebounce(controlNumber, 500);
 
   const { data: me } = trpc.user.getMe.useQuery();
   const utils = trpc.useUtils();
   const createDocMutation = trpc.documents.createDocumentRecord.useMutation();
   const { data: documentTypes } = trpc.documentTypes.getAll.useQuery();
   const { data: storageConfig } = trpc.documents.getStorageConfig.useQuery();
+
+  const checkDuplicateMutation =
+    trpc.documents.checkDuplicateControlNumber.useMutation();
 
   const recordsSeriesList = useMemo(() => {
     if (!documentTypes) return [];
@@ -89,9 +95,29 @@ export function useUploadDocument(onClose: () => void) {
             const match = result.value.match(
               /CSU-([\s\S]*?)([a-zA-Z0-9-]+)\s*-FL/,
             );
-            setControlNumber(match?.[0]?.trim() ?? null);
+            const extracted = match?.[0]?.trim() ?? null;
+            setControlNumber(extracted);
+            if (extracted) {
+              checkDuplicateMutation.mutate(
+                { controlNumber: extracted },
+                {
+                  onSuccess: (isDuplicate: boolean) => {
+                    if (isDuplicate) {
+                      setDuplicateWarning(
+                        `A document with this control number already exists.`,
+                      );
+                    } else {
+                      setDuplicateWarning(null);
+                    }
+                  },
+                },
+              );
+            } else {
+              setDuplicateWarning(null);
+            }
           } catch {
             setControlNumber(null);
+            setDuplicateWarning(null);
           } finally {
             setIsScanning(false);
           }
@@ -113,13 +139,34 @@ export function useUploadDocument(onClose: () => void) {
 
         if (response.ok) {
           const data = await response.json();
-          setControlNumber(data.controlNumber ?? null);
+          const extracted = data.controlNumber ?? null;
+          setControlNumber(extracted);
+          if (extracted) {
+            checkDuplicateMutation.mutate(
+              { controlNumber: extracted },
+              {
+                onSuccess: (isDuplicate: boolean) => {
+                  if (isDuplicate) {
+                    setDuplicateWarning(
+                      `A document with this control number already exists.`,
+                    );
+                  } else {
+                    setDuplicateWarning(null);
+                  }
+                },
+              },
+            );
+          } else {
+            setDuplicateWarning(null);
+          }
         } else {
           setControlNumber(null);
+          setDuplicateWarning(null);
         }
       } catch (err) {
         console.error("OCR API error:", err);
         setControlNumber(null);
+        setDuplicateWarning(null);
       } finally {
         setIsScanning(false);
       }
@@ -173,7 +220,35 @@ export function useUploadDocument(onClose: () => void) {
     }
   };
 
+  const handleManualControlNumberChange = (value: string) => {
+    setControlNumber(value);
+  };
+
+  useEffect(() => {
+    if (debouncedControlNumber && debouncedControlNumber.trim() !== "") {
+      checkDuplicateMutation.mutate(
+        { controlNumber: debouncedControlNumber },
+        {
+          onSuccess: (isDuplicate: boolean) => {
+            if (isDuplicate) {
+              setDuplicateWarning(
+                `A document with this control number already exists.`,
+              );
+            } else {
+              setDuplicateWarning(null);
+            }
+          },
+        },
+      );
+    } else {
+      setDuplicateWarning(null);
+    }
+  }, [debouncedControlNumber]);
+
   const handleUpload = async (userId: string | undefined) => {
+    if (duplicateWarning) {
+      return;
+    }
     if (!controlNumber || controlNumber.trim() === "") {
       setShowControlNumberWarning(true);
       return;
@@ -206,6 +281,7 @@ export function useUploadDocument(onClose: () => void) {
       isScanning,
       showControlNumberWarning,
       setShowControlNumberWarning,
+      duplicateWarning,
     },
     data: {
       documentTypes,
@@ -221,6 +297,7 @@ export function useUploadDocument(onClose: () => void) {
     },
     actions: {
       scanForControlNumber,
+      handleManualControlNumberChange,
       handleUpload,
       forceUpload,
     },
